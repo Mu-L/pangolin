@@ -1,8 +1,23 @@
 import { z } from "zod";
+import { existsSync } from "node:fs";
 import { portRangeStringSchema } from "@server/lib/ip";
 import { MaintenanceSchema } from "#dynamic/lib/blueprints/MaintenanceSchema";
 import { isValidRegionId } from "@server/db/regions";
 import { wildcardSubdomainSchema } from "@server/lib/schemas";
+import config from "@server/lib/config";
+
+const maxmindDbPath = config.getRawConfig().server.maxmind_db_path;
+const maxmindAsnPath = config.getRawConfig().server.maxmind_asn_path;
+
+const hasMaxmindCountryDb =
+    typeof maxmindDbPath === "string" &&
+    maxmindDbPath.length > 0 &&
+    existsSync(maxmindDbPath);
+
+const hasMaxmindAsnDb =
+    typeof maxmindAsnPath === "string" &&
+    maxmindAsnPath.length > 0 &&
+    existsSync(maxmindAsnPath);
 
 export const SiteSchema = z.object({
     name: z.string().min(1).max(100),
@@ -83,7 +98,8 @@ export const RuleSchema = z
         action: z.enum(["allow", "deny", "pass"]),
         match: z.enum(["cidr", "path", "ip", "country", "asn", "region"]),
         value: z.coerce.string(),
-        priority: z.int().optional()
+        priority: z.int().optional(),
+        enabled: z.boolean().optional().default(true)
     })
     .refine(
         (rule) => {
@@ -116,6 +132,9 @@ export const RuleSchema = z
     .refine(
         (rule) => {
             if (rule.match === "country") {
+                if (!hasMaxmindCountryDb) {
+                    return false;
+                }
                 // Check if it's a valid 2-letter country code or "ALL"
                 return /^[A-Z]{2}$/.test(rule.value) || rule.value === "ALL";
             }
@@ -124,12 +143,15 @@ export const RuleSchema = z
         {
             path: ["value"],
             message:
-                "Value must be a 2-letter country code or 'ALL' when match is 'country'"
+                "Country rules require a valid existing server.maxmind_db_path and value must be a 2-letter country code or 'ALL'"
         }
     )
     .refine(
         (rule) => {
             if (rule.match === "asn") {
+                if (!hasMaxmindCountryDb || !hasMaxmindAsnDb) {
+                    return false;
+                }
                 // Check if it's either AS<number> format or "ALL"
                 const asNumberPattern = /^AS\d+$/i;
                 return asNumberPattern.test(rule.value) || rule.value === "ALL";
@@ -139,7 +161,7 @@ export const RuleSchema = z
         {
             path: ["value"],
             message:
-                "Value must be 'AS<number>' format or 'ALL' when match is 'asn'"
+                "ASN rules require valid existing server.maxmind_db_path and server.maxmind_asn_path, and value must be 'AS<number>' format or 'ALL'"
         }
     )
     .refine(
@@ -267,8 +289,37 @@ export const PublicResourceSchema = z
                 return true;
             }
 
-            // If protocol/mode is http, it must have a full-domain
-            if ((resource.mode ?? resource.protocol) === "http") {
+            const effectiveProtocol = resource.mode ?? resource.protocol;
+            if (effectiveProtocol !== "ssh") {
+                return true;
+            }
+
+            const authDaemonMode = resource["auth-daemon"]?.mode;
+            if (authDaemonMode !== "native" && authDaemonMode !== "site") {
+                return true;
+            }
+
+            return (
+                resource.targets.filter((target) => target != null).length <= 1
+            );
+        },
+        {
+            path: ["targets"],
+            error: "When protocol is 'ssh' and auth-daemon mode is 'native' or 'site', only one target/site is allowed"
+        }
+    )
+    .refine(
+        (resource) => {
+            if (isTargetsOnlyResource(resource)) {
+                return true;
+            }
+
+            // If protocol/mode is http, ssh, rdp, or vnc, it must have a full-domain
+            const effectiveProtocol = resource.mode ?? resource.protocol;
+            if (
+                effectiveProtocol !== undefined &&
+                ["http", "ssh", "rdp", "vnc"].includes(effectiveProtocol)
+            ) {
                 return (
                     resource["full-domain"] !== undefined &&
                     resource["full-domain"].length > 0
@@ -278,7 +329,7 @@ export const PublicResourceSchema = z
         },
         {
             path: ["full-domain"],
-            error: "When protocol is 'http', a 'full-domain' must be provided"
+            error: "When protocol is 'http', 'ssh', 'rdp', or 'vnc', a 'full-domain' must be provided"
         }
     )
     .refine(
@@ -505,7 +556,90 @@ export const PrivateResourceSchema = z
         {
             message: "Destination must be a valid CIDR notation for cidr mode"
         }
-    );
+    )
+    .refine(
+        (data) => {
+            if (data.mode !== "ssh") {
+                return true;
+            }
+
+            const authDaemonMode = data["auth-daemon"]?.mode;
+            if (authDaemonMode !== "native" && authDaemonMode !== "site") {
+                return true;
+            }
+
+            const uniqueSites = new Set<string>();
+            if (data.site) {
+                uniqueSites.add(data.site);
+            }
+            for (const site of data.sites) {
+                uniqueSites.add(site);
+            }
+
+            return uniqueSites.size <= 1;
+        },
+        {
+            path: ["sites"],
+            message:
+                "When mode is 'ssh' and auth-daemon mode is 'native' or 'site', only one site/target is allowed"
+        }
+    )
+    .transform((data) => {
+        if (
+            data.mode === "ssh" &&
+            data.destination !== undefined &&
+            data["destination-port"] === undefined
+        ) {
+            data["destination-port"] = 22;
+        }
+        return data;
+    });
+
+export const ResourcePolicyRuleSchema = RuleSchema;
+
+export const ResourcePolicySchema = z.object({
+    name: z.string().min(1).max(255),
+    sso: z.boolean().optional().default(true),
+    "auto-login-idp": z.int().positive().optional().nullable(),
+    "sso-roles": z
+        .array(z.string())
+        .optional()
+        .default([])
+        .refine((roles) => !roles.includes("Admin"), {
+            error: "Admin role cannot be included in sso-roles"
+        }),
+    "sso-users": z.array(z.string()).optional().default([]),
+    password: z.string().min(4).max(100).optional().nullable(),
+    pincode: z
+        .string()
+        .regex(/^\d{6}$/)
+        .optional()
+        .nullable(),
+    "basic-auth": z
+        .object({
+            user: z.string().min(4).max(100),
+            password: z.string().min(4).max(100),
+            "extended-compatibility": z.boolean().default(true)
+        })
+        .optional()
+        .nullable(),
+    "email-whitelist-enabled": z.boolean().optional().default(false),
+    "whitelist-users": z
+        .array(
+            z.email().or(
+                z.string().regex(/^\*@[\w.-]+\.[a-zA-Z]{2,}$/, {
+                    error: "Invalid email address. Wildcard (*) must be the entire local part."
+                })
+            )
+        )
+        .max(50)
+        .transform((v) => v.map((e) => e.toLowerCase()))
+        .optional()
+        .default([]),
+    "apply-rules": z.boolean().optional().default(false),
+    rules: z.array(ResourcePolicyRuleSchema).optional().default([])
+});
+export type ResourcePolicyData = z.infer<typeof ResourcePolicySchema>;
 
 // Schema for the entire configuration object
 export const ConfigSchema = z
@@ -524,6 +658,10 @@ export const ConfigSchema = z
             .prefault({}),
         "private-resources": z
             .record(z.string(), PrivateResourceSchema)
+            .optional()
+            .prefault({}),
+        "public-policies": z
+            .record(z.string(), ResourcePolicySchema)
             .optional()
             .prefault({}),
         sites: z.record(z.string(), SiteSchema).optional().prefault({})
@@ -555,6 +693,10 @@ export const ConfigSchema = z
             "client-resources": Record<
                 string,
                 z.infer<typeof PrivateResourceSchema>
+            >;
+            "public-policies": Record<
+                string,
+                z.infer<typeof ResourcePolicySchema>
             >;
             sites: Record<string, z.infer<typeof SiteSchema>>;
         };
@@ -695,3 +837,4 @@ export type Site = z.infer<typeof SiteSchema>;
 export type Target = z.infer<typeof TargetSchema>;
 export type Resource = z.infer<typeof PublicResourceSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
+export type BlueprintResourcePolicy = z.infer<typeof ResourcePolicySchema>;

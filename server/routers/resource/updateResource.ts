@@ -9,7 +9,11 @@ import {
     resourcePassword,
     resourcePincode,
     resourceRules,
-    resourceWhitelist
+    resourceWhitelist,
+    roleResources,
+    roles,
+    Transaction,
+    userResources
 } from "@server/db";
 import {
     domains,
@@ -62,16 +66,38 @@ const updateHttpResourceBodySchema = z
             .optional(),
         subdomain: z.string().nullable().optional(),
         ssl: z.boolean().optional(),
-        sso: z.boolean().optional(),
+        sso: z
+            .boolean()
+            .optional()
+            .describe(
+                "When no shared resource policy is assigned (resourcePolicyId is null), updates the resource's inline policy. When a shared policy is assigned, this value overrides the shared policy for this resource."
+            ),
         blockAccess: z.boolean().optional(),
-        emailWhitelistEnabled: z.boolean().optional(),
-        applyRules: z.boolean().optional(),
+        emailWhitelistEnabled: z
+            .boolean()
+            .optional()
+            .describe(
+                "When no shared resource policy is assigned (resourcePolicyId is null), updates the resource's inline policy. When a shared policy is assigned, this value overrides the shared policy for this resource."
+            ),
+        applyRules: z
+            .boolean()
+            .optional()
+            .describe(
+                "When no shared resource policy is assigned (resourcePolicyId is null), updates the resource's inline policy. When a shared policy is assigned, this value overrides the shared policy for this resource."
+            ),
         domainId: z.string().optional(),
         enabled: z.boolean().optional(),
         stickySession: z.boolean().optional(),
         tlsServerName: z.string().nullable().optional(),
         setHostHeader: z.string().nullable().optional(),
-        skipToIdpId: z.int().positive().nullable().optional(),
+        skipToIdpId: z
+            .int()
+            .positive()
+            .nullable()
+            .optional()
+            .describe(
+                "When no shared resource policy is assigned (resourcePolicyId is null), updates the resource's inline policy. When a shared policy is assigned, this value overrides the shared policy for this resource."
+            ),
         headers: z
             .array(z.strictObject({ name: z.string(), value: z.string() }))
             .nullable()
@@ -87,7 +113,13 @@ const updateHttpResourceBodySchema = z
         pamMode: z.enum(["passthrough", "push"]).optional(),
         authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         authDaemonPort: z.int().min(1).max(65535).nullable().optional(),
-        resourcePolicyId: z.number().nullable().optional()
+        resourcePolicyId: z
+            .number()
+            .nullable()
+            .optional()
+            .describe(
+                "ID of the resource policy to apply to this resource. Set to null to remove the resource policy and fall back to the inline policy settings."
+            )
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
@@ -207,7 +239,8 @@ const updateRawResourceBodySchema = z
 registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}",
-    description: "Update a resource.",
+    description:
+        "Update a resource. Policy fields (sso, mfa, pincode, password, whitelist) update the inline policy when no shared resource policy is assigned; when a shared policy is assigned those fields override the shared policy for this resource only.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: updateResourceParamsSchema,
@@ -227,7 +260,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -310,6 +343,61 @@ export async function updateResource(
     }
 }
 
+async function clearResourceSpecificSettings(
+    resourceId: number,
+    orgId: string,
+    trx: Transaction | typeof db
+) {
+    const adminRole = await db
+        .select()
+        .from(roles)
+        .where(and(eq(roles.isAdmin, true), eq(roles.orgId, orgId)))
+        .limit(1);
+
+    if (adminRole.length === 0) {
+        throw new Error(`Admin role not found for org ${orgId}`);
+    }
+    // remove the resource specific pincode, password, header auth, rules, nad whitelist entries so that the resource will fall back to the policy settings
+    await Promise.all([
+        trx
+            .delete(resourcePassword)
+            .where(eq(resourcePassword.resourceId, resourceId)),
+        trx
+            .delete(resourcePincode)
+            .where(eq(resourcePincode.resourceId, resourceId)),
+        trx
+            .delete(resourceHeaderAuth)
+            .where(eq(resourceHeaderAuth.resourceId, resourceId)),
+        trx
+            .delete(resourceHeaderAuthExtendedCompatibility)
+            .where(
+                eq(
+                    resourceHeaderAuthExtendedCompatibility.resourceId,
+                    resourceId
+                )
+            ),
+        trx
+            .delete(resourceWhitelist)
+            .where(eq(resourceWhitelist.resourceId, resourceId)),
+        trx
+            .delete(resourceRules)
+            .where(eq(resourceRules.resourceId, resourceId)),
+        // delete the roles and the users as well
+        trx
+            .delete(userResources)
+            .where(eq(userResources.resourceId, resourceId)),
+        // except the admin role
+        trx
+            .delete(roleResources)
+            .where(
+                and(
+                    eq(roleResources.resourceId, resourceId),
+                    ne(roleResources.roleId, adminRole[0].roleId)
+                )
+            )
+    ]);
+}
+
 async function updateHttpResource(
     route: {
         req: Request;
@@ -370,6 +458,15 @@ async function updateHttpResource(
                 )
             );
         }
+    }
+
+    // catch when the resource policy changes or gets cleared
+    if (resource.resourcePolicyId != updateData.resourcePolicyId) {
+        await clearResourceSpecificSettings(
+            resource.resourceId,
+            resource.orgId,
+            db
+        );
     }
 
     if (updateData.niceId) {
@@ -549,6 +646,66 @@ async function updateHttpResource(
         updateData.maintenanceEstimatedTime = undefined;
     }
 
+    const isInlinePolicy =
+        resource.resourcePolicyId === null &&
+        resource.defaultResourcePolicyId !== null;
+
+    if (isInlinePolicy) {
+        const policyId = resource.defaultResourcePolicyId!;
+        const {
+            sso,
+            emailWhitelistEnabled,
+            applyRules,
+            skipToIdpId,
+            ...resourceOnlyDataRest
+        } = updateData;
+
+        const resourceOnlyData = {
+            ...resourceOnlyDataRest,
+            sso: null, // reset these because they are controlled by the inline policy
+            emailWhitelistEnabled: null,
+            applyRules: null,
+            skipToIdpId: null
+        };
+
+        const policyUpdate: Record<string, unknown> = {};
+        if (sso !== undefined) policyUpdate.sso = sso;
+        if (emailWhitelistEnabled !== undefined)
+            policyUpdate.emailWhitelistEnabled = emailWhitelistEnabled;
+        if (applyRules !== undefined) policyUpdate.applyRules = applyRules;
+        if (skipToIdpId !== undefined) policyUpdate.idpId = skipToIdpId;
+
+        if (Object.keys(policyUpdate).length > 0) {
+            await db
+                .update(resourcePolicies)
+                .set(policyUpdate)
+                .where(eq(resourcePolicies.resourcePolicyId, policyId));
+        }
+
+        const updatedResource = await db
+            .update(resources)
+            .set({ ...resourceOnlyData, headers })
+            .where(eq(resources.resourceId, resource.resourceId))
+            .returning();
+
+        if (updatedResource.length === 0) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Resource with ID ${resource.resourceId} not found`
+                )
+            );
+        }
+
+        return response(res, {
+            data: updatedResource[0],
+            success: true,
+            error: false,
+            message: "HTTP resource updated successfully",
+            status: HttpCode.OK
+        });
+    }
+
     const updatedResource = await db
         .update(resources)
         .set({ ...updateData, headers })
@@ -607,81 +764,6 @@ async function updateRawResource(
         .limit(1);
 
     await db.transaction(async (trx) => {
-        if (updateData.resourcePolicyId != null) {
-            const [existingPolicy] = await trx
-                .select()
-                .from(resourcePolicies)
-                .where(
-                    eq(
-                        resourcePolicies.resourcePolicyId,
-                        updateData.resourcePolicyId
-                    )
-                )
-                .limit(1);
-
-            if (!existingPolicy) {
-                return next(
-                    createHttpError(
-                        HttpCode.NOT_FOUND,
-                        `Resource policy with ID ${updateData.resourcePolicyId} not found`
-                    )
-                );
-            }
-        } else {
-            // we are in an inline policy and we need to clear out the old tables
-            await Promise.all([
-                trx
-                    .delete(resourcePassword)
-                    .where(
-                        eq(
-                            resourcePassword.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-                trx
-                    .delete(resourcePincode)
-                    .where(
-                        eq(
-                            resourcePincode.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-                trx
-                    .delete(resourceHeaderAuth)
-                    .where(
-                        eq(
-                            resourceHeaderAuth.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-                trx
-                    .delete(resourceHeaderAuthExtendedCompatibility)
-                    .where(
-                        eq(
-                            resourceHeaderAuthExtendedCompatibility.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-                trx
-                    .delete(resourceWhitelist)
-                    .where(
-                        eq(
-                            resourceWhitelist.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-
-                trx
-                    .delete(resourceRules)
-                    .where(
-                        eq(
-                            resourceRules.resourceId,
-                            existingResource.resourceId
-                        )
-                    )
-            ]);
-        }
-
         if (updateData.niceId) {
             const [existingResourceConflict] = await trx
                 .select()
@@ -706,9 +788,24 @@ async function updateRawResource(
             }
         }
 
+        await clearResourceSpecificSettings(
+            resource.resourceId,
+            resource.orgId,
+            trx
+        ); // none of these are supported on raw resources
+
+        // we should make sure sso, emailWhitelistEnabled, and applyRules are null because this is a raw resource
+        const realUpdateData = {
+            ...updateData,
+            sso: null,
+            emailWhitelistEnabled: null,
+            applyRules: null,
+            skipToIdpId: null
+        };
+
         [updatedResource] = await trx
             .update(resources)
-            .set(updateData)
+            .set(realUpdateData)
             .where(eq(resources.resourceId, resource.resourceId))
             .returning();
     });

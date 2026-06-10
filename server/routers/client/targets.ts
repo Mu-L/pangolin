@@ -13,7 +13,7 @@ import semver from "semver";
 
 const NEWT_V2_TARGETS_VERSION = ">=1.10.3";
 
-export async function convertTargetsIfNessicary(
+export async function convertTargetsIfNecessary(
     newtId: string,
     targets: SubnetProxyTarget[] | SubnetProxyTargetV2[]
 ) {
@@ -47,7 +47,7 @@ export async function addTargets(
     targets: SubnetProxyTarget[] | SubnetProxyTargetV2[],
     version?: string | null
 ) {
-    targets = await convertTargetsIfNessicary(newtId, targets);
+    targets = await convertTargetsIfNecessary(newtId, targets);
 
     await sendToClient(
         newtId,
@@ -64,7 +64,7 @@ export async function removeTargets(
     targets: SubnetProxyTarget[] | SubnetProxyTargetV2[],
     version?: string | null
 ) {
-    targets = await convertTargetsIfNessicary(newtId, targets);
+    targets = await convertTargetsIfNecessary(newtId, targets);
 
     await sendToClient(
         newtId,

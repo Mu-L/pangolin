@@ -20,7 +20,12 @@ import type { UpdateRoleBody, UpdateRoleResponse } from "@server/routers/role";
 import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
-import { RoleForm, type RoleFormValues } from "./RoleForm";
+import {
+    parseSudoCommands,
+    parseUnixGroups,
+    RoleForm,
+    type RoleFormValues
+} from "./RoleForm";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type EditRoleFormProps = {
@@ -56,16 +61,10 @@ export default function EditRoleForm({
             payload.sshSudoCommands =
                 values.sshSudoMode === "commands" &&
                 values.sshSudoCommands?.trim()
-                    ? values.sshSudoCommands
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean)
+                    ? parseSudoCommands(values.sshSudoCommands)
                     : [];
             if (values.sshUnixGroups !== undefined) {
-                payload.sshUnixGroups = values.sshUnixGroups
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean);
+                payload.sshUnixGroups = parseUnixGroups(values.sshUnixGroups);
             }
         }
         const res = await api

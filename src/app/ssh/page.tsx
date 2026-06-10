@@ -1,11 +1,15 @@
 import { headers } from "next/headers";
 import { priv } from "@app/lib/api";
+import { generateBrowserGatewayMetadata } from "@app/lib/browserGatewayMetadata";
+import { getBrowserTargetForRequest } from "@app/lib/getBrowserTargetForRequest";
+import { loadOrgLoginPageBranding } from "@app/lib/loadOrgLoginPageBranding";
 import { AxiosResponse } from "axios";
 import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import SshClient from "./SshClient";
 import crypto from "crypto";
 import AuthFooter from "@app/components/AuthFooter";
 import type { SignSshKeyResponse } from "@server/routers/ssh/types";
+import { getTranslations } from "next-intl/server";
 
 const pollInitialDelayMs = 250;
 const pollStartIntervalMs = 250;
@@ -99,14 +103,13 @@ function generateEphemeralKeyPair(): {
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-    title: "SSH"
-};
+export async function generateMetadata() {
+    return generateBrowserGatewayMetadata("SSH");
+}
 
 export default async function SshPage() {
+    const t = await getTranslations();
     const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const hostname = host.split(":")[0];
     const cookieHeader = headersList.get("cookie") || "";
 
     let target: GetBrowserTargetResponse | null = null;
@@ -114,50 +117,49 @@ export default async function SshPage() {
     let privateKey: string | null = null;
     let error: string | null = null;
 
-    try {
-        const res = await priv.get<AxiosResponse<GetBrowserTargetResponse>>(
-            `/resource/browser-target?fullDomain=${encodeURIComponent(hostname)}`
-        );
-        target = res.data.data;
+    const { target: browserTarget } = await getBrowserTargetForRequest();
+    target = browserTarget;
 
-        if (target.pamMode === "push") {
-            try {
-                const { privateKeyPem, publicKeyOpenSSH } =
-                    generateEphemeralKeyPair();
-                privateKey = privateKeyPem;
-                const res = await priv.post<AxiosResponse<SignSshKeyResponse>>(
-                    `/org/${target.orgId}/ssh/sign-key`,
-                    {
-                        publicKey: publicKeyOpenSSH,
-                        resourceId: target.resourceId,
-                        type: "public"
-                    },
-                    {
-                        headers: {
-                            Cookie: cookieHeader
-                        }
+    if (!target) {
+        error = t("browserGatewayNoResourceForDomain");
+    } else if (target.pamMode === "push") {
+        try {
+            const { privateKeyPem, publicKeyOpenSSH } =
+                generateEphemeralKeyPair();
+            privateKey = privateKeyPem;
+            const res = await priv.post<AxiosResponse<SignSshKeyResponse>>(
+                `/org/${target.orgId}/ssh/sign-key`,
+                {
+                    publicKey: publicKeyOpenSSH,
+                    resourceId: target.resourceId,
+                    type: "public"
+                },
+                {
+                    headers: {
+                        Cookie: cookieHeader
                     }
-                );
-                signedKeyData = res.data.data;
+                }
+            );
+            signedKeyData = res.data.data;
 
-                const messageIds =
-                    signedKeyData.messageIds.length > 0
-                        ? signedKeyData.messageIds
-                        : signedKeyData.messageId
-                          ? [signedKeyData.messageId]
-                          : [];
+            const messageIds =
+                signedKeyData.messageIds.length > 0
+                    ? signedKeyData.messageIds
+                    : signedKeyData.messageId
+                      ? [signedKeyData.messageId]
+                      : [];
 
-                await waitForRoundTripCompletion(messageIds, cookieHeader);
-            } catch (err) {
-                console.error("Error signing SSH key:", err);
-                error =
-                    "Failed to sign SSH key for PAM push authentication. Did you sign in as a user?";
-            }
+            await waitForRoundTripCompletion(messageIds, cookieHeader);
+        } catch (err) {
+            console.error("Error signing SSH key:", err);
+            const detail = err instanceof Error ? err.message : String(err);
+            error = `${t("sshErrorSignKeyFailed")}: ${detail}`;
         }
-    } catch (err) {
-        console.error("Error fetching browser target:", err);
-        error = "No resource found for this domain";
     }
+
+    const { primaryColor } = target
+        ? await loadOrgLoginPageBranding(target.orgId)
+        : { primaryColor: null };
 
     return (
         <div className="h-full flex flex-col">
@@ -168,6 +170,7 @@ export default async function SshPage() {
                         error={error}
                         signedKeyData={signedKeyData}
                         privateKey={privateKey}
+                        primaryColor={primaryColor}
                     />
                 </div>
             </div>

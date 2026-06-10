@@ -6,7 +6,7 @@ import { db, ExitNode, exitNodes, Newt, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
 import { buildClientConfigurationForNewtClient } from "./buildConfiguration";
-import { convertTargetsIfNessicary } from "../client/targets";
+import { convertTargetsIfNecessary } from "../client/targets";
 import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";
 
@@ -113,7 +113,7 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
         exitNode
     );
 
-    const targetsToSend = await convertTargetsIfNessicary(newt.newtId, targets); // for backward compatibility with old newt versions that don't support the new target format
+    const targetsToSend = await convertTargetsIfNecessary(newt.newtId, targets); // for backward compatibility with old newt versions that don't support the new target format
 
     return {
         message: {

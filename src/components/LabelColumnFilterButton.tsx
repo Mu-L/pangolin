@@ -168,7 +168,7 @@ export function LabelColumnFilterButton({
                                         }}
                                         className="text-muted-foreground"
                                     >
-                                        {t("accessLabelFilterClear")}
+                                        {t("accessFilterClear")}
                                     </CommandItem>
                                 )}
                                 {labels.map((label) => (

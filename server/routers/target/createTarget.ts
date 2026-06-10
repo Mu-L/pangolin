@@ -24,6 +24,10 @@ import {
     fireHealthCheckUnhealthyAlert,
     fireHealthCheckUnknownAlert
 } from "@server/lib/alerts";
+import { encrypt } from "@server/lib/crypto";
+import { generateId } from "@server/auth/sessions/app";
+import config from "@server/lib/config";
+import { sendBrowserGatewayTargets } from "@server/routers/newt/targets";
 
 const createTargetParamsSchema = z.strictObject({
     resourceId: z.coerce.number().int().positive()
@@ -32,6 +36,7 @@ const createTargetParamsSchema = z.strictObject({
 const createTargetSchema = z.strictObject({
     siteId: z.int().positive(),
     ip: z.string().refine(isTargetValid),
+    mode: z.enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"]).optional(),
     method: z.string().optional().nullable(),
     port: z.int().min(1).max(65535),
     enabled: z.boolean().default(true),
@@ -87,7 +92,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -161,6 +166,12 @@ export async function createTarget(
             );
         }
 
+        const plainToken = generateId(48);
+        const encryptedToken = encrypt(
+            plainToken,
+            config.getRawConfig().server.secret!
+        );
+
         let newTarget: Target[] = [];
         let targetIps: string[] = [];
         let healthCheck: TargetHealthCheck[] = [];
@@ -191,6 +202,9 @@ export async function createTarget(
                     .values({
                         resourceId,
                         ...targetData,
+                        mode: (targetData.mode ??
+                            resource.mode ??
+                            "http") as Target["mode"],
                         priority: targetData.priority || 100
                     })
                     .returning();
@@ -226,6 +240,10 @@ export async function createTarget(
                         resourceId,
                         siteId: site.siteId,
                         ip: targetData.ip,
+                        mode: (targetData.mode ??
+                            resource.mode ??
+                            "http") as Target["mode"],
+                        authToken: encryptedToken,
                         method: targetData.method,
                         port: targetData.port,
                         internalPort,
@@ -325,13 +343,21 @@ export async function createTarget(
                     .where(eq(newts.siteId, site.siteId))
                     .limit(1);
 
-                await addTargets(
-                    newt.newtId,
-                    newTarget,
-                    healthCheck,
-                    resource.mode === "udp" ? "udp" : "tcp",
-                    newt.version
-                );
+                if (["http", "tcp", "udp"].includes(newTarget[0].mode)) {
+                    await addTargets(
+                        newt.newtId,
+                        newTarget,
+                        healthCheck,
+                        resource.mode === "udp" ? "udp" : "tcp",
+                        newt.version
+                    );
+                } else if (["ssh", "rdp", "vnc"].includes(newTarget[0].mode)) {
+                    await sendBrowserGatewayTargets(
+                        newt.newtId,
+                        newTarget,
+                        newt.version
+                    );
+                }
             }
         }
 

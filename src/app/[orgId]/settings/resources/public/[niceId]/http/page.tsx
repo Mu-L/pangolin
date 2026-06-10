@@ -1,35 +1,21 @@
 "use client";
 
-import HealthCheckCredenza from "@/components/HealthCheckCredenza";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { HeadersInput } from "@app/components/HeadersInput";
 import {
-    PathMatchDisplay,
-    PathMatchModal,
-    PathRewriteDisplay,
-    PathRewriteModal
-} from "@app/components/PathMatchRenameModal";
-import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
-import {
     SettingsContainer,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionFooter,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
-import { Alert, AlertDescription } from "@app/components/ui/alert";
 import {
     Form,
     FormControl,
@@ -43,35 +29,24 @@ import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { toast } from "@app/hooks/useToast";
-import { createApiClient } from "@app/lib/api";
-import { formatAxiosError } from "@app/lib/api/formatAxiosError";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { resourceQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { UpdateResourceResponse } from "@server/routers/resource";
 import { tlsNameSchema } from "@server/lib/schemas";
 import { useQuery } from "@tanstack/react-query";
 import {
     ProxyResourceTargetsForm
 } from "@app/app/[orgId]/settings/resources/public/ProxyResourceTargetsForm";
-import {
-    AlertTriangle,
-} from "lucide-react";
+import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import {
-    use,
-    useActionState,
-} from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-const targetsSettingsSchema = z.object({
-    stickySession: z.boolean()
-});
-
-export default function ReverseProxyTargetsPage(props: {
-    params: Promise<{ resourceId: number; orgId: string }>;
-}) {
-    const params = use(props.params);
+export default function ReverseProxyTargetsPage() {
+    const params = useParams();
     const { resource, updateResource } = useResourceContext();
 
     const { data: remoteTargets = [], isLoading: isLoadingTargets } = useQuery(
@@ -87,7 +62,7 @@ export default function ReverseProxyTargetsPage(props: {
     return (
         <SettingsContainer>
             <ProxyResourceTargetsForm
-                orgId={params.orgId}
+                orgId={params.orgId as string}
                 isHttp={["http", "ssh", "rdp", "vnc"].includes(resource.mode)}
                 initialTargets={remoteTargets}
                 resource={resource}
@@ -100,7 +75,6 @@ export default function ReverseProxyTargetsPage(props: {
                     updateResource={updateResource}
                 />
             )}
-
         </SettingsContainer>
     );
 }
@@ -110,8 +84,12 @@ function ProxyResourceHttpForm({
     updateResource
 }: Pick<ResourceContextType, "resource" | "updateResource">) {
     const t = useTranslations();
+    const router = useRouter();
+    const { env } = useEnvContext();
+    const api = createApiClient({ env });
 
-    const tlsSettingsSchema = z.object({
+    const httpSettingsSchema = z.object({
+        stickySession: z.boolean(),
         ssl: z.boolean(),
         tlsServerName: z
             .string()
@@ -126,18 +104,7 @@ function ProxyResourceHttpForm({
                 {
                     message: t("proxyErrorTls")
                 }
-            )
-    });
-
-    const tlsSettingsForm = useForm({
-        resolver: zodResolver(tlsSettingsSchema),
-        defaultValues: {
-            ssl: resource.ssl,
-            tlsServerName: resource.tlsServerName || ""
-        }
-    });
-
-    const proxySettingsSchema = z.object({
+            ),
         setHostHeader: z
             .string()
             .optional()
@@ -154,69 +121,59 @@ function ProxyResourceHttpForm({
             ),
         headers: z
             .array(z.object({ name: z.string(), value: z.string() }))
-            .nullable(),
-        proxyProtocol: z.boolean().optional(),
-        proxyProtocolVersion: z.int().min(1).max(2).optional()
+            .nullable()
     });
 
-    const proxySettingsForm = useForm({
-        resolver: zodResolver(proxySettingsSchema),
+    const form = useForm({
+        resolver: zodResolver(httpSettingsSchema),
         defaultValues: {
+            stickySession: resource.stickySession,
+            ssl: resource.ssl,
+            tlsServerName: resource.tlsServerName || "",
             setHostHeader: resource.setHostHeader || "",
-            headers: resource.headers,
-            proxyProtocol: resource.proxyProtocol || false,
-            proxyProtocolVersion: resource.proxyProtocolVersion || 1
-        }
+            headers: resource.headers
+        },
+        mode: "onChange"
     });
 
-    const { env } = useEnvContext();
-    const api = createApiClient({ env });
+    const [, formAction, saveLoading] = useActionState(onSubmit, null);
 
-    const targetsSettingsForm = useForm({
-        resolver: zodResolver(targetsSettingsSchema),
-        defaultValues: {
-            stickySession: resource.stickySession
-        }
-    });
+    async function onSubmit() {
+        const isValid = await form.trigger();
+        if (!isValid) return;
 
-    const router = useRouter();
-    const [, formAction, isSubmitting] = useActionState(
-        saveResourceHttpSettings,
-        null
-    );
+        const data = form.getValues();
 
-    async function saveResourceHttpSettings() {
-        const isValidTLS = await tlsSettingsForm.trigger();
-        const isValidProxy = await proxySettingsForm.trigger();
-        const targetSettingsForm = await targetsSettingsForm.trigger();
-        if (!isValidTLS || !isValidProxy || !targetSettingsForm) return;
+        const res = await api
+            .post<AxiosResponse<UpdateResourceResponse>>(
+                `/resource/${resource.resourceId}`,
+                {
+                    stickySession: data.stickySession,
+                    ssl: data.ssl,
+                    tlsServerName: data.tlsServerName || null,
+                    setHostHeader: data.setHostHeader || null,
+                    headers: data.headers || null
+                }
+            )
+            .catch((err) => {
+                toast({
+                    variant: "destructive",
+                    title: t("settingsErrorUpdate"),
+                    description: formatAxiosError(
+                        err,
+                        t("settingsErrorUpdateDescription")
+                    )
+                });
+            });
 
-        try {
-            // Gather all settings
-            const stickySessionData = targetsSettingsForm.getValues();
-            const tlsData = tlsSettingsForm.getValues();
-            const proxyData = proxySettingsForm.getValues();
-
-            // Combine into one payload
-            const payload = {
-                stickySession: stickySessionData.stickySession,
-                ssl: tlsData.ssl,
-                tlsServerName: tlsData.tlsServerName || null,
-                setHostHeader: proxyData.setHostHeader || null,
-                headers: proxyData.headers || null
-            };
-
-            // Single API call to update all settings
-            await api.post(`/resource/${resource.resourceId}`, payload);
-
-            // Update local resource context
+        if (res && res.status === 200) {
             updateResource({
                 ...resource,
-                stickySession: stickySessionData.stickySession,
-                ssl: tlsData.ssl,
-                tlsServerName: tlsData.tlsServerName || null,
-                setHostHeader: proxyData.setHostHeader || null,
-                headers: proxyData.headers || null
+                stickySession: data.stickySession,
+                ssl: data.ssl,
+                tlsServerName: data.tlsServerName || null,
+                setHostHeader: data.setHostHeader || null,
+                headers: data.headers || null
             });
 
             toast({
@@ -225,16 +182,6 @@ function ProxyResourceHttpForm({
             });
 
             router.refresh();
-        } catch (err) {
-            console.error(err);
-            toast({
-                variant: "destructive",
-                title: t("settingsErrorUpdate"),
-                description: formatAxiosError(
-                    err,
-                    t("settingsErrorUpdateDescription")
-                )
-            });
         }
     }
 
@@ -248,155 +195,158 @@ function ProxyResourceHttpForm({
                     {t("proxyAdditionalDescription")}
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
+
             <SettingsSectionBody>
-                <SettingsSectionForm>
-                    <Form {...tlsSettingsForm}>
-                        <form
-                            action={formAction}
-                            className="space-y-4"
-                            id="tls-settings-form"
-                        >
-                            {!env.flags.usePangolinDns && (
-                                <FormField
-                                    control={tlsSettingsForm.control}
-                                    name="ssl"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <SwitchInput
-                                                    id="ssl-toggle"
-                                                    label={t("proxyEnableSSL")}
-                                                    description={t(
-                                                        "proxyEnableSSLDescription"
+                <SettingsSectionForm variant="half">
+                    <Form {...form}>
+                        <form action={formAction} id="http-settings-form">
+                            <SettingsFormGrid>
+                                {!env.flags.usePangolinDns && (
+                                    <SettingsFormCell span="full">
+                                        <FormField
+                                            control={form.control}
+                                            name="ssl"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <SwitchInput
+                                                            id="ssl-toggle"
+                                                            label={t(
+                                                                "proxyEnableSSL"
+                                                            )}
+                                                            description={t(
+                                                                "proxyEnableSSLDescription"
+                                                            )}
+                                                            checked={
+                                                                field.value
+                                                            }
+                                                            onCheckedChange={
+                                                                field.onChange
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
+                                )}
+
+                                <SettingsFormCell span="half">
+                                    <FormField
+                                        control={form.control}
+                                        name="tlsServerName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("targetTlsSni")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t(
+                                                        "targetTlsSniDescription"
                                                     )}
-                                                    defaultChecked={field.value}
-                                                    onCheckedChange={(val) => {
-                                                        field.onChange(val);
-                                                    }}
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
-                            <FormField
-                                control={tlsSettingsForm.control}
-                                name="tlsServerName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {t("targetTlsSni")}
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                        <FormDescription>
-                                            {t("targetTlsSniDescription")}
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </form>
-                    </Form>
-                </SettingsSectionForm>
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </SettingsFormCell>
 
-                <SettingsSectionForm>
-                    <Form {...targetsSettingsForm}>
-                        <form
-                            action={formAction}
-                            className="space-y-4"
-                            id="targets-settings-form"
-                        >
-                            <FormField
-                                control={targetsSettingsForm.control}
-                                name="stickySession"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <SwitchInput
-                                                id="sticky-toggle"
-                                                label={t(
-                                                    "targetStickySessions"
-                                                )}
-                                                description={t(
-                                                    "targetStickySessionsDescription"
-                                                )}
-                                                defaultChecked={field.value}
-                                                onCheckedChange={(val) => {
-                                                    field.onChange(val);
-                                                }}
-                                            />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                        </form>
-                    </Form>
-                </SettingsSectionForm>
+                                <SettingsFormCell span="full">
+                                    <FormField
+                                        control={form.control}
+                                        name="stickySession"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormControl>
+                                                    <SwitchInput
+                                                        id="sticky-toggle"
+                                                        label={t(
+                                                            "targetStickySessions"
+                                                        )}
+                                                        description={t(
+                                                            "targetStickySessionsDescription"
+                                                        )}
+                                                        checked={field.value}
+                                                        onCheckedChange={
+                                                            field.onChange
+                                                        }
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </SettingsFormCell>
 
-                <SettingsSectionForm>
-                    <Form {...proxySettingsForm}>
-                        <form
-                            action={formAction}
-                            className="space-y-4"
-                            id="proxy-settings-form"
-                        >
-                            <FormField
-                                control={proxySettingsForm.control}
-                                name="setHostHeader"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {t("proxyCustomHeader")}
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                        <FormDescription>
-                                            {t("proxyCustomHeaderDescription")}
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={proxySettingsForm.control}
-                                name="headers"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {t("customHeaders")}
-                                        </FormLabel>
-                                        <FormControl>
-                                            <HeadersInput
-                                                value={field.value}
-                                                onChange={(value) => {
-                                                    field.onChange(value);
-                                                }}
-                                                rows={4}
-                                            />
-                                        </FormControl>
-                                        <FormDescription>
-                                            {t("customHeadersDescription")}
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                <SettingsFormCell span="half">
+                                    <FormField
+                                        control={form.control}
+                                        name="setHostHeader"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("proxyCustomHeader")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t(
+                                                        "proxyCustomHeaderDescription"
+                                                    )}
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </SettingsFormCell>
+
+                                <SettingsFormCell span="full">
+                                    <FormField
+                                        control={form.control}
+                                        name="headers"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("customHeaders")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <HeadersInput
+                                                        value={field.value}
+                                                        onChange={
+                                                            field.onChange
+                                                        }
+                                                        rows={4}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t(
+                                                        "customHeadersDescription"
+                                                    )}
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </SettingsFormCell>
+                            </SettingsFormGrid>
                         </form>
                     </Form>
                 </SettingsSectionForm>
-                <form className="flex justify-end" action={formAction}>
-                    <Button
-                        disabled={isSubmitting}
-                        loading={isSubmitting}
-                        type="submit"
-                    >
-                        {t("saveResourceHttp")}
-                    </Button>
-                </form>
             </SettingsSectionBody>
+
+            <SettingsSectionFooter>
+                <Button
+                    type="submit"
+                    loading={saveLoading}
+                    disabled={saveLoading}
+                    form="http-settings-form"
+                >
+                    {t("saveSettings")}
+                </Button>
+            </SettingsSectionFooter>
         </SettingsSection>
     );
 }

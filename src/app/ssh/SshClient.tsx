@@ -2,10 +2,19 @@
 
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Button } from "@app/components/ui/button";
+import { Input } from "@app/components/ui/input";
+import { Textarea } from "@app/components/ui/textarea";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage
+} from "@app/components/ui/form";
 import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import {
     Card,
@@ -15,15 +24,22 @@ import {
     CardDescription
 } from "@app/components/ui/card";
 import Link from "next/link";
-import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@app/lib/cn";
+import { ExternalLink, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@app/components/ui/alert";
+import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import type { SignSshKeyResponse } from "@server/routers/ssh/types";
 import { useTranslations } from "next-intl";
+import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
+import PoweredByPangolin from "@app/components/PoweredByPangolin";
+import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
+import {
+    loadEncryptedLocalStorage,
+    saveEncryptedLocalStorage
+} from "@app/lib/secureLocalStorage";
 
 type AuthTab = "password" | "privateKey";
 
-type FormState = {
+type SshCredentialsForm = {
     username: string;
     password: string;
     privateKey: string;
@@ -36,32 +52,58 @@ type ConnectCredentials = {
     certificate?: string;
 };
 
+const DEFAULT_SSH_CREDENTIALS: SshCredentialsForm = {
+    username: "",
+    password: "",
+    privateKey: ""
+};
+
 export default function SshClient({
     target,
     error,
     signedKeyData,
-    privateKey: signedPrivateKey
+    privateKey: signedPrivateKey,
+    primaryColor
 }: {
     target: GetBrowserTargetResponse | null;
     error: string | null;
     signedKeyData?: SignSshKeyResponse | null;
     privateKey?: string | null;
+    primaryColor?: string | null;
 }) {
     const STORAGE_KEY = "pangolin_ssh_credentials";
+    const t = useTranslations();
+    const resourceName = target?.name?.trim() || null;
 
-    const [form, setForm] = useState<FormState>(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) return JSON.parse(saved) as FormState;
-        } catch {
-            // ignore
-        }
-        return { username: "", password: "", privateKey: "" };
+    const passwordTabSchema = z.object({
+        username: z.string().min(1, { message: t("usernameRequired") }),
+        password: z.string().min(1, { message: t("passwordRequired") })
     });
 
-    const t = useTranslations();
+    const privateKeyTabSchema = z.object({
+        username: z.string().min(1, { message: t("usernameRequired") }),
+        privateKey: z.string().min(1, { message: t("sshPrivateKeyRequired") })
+    });
 
-    const [authTab, setAuthTab] = useState<AuthTab>("password");
+    const form = useForm<SshCredentialsForm>({
+        defaultValues: DEFAULT_SSH_CREDENTIALS
+    });
+
+    useEffect(() => {
+        let cancelled = false;
+
+        void loadEncryptedLocalStorage<SshCredentialsForm>(
+            STORAGE_KEY,
+            target?.authToken
+        ).then((saved) => {
+            if (cancelled || !saved) return;
+            form.reset({ ...DEFAULT_SSH_CREDENTIALS, ...saved });
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [form, target?.authToken]);
 
     function handleKeyFile(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -70,17 +112,19 @@ export default function SshClient({
         reader.onload = (ev) => {
             const text = ev.target?.result;
             if (typeof text === "string") {
-                setForm((prev) => ({ ...prev, privateKey: text }));
+                form.setValue("privateKey", text, { shouldDirty: true });
             }
         };
         reader.readAsText(file);
-        // Reset input so the same file can be re-selected if needed.
         e.target.value = "";
     }
 
     const [connected, setConnected] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [connectError, setConnectError] = useState<string | null>(null);
+    const [sessionClosedCode, setSessionClosedCode] = useState<number | null>(
+        null
+    );
 
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<import("@xterm/xterm").Terminal | null>(null);
@@ -126,14 +170,12 @@ export default function SshClient({
             xtermRef.current = terminal;
             fitAddonRef.current = fitAddon;
 
-            // Send user keystrokes to the WebSocket.
             terminal.onData((data) => {
                 if (wsRef.current?.readyState === WebSocket.OPEN) {
                     wsRef.current.send(JSON.stringify({ type: "data", data }));
                 }
             });
 
-            // Send resize events.
             terminal.onResize(({ cols, rows }) => {
                 if (wsRef.current?.readyState === WebSocket.OPEN) {
                     wsRef.current.send(
@@ -142,7 +184,6 @@ export default function SshClient({
                 }
             });
 
-            // Send the initial size once the terminal is rendered.
             const { cols, rows } = terminal;
             if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(
@@ -156,14 +197,12 @@ export default function SshClient({
         };
     }, [connected]);
 
-    // Refit terminal when the window resizes.
     useEffect(() => {
         const onResize = () => fitAddonRef.current?.fit();
         window.addEventListener("resize", onResize);
         return () => window.removeEventListener("resize", onResize);
     }, []);
 
-    // Cleanup on unmount.
     useEffect(() => {
         return () => {
             wsRef.current?.close();
@@ -171,7 +210,6 @@ export default function SshClient({
         };
     }, []);
 
-    // Auto-connect when signed key data is provided (push PAM mode).
     useEffect(() => {
         if (signedKeyData && signedPrivateKey && target) {
             connect({
@@ -182,9 +220,13 @@ export default function SshClient({
         }
     }, []);
 
-    function connect(override?: ConnectCredentials) {
-        setConnectError(null);
+    function connect(
+        override?: ConnectCredentials,
+        authMethod: AuthTab = "password"
+    ) {
         setConnecting(true);
+        setSessionClosedCode(null);
+        setConnectError(null);
 
         if (!target) {
             setConnectError(t("sshErrorNoTarget"));
@@ -192,12 +234,14 @@ export default function SshClient({
             return;
         }
 
-        const username = override?.username ?? form.username;
+        const values = form.getValues();
+        const username = override?.username ?? values.username;
         const password =
-            override?.password ?? (authTab === "password" ? form.password : "");
+            override?.password ??
+            (authMethod === "password" ? values.password : "");
         const privateKey =
             override?.privateKey ??
-            (authTab === "privateKey" ? form.privateKey : "");
+            (authMethod === "privateKey" ? values.privateKey : "");
         const certificate = override?.certificate;
 
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
@@ -216,16 +260,12 @@ export default function SshClient({
         const ws = new WebSocket(url.toString(), ["ssh"]);
         wsRef.current = ws;
 
-        // Track whether the server has confirmed auth by sending the first
-        // data frame. Until then, errors are shown in the login form.
         let authConfirmed = false;
         let authErrorShown = false;
+        let socketOpened = false;
 
         ws.onopen = () => {
-            // Send credentials as the first frame so the proxy can complete
-            // SSH authentication before piping pty data. Stay in "connecting"
-            // state until the server responds — this prevents the flash to the
-            // terminal page that would occur if we set connected=true here.
+            socketOpened = true;
             ws.send(
                 JSON.stringify({
                     type: "auth",
@@ -235,11 +275,11 @@ export default function SshClient({
                 })
             );
             if (!override) {
-                try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-                } catch {
-                    // ignore
-                }
+                void saveEncryptedLocalStorage(
+                    STORAGE_KEY,
+                    form.getValues(),
+                    target.authToken
+                );
             }
         };
 
@@ -260,7 +300,6 @@ export default function SshClient({
                         xtermRef.current?.write(msg.data);
                     } else if (msg.type === "error") {
                         if (!authConfirmed) {
-                            // Auth-phase error — show in the login form.
                             authErrorShown = true;
                             setConnecting(false);
                             setConnectError(
@@ -268,7 +307,7 @@ export default function SshClient({
                             );
                         } else {
                             xtermRef.current?.writeln(
-                                `\r\n\x1b[31mError: ${msg.error}\x1b[0m\r\n`
+                                `\r\n\x1b[31m${t("sshTerminalError", { error: msg.error ?? "" })}\x1b[0m\r\n`
                             );
                         }
                     }
@@ -281,13 +320,13 @@ export default function SshClient({
                     xtermRef.current?.write(evt.data);
                 }
             } else if (evt.data instanceof Blob) {
-                evt.data.text().then((t) => {
+                evt.data.text().then((text) => {
                     if (!authConfirmed) {
                         authConfirmed = true;
                         setConnecting(false);
                         setConnected(true);
                     }
-                    xtermRef.current?.write(t);
+                    xtermRef.current?.write(text);
                 });
             }
         };
@@ -299,15 +338,22 @@ export default function SshClient({
         };
 
         ws.onclose = (evt) => {
+            wsRef.current = null;
             setConnecting(false);
+            const isCleanClose = evt.wasClean || evt.code === 1000;
+            if (isCleanClose && (authConfirmed || socketOpened)) {
+                xtermRef.current?.dispose();
+                xtermRef.current = null;
+                setConnected(false);
+                setSessionClosedCode(evt.code);
+                return;
+            }
             if (authConfirmed) {
                 setConnected(false);
                 xtermRef.current?.writeln(
-                    `\r\n\x1b[33mConnection closed (code ${evt.code})\x1b[0m\r\n`
+                    `\r\n\x1b[33m${t("sshConnectionClosedCode", { code: evt.code })}\x1b[0m\r\n`
                 );
             }
-            // If auth was never confirmed the login form is already visible;
-            // a generic error is shown only when no specific error was received.
             if (!authConfirmed && !authErrorShown) {
                 setConnectError(t("sshErrorConnectionClosed"));
             }
@@ -321,7 +367,40 @@ export default function SshClient({
         setConnected(false);
     }
 
-    // In push mode, show a connecting/connected state without the login form.
+    function applyTabSchemaErrors(
+        schema: z.ZodObject<z.ZodRawShape>,
+        values: SshCredentialsForm
+    ) {
+        form.clearErrors();
+        const result = schema.safeParse(values);
+        if (result.success) return true;
+        for (const issue of result.error.issues) {
+            const field = issue.path[0];
+            if (typeof field === "string") {
+                form.setError(field as keyof SshCredentialsForm, {
+                    message: issue.message
+                });
+            }
+        }
+        return false;
+    }
+
+    function onPasswordSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setConnectError(null);
+        const values = form.getValues();
+        if (!applyTabSchemaErrors(passwordTabSchema, values)) return;
+        connect(undefined, "password");
+    }
+
+    function onPrivateKeySubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setConnectError(null);
+        const values = form.getValues();
+        if (!applyTabSchemaErrors(privateKeyTabSchema, values)) return;
+        connect(undefined, "privateKey");
+    }
+
     if (signedKeyData && signedPrivateKey) {
         return (
             <>
@@ -350,7 +429,6 @@ export default function SshClient({
                                         variant="destructive"
                                         className="w-full"
                                     >
-                                        <AlertCircle className="h-5 w-5" />
                                         <AlertDescription>
                                             {connectError}
                                         </AlertDescription>
@@ -375,207 +453,238 @@ export default function SshClient({
 
     if (error) {
         return (
-            <div>
-                <div className="text-center mb-2">
-                    <span className="text-sm text-muted-foreground">
-                        {t("sshPoweredBy")}{" "}
-                        <Link
-                            href="https://pangolin.net/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                        >
-                            Pangolin
-                        </Link>
-                    </span>
-                </div>
+            <BrandedAuthSurface primaryColor={primaryColor}>
+                <PoweredByPangolin />
                 <Card className="w-full">
                     <CardHeader>
                         <CardTitle>{t("sshTitle")}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-destructive text-sm">{error}</p>
+                        <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
                     </CardContent>
                 </Card>
-            </div>
+            </BrandedAuthSurface>
+        );
+    }
+
+    if (sessionClosedCode !== null) {
+        return (
+            <BrandedAuthSurface primaryColor={primaryColor}>
+                <PoweredByPangolin />
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle>{t("sshTitle")}</CardTitle>
+                        <CardDescription>
+                            {t("sshConnectionClosedCode", {
+                                code: sessionClosedCode
+                            })}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Alert>
+                            <AlertDescription>
+                                This session has ended. You can close this tab
+                                now.
+                            </AlertDescription>
+                        </Alert>
+                        <Button
+                            type="button"
+                            className="w-full"
+                            onClick={() => window.close()}
+                        >
+                            {t("close")}
+                        </Button>
+                    </CardContent>
+                </Card>
+                <AuthPageFooterNotices />
+            </BrandedAuthSurface>
         );
     }
 
     return (
         <>
             {!connected && (
-                <div>
-                    <div className="text-center mb-2">
-                        <span className="text-sm text-muted-foreground">
-                            {t("sshPoweredBy")}{" "}
-                            <Link
-                                href="https://pangolin.net/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                            >
-                                Pangolin
-                            </Link>
-                        </span>
-                    </div>
+                <BrandedAuthSurface primaryColor={primaryColor}>
+                    <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
                             <CardTitle>{t("sshSignInTitle")}</CardTitle>
                             <CardDescription>
-                                {t("sshSignInDescription")}
+                                {resourceName
+                                    ? `${t("sshSignInDescription")} (${resourceName})`
+                                    : t("sshSignInDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {/* Tab row */}
-                            <div className="flex space-x-4 border-b mb-4">
-                                {(["password", "privateKey"] as const).map(
-                                    (tab) => (
-                                        <button
-                                            key={tab}
-                                            type="button"
-                                            onClick={() => setAuthTab(tab)}
-                                            className={cn(
-                                                "px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap relative",
-                                                authTab === tab
-                                                    ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            )}
-                                        >
-                                            {tab === "password"
-                                                ? t("sshPasswordTab")
-                                                : t("sshPrivateKeyTab")}
-                                        </button>
-                                    )
-                                )}
-                            </div>
-
-                            {authTab === "password" && (
-                                <div className="space-y-4">
-                                    <Field
-                                        label={t("username")}
-                                        id="username-pw"
-                                    >
-                                        <Input
-                                            id="username-pw"
-                                            value={form.username}
-                                            onChange={(e) =>
-                                                setForm({
-                                                    ...form,
-                                                    username: e.target.value
-                                                })
-                                            }
-                                            placeholder="root"
-                                        />
-                                    </Field>
-                                    <Field label={t("password")} id="password">
-                                        <Input
-                                            id="password"
-                                            type="password"
-                                            value={form.password}
-                                            onChange={(e) =>
-                                                setForm({
-                                                    ...form,
-                                                    password: e.target.value
-                                                })
-                                            }
-                                        />
-                                    </Field>
-                                </div>
-                            )}
-
-                            {authTab === "privateKey" && (
-                                <div className="space-y-4">
-                                    <p className="text-sm text-muted-foreground">
-                                        {t("sshPrivateKeyDisclaimer")}{" "}
-                                        <Link
-                                            href="https://docs.pangolin.net/"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="underline inline-flex items-center gap-1"
-                                        >
-                                            {t("sshLearnMore")}
-                                            <ExternalLink className="h-3 w-3" />
-                                        </Link>
-                                    </p>
-                                    <Field
-                                        label={t("username")}
-                                        id="username-key"
-                                    >
-                                        <Input
-                                            id="username-key"
-                                            value={form.username}
-                                            onChange={(e) =>
-                                                setForm({
-                                                    ...form,
-                                                    username: e.target.value
-                                                })
-                                            }
-                                            placeholder="root"
-                                        />
-                                    </Field>
-                                    <Field
-                                        label={t("sshPrivateKeyField")}
-                                        id="privateKey"
-                                    >
-                                        <Textarea
-                                            id="privateKey"
-                                            value={form.privateKey}
-                                            onChange={(e) =>
-                                                setForm({
-                                                    ...form,
-                                                    privateKey: e.target.value
-                                                })
-                                            }
-                                            placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-                                            rows={5}
-                                            className="font-mono text-xs"
-                                        />
-                                    </Field>
-                                    <Field
-                                        label={t("sshPrivateKeyFile")}
-                                        id="privateKeyFile"
-                                    >
-                                        <Input
-                                            id="privateKeyFile"
-                                            type="file"
-                                            accept=".pem,.key,.pub,*"
-                                            onChange={handleKeyFile}
-                                        />
-                                    </Field>
-                                </div>
-                            )}
-
-                            <div className="mt-4 space-y-3">
-                                {connectError && (
-                                    <p className="text-destructive text-sm">
-                                        {connectError}
-                                    </p>
-                                )}
-
-                                <Button
-                                    onClick={() => connect()}
-                                    loading={connecting}
-                                    disabled={
-                                        !form.username ||
-                                        (authTab === "password"
-                                            ? !form.password
-                                            : !form.privateKey)
-                                    }
-                                    className="w-full"
+                            <Form {...form}>
+                                <HorizontalTabs
+                                    clientSide
+                                    defaultTab={0}
+                                    items={[
+                                        {
+                                            title: t("sshPasswordTab"),
+                                            href: "#"
+                                        },
+                                        {
+                                            title: t("sshPrivateKeyTab"),
+                                            href: "#"
+                                        }
+                                    ]}
                                 >
-                                    {connecting
-                                        ? t("sshConnecting")
-                                        : t("sshAuthenticate")}
-                                </Button>
-                            </div>
+                                    <form
+                                        onSubmit={onPasswordSubmit}
+                                        className="space-y-4 mt-4 p-1"
+                                    >
+                                        <FormField
+                                            control={form.control}
+                                            name="username"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("username")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="password"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("password")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="password"
+                                                            {...field}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <div className="mt-4 space-y-3">
+                                            <Button
+                                                type="submit"
+                                                loading={connecting}
+                                                disabled={connecting}
+                                                className="w-full"
+                                            >
+                                                {t("sshAuthenticate")}
+                                            </Button>
+                                            {connectError && (
+                                                <Alert variant="destructive">
+                                                    <AlertDescription>
+                                                        {connectError}
+                                                    </AlertDescription>
+                                                </Alert>
+                                            )}
+                                        </div>
+                                    </form>
+
+                                    <form
+                                        onSubmit={onPrivateKeySubmit}
+                                        className="space-y-4 mt-4 p-1"
+                                    >
+                                        <p className="text-sm text-muted-foreground">
+                                            {t("sshPrivateKeyDisclaimer")}{" "}
+                                            <Link
+                                                href="https://docs.pangolin.net/"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary hover:underline inline-flex items-center gap-1"
+                                            >
+                                                {t("sshLearnMore")}
+                                                <ExternalLink className="size-3.5 shrink-0" />
+                                            </Link>
+                                        </p>
+                                        <FormField
+                                            control={form.control}
+                                            name="username"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("username")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="privateKey"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(
+                                                            "sshPrivateKeyField"
+                                                        )}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Textarea
+                                                            {...field}
+                                                            placeholder={t(
+                                                                "sshPrivateKeyPlaceholder"
+                                                            )}
+                                                            rows={5}
+                                                            className="font-mono text-xs"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormItem>
+                                            <FormLabel>
+                                                {t("sshPrivateKeyFile")}
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="file"
+                                                    accept=".pem,.key,.pub,*"
+                                                    onChange={handleKeyFile}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                        <div className="mt-4 space-y-3">
+                                            <Button
+                                                type="submit"
+                                                loading={connecting}
+                                                disabled={connecting}
+                                                className="w-full"
+                                            >
+                                                {t("sshAuthenticate")}
+                                            </Button>
+                                            {connectError && (
+                                                <Alert variant="destructive">
+                                                    <AlertDescription>
+                                                        {connectError}
+                                                    </AlertDescription>
+                                                </Alert>
+                                            )}
+                                        </div>
+                                    </form>
+                                </HorizontalTabs>
+                            </Form>
                         </CardContent>
                     </Card>
-                </div>
+                    <AuthPageFooterNotices />
+                </BrandedAuthSurface>
             )}
 
             {connected && (
                 <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900">
-                    <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
+                    {/* <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
                         <Button
                             size="sm"
                             variant="destructive"
@@ -583,7 +692,7 @@ export default function SshClient({
                         >
                             {t("sshTerminate")}
                         </Button>
-                    </div>
+                    </div> */}
                     <div
                         ref={terminalRef}
                         className="flex-1 overflow-hidden"
@@ -592,22 +701,5 @@ export default function SshClient({
                 </div>
             )}
         </>
-    );
-}
-
-function Field({
-    label,
-    id,
-    children
-}: {
-    label: string;
-    id: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="space-y-1.5">
-            <Label htmlFor={id}>{label}</Label>
-            {children}
-        </div>
     );
 }

@@ -11,7 +11,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DateTimeValue } from "@app/components/DateTimePicker";
 import { ArrowUpRight, Key, User } from "lucide-react";
 import Link from "next/link";
-import { ColumnFilter } from "@app/components/ColumnFilter";
+import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { build } from "@server/build";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
@@ -233,7 +233,7 @@ export default function GeneralPage() {
         {
             accessorKey: "timestamp",
             header: () => {
-                return t("timestamp");
+                return <span className="px-2">{t("timestamp")}</span>;
             },
             cell: ({ row }) => {
                 return (
@@ -249,19 +249,19 @@ export default function GeneralPage() {
             accessorKey: "action",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("action")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={[
                                 { value: "true", label: "Allowed" },
                                 { value: "false", label: "Denied" }
                             ]}
+                            label={t("action")}
                             selectedValue={filters.action}
                             onValueChange={(value) =>
                                 handleFilterChange("action", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -276,27 +276,27 @@ export default function GeneralPage() {
         },
         {
             accessorKey: "ip",
-            header: () => t("ip")
+            header: () => <span className="px-2">{t("ip")}</span>
         },
         {
             accessorKey: "location",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("location")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.locations.map(
                                 (location) => ({
                                     value: location,
                                     label: location
                                 })
                             )}
+                            label={t("location")}
                             selectedValue={filters.location}
                             onValueChange={(value) =>
                                 handleFilterChange("location", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -321,19 +321,19 @@ export default function GeneralPage() {
             accessorKey: "resourceName",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("resource")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.resources.map((res) => ({
                                 value: res.id.toString(),
                                 label: res.name || "Unnamed Resource"
                             }))}
+                            label={t("resource")}
                             selectedValue={filters.resourceId}
                             onValueChange={(value) =>
                                 handleFilterChange("resourceId", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -359,9 +359,8 @@ export default function GeneralPage() {
             accessorKey: "type",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("type")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={[
                                 { value: "password", label: "Password" },
                                 { value: "pincode", label: "Pincode" },
@@ -372,12 +371,13 @@ export default function GeneralPage() {
                                 },
                                 { value: "ssh", label: "SSH" }
                             ]}
+                            label={t("type")}
                             selectedValue={filters.type}
                             onValueChange={(value) =>
                                 handleFilterChange("type", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -395,19 +395,19 @@ export default function GeneralPage() {
             accessorKey: "actor",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("actor")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.actors.map((actor) => ({
                                 value: actor,
                                 label: actor
                             }))}
+                            label={t("actor")}
                             selectedValue={filters.actor}
                             onValueChange={(value) =>
                                 handleFilterChange("actor", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -433,7 +433,7 @@ export default function GeneralPage() {
         },
         {
             accessorKey: "actorId",
-            header: () => t("actorId"),
+            header: () => <span className="px-2">{t("actorId")}</span>,
             cell: ({ row }) => (
                 <span className="flex items-center gap-1">
                     {row.original.actorId || "-"}

@@ -332,17 +332,6 @@ export async function validateOidcCallback(
                     .where(eq(idpOrg.idpId, existingIdp.idp.idpId))
                     .innerJoin(orgs, eq(orgs.orgId, idpOrg.orgId));
                 allOrgs = idpOrgs.map((o) => o.orgs);
-
-                for (const org of allOrgs) {
-                    const subscribed = await isSubscribed(
-                        org.orgId,
-                        tierMatrix.autoProvisioning
-                    );
-                    if (!subscribed) {
-                        // filter out the org
-                        allOrgs = allOrgs.filter((o) => o.orgId !== org.orgId);
-                    }
-                }
             } else {
                 allOrgs = await db.select().from(orgs);
             }

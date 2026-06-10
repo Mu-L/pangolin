@@ -91,7 +91,7 @@ export default function AuthPageBrandingForm({
             orgSubtitle: branding?.orgSubtitle ?? `Log in to {{orgName}}`,
             resourceTitle:
                 branding?.resourceTitle ??
-                `Authenticate to access {{resourceName}}`,
+                `Authenticate to Access {{resourceName}}`,
             resourceSubtitle:
                 branding?.resourceSubtitle ??
                 `Choose your preferred authentication method for {{resourceName}}`,

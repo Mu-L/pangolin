@@ -17,9 +17,9 @@ import * as orgIdp from "#private/routers/orgIdp";
 import * as billing from "#private/routers/billing";
 import * as license from "#private/routers/license";
 import * as resource from "#private/routers/resource";
-import * as browserTarget from "#private/routers/browserGatewayTarget";
 import * as ssh from "#private/routers/ssh";
 import * as ws from "@server/routers/ws";
+import * as browserTarget from "#private/routers/browserGatewayTarget";
 
 import {
     verifySessionUserMiddleware,

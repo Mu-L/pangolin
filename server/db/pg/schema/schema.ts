@@ -147,12 +147,10 @@ export const resources = pgTable("resources", {
     }),
     ssl: boolean("ssl").notNull().default(false),
     blockAccess: boolean("blockAccess").notNull().default(false),
-    sso: boolean("sso").notNull().default(true),
     proxyPort: integer("proxyPort"),
-    emailWhitelistEnabled: boolean("emailWhitelistEnabled")
-        .notNull()
-        .default(false),
-    applyRules: boolean("applyRules").notNull().default(false),
+    sso: boolean("sso"),
+    emailWhitelistEnabled: boolean("emailWhitelistEnabled"),
+    applyRules: boolean("applyRules"),
     enabled: boolean("enabled").notNull().default(true),
     stickySession: boolean("stickySession").notNull().default(false),
     tlsServerName: varchar("tlsServerName"),
@@ -290,7 +288,12 @@ export const targets = pgTable("targets", {
     pathMatchType: text("pathMatchType"), // exact, prefix, regex
     rewritePath: text("rewritePath"), // if set, rewrites the path to this value before sending to the target
     rewritePathType: text("rewritePathType"), // exact, prefix, regex, stripPrefix
-    priority: integer("priority").notNull().default(100)
+    priority: integer("priority").notNull().default(100),
+    mode: varchar("mode")
+        .$type<"http" | "tcp" | "udp" | "ssh" | "rdp" | "vnc">()
+        .notNull()
+        .default("http"),
+    authToken: varchar("authToken")
 });
 
 export const targetHealthCheck = pgTable("targetHealthCheck", {
@@ -886,7 +889,9 @@ export const resourcePolicyRules = pgTable("resourcePolicyRules", {
     enabled: boolean("enabled").notNull().default(true),
     priority: integer("priority").notNull(),
     action: varchar("action").$type<"ACCEPT" | "DROP" | "PASS">().notNull(),
-    match: varchar("match").$type<"CIDR" | "PATH" | "IP">().notNull(),
+    match: varchar("match")
+        .$type<"CIDR" | "PATH" | "IP" | "COUNTRY" | "ASN" | "REGION">()
+        .notNull(),
     value: varchar("value").notNull()
 });
 

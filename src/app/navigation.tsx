@@ -137,7 +137,7 @@ export const orgNavSections = (
                     }
                 ]
             },
-            ...(build !== "oss"
+            ...(!env?.flags.disableEnterpriseFeatures
                 ? [
                       {
                           title: "sidebarPolicies",
@@ -146,7 +146,7 @@ export const orgNavSections = (
                           items: [
                               {
                                   title: "sidebarResourcePolicies",
-                                  href: "/{orgId}/settings/policies/resource",
+                                  href: "/{orgId}/settings/policies/resources/public",
                                   icon: (
                                       <GlobeIcon className="size-4 flex-none" />
                                   )

@@ -1,7 +1,7 @@
-import type { ResourceRow } from "@app/components/ProxyResourcesTable";
-import ProxyResourcesTable from "@app/components/ProxyResourcesTable";
+import type { ResourceRow } from "@app/components/PublicResourcesTable";
+import PublicResourcesTable from "@app/components/PublicResourcesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
-import ProxyResourcesBanner from "@app/components/ProxyResourcesBanner";
+import PublicResourcesBanner from "@app/components/PublicResourcesBanner";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import OrgProvider from "@app/providers/OrgProvider";
@@ -146,10 +146,10 @@ export default async function ProxyResourcesPage(
                 description={t("proxyResourceDescription")}
             />
 
-            <ProxyResourcesBanner />
+            <PublicResourcesBanner />
 
             <OrgProvider org={org}>
-                <ProxyResourcesTable
+                <PublicResourcesTable
                     resources={resourceRows}
                     orgId={params.orgId}
                     rowCount={pagination.total}

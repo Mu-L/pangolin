@@ -115,7 +115,6 @@ export function MultiSitesSelector({
                                     <SiteOnlineStatus
                                         type={site.type}
                                         online={site.online}
-                                        t={t}
                                     />
                                 )}
                             </div>

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { resourceRules, resources } from "@server/db";
+import { resourceRules, resourcePolicyRules, resources } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -49,7 +49,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -151,6 +151,34 @@ export async function createResourceRule(
                     )
                 );
             }
+        }
+
+        // Create the new resource rule
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
+
+        if (isInlinePolicy) {
+            const policyId = resource.defaultResourcePolicyId!;
+            const [newRule] = await db
+                .insert(resourcePolicyRules)
+                .values({
+                    resourcePolicyId: policyId,
+                    action,
+                    match,
+                    value,
+                    priority,
+                    enabled
+                })
+                .returning();
+
+            return response(res, {
+                data: newRule,
+                success: true,
+                error: false,
+                message: "Resource rule created successfully",
+                status: HttpCode.CREATED
+            });
         }
 
         // Create the new resource rule

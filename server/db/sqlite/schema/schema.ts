@@ -165,14 +165,12 @@ export const resources = sqliteTable("resources", {
     blockAccess: integer("blockAccess", { mode: "boolean" })
         .notNull()
         .default(false),
-    sso: integer("sso", { mode: "boolean" }).notNull().default(true),
     proxyPort: integer("proxyPort"),
-    emailWhitelistEnabled: integer("emailWhitelistEnabled", { mode: "boolean" })
-        .notNull()
-        .default(false),
-    applyRules: integer("applyRules", { mode: "boolean" })
-        .notNull()
-        .default(false),
+    sso: integer("sso", { mode: "boolean" }),
+    emailWhitelistEnabled: integer("emailWhitelistEnabled", {
+        mode: "boolean"
+    }),
+    applyRules: integer("applyRules", { mode: "boolean" }),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     stickySession: integer("stickySession", { mode: "boolean" })
         .notNull()
@@ -322,7 +320,12 @@ export const targets = sqliteTable("targets", {
     pathMatchType: text("pathMatchType"), // exact, prefix, regex
     rewritePath: text("rewritePath"), // if set, rewrites the path to this value before sending to the target
     rewritePathType: text("rewritePathType"), // exact, prefix, regex, stripPrefix
-    priority: integer("priority").notNull().default(100)
+    priority: integer("priority").notNull().default(100),
+    mode: text("mode")
+        .$type<"http" | "tcp" | "udp" | "ssh" | "rdp" | "vnc">()
+        .notNull()
+        .default("http"),
+    authToken: text("authToken")
 });
 
 export const targetHealthCheck = sqliteTable("targetHealthCheck", {
@@ -1248,7 +1251,9 @@ export const resourcePolicyRules = sqliteTable("resourcePolicyRules", {
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     priority: integer("priority").notNull(),
     action: text("action").$type<"ACCEPT" | "DROP" | "PASS">().notNull(),
-    match: text("match").$type<"CIDR" | "PATH" | "IP">().notNull(),
+    match: text("match")
+        .$type<"CIDR" | "PATH" | "IP" | "COUNTRY" | "ASN" | "REGION">()
+        .notNull(),
     value: text("value").notNull()
 });
 

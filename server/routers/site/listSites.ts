@@ -12,7 +12,6 @@ import {
     userSites,
     labels,
     siteLabels,
-    browserGatewayTarget,
     type Label
 } from "@server/db";
 import cache from "#dynamic/lib/cache";
@@ -241,10 +240,6 @@ function querySitesBase() {
                     ON ${siteResources.networkId} = ${siteNetworks.networkId}
                 WHERE ${siteNetworks.siteId} = ${sites.siteId}
                     AND ${siteResources.orgId} = ${sites.orgId}
-            ) + (
-                SELECT COUNT(DISTINCT ${browserGatewayTarget.resourceId})
-                FROM ${browserGatewayTarget}
-                WHERE ${browserGatewayTarget.siteId} = ${sites.siteId}
             )`,
             status: sites.status
         })
@@ -285,7 +280,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),

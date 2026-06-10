@@ -108,10 +108,7 @@ export default async function ClientResourcesPage(
                     siteNiceId: siteResource.siteNiceIds[idx],
                     online: siteResource.siteOnlines[idx]
                 })),
-                mode:
-                    siteResource.pamMode && siteResource.mode === "host"
-                        ? "ssh"
-                        : siteResource.mode,
+                mode: siteResource.mode,
                 scheme: siteResource.scheme,
                 ssl: siteResource.ssl,
                 siteNames: siteResource.siteNames,

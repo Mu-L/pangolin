@@ -18,6 +18,7 @@ import {
 import { pickPort } from "./helpers";
 import { isTargetValid } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
+import { sendBrowserGatewayTargets } from "@server/routers/newt/targets";
 
 const updateTargetParamsSchema = z.strictObject({
     targetId: z.coerce.number().int().positive()
@@ -27,6 +28,10 @@ const updateTargetBodySchema = z
     .strictObject({
         siteId: z.int().positive(),
         ip: z.string().refine(isTargetValid),
+        mode: z
+            .enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"])
+            .optional()
+            .nullable(),
         method: z.string().min(1).max(10).optional().nullable(),
         port: z.int().min(1).max(65535).optional(),
         enabled: z.boolean().optional(),
@@ -86,7 +91,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -184,6 +189,8 @@ export async function updateTarget(
         }
 
         const pathMatchTypeRemoved = parsedBody.data.pathMatchType === null;
+        const nextMode =
+            parsedBody.data.mode === null ? undefined : parsedBody.data.mode;
 
         let updatedTarget: any;
         let updatedHc: any;
@@ -193,6 +200,7 @@ export async function updateTarget(
                 .set({
                     siteId: parsedBody.data.siteId,
                     ip: parsedBody.data.ip,
+                    mode: nextMode,
                     method: parsedBody.data.method,
                     port: parsedBody.data.port,
                     internalPort,
@@ -343,13 +351,21 @@ export async function updateTarget(
                     .where(eq(newts.siteId, site.siteId))
                     .limit(1);
 
-                await addTargets(
-                    newt.newtId,
-                    [updatedTarget],
-                    [updatedHc],
-                    resource.mode === "udp" ? "udp" : "tcp",
-                    newt.version
-                );
+                if (["http", "tcp", "udp"].includes(updatedTarget.mode)) {
+                    await addTargets(
+                        newt.newtId,
+                        [updatedTarget],
+                        [updatedHc],
+                        resource.mode === "udp" ? "udp" : "tcp",
+                        newt.version
+                    );
+                } else if (["ssh", "rdp", "vnc"].includes(updatedTarget.mode)) {
+                    await sendBrowserGatewayTargets(
+                        newt.newtId,
+                        [updatedTarget],
+                        newt.version
+                    );
+                }
             }
         }
 

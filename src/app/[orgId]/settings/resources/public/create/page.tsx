@@ -2,21 +2,19 @@
 
 import CopyTextBox from "@app/components/CopyTextBox";
 import DomainPicker from "@app/components/DomainPicker";
-import HealthCheckCredenza from "@app/components/HealthCheckCredenza";
-import {
-    PathMatchDisplay,
-    PathMatchModal,
-    PathRewriteDisplay,
-    PathRewriteModal
-} from "@app/components/PathMatchRenameModal";
 import {
     SettingsContainer,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
     SettingsSectionForm,
     SettingsSectionHeader,
-    SettingsSectionTitle
+    SettingsSectionTitle,
+    SettingsSubsectionDescription,
+    SettingsSubsectionHeader,
+    SettingsSubsectionTitle
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import {
@@ -43,40 +41,24 @@ import {
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
+import { Label } from "@app/components/ui/label";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@app/components/ui/select";
-import { Switch } from "@app/components/ui/switch";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@app/components/ui/table";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import {
+    createBrowserGatewayTargetFormSchema,
+    createSshSettingsFormSchema,
+    selectedSiteSchema,
+    type SshSettingsFormValues
+} from "@app/lib/browserGatewayTargetFormSchema";
 import { DockerManager, DockerState } from "@app/lib/docker";
 import { orgQueries } from "@app/lib/queries";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
@@ -84,139 +66,150 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
 import { Resource } from "@server/db";
 import { isTargetValid } from "@server/lib/validators";
-import { ListTargetsResponse } from "@server/routers/target";
 import { ListRemoteExitNodesResponse } from "@server/routers/remoteExitNode/types";
-import { ArrayElement } from "@server/types/ArrayElement";
 import { useQuery } from "@tanstack/react-query";
 import {
     LocalTarget,
     ProxyResourceTargetsForm
 } from "@app/app/[orgId]/settings/resources/public/ProxyResourceTargetsForm";
-import {
-    ColumnDef,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    useReactTable
-} from "@tanstack/react-table";
 import { AxiosResponse } from "axios";
-import {
-    ChevronsUpDown,
-    CircleCheck,
-    CircleX,
-    ExternalLink,
-    Info,
-    Plus,
-    Settings,
-    SquareArrowOutUpRight
-} from "lucide-react";
+import { ChevronsUpDown, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII } from "punycode";
 import {
     useMemo,
     useState,
-    useCallback,
     useTransition,
     useEffect
 } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
-import { cn } from "@app/lib/cn";
 
-const baseResourceFormSchema = z.object({
-    name: z.string().min(1).max(255),
-    http: z.boolean()
-});
+type TranslateFn = (key: string) => string;
 
-const httpResourceFormSchema = z.object({
-    domainId: z.string().nonempty(),
-    subdomain: z.string().optional()
-});
+function createBaseResourceFormSchema(t: TranslateFn) {
+    return z.object({
+        name: z
+            .string()
+            .min(1, { message: t("nameRequired") })
+            .max(255, {
+                message: t("createInternalResourceDialogNameMaxLength")
+            }),
+        http: z.boolean()
+    });
+}
 
-const tcpUdpResourceFormSchema = z.object({
-    protocol: z.string(),
-    proxyPort: z.int().min(1).max(65535)
-});
+function createHttpResourceFormSchema(t: TranslateFn) {
+    return z.object({
+        domainId: z.string().min(1, { message: t("domainRequired") }),
+        subdomain: z.string().optional()
+    });
+}
 
-const sshDaemonPortSchema = z.object({
-    authDaemonPort: z.string().refine(
-        (val) => {
-            if (!val) return true;
-            const n = Number(val);
-            return Number.isInteger(n) && n >= 1 && n <= 65535;
-        },
-        { message: "Port must be between 1 and 65535" }
-    )
-});
+function createTcpUdpResourceFormSchema(t: TranslateFn) {
+    return z.object({
+        protocol: z.string(),
+        proxyPort: z
+            .number({ error: t("proxyPortRequired") })
+            .int({ error: t("healthCheckPortInvalid") })
+            .min(1, { message: t("healthCheckPortInvalid") })
+            .max(65535, { message: t("healthCheckPortInvalid") })
+    });
+}
 
-const addTargetSchema = z
-    .object({
-        ip: z.string().refine(isTargetValid),
-        method: z.string().nullable(),
-        port: z.coerce.number<number>().int().positive(),
-        siteId: z.int().positive(),
-        path: z.string().optional().nullable(),
-        pathMatchType: z
-            .enum(["exact", "prefix", "regex"])
-            .optional()
-            .nullable(),
-        rewritePath: z.string().optional().nullable(),
-        rewritePathType: z
-            .enum(["exact", "prefix", "regex", "stripPrefix"])
-            .optional()
-            .nullable(),
-        priority: z.int().min(1).max(1000).optional()
-    })
-    .refine(
-        (data) => {
-            if (data.path && !data.pathMatchType) {
-                return false;
-            }
-            if (data.pathMatchType && !data.path) {
-                return false;
-            }
-            if (data.path && data.pathMatchType) {
-                switch (data.pathMatchType) {
-                    case "exact":
-                    case "prefix":
-                        return data.path.startsWith("/");
-                    case "regex":
-                        try {
-                            new RegExp(data.path);
-                            return true;
-                        } catch {
-                            return false;
-                        }
-                }
-            }
-            return true;
-        },
-        {
-            error: "Invalid path configuration"
-        }
-    )
-    .refine(
-        (data) => {
-            if (data.rewritePath && !data.rewritePathType) {
-                return false;
-            }
-            if (data.rewritePathType && !data.rewritePath) {
-                if (data.rewritePathType !== "stripPrefix") {
+function createSshDaemonPortSchema(t: TranslateFn) {
+    return z.object({
+        authDaemonPort: z.string().refine(
+            (val) => {
+                if (!val) return true;
+                const n = Number(val);
+                return Number.isInteger(n) && n >= 1 && n <= 65535;
+            },
+            { message: t("healthCheckPortInvalid") }
+        )
+    });
+}
+
+function createAddTargetSchema(t: TranslateFn) {
+    return z
+        .object({
+            ip: z.string().refine(isTargetValid, {
+                message: t("targetErrorInvalidIpDescription")
+            }),
+            method: z.string().nullable(),
+            port: z.coerce
+                .number<number>({ error: t("targetErrorInvalidPortDescription") })
+                .int({ error: t("targetErrorInvalidPortDescription") })
+                .positive({ error: t("targetErrorInvalidPortDescription") }),
+            siteId: z
+                .int({ error: t("siteRequired") })
+                .positive({ error: t("siteRequired") }),
+            path: z.string().optional().nullable(),
+            pathMatchType: z
+                .enum(["exact", "prefix", "regex"])
+                .optional()
+                .nullable(),
+            rewritePath: z.string().optional().nullable(),
+            rewritePathType: z
+                .enum(["exact", "prefix", "regex", "stripPrefix"])
+                .optional()
+                .nullable(),
+            priority: z
+                .int()
+                .min(1, { message: t("healthCheckPortInvalid") })
+                .max(1000, { message: t("healthCheckPortInvalid") })
+                .optional()
+        })
+        .refine(
+            (data) => {
+                if (data.path && !data.pathMatchType) {
                     return false;
                 }
+                if (data.pathMatchType && !data.path) {
+                    return false;
+                }
+                if (data.path && data.pathMatchType) {
+                    switch (data.pathMatchType) {
+                        case "exact":
+                        case "prefix":
+                            return data.path.startsWith("/");
+                        case "regex":
+                            try {
+                                new RegExp(data.path);
+                                return true;
+                            } catch {
+                                return false;
+                            }
+                    }
+                }
+                return true;
+            },
+            {
+                message: t("invalidPathConfiguration")
             }
-            return true;
-        },
-        {
-            error: "Invalid rewrite path configuration"
-        }
-    );
+        )
+        .refine(
+            (data) => {
+                if (data.rewritePath && !data.rewritePathType) {
+                    return false;
+                }
+                if (data.rewritePathType && !data.rewritePath) {
+                    if (data.rewritePathType !== "stripPrefix") {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            {
+                message: t("invalidRewritePathConfiguration")
+            }
+        );
+}
 
 type NewResourceType = "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp";
+
+type CreateBgTargetFormValues = SshSettingsFormValues;
 
 export default function Page() {
     const { env } = useEnvContext();
@@ -268,29 +261,6 @@ export default function Page() {
         useState<Selectedsite | null>(null);
     const [nativeSiteOpen, setNativeSiteOpen] = useState(false);
 
-    // Browser-gateway targets state (SSH standard, RDP, VNC)
-    const [bgSelectedSites, setBgSelectedSites] = useState<Selectedsite[]>([]);
-    const [bgSelectedSite, setBgSelectedSite] = useState<Selectedsite | null>(
-        null
-    );
-    const [bgDestination, setBgDestination] = useState("");
-    const [bgDestinationPort, setBgDestinationPort] = useState("22");
-
-    // Reset BG state when resource type changes
-    useEffect(() => {
-        if (resourceType === "rdp") {
-            setBgDestinationPort("3389");
-        } else if (resourceType === "vnc") {
-            setBgDestinationPort("5900");
-        } else if (resourceType === "ssh") {
-            setBgDestinationPort("22");
-        }
-        setBgDestination("");
-        setBgSelectedSites([]);
-        setBgSelectedSite(null);
-        setNativeSelectedSite(null);
-    }, [resourceType]);
-
     useEffect(() => {
         if (build !== "saas") return;
 
@@ -323,18 +293,80 @@ export default function Page() {
         pamMode === "push" &&
         standardDaemonLocation === "remote";
 
+    const bgTargetFormSchema = useMemo(() => {
+        if (resourceType === "ssh" && !isNative) {
+            return createSshSettingsFormSchema(t, { isNative: false });
+        }
+        if (resourceType === "rdp" || resourceType === "vnc") {
+            return createBrowserGatewayTargetFormSchema(t);
+        }
+        return z.object({
+            selectedSites: z.array(selectedSiteSchema),
+            selectedSite: selectedSiteSchema.nullable(),
+            destination: z.string(),
+            destinationPort: z.string(),
+            pamMode: z.enum(["passthrough", "push"]),
+            standardDaemonLocation: z.enum(["site", "remote"])
+        });
+    }, [resourceType, isNative, t]);
+
+    const bgTargetForm = useForm<CreateBgTargetFormValues>({
+        resolver: zodResolver(
+            bgTargetFormSchema
+        ) as unknown as Resolver<CreateBgTargetFormValues>,
+        defaultValues: {
+            selectedSites: [],
+            selectedSite: null,
+            selectedNativeSite: null,
+            destination: "",
+            destinationPort: "22",
+            pamMode: "passthrough",
+            standardDaemonLocation: "site",
+            authDaemonPort: "22123"
+        }
+    });
+
     // Whether raw (TCP/UDP) resources are available
     const rawResourcesAllowed =
         env.flags.allowRawResources &&
         (build !== "saas" || remoteExitNodes.length > 0);
+    const enterpriseModesAllowed =
+        !env.flags.disableEnterpriseFeatures;
 
     const availableTypes = useMemo((): NewResourceType[] => {
-        const base: NewResourceType[] = ["http", "ssh", "rdp", "vnc"];
+        const base: NewResourceType[] = ["http"];
+        if (enterpriseModesAllowed) {
+            base.push("ssh", "rdp", "vnc");
+        }
         if (rawResourcesAllowed) {
             base.push("tcp", "udp");
         }
         return base;
-    }, [rawResourcesAllowed]);
+    }, [enterpriseModesAllowed, rawResourcesAllowed]);
+
+    useEffect(() => {
+        if (!availableTypes.includes(resourceType)) {
+            setResourceType("http");
+        }
+    }, [availableTypes, resourceType]);
+
+    const baseResourceFormSchema = useMemo(
+        () => createBaseResourceFormSchema(t),
+        [t]
+    );
+    const httpResourceFormSchema = useMemo(
+        () => createHttpResourceFormSchema(t),
+        [t]
+    );
+    const tcpUdpResourceFormSchema = useMemo(
+        () => createTcpUdpResourceFormSchema(t),
+        [t]
+    );
+    const sshDaemonPortSchema = useMemo(
+        () => createSshDaemonPortSchema(t),
+        [t]
+    );
+    const addTargetSchema = useMemo(() => createAddTargetSchema(t), [t]);
 
     const baseForm = useForm({
         resolver: zodResolver(baseResourceFormSchema),
@@ -363,6 +395,31 @@ export default function Page() {
             authDaemonPort: "22123"
         }
     });
+
+    useEffect(() => {
+        const defaultPort =
+            resourceType === "rdp"
+                ? "3389"
+                : resourceType === "vnc"
+                  ? "5900"
+                  : "22";
+        bgTargetForm.reset({
+            selectedSites: [],
+            selectedSite: null,
+            selectedNativeSite: null,
+            destination: "",
+            destinationPort: defaultPort,
+            pamMode,
+            standardDaemonLocation,
+            authDaemonPort: sshDaemonPortForm.getValues().authDaemonPort
+        });
+        setNativeSelectedSite(null);
+    }, [resourceType]);
+
+    useEffect(() => {
+        bgTargetForm.setValue("pamMode", pamMode);
+        bgTargetForm.setValue("standardDaemonLocation", standardDaemonLocation);
+    }, [pamMode, standardDaemonLocation]);
 
     // Sync form http field with resourceType
     useEffect(() => {
@@ -532,30 +589,35 @@ export default function Page() {
                     if (isNative) {
                         if (nativeSelectedSite) {
                             await api.put(
-                                `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                                `/resource/${id}/target`,
                                 {
                                     siteId: nativeSelectedSite.siteId,
-                                    type: "ssh",
-                                    destination: "localhost",
-                                    destinationPort: 22
+                                    mode: "ssh",
+                                    ip: "localhost",
+                                    port: 22,
+                                    hcEnabled: false
                                 }
                             );
                         }
                     } else {
-                        const sitesToCreate =
-                            standardDaemonLocation !== "site"
-                                ? bgSelectedSites
-                                : bgSelectedSite
-                                  ? [bgSelectedSite]
-                                  : [];
+                        const bgValues = bgTargetForm.getValues();
+                        const useMultiSite =
+                            standardDaemonLocation !== "site" ||
+                            pamMode === "passthrough";
+                        const sitesToCreate = useMultiSite
+                            ? bgValues.selectedSites
+                            : bgValues.selectedSite
+                              ? [bgValues.selectedSite]
+                              : [];
                         for (const site of sitesToCreate) {
                             await api.put(
-                                `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                                `/resource/${id}/target`,
                                 {
                                     siteId: site.siteId,
-                                    type: "ssh",
-                                    destination: bgDestination,
-                                    destinationPort: Number(bgDestinationPort)
+                                    mode: "ssh",
+                                    ip: bgValues.destination,
+                                    port: Number(bgValues.destinationPort),
+                                    hcEnabled: false
                                 }
                             );
                         }
@@ -565,16 +627,18 @@ export default function Page() {
                         `/${orgId}/settings/resources/public/${newNiceId}`
                     );
                 } else if (resourceType === "rdp" || resourceType === "vnc") {
-                    for (const site of bgSelectedSites) {
+                    const bgValues = bgTargetForm.getValues();
+                    for (const site of bgValues.selectedSites) {
                         await api.put(
-                            `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                            `/resource/${id}/target`,
                             {
                                 siteId: site.siteId,
-                                type: resourceType,
-                                destination: bgDestination,
-                                destinationPort: Number(bgDestinationPort)
+                                mode: resourceType,
+                                ip: bgValues.destination,
+                                port: Number(bgValues.destinationPort),
+                                hcEnabled: false
                             }
-                        );
+                         );
                     }
 
                     router.push(
@@ -686,19 +750,25 @@ export default function Page() {
         }
     ];
 
-    const typeLabels: Record<NewResourceType, string> = {
+    let typeLabels: Partial<Record<NewResourceType, string>> = {
         http: "HTTP",
-        ssh: "SSH",
-        rdp: "RDP",
-        vnc: "VNC",
         tcp: "TCP",
         udp: "UDP"
     };
 
+    if (enterpriseModesAllowed) {
+        typeLabels = {  
+            ...typeLabels,
+            ssh: "SSH",
+            rdp: "RDP",
+            vnc: "VNC",
+        }
+    }
+
     const typeOptions: OptionSelectOption<NewResourceType>[] =
         availableTypes.map((type) => ({
             value: type,
-            label: typeLabels[type]
+            label: typeLabels[type] ?? type.toUpperCase()
         }));
 
     return (
@@ -734,148 +804,198 @@ export default function Page() {
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
                                     <SettingsSectionForm variant="half">
-                                        {/* Name */}
-                                        <Form {...baseForm}>
-                                            <form
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
-                                                        e.preventDefault();
-                                                    }
-                                                }}
-                                                className="space-y-4"
-                                                id="base-resource-form"
-                                            >
-                                                <FormField
-                                                    control={baseForm.control}
-                                                    name="name"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t("name")}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                            <FormDescription>
-                                                                {t(
-                                                                    "resourceNameDescription"
-                                                                )}
-                                                            </FormDescription>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </form>
-                                        </Form>
+                                        <SettingsFormGrid>
+                                            <SettingsFormCell span="half">
+                                                <Form {...baseForm}>
+                                                    <form
+                                                        onKeyDown={(e) => {
+                                                            if (
+                                                                e.key ===
+                                                                "Enter"
+                                                            ) {
+                                                                e.preventDefault();
+                                                            }
+                                                        }}
+                                                        id="base-resource-form"
+                                                    >
+                                                        <FormField
+                                                            control={
+                                                                baseForm.control
+                                                            }
+                                                            name="name"
+                                                            render={({
+                                                                field
+                                                            }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>
+                                                                        {t(
+                                                                            "name"
+                                                                        )}
+                                                                    </FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            {...field}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                    <FormDescription>
+                                                                        {t(
+                                                                            "resourceNameDescription"
+                                                                        )}
+                                                                    </FormDescription>
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </form>
+                                                </Form>
+                                            </SettingsFormCell>
 
-                                        {/* Inline Type Selector */}
-                                        <div className="space-y-2">
-                                            <p className="text-sm font-medium">
-                                                {t("type")}
-                                            </p>
-                                            <OptionSelect<NewResourceType>
-                                                options={typeOptions}
-                                                value={resourceType}
-                                                onChange={setResourceType}
-                                                cols={6}
-                                            />
-                                            <p className="text-sm text-muted-foreground">
-                                                {t("resourceTypeDescription")}
-                                            </p>
-                                        </div>
-
-                                        {/* Domain/Subdomain (HTTP-based types) */}
-                                        {isHttpResource && (
-                                            <div className="space-y-2">
-                                                <DomainPicker
-                                                    allowWildcard={true}
-                                                    orgId={orgId as string}
-                                                    warnOnProvidedDomain={
-                                                        remoteExitNodes.length >=
-                                                        1
-                                                    }
-                                                    onDomainChange={(res) => {
-                                                        if (!res) return;
-                                                        httpForm.setValue(
-                                                            "subdomain",
-                                                            res.subdomain
-                                                        );
-                                                        httpForm.setValue(
-                                                            "domainId",
-                                                            res.domainId
-                                                        );
-                                                    }}
-                                                />
-                                                <p className="text-sm text-muted-foreground">
-                                                    {t(
-                                                        "resourceDomainDescription"
-                                                    )}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Proxy Port (TCP/UDP types) */}
-                                        {!isHttpResource && (
-                                            <Form {...tcpUdpForm}>
-                                                <form
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === "Enter") {
-                                                            e.preventDefault();
+                                            <SettingsFormCell span="full">
+                                                <div className="space-y-2">
+                                                    <p className="text-sm font-medium">
+                                                        {t("type")}
+                                                    </p>
+                                                    <OptionSelect<NewResourceType>
+                                                        options={typeOptions}
+                                                        value={resourceType}
+                                                        onChange={
+                                                            setResourceType
                                                         }
-                                                    }}
-                                                    className="space-y-4"
-                                                    id="tcp-udp-settings-form"
-                                                >
-                                                    <FormField
-                                                        control={
-                                                            tcpUdpForm.control
-                                                        }
-                                                        name="proxyPort"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t(
-                                                                        "resourcePortNumber"
-                                                                    )}
-                                                                </FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        type="number"
-                                                                        value={
-                                                                            field.value ??
-                                                                            ""
-                                                                        }
-                                                                        onChange={(
-                                                                            e
-                                                                        ) =>
-                                                                            field.onChange(
-                                                                                e
-                                                                                    .target
-                                                                                    .value
-                                                                                    ? parseInt(
-                                                                                          e
-                                                                                              .target
-                                                                                              .value
-                                                                                      )
-                                                                                    : undefined
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                                <FormDescription>
-                                                                    {t(
-                                                                        "resourcePortDescription"
-                                                                    )}
-                                                                </FormDescription>
-                                                            </FormItem>
-                                                        )}
+                                                        cols={6}
                                                     />
-                                                </form>
-                                            </Form>
-                                        )}
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {t(
+                                                            "resourceTypeDescription"
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </SettingsFormCell>
+
+                                            {isHttpResource && (
+                                                <SettingsFormCell span="full">
+                                                    <Form {...httpForm}>
+                                                        <FormField
+                                                            control={
+                                                                httpForm.control
+                                                            }
+                                                            name="domainId"
+                                                            render={() => (
+                                                                <FormItem>
+                                                                    <DomainPicker
+                                                                        allowWildcard={
+                                                                            true
+                                                                        }
+                                                                        orgId={
+                                                                            orgId as string
+                                                                        }
+                                                                        warnOnProvidedDomain={
+                                                                            remoteExitNodes.length >=
+                                                                            1
+                                                                        }
+                                                                        onDomainChange={(
+                                                                            res
+                                                                        ) => {
+                                                                            if (
+                                                                                !res
+                                                                            )
+                                                                                return;
+                                                                            httpForm.setValue(
+                                                                                "subdomain",
+                                                                                res.subdomain,
+                                                                                {
+                                                                                    shouldValidate:
+                                                                                        true
+                                                                                }
+                                                                            );
+                                                                            httpForm.setValue(
+                                                                                "domainId",
+                                                                                res.domainId,
+                                                                                {
+                                                                                    shouldValidate:
+                                                                                        true
+                                                                                }
+                                                                            );
+                                                                        }}
+                                                                    />
+                                                                    <FormMessage />
+                                                                    <FormDescription>
+                                                                        {t(
+                                                                            "resourceDomainDescription"
+                                                                        )}
+                                                                    </FormDescription>
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </Form>
+                                                </SettingsFormCell>
+                                            )}
+
+                                            {!isHttpResource && (
+                                                <SettingsFormCell span="half">
+                                                    <Form {...tcpUdpForm}>
+                                                        <form
+                                                            onKeyDown={(e) => {
+                                                                if (
+                                                                    e.key ===
+                                                                    "Enter"
+                                                                ) {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
+                                                            id="tcp-udp-settings-form"
+                                                        >
+                                                            <FormField
+                                                                control={
+                                                                    tcpUdpForm.control
+                                                                }
+                                                                name="proxyPort"
+                                                                render={({
+                                                                    field
+                                                                }) => (
+                                                                    <FormItem>
+                                                                        <FormLabel>
+                                                                            {t(
+                                                                                "resourcePortNumber"
+                                                                            )}
+                                                                        </FormLabel>
+                                                                        <FormControl>
+                                                                            <Input
+                                                                                type="number"
+                                                                                value={
+                                                                                    field.value ??
+                                                                                    ""
+                                                                                }
+                                                                                onChange={(
+                                                                                    e
+                                                                                ) =>
+                                                                                    field.onChange(
+                                                                                        e
+                                                                                            .target
+                                                                                            .value
+                                                                                            ? parseInt(
+                                                                                                  e
+                                                                                                      .target
+                                                                                                      .value
+                                                                                              )
+                                                                                            : undefined
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormMessage />
+                                                                        <FormDescription>
+                                                                            {t(
+                                                                                "resourcePortDescription"
+                                                                            )}
+                                                                        </FormDescription>
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+                                                        </form>
+                                                    </Form>
+                                                </SettingsFormCell>
+                                            )}
+                                        </SettingsFormGrid>
                                     </SettingsSectionForm>
                                 </SettingsSectionBody>
                             </SettingsSection>
@@ -909,222 +1029,240 @@ export default function Page() {
                                     >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
-                                            {/* Mode */}
-                                            <div className="space-y-3">
-                                                <p className="text-sm font-semibold">
-                                                    {t("sshServerMode")}
-                                                </p>
-                                                <StrategySelect<
-                                                    "standard" | "native"
-                                                >
-                                                    value={sshServerMode}
-                                                    options={sshModeOptions}
-                                                    onChange={setSshServerMode}
-                                                    cols={2}
-                                                />
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                <p className="text-sm font-semibold">
-                                                    {t(
-                                                        "sshAuthenticationMethod"
-                                                    )}
-                                                </p>
-                                                <StrategySelect<
-                                                    "passthrough" | "push"
-                                                >
-                                                    value={pamMode}
-                                                    options={
-                                                        authMethodOptions
-                                                    }
-                                                    onChange={setPamMode}
-                                                    cols={2}
-                                                />
-                                            </div>
-
-                                            {/* Daemon Location (standard + push) */}
-                                            {showDaemonLocation && (
-                                                <div className="space-y-3">
-                                                    <p className="text-sm font-semibold">
-                                                        {t(
-                                                            "sshAuthDaemonLocation"
-                                                        )}
-                                                    </p>
-                                                    <StrategySelect<
-                                                        "site" | "remote"
-                                                    >
-                                                        value={
-                                                            standardDaemonLocation
-                                                        }
-                                                        options={
-                                                            daemonLocationOptions
-                                                        }
-                                                        onChange={
-                                                            setStandardDaemonLocation
-                                                        }
-                                                        cols={2}
-                                                    />
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {t(
-                                                            "sshDaemonDisclaimer"
-                                                        )}{" "}
-                                                        <a
-                                                            href="https://docs.pangolin.net/manage/resources/public/ssh"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                            <SettingsFormGrid>
+                                                <SettingsFormCell span="full">
+                                                    <div className="space-y-2">
+                                                        <p className="font-semibold text-sm">
+                                                            {t("sshServerMode")}
+                                                        </p>
+                                                        <StrategySelect<
+                                                            "standard" | "native"
                                                         >
-                                                            {t("learnMore")}
-                                                            <ExternalLink className="size-3.5 shrink-0" />
-                                                        </a>
-                                                    </p>
-                                                </div>
-                                            )}
+                                                            value={sshServerMode}
+                                                            options={
+                                                                sshModeOptions
+                                                            }
+                                                            onChange={
+                                                                setSshServerMode
+                                                            }
+                                                            cols={2}
+                                                        />
+                                                    </div>
+                                                </SettingsFormCell>
 
-                                            {/* Daemon Port (standard + push + remote) */}
-                                            {showDaemonPort && (
-                                                <Form {...sshDaemonPortForm}>
-                                                    <FormField
-                                                        control={
-                                                            sshDaemonPortForm.control
-                                                        }
-                                                        name="authDaemonPort"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t(
-                                                                        "sshDaemonPort"
-                                                                    )}
-                                                                </FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min={1}
-                                                                        max={
-                                                                            65535
-                                                                        }
-                                                                        {...field}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </Form>
-                                            )}
+                                                <SettingsFormCell span="full">
+                                                    <div className="space-y-2">
+                                                        <p className="font-semibold text-sm">
+                                                            {t(
+                                                                "sshAuthenticationMethod"
+                                                            )}
+                                                        </p>
+                                                        <StrategySelect<
+                                                            "passthrough" | "push"
+                                                        >
+                                                            value={pamMode}
+                                                            options={
+                                                                authMethodOptions
+                                                            }
+                                                            onChange={setPamMode}
+                                                            cols={2}
+                                                        />
+                                                    </div>
+                                                </SettingsFormCell>
 
-                                            {/* Server Destination */}
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <h2 className="text-sm font-semibold">
-                                                        {t(
-                                                            "sshServerDestination"
-                                                        )}
-                                                    </h2>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {t(
-                                                            "sshServerDestinationDescription"
-                                                        )}
-                                                    </p>
-                                                </div>
-                                                {isNative ? (
-                                                    <Popover
-                                                        open={nativeSiteOpen}
-                                                        onOpenChange={
-                                                            setNativeSiteOpen
-                                                        }
-                                                    >
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                variant="outline"
-                                                                role="combobox"
-                                                                className="w-full max-w-xs justify-between font-normal"
+                                                {showDaemonLocation && (
+                                                    <SettingsFormCell span="full">
+                                                        <div className="space-y-2">
+                                                            <p className="font-semibold text-sm">
+                                                                {t(
+                                                                    "sshAuthDaemonLocation"
+                                                                )}
+                                                            </p>
+                                                            <StrategySelect<
+                                                                "site" | "remote"
                                                             >
-                                                                <span className="truncate">
-                                                                    {nativeSelectedSite?.name ??
-                                                                        t(
-                                                                            "siteSelect"
-                                                                        )}
-                                                                </span>
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                                            <SitesSelector
-                                                                orgId={
-                                                                    orgId as string
+                                                                value={
+                                                                    standardDaemonLocation
                                                                 }
-                                                                selectedSite={
-                                                                    nativeSelectedSite
+                                                                options={
+                                                                    daemonLocationOptions
                                                                 }
-                                                                onSelectSite={(
-                                                                    site
-                                                                ) => {
-                                                                    setNativeSelectedSite(
-                                                                        site
-                                                                    );
-                                                                    setNativeSiteOpen(
-                                                                        false
-                                                                    );
-                                                                }}
+                                                                onChange={
+                                                                    setStandardDaemonLocation
+                                                                }
+                                                                cols={2}
                                                             />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {t(
+                                                                    "sshDaemonDisclaimer"
+                                                                )}{" "}
+                                                                <a
+                                                                    href="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                                                >
+                                                                    {t(
+                                                                        "learnMore"
+                                                                    )}
+                                                                    <ExternalLink className="size-3.5 shrink-0" />
+                                                                </a>
+                                                            </p>
+                                                        </div>
+                                                    </SettingsFormCell>
+                                                )}
+
+                                                {showDaemonPort && (
+                                                    <SettingsFormCell span="half">
+                                                        <Form
+                                                            {...sshDaemonPortForm}
+                                                        >
+                                                            <FormField
+                                                                control={
+                                                                    sshDaemonPortForm.control
+                                                                }
+                                                                name="authDaemonPort"
+                                                                render={({
+                                                                    field
+                                                                }) => (
+                                                                    <FormItem>
+                                                                        <FormLabel>
+                                                                            {t(
+                                                                                "sshDaemonPort"
+                                                                            )}
+                                                                        </FormLabel>
+                                                                        <FormControl>
+                                                                            <Input
+                                                                                type="number"
+                                                                                min={
+                                                                                    1
+                                                                                }
+                                                                                max={
+                                                                                    65535
+                                                                                }
+                                                                                {...field}
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+                                                        </Form>
+                                                    </SettingsFormCell>
+                                                )}
+
+                                                <SettingsFormCell span="full">
+                                                    <SettingsSubsectionHeader>
+                                                        <SettingsSubsectionTitle>
+                                                            {t(
+                                                                "sshServerDestination"
+                                                            )}
+                                                        </SettingsSubsectionTitle>
+                                                        <SettingsSubsectionDescription>
+                                                            {t(
+                                                                "sshServerDestinationDescription"
+                                                            )}
+                                                        </SettingsSubsectionDescription>
+                                                    </SettingsSubsectionHeader>
+                                                </SettingsFormCell>
+
+                                                {isNative ? (
+                                                    <SettingsFormCell span="half">
+                                                        <div className="grid gap-2">
+                                                            <Label>{t("sites")}</Label>
+                                                            <Popover
+                                                                open={
+                                                                    nativeSiteOpen
+                                                                }
+                                                                onOpenChange={
+                                                                    setNativeSiteOpen
+                                                                }
+                                                            >
+                                                                <PopoverTrigger
+                                                                    asChild
+                                                                >
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        role="combobox"
+                                                                        className="w-full justify-between font-normal"
+                                                                    >
+                                                                        <span className="truncate">
+                                                                            {nativeSelectedSite?.name ??
+                                                                                t(
+                                                                                    "siteSelect"
+                                                                                )}
+                                                                        </span>
+                                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                    </Button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                                                    <SitesSelector
+                                                                        orgId={
+                                                                            orgId as string
+                                                                        }
+                                                                        selectedSite={
+                                                                            nativeSelectedSite
+                                                                        }
+                                                                        onSelectSite={(
+                                                                            site
+                                                                        ) => {
+                                                                            setNativeSelectedSite(
+                                                                                site
+                                                                            );
+                                                                            setNativeSiteOpen(
+                                                                                false
+                                                                            );
+                                                                        }}
+                                                                    />
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        </div>
+                                                    </SettingsFormCell>
                                                 ) : standardDaemonLocation !==
                                                       "site" ||
                                                   pamMode ===
                                                       "passthrough" ? (
-                                                    <BrowserGatewayTargetForm
-                                                        orgId={orgId as string}
-                                                        multiSite={true}
-                                                        selectedSites={
-                                                            bgSelectedSites
-                                                        }
-                                                        onSitesChange={
-                                                            setBgSelectedSites
-                                                        }
-                                                        destination={
-                                                            bgDestination
-                                                        }
-                                                        destinationPort={
-                                                            bgDestinationPort
-                                                        }
-                                                        onDestinationChange={
-                                                            setBgDestination
-                                                        }
-                                                        onDestinationPortChange={
-                                                            setBgDestinationPort
-                                                        }
-                                                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
-                                                        defaultPort={22}
-                                                    />
+                                                    <SettingsFormCell span="full">
+                                                        <Form {...bgTargetForm}>
+                                                            <BrowserGatewayTargetForm
+                                                                control={
+                                                                    bgTargetForm.control
+                                                                }
+                                                                orgId={
+                                                                    orgId as string
+                                                                }
+                                                                multiSite={true}
+                                                                sitesField="selectedSites"
+                                                                destinationField="destination"
+                                                                destinationPortField="destinationPort"
+                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                defaultPort={22}
+                                                            />
+                                                        </Form>
+                                                    </SettingsFormCell>
                                                 ) : (
-                                                    <BrowserGatewayTargetForm
-                                                        orgId={orgId as string}
-                                                        multiSite={false}
-                                                        selectedSite={
-                                                            bgSelectedSite
-                                                        }
-                                                        onSiteChange={
-                                                            setBgSelectedSite
-                                                        }
-                                                        destination={
-                                                            bgDestination
-                                                        }
-                                                        destinationPort={
-                                                            bgDestinationPort
-                                                        }
-                                                        onDestinationChange={
-                                                            setBgDestination
-                                                        }
-                                                        onDestinationPortChange={
-                                                            setBgDestinationPort
-                                                        }
-                                                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
-                                                        defaultPort={22}
-                                                    />
+                                                    <SettingsFormCell span="full">
+                                                        <Form {...bgTargetForm}>
+                                                            <BrowserGatewayTargetForm
+                                                                control={
+                                                                    bgTargetForm.control
+                                                                }
+                                                                orgId={
+                                                                    orgId as string
+                                                                }
+                                                                multiSite={
+                                                                    false
+                                                                }
+                                                                siteField="selectedSite"
+                                                                destinationField="destination"
+                                                                destinationPortField="destinationPort"
+                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                defaultPort={22}
+                                                            />
+                                                        </Form>
+                                                    </SettingsFormCell>
                                                 )}
-                                            </div>
+                                            </SettingsFormGrid>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
                                     </fieldset>
@@ -1160,26 +1298,18 @@ export default function Page() {
                                     >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
-                                            <BrowserGatewayTargetForm
-                                                orgId={orgId as string}
-                                                multiSite={true}
-                                                selectedSites={bgSelectedSites}
-                                                onSitesChange={
-                                                    setBgSelectedSites
-                                                }
-                                                destination={bgDestination}
-                                                destinationPort={
-                                                    bgDestinationPort
-                                                }
-                                                onDestinationChange={
-                                                    setBgDestination
-                                                }
-                                                onDestinationPortChange={
-                                                    setBgDestinationPort
-                                                }
-                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
-                                                defaultPort={3389}
-                                            />
+                                            <Form {...bgTargetForm}>
+                                                <BrowserGatewayTargetForm
+                                                    control={bgTargetForm.control}
+                                                    orgId={orgId as string}
+                                                    multiSite={true}
+                                                    sitesField="selectedSites"
+                                                    destinationField="destination"
+                                                    destinationPortField="destinationPort"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
+                                                    defaultPort={3389}
+                                                />
+                                            </Form>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
                                     </fieldset>
@@ -1215,26 +1345,18 @@ export default function Page() {
                                     >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
-                                            <BrowserGatewayTargetForm
-                                                orgId={orgId as string}
-                                                multiSite={true}
-                                                selectedSites={bgSelectedSites}
-                                                onSitesChange={
-                                                    setBgSelectedSites
-                                                }
-                                                destination={bgDestination}
-                                                destinationPort={
-                                                    bgDestinationPort
-                                                }
-                                                onDestinationChange={
-                                                    setBgDestination
-                                                }
-                                                onDestinationPortChange={
-                                                    setBgDestinationPort
-                                                }
-                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc"
-                                                defaultPort={5900}
-                                            />
+                                            <Form {...bgTargetForm}>
+                                                <BrowserGatewayTargetForm
+                                                    control={bgTargetForm.control}
+                                                    orgId={orgId as string}
+                                                    multiSite={true}
+                                                    sitesField="selectedSites"
+                                                    destinationField="destination"
+                                                    destinationPortField="destinationPort"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc"
+                                                    defaultPort={5900}
+                                                />
+                                            </Form>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
                                     </fieldset>
@@ -1275,15 +1397,31 @@ export default function Page() {
                                         const tcpValid = !isHttpResource
                                             ? await tcpUdpForm.trigger()
                                             : true;
-                                        const sshPortValid = showDaemonPort
-                                            ? await sshDaemonPortForm.trigger()
-                                            : true;
+
+                                        if (
+                                            resourceType === "ssh" &&
+                                            !isNative
+                                        ) {
+                                            bgTargetForm.setValue(
+                                                "authDaemonPort",
+                                                sshDaemonPortForm.getValues()
+                                                    .authDaemonPort
+                                            );
+                                        }
+
+                                        const bgValid =
+                                            resourceType === "rdp" ||
+                                            resourceType === "vnc" ||
+                                            (resourceType === "ssh" &&
+                                                !isNative)
+                                                ? await bgTargetForm.trigger()
+                                                : true;
 
                                         if (
                                             baseValid &&
                                             domainValid &&
                                             tcpValid &&
-                                            sshPortValid
+                                            bgValid
                                         ) {
                                             onSubmit();
                                         }
@@ -1303,54 +1441,63 @@ export default function Page() {
                                         {t("resourceConfig")}
                                     </SettingsSectionTitle>
                                     <SettingsSectionDescription>
-                                        {t("resourceConfigDescription")}
+                                        {t("resourceConfigDescription")}{" "}
+                                        <a
+                                            href="https://docs.pangolin.net/manage/resources/public/raw-resources"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                        >
+                                            {t("learnMore")}
+                                            <ExternalLink className="size-3.5 shrink-0" />
+                                        </a>
                                     </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
-                                    <div className="space-y-6">
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">
-                                                {t("resourceAddEntrypoints")}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "resourceAddEntrypointsEditFile"
-                                                )}
-                                            </p>
+                                    <SettingsSectionForm variant="half">
+                                        <SettingsFormGrid>
+                                        <SettingsFormCell span="full">
+                                            <SettingsSubsectionHeader>
+                                                <SettingsSubsectionTitle>
+                                                    {t("resourceAddEntrypoints")}
+                                                </SettingsSubsectionTitle>
+                                                <SettingsSubsectionDescription>
+                                                    {t(
+                                                        "resourceAddEntrypointsEditFile"
+                                                    )}
+                                                </SettingsSubsectionDescription>
+                                            </SettingsSubsectionHeader>
+                                        </SettingsFormCell>
+                                        <SettingsFormCell span="full">
                                             <CopyTextBox
                                                 text={`entryPoints:
   ${tcpUdpForm.getValues("protocol")}-${tcpUdpForm.getValues("proxyPort")}:
     address: ":${tcpUdpForm.getValues("proxyPort")}/${tcpUdpForm.getValues("protocol")}"`}
                                                 wrapText={false}
                                             />
-                                        </div>
+                                        </SettingsFormCell>
 
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">
-                                                {t("resourceExposePorts")}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "resourceExposePortsEditFile"
-                                                )}
-                                            </p>
+                                        <SettingsFormCell span="full">
+                                            <SettingsSubsectionHeader>
+                                                <SettingsSubsectionTitle>
+                                                    {t("resourceExposePorts")}
+                                                </SettingsSubsectionTitle>
+                                                <SettingsSubsectionDescription>
+                                                    {t(
+                                                        "resourceExposePortsEditFile"
+                                                    )}
+                                                </SettingsSubsectionDescription>
+                                            </SettingsSubsectionHeader>
+                                        </SettingsFormCell>
+                                        <SettingsFormCell span="full">
                                             <CopyTextBox
                                                 text={`ports:
   - ${tcpUdpForm.getValues("proxyPort")}:${tcpUdpForm.getValues("proxyPort")}${tcpUdpForm.getValues("protocol") === "tcp" ? "" : "/" + tcpUdpForm.getValues("protocol")}`}
                                                 wrapText={false}
                                             />
-                                        </div>
-
-                                        <Link
-                                            className="text-sm text-primary flex items-center gap-1"
-                                            href="https://docs.pangolin.net/manage/resources/public/raw-resources"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <span>{t("resourceLearnRaw")}</span>
-                                            <SquareArrowOutUpRight size={14} />
-                                        </Link>
-                                    </div>
+                                        </SettingsFormCell>
+                                    </SettingsFormGrid>
+                                    </SettingsSectionForm>
                                 </SettingsSectionBody>
                             </SettingsSection>
 

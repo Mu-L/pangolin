@@ -40,18 +40,6 @@ export default async function migration() {
         await db.execute(sql`BEGIN`);
 
         await db.execute(sql`
-            CREATE TABLE "browserGatewayTarget" (
-                "browserGatewayTargetId" serial PRIMARY KEY NOT NULL,
-                "resourceId" integer NOT NULL,
-                "siteId" integer NOT NULL,
-                "authToken" varchar NOT NULL,
-                "type" varchar NOT NULL,
-                "destination" varchar NOT NULL,
-                "destinationPort" integer NOT NULL
-            );
-        `);
-
-        await db.execute(sql`
             CREATE TABLE "clientLabels" (
                 "clientLabelId" serial PRIMARY KEY NOT NULL,
                 "clientId" integer NOT NULL,
@@ -209,17 +197,16 @@ export default async function migration() {
         await db.execute(
             sql`ALTER TABLE "siteResources" ADD COLUMN "pamMode" varchar(32) DEFAULT 'passthrough';`
         );
+        await db.execute(sql`
+            UPDATE "siteResources"
+            SET "pamMode" = 'push'
+            WHERE LOWER(COALESCE("mode", '')) = 'host';
+        `);
         await db.execute(
             sql`ALTER TABLE "sites" ADD COLUMN "autoUpdateEnabled" boolean DEFAULT false NOT NULL;`
         );
         await db.execute(
             sql`ALTER TABLE "sites" ADD COLUMN "autoUpdateOverrideOrg" boolean DEFAULT false NOT NULL;`
-        );
-        await db.execute(
-            sql`ALTER TABLE "browserGatewayTarget" ADD CONSTRAINT "browserGatewayTarget_resourceId_resources_resourceId_fk" FOREIGN KEY ("resourceId") REFERENCES "public"."resources"("resourceId") ON DELETE cascade ON UPDATE no action;`
-        );
-        await db.execute(
-            sql`ALTER TABLE "browserGatewayTarget" ADD CONSTRAINT "browserGatewayTarget_siteId_sites_siteId_fk" FOREIGN KEY ("siteId") REFERENCES "public"."sites"("siteId") ON DELETE cascade ON UPDATE no action;`
         );
         await db.execute(
             sql`ALTER TABLE "clientLabels" ADD CONSTRAINT "clientLabels_clientId_clients_clientId_fk" FOREIGN KEY ("clientId") REFERENCES "public"."clients"("clientId") ON DELETE cascade ON UPDATE no action;`
@@ -289,6 +276,53 @@ export default async function migration() {
         );
         await db.execute(sql`ALTER TABLE "resources" DROP COLUMN "http";`);
         await db.execute(sql`ALTER TABLE "resources" DROP COLUMN "protocol";`);
+        await db.execute(
+            sql`ALTER TABLE "targets" ADD "mode" text DEFAULT 'http' NOT NULL;`
+        );
+        await db.execute(sql`
+            UPDATE "targets"
+            SET "mode" = "resources"."mode"
+            FROM "resources"
+            WHERE "resources"."resourceId" = "targets"."resourceId";
+        `);
+        await db.execute(sql`ALTER TABLE "targets" ADD "authToken" text;`);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD COLUMN "policyPasswordId" integer;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD COLUMN "policyPincodeId" integer;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD COLUMN "policyWhitelistId" integer;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyPasswordId_resourcePolicyPassword_passwordId_fk" FOREIGN KEY ("policyPasswordId") REFERENCES "public"."resourcePolicyPassword"("passwordId") ON DELETE cascade ON UPDATE no action;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyPincodeId_resourcePolicyPincode_pincodeId_fk" FOREIGN KEY ("policyPincodeId") REFERENCES "public"."resourcePolicyPincode"("pincodeId") ON DELETE cascade ON UPDATE no action;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyWhitelistId_resourcePolicyWhitelist_id_fk" FOREIGN KEY ("policyWhitelistId") REFERENCES "public"."resourcePolicyWhitelist"("id") ON DELETE cascade ON UPDATE no action;
+        `);
+        // remove not null/default from sso, applyRules, and emailWhitelistEnabled in preparation for resource policies
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "sso" DROP NOT NULL;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "sso" DROP DEFAULT;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "applyRules" DROP NOT NULL;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "applyRules" DROP DEFAULT;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "emailWhitelistEnabled" DROP NOT NULL;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "emailWhitelistEnabled" DROP DEFAULT;`
+        );
 
         await db.execute(sql`COMMIT`);
         console.log("Migrated database");
@@ -583,25 +617,15 @@ export default async function migration() {
                         DELETE FROM "resourceWhitelist"
                         WHERE "resourceId" = ${resource.resourceId}
                     `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD COLUMN "policyPasswordId" integer;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD COLUMN "policyPincodeId" integer;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD COLUMN "policyWhitelistId" integer;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyPasswordId_resourcePolicyPassword_passwordId_fk" FOREIGN KEY ("policyPasswordId") REFERENCES "public"."resourcePolicyPassword"("passwordId") ON DELETE cascade ON UPDATE no action;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyPincodeId_resourcePolicyPincode_pincodeId_fk" FOREIGN KEY ("policyPincodeId") REFERENCES "public"."resourcePolicyPincode"("pincodeId") ON DELETE cascade ON UPDATE no action;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyWhitelistId_resourcePolicyWhitelist_id_fk" FOREIGN KEY ("policyWhitelistId") REFERENCES "public"."resourcePolicyWhitelist"("id") ON DELETE cascade ON UPDATE no action;
-                    `);
                 }
+
+                // clear the sso, applyRules, and emailWhitelistEnabled columns on all resources since that information is now in the resource policies
+                await db.execute(sql`
+                    UPDATE "resources"
+                    SET "sso" = null,
+                        "applyRules" = null,
+                        "emailWhitelistEnabled" = null
+                `);
 
                 await db.execute(sql`COMMIT`);
                 console.log(

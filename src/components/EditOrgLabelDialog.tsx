@@ -58,12 +58,20 @@ export function EditOrgLabelDialog({
                     description: t("labelEditSuccessMessage")
                 });
             }
-        } catch (e) {
-            toast({
-                title: t("error"),
-                description: formatAxiosError(e, t("errorOccurred")),
-                variant: "destructive"
-            });
+        } catch (e: any) {
+            if (e.response?.status === 409) {
+                toast({
+                    title: t("labelDuplicateError"),
+                    description: t("labelDuplicateErrorDescription"),
+                    variant: "destructive"
+                });
+            } else {
+                toast({
+                    title: t("error"),
+                    description: formatAxiosError(e, t("errorOccurred")),
+                    variant: "destructive"
+                });
+            }
         }
     }
 

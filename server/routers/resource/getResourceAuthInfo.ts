@@ -225,7 +225,7 @@ export async function getResourceAuthInfo(
                 wildcard: resource.wildcard ?? false,
                 fullDomain: resource.fullDomain,
                 whitelist: effectivePolicy?.emailWhitelistEnabled ?? false,
-                skipToIdpId: resource.skipToIdpId,
+                skipToIdpId: effectivePolicy?.idpId ?? resource.skipToIdpId,
                 orgId: resource.orgId,
                 postAuthPath: resource.postAuthPath ?? null
             },

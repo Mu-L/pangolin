@@ -14,6 +14,7 @@ import OrgProvider from "@app/providers/OrgProvider";
 import { cache } from "react";
 import ResourceInfoBox from "@app/components/ResourceInfoBox";
 import { getTranslations } from "next-intl/server";
+import { pullEnv } from "@app/lib/pullEnv";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -30,6 +31,7 @@ interface ResourceLayoutProps {
 export default async function ResourceLayout(props: ResourceLayoutProps) {
     const params = await props.params;
     const t = await getTranslations();
+    const env = pullEnv();
 
     const { children } = props;
 
@@ -92,10 +94,23 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
     ];
 
     if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
-        navItems.push({
-            title: t("authentication"),
-            href: `/{orgId}/settings/resources/public/{niceId}/authentication`
-        });
+        navItems.push(
+            {
+                title: t("authentication"),
+                href: `/{orgId}/settings/resources/public/{niceId}/authentication`
+            },
+            {
+                title: t("policyAccessRulesTitle"),
+                href: `/{orgId}/settings/resources/public/{niceId}/rules`
+            }
+        );
+
+        if (!env.flags.disableEnterpriseFeatures) {
+            navItems.push({
+                title: t("maintenanceMode"),
+                href: `/{orgId}/settings/resources/public/{niceId}/maintenance`
+            });
+        }
     }
 
     return (

@@ -1,4 +1,4 @@
-import { BrowserGatewayTarget, Target, TargetHealthCheck } from "@server/db";
+import { Target, TargetHealthCheck } from "@server/db";
 import { sendToClient } from "#dynamic/routers/ws";
 import logger from "@server/logger";
 import { canCompress } from "@server/lib/clientVersionChecks";
@@ -244,23 +244,27 @@ export async function removeTargets(
 
 export async function sendBrowserGatewayTargets(
     newtId: string,
-    targets: BrowserGatewayTarget[],
+    targets: Target[],
     version?: string | null
 ) {
     if (targets.length === 0) return;
 
-    const payload = targets.map((t) => {
+    // filter out the ones without auth tokens
+    const filteredTargets = targets.filter((t) => t.authToken);
+    if (filteredTargets.length === 0) return;
+
+    const payload = filteredTargets.map((t) => {
         const decryptAuthToken = decrypt(
-            t.authToken,
+            t.authToken!,
             config.getRawConfig().server.secret!
         );
         return {
-            id: t.browserGatewayTargetId,
+            id: t.targetId,
             resourceId: t.resourceId,
             siteId: t.siteId,
-            type: t.type,
-            destination: t.destination,
-            destinationPort: t.destinationPort,
+            type: t.mode,
+            destination: t.ip,
+            destinationPort: t.port,
             authToken: decryptAuthToken
         };
     });

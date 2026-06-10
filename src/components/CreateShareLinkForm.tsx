@@ -4,6 +4,7 @@ import { Button } from "@app/components/ui/button";
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -269,11 +270,11 @@ export default function CreateShareLinkForm({
                                                         </PopoverTrigger>
                                                         <PopoverContent className="p-0">
                                                             <ResourceSelector
-                                                                                excludeWildcard
-                                                                                orgId={
-                                                                                    org.org
-                                                                                        .orgId
-                                                                                }
+                                                                excludeWildcard
+                                                                orgId={
+                                                                    org.org
+                                                                        .orgId
+                                                                }
                                                                 selectedResource={
                                                                     selectedResource
                                                                 }
@@ -333,6 +334,11 @@ export default function CreateShareLinkForm({
                                                     <FormControl>
                                                         <Input {...field} />
                                                     </FormControl>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "sharePathDescription"
+                                                        )}
+                                                    </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}

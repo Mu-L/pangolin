@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@app/components/ui/button";
+import { Input } from "@app/components/ui/input";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage
+} from "@app/components/ui/form";
 import { toast } from "@app/hooks/useToast";
 import type {
     UserInteraction,
@@ -22,7 +32,16 @@ import {
     CardTitle,
     CardDescription
 } from "@app/components/ui/card";
-import Link from "next/link";
+import { Alert, AlertDescription } from "@app/components/ui/alert";
+import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
+import PoweredByPangolin from "@app/components/PoweredByPangolin";
+import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
+import CollapsibleSessionToolbar from "@app/components/CollapsibleSessionToolbar";
+import { useTranslations } from "next-intl";
+import {
+    loadEncryptedLocalStorage,
+    saveEncryptedLocalStorage
+} from "@app/lib/secureLocalStorage";
 
 declare module "react" {
     namespace JSX {
@@ -40,13 +59,22 @@ declare module "react" {
     }
 }
 
-type FormState = {
+type RdpCredentialsForm = {
     username: string;
     password: string;
     domain: string;
     kdcProxyUrl: string;
     pcb: string;
     enableClipboard: boolean;
+};
+
+const DEFAULT_RDP_CREDENTIALS: RdpCredentialsForm = {
+    username: "",
+    password: "",
+    domain: "",
+    kdcProxyUrl: "",
+    pcb: "",
+    enableClipboard: true
 };
 
 const isIronError = (error: unknown): error is IronError => {
@@ -60,33 +88,51 @@ const isIronError = (error: unknown): error is IronError => {
 
 export default function RdpClient({
     target,
-    error
+    error,
+    primaryColor
 }: {
     target: GetBrowserTargetResponse | null;
     error: string | null;
+    primaryColor?: string | null;
 }) {
+    const t = useTranslations();
     const STORAGE_KEY = "pangolin_rdp_credentials";
+    const resourceName = target?.name?.trim() || null;
 
-    const [form, setForm] = useState<FormState>(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) return JSON.parse(saved) as FormState;
-        } catch {
-            // ignore
-        }
-        return {
-            username: "",
-            password: "",
-            domain: "",
-            kdcProxyUrl: "",
-            pcb: "",
-            enableClipboard: true
-        };
+    const formSchema = z.object({
+        username: z.string().min(1, { message: t("usernameRequired") }),
+        password: z.string().min(1, { message: t("passwordRequired") }),
+        domain: z.string(),
+        kdcProxyUrl: z.string(),
+        pcb: z.string(),
+        enableClipboard: z.boolean()
     });
+
+    const form = useForm<RdpCredentialsForm>({
+        resolver: zodResolver(formSchema),
+        defaultValues: DEFAULT_RDP_CREDENTIALS
+    });
+
+    useEffect(() => {
+        let cancelled = false;
+
+        void loadEncryptedLocalStorage<RdpCredentialsForm>(
+            STORAGE_KEY,
+            target?.authToken
+        ).then((saved) => {
+            if (cancelled || !saved) return;
+            form.reset({ ...DEFAULT_RDP_CREDENTIALS, ...saved });
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [form, target?.authToken]);
 
     const [showLogin, setShowLogin] = useState(true);
     const [moduleReady, setModuleReady] = useState(false);
     const [connecting, setConnecting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [unicodeMode, setUnicodeMode] = useState(false);
     const [cursorOverrideActive, setCursorOverrideActive] = useState(false);
 
@@ -138,7 +184,7 @@ export default function RdpClient({
             console.error("Failed to load iron-remote-desktop modules", err);
             toast({
                 variant: "destructive",
-                title: "Failed to load RDP module",
+                title: t("rdpFailedToLoadModule"),
                 description: `${err}`
             });
         });
@@ -160,25 +206,17 @@ export default function RdpClient({
         el.addEventListener("ready", onReady);
     };
 
-    const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-        setForm((prev) => ({ ...prev, [key]: value }));
-    };
-
-    const startSession = async () => {
+    const startSession = async (values: RdpCredentialsForm) => {
         setConnecting(true);
         const userInteraction = userInteractionRef.current;
         const exts = extensionsRef.current;
         if (!userInteraction || !exts) {
             setConnecting(false);
-            toast({
-                variant: "destructive",
-                title: "Not ready",
-                description: "RDP module is still initializing"
-            });
+            setSubmitError(t("rdpModuleInitializing"));
             return;
         }
 
-        userInteraction.setEnableClipboard(form.enableClipboard);
+        userInteraction.setEnableClipboard(values.enableClipboard);
 
         // Dispose any previous session's provider and create a fresh one so
         // there is no stale upload state from a prior connection.
@@ -193,7 +231,9 @@ export default function RdpClient({
                 const downloadable = files.filter((f) => !f.isDirectory);
                 if (downloadable.length === 0) return;
                 toast({
-                    title: `Downloading ${downloadable.length} file(s) from remote…`
+                    title: t("rdpDownloadingFiles", {
+                        count: downloadable.length
+                    })
                 });
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
@@ -211,7 +251,9 @@ export default function RdpClient({
                         .catch((err) => {
                             toast({
                                 variant: "destructive",
-                                title: `Download failed: ${file.name}`,
+                                title: t("rdpDownloadFailed", {
+                                    fileName: file.name
+                                }),
                                 description: `${err}`
                             });
                         });
@@ -220,7 +262,7 @@ export default function RdpClient({
 
             // Notify when individual uploads complete (remote pasted a file).
             fileTransfer.on("upload-complete", (file: File) => {
-                toast({ title: `Uploaded: ${file.name}` });
+                toast({ title: t("rdpUploaded", { fileName: file.name }) });
             });
 
             // Register with the web component so CLIPRDR extensions are
@@ -232,11 +274,7 @@ export default function RdpClient({
 
         if (!target) {
             setConnecting(false);
-            toast({
-                variant: "destructive",
-                title: "No target",
-                description: "No connection target available"
-            });
+            setSubmitError(t("rdpNoConnectionTarget"));
             return;
         }
 
@@ -244,13 +282,13 @@ export default function RdpClient({
 
         const builder = userInteraction
             .configBuilder()
-            .withUsername(form.username)
-            .withPassword(form.password)
+            .withUsername(values.username)
+            .withPassword(values.password)
             .withDestination(destination)
             .withProxyAddress(
                 `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/rdp`
             )
-            .withServerDomain(form.domain)
+            .withServerDomain(values.domain)
             .withAuthToken(target.authToken)
             .withDesktopSize({
                 width: window.innerWidth,
@@ -258,21 +296,21 @@ export default function RdpClient({
             })
             .withExtension(exts.displayControl(true));
 
-        if (form.pcb !== "") {
-            builder.withExtension(exts.preConnectionBlob(form.pcb));
+        if (values.pcb !== "") {
+            builder.withExtension(exts.preConnectionBlob(values.pcb));
         }
-        if (form.kdcProxyUrl !== "") {
-            builder.withExtension(exts.kdcProxyUrl(form.kdcProxyUrl));
+        if (values.kdcProxyUrl !== "") {
+            builder.withExtension(exts.kdcProxyUrl(values.kdcProxyUrl));
         }
 
         try {
             const sessionInfo = await userInteraction.connect(builder.build());
 
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-            } catch {
-                // ignore
-            }
+            void saveEncryptedLocalStorage(
+                STORAGE_KEY,
+                values,
+                target.authToken
+            );
             setConnecting(false);
             setShowLogin(false);
             userInteraction.setVisibility(true);
@@ -285,19 +323,16 @@ export default function RdpClient({
             setConnecting(false);
             setShowLogin(true);
             if (isIronError(err)) {
-                toast({
-                    variant: "destructive",
-                    title: "Connection failed",
-                    description: err.backtrace()
-                });
+                setSubmitError(err.backtrace());
             } else {
-                toast({
-                    variant: "destructive",
-                    title: "Connection failed",
-                    description: `${err}`
-                });
+                setSubmitError(`${err}`);
             }
         }
+    };
+
+    const onSubmit = (values: RdpCredentialsForm) => {
+        setSubmitError(null);
+        startSession(values);
     };
 
     const ui = () => userInteractionRef.current;
@@ -315,182 +350,142 @@ export default function RdpClient({
 
     if (error) {
         return (
-            <div>
-                <div className="text-center mb-2">
-                    <span className="text-sm text-muted-foreground">
-                        Powered by{" "}
-                        <Link
-                            href="https://pangolin.net/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                        >
-                            Pangolin
-                        </Link>
-                    </span>
-                </div>
+            <BrandedAuthSurface primaryColor={primaryColor}>
+                <PoweredByPangolin />
                 <Card className="w-full">
                     <CardHeader>
-                        <CardTitle>RDP</CardTitle>
+                        <CardTitle>{t("rdpTitle")}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-destructive text-sm">{error}</p>
+                        <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
                     </CardContent>
                 </Card>
-            </div>
+            </BrandedAuthSurface>
         );
     }
 
     return (
         <>
             {showLogin && (
-                <div>
-                    <div className="text-center mb-2">
-                        <span className="text-sm text-muted-foreground">
-                            Powered by{" "}
-                            <Link
-                                href="https://pangolin.net/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                            >
-                                Pangolin
-                            </Link>
-                        </span>
-                    </div>
+                <BrandedAuthSurface primaryColor={primaryColor}>
+                    <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>Sign in to Remote Desktop</CardTitle>
+                            <CardTitle>{t("rdpSignInTitle")}</CardTitle>
                             <CardDescription>
-                                Enter Windows credentials to access xxxx
+                                {resourceName
+                                    ? `${t("rdpSignInDescription")} (${resourceName})`
+                                    : t("rdpSignInDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                <Field label="Domain" id="domain">
-                                    <Input
-                                        id="domain"
-                                        value={form.domain}
-                                        onChange={(e) =>
-                                            update("domain", e.target.value)
-                                        }
-                                    />
-                                </Field>
-                                <Field label="Username" id="username">
-                                    <Input
-                                        id="username"
-                                        value={form.username}
-                                        onChange={(e) =>
-                                            update("username", e.target.value)
-                                        }
-                                    />
-                                </Field>
-                                <Field label="Password" id="password">
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={form.password}
-                                        onChange={(e) =>
-                                            update("password", e.target.value)
-                                        }
-                                    />
-                                </Field>
-                                {/* 
-                        <Field label="Pre Connection Blob (optional)" id="pcb">
-                            <Input
-                                id="pcb"
-                                value={form.pcb}
-                                onChange={(e) => update("pcb", e.target.value)}
-                            />
-                        </Field> */}
-
-                                {/* <Field
-                            label="KDC Proxy URL (optional)"
-                            id="kdcProxyUrl"
-                        >
-                            <Input
-                                id="kdcProxyUrl"
-                                value={form.kdcProxyUrl}
-                                onChange={(e) =>
-                                    update("kdcProxyUrl", e.target.value)
-                                }
-                            />
-                        </Field> */}
-                                {/* <div className="flex items-center gap-2">
-                            <Checkbox
-                                id="enable_clipboard"
-                                checked={form.enableClipboard}
-                                onCheckedChange={(checked) =>
-                                    update("enableClipboard", checked === true)
-                                }
-                            />
-                            <Label htmlFor="enable_clipboard">
-                                Enable Clipboard
-                            </Label>
-                        </div> */}
-                                <Button
-                                    onClick={startSession}
-                                    disabled={!moduleReady}
-                                    loading={connecting}
-                                    className="w-full"
+                            <Form {...form}>
+                                <form
+                                    onSubmit={form.handleSubmit(onSubmit)}
+                                    className="space-y-4"
                                 >
-                                    {moduleReady
-                                        ? "Connect"
-                                        : "Loading module..."}
-                                </Button>
-                            </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="domain"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("domain")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="username"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("username")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="password"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("password")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="password"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Button
+                                        type="submit"
+                                        disabled={!moduleReady || connecting}
+                                        loading={connecting}
+                                        className="w-full"
+                                    >
+                                        {t("browserGatewayConnect")}
+                                    </Button>
+                                    {submitError && (
+                                        <Alert variant="destructive">
+                                            <AlertDescription>
+                                                {submitError}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                </form>
+                            </Form>
                         </CardContent>
                     </Card>
-                </div>
+                    <AuthPageFooterNotices />
+                </BrandedAuthSurface>
             )}
 
             <div
                 className="fixed inset-0 z-50 flex flex-col bg-neutral-900"
                 style={{ display: showLogin ? "none" : "flex" }}
             >
-                <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
+                <CollapsibleSessionToolbar>
                     <Button
                         size="sm"
-                        variant="secondary"
-                        onClick={() => ui()?.setScale(1)}
+                        variant="destructive"
+                        onClick={() => {
+                            ui()?.shutdown();
+                            setShowLogin(true);
+                        }}
                     >
-                        Fit
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => ui()?.setScale(2)}
-                    >
-                        Full
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => ui()?.setScale(3)}
-                    >
-                        Real
+                        {t("sshTerminate")}
                     </Button>
                     <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => ui()?.ctrlAltDel()}
                     >
-                        Ctrl+Alt+Del
+                        {t("browserGatewayCtrlAltDel")}
                     </Button>
                     <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => ui()?.metaKey()}
                     >
-                        Meta
+                        {t("rdpMeta")}
                     </Button>
-                    {/* <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={toggleCursorKind}
-                    >
-                        Toggle cursor
-                    </Button> */}
                     <Button
                         size="sm"
                         variant="secondary"
@@ -504,30 +499,51 @@ export default function RdpClient({
                             try {
                                 ft.uploadFiles(files);
                                 toast({
-                                    title: "Files ready to paste",
-                                    description: `${files.length} file(s) copied to remote clipboard — press Ctrl+V on the remote desktop to paste.`
+                                    title: t("rdpFilesReadyToPaste"),
+                                    description: t(
+                                        "rdpFilesReadyToPasteDescription",
+                                        { count: files.length }
+                                    )
                                 });
                             } catch (err) {
                                 toast({
                                     variant: "destructive",
-                                    title: "Upload failed",
+                                    title: t("rdpUploadFailed"),
                                     description: `${err}`
                                 });
                             }
                         }}
                     >
-                        Upload files
+                        {t("rdpUploadFiles")}
+                    </Button>
+                    {/* <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => ui()?.setScale(1)}
+                    >
+                        {t("rdpFit")}
                     </Button>
                     <Button
                         size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                            ui()?.shutdown();
-                            setShowLogin(true);
-                        }}
+                        variant="secondary"
+                        onClick={() => ui()?.setScale(2)}
                     >
-                        Terminate
+                        {t("rdpFull")}
                     </Button>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => ui()?.setScale(3)}
+                    >
+                        {t("rdpReal")}
+                    </Button> */}
+                    {/* <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={toggleCursorKind}
+                    >
+                        Toggle cursor
+                    </Button> */}
                     <label className="ml-2 flex items-center gap-2">
                         <input
                             type="checkbox"
@@ -537,9 +553,9 @@ export default function RdpClient({
                                 ui()?.setKeyboardUnicodeMode(e.target.checked);
                             }}
                         />
-                        Unicode keyboard mode
+                        {t("rdpUnicodeKeyboardMode")}
                     </label>
-                </div>
+                </CollapsibleSessionToolbar>
 
                 {moduleReady && (
                     <iron-remote-desktop
@@ -552,22 +568,5 @@ export default function RdpClient({
                 )}
             </div>
         </>
-    );
-}
-
-function Field({
-    label,
-    id,
-    children
-}: {
-    label: string;
-    id: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="space-y-1.5">
-            <Label htmlFor={id}>{label}</Label>
-            {children}
-        </div>
     );
 }

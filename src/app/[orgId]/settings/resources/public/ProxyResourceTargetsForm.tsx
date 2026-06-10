@@ -10,7 +10,10 @@ import {
     PathRewriteDisplay,
     PathRewriteModal
 } from "@app/components/PathMatchRenameModal";
-import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
+import {
+    ResourceTargetAddressItem,
+    ResourceTargetSiteItem
+} from "@app/components/resource-target-address-item";
 import {
     SettingsSection,
     SettingsSectionBody,
@@ -18,6 +21,7 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
+import { DataTableEmptyState } from "@app/components/ui/data-table-empty-state";
 import {
     Table,
     TableBody,
@@ -65,6 +69,7 @@ import {
     useMemo,
     useState
 } from "react";
+import { maxSize } from "zod";
 
 export type LocalTarget = Omit<
     ArrayElement<ListTargetsResponse["targets"]> & {
@@ -138,11 +143,6 @@ export function ProxyResourceTargetsForm({
     const [selectedTargetForHealthCheck, setSelectedTargetForHealthCheck] =
         useState<LocalTarget | null>(null);
 
-    const [bgDestination, setBgDestination] = useState("");
-    const [bgDestinationPort, setBgDestinationPort] = useState("");
-    const [bgSiteId, setBgSiteId] = useState<number | null>(null);
-    const [bgTargetId, setBgTargetId] = useState<number | null>(null);
-
     const initializeDockerForSite = async (siteId: number) => {
         if (dockerStates.has(siteId)) {
             return;
@@ -207,42 +207,6 @@ export function ProxyResourceTargetsForm({
         })
     );
 
-    // Browser-gateway targets (edit mode only)
-    const { data: bgTargetsResponse } = useQuery({
-        queryKey: ["browserGatewayTargets", resource?.resourceId, orgId],
-        queryFn: async () => {
-            const res = await api.get(
-                `/org/${orgId}/resource/${resource!.resourceId}/browser-gateway-targets`
-            );
-            return res.data.data as {
-                targets: Array<{
-                    browserGatewayTargetId: number;
-                    resourceId: number;
-                    siteId: number;
-                    type: string;
-                    destination: string;
-                    destinationPort: number;
-                }>;
-            };
-        },
-        enabled: !!resource
-    });
-
-    useEffect(() => {
-        if (!bgTargetsResponse?.targets?.length) return;
-        const bgt = bgTargetsResponse.targets[0];
-        setBgDestination(bgt.destination);
-        setBgDestinationPort(String(bgt.destinationPort));
-        setBgSiteId(bgt.siteId);
-        setBgTargetId(bgt.browserGatewayTargetId);
-    }, [bgTargetsResponse]);
-
-    useEffect(() => {
-        if (sites.length > 0 && bgSiteId === null) {
-            setBgSiteId(sites[0].siteId);
-        }
-    }, [sites, bgSiteId]);
-
     const updateTarget = useCallback(
         (targetId: number, data: Partial<LocalTarget>) => {
             setTargets((prevTargets) => {
@@ -269,7 +233,7 @@ export function ProxyResourceTargetsForm({
         const priorityColumn: ColumnDef<LocalTarget> = {
             id: "priority",
             header: () => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 p-3">
                     {t("priority")}
                     <TooltipProvider>
                         <Tooltip>
@@ -285,7 +249,6 @@ export function ProxyResourceTargetsForm({
             ),
             cell: ({ row }) => {
                 return (
-                    <div className="flex items-center justify-center w-full">
                         <Input
                             type="number"
                             min="1"
@@ -303,7 +266,6 @@ export function ProxyResourceTargetsForm({
                                 }
                             }}
                         />
-                    </div>
                 );
             },
             size: 120,
@@ -334,19 +296,15 @@ export function ProxyResourceTargetsForm({
                         {row.original.siteType === "newt" ? (
                             <Button
                                 variant="outline"
-                                className="flex items-center gap-2 w-full text-left cursor-pointer"
+                                className="flex items-center space-x-2 w-full text-left cursor-pointer"
                                 onClick={() =>
                                     openHealthCheckDialog(row.original)
                                 }
                             >
                                 <div
-                                    className={`flex items-center gap-2 ${status === "healthy" ? "text-green-500" : status === "unhealthy" ? "text-destructive" : "text-neutral-500"}`}
-                                >
-                                    <div
-                                        className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-green-500" : status === "unhealthy" ? "bg-destructive" : "bg-neutral-500"}`}
-                                    ></div>
-                                    {getStatusText(status)}
-                                </div>
+                                    className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-green-500" : status === "unhealthy" ? "bg-destructive" : "bg-neutral-500"}`}
+                                ></div>
+                                <span>{getStatusText(status)}</span>
                             </Button>
                         ) : (
                             <span>-</span>
@@ -441,13 +399,12 @@ export function ProxyResourceTargetsForm({
             maxSize: 200
         };
 
-        const addressColumn: ColumnDef<LocalTarget> = {
-            accessorKey: "address",
-            header: () => <span className="p-3">{t("address")}</span>,
+        const siteColumn: ColumnDef<LocalTarget> = {
+            accessorKey: "site",
+            header: () => <span className="p-3">{t("site")}</span>,
             cell: ({ row }) => {
                 return (
-                    <ResourceTargetAddressItem
-                        isHttp={isHttp}
+                    <ResourceTargetSiteItem
                         orgId={orgId}
                         getDockerStateForSite={getDockerStateForSite}
                         proxyTarget={row.original}
@@ -456,9 +413,26 @@ export function ProxyResourceTargetsForm({
                     />
                 );
             },
-            size: 400,
-            minSize: 350,
-            maxSize: 500
+            size: 220,
+            minSize: 180,
+            maxSize: 280
+        };
+
+        const addressColumn: ColumnDef<LocalTarget> = {
+            accessorKey: "address",
+            header: () => <span className="p-3">{t("address")}</span>,
+            cell: ({ row }) => {
+                return (
+                    <ResourceTargetAddressItem
+                        isHttp={isHttp}
+                        proxyTarget={row.original}
+                        updateTarget={updateTarget}
+                    />
+                );
+            },
+            size: 350,
+            minSize: 300,
+            maxSize: 450
         };
 
         const rewritePathColumn: ColumnDef<LocalTarget> = {
@@ -535,7 +509,7 @@ export function ProxyResourceTargetsForm({
             accessorKey: "enabled",
             header: () => <span className="p-3">{t("enabled")}</span>,
             cell: ({ row }) => (
-                <div className="flex items-center justify-center w-full">
+                <div className="flex items-center w-full">
                     <Switch
                         defaultChecked={row.original.enabled}
                         onCheckedChange={(val) =>
@@ -554,9 +528,8 @@ export function ProxyResourceTargetsForm({
 
         const actionsColumn: ColumnDef<LocalTarget> = {
             id: "actions",
-            header: () => <span className="p-3">{t("actions")}</span>,
             cell: ({ row }) => (
-                <div className="flex items-center w-full">
+                <div className="flex items-center justify-end w-full">
                     <Button
                         variant="outline"
                         onClick={() => removeTarget(row.original.targetId)}
@@ -572,6 +545,7 @@ export function ProxyResourceTargetsForm({
 
         if (isAdvancedMode) {
             const cols = [
+                siteColumn,
                 addressColumn,
                 healthCheckColumn,
                 enabledColumn,
@@ -580,12 +554,13 @@ export function ProxyResourceTargetsForm({
 
             if (isHttp) {
                 cols.unshift(matchPathColumn);
-                cols.splice(3, 0, rewritePathColumn, priorityColumn);
+                cols.splice(4, 0, rewritePathColumn, priorityColumn);
             }
 
             return cols;
         } else {
             return [
+                siteColumn,
                 addressColumn,
                 healthCheckColumn,
                 enabledColumn,
@@ -608,6 +583,8 @@ export function ProxyResourceTargetsForm({
         const newTarget: LocalTarget = {
             targetId: -Date.now(),
             ip: "",
+            mode: ((resource?.mode as LocalTarget["mode"]) ??
+                (isHttp ? "http" : "tcp")) as LocalTarget["mode"],
             method: isHttp ? "http" : null,
             port: 0,
             siteId: sites.length > 0 ? sites[0].siteId : 0,
@@ -694,6 +671,15 @@ export function ProxyResourceTargetsForm({
     }, [isAdvancedMode]);
 
     const [, formAction, isSubmitting] = useActionState(saveTargets, null);
+
+    const addTargetButton = (
+        <Button onClick={addNewTarget} variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            {t("addTarget")}
+        </Button>
+    );
+
+    const hasTargets = targets.length > 0;
 
     async function saveTargets() {
         if (!resource) return;
@@ -808,131 +794,104 @@ export function ProxyResourceTargetsForm({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    {targets.length > 0 ? (
-                        <>
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        {table
-                                            .getHeaderGroups()
-                                            .map((headerGroup) => (
-                                                <TableRow key={headerGroup.id}>
-                                                    {headerGroup.headers.map(
-                                                        (header) => {
-                                                            const isActionsColumn =
-                                                                header.column
-                                                                    .id ===
-                                                                "actions";
-                                                            return (
-                                                                <TableHead
-                                                                    key={
-                                                                        header.id
-                                                                    }
-                                                                    className={
-                                                                        isActionsColumn
-                                                                            ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
-                                                                            : ""
-                                                                    }
-                                                                >
-                                                                    {header.isPlaceholder
-                                                                        ? null
-                                                                        : flexRender(
-                                                                              header
-                                                                                  .column
-                                                                                  .columnDef
-                                                                                  .header,
-                                                                              header.getContext()
-                                                                          )}
-                                                                </TableHead>
-                                                            );
-                                                        }
-                                                    )}
-                                                </TableRow>
-                                            ))}
-                                    </TableHeader>
-                                    <TableBody>
-                                        {table.getRowModel().rows?.length ? (
-                                            table
-                                                .getRowModel()
-                                                .rows.map((row) => (
-                                                    <TableRow key={row.id}>
-                                                        {row
-                                                            .getVisibleCells()
-                                                            .map((cell) => {
-                                                                const isActionsColumn =
-                                                                    cell.column
-                                                                        .id ===
-                                                                    "actions";
-                                                                return (
-                                                                    <TableCell
-                                                                        key={
-                                                                            cell.id
-                                                                        }
-                                                                        className={
-                                                                            isActionsColumn
-                                                                                ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
-                                                                                : ""
-                                                                        }
-                                                                    >
-                                                                        {flexRender(
-                                                                            cell
-                                                                                .column
-                                                                                .columnDef
-                                                                                .cell,
-                                                                            cell.getContext()
-                                                                        )}
-                                                                    </TableCell>
-                                                                );
-                                                            })}
-                                                    </TableRow>
-                                                ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell
-                                                    colSpan={columns.length}
-                                                    className="h-24 text-center"
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                {table.getHeaderGroups().map((headerGroup) => (
+                                    <TableRow key={headerGroup.id}>
+                                        {headerGroup.headers.map((header) => {
+                                            const isActionsColumn =
+                                                header.column.id === "actions";
+                                            const isSiteColumn =
+                                                header.column.id === "site";
+                                            return (
+                                                <TableHead
+                                                    key={header.id}
+                                                    className={
+                                                        isActionsColumn
+                                                            ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
+                                                            : isSiteColumn
+                                                              ? "w-45"
+                                                              : ""
+                                                    }
                                                 >
-                                                    {t("targetNoOne")}
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center justify-between w-full gap-2">
-                                    <Button
-                                        onClick={addNewTarget}
-                                        variant="outline"
+                                                    {header.isPlaceholder
+                                                        ? null
+                                                        : flexRender(
+                                                              header.column
+                                                                  .columnDef
+                                                                  .header,
+                                                              header.getContext()
+                                                          )}
+                                                </TableHead>
+                                            );
+                                        })}
+                                    </TableRow>
+                                ))}
+                            </TableHeader>
+                            <TableBody>
+                                {table.getRowModel().rows?.length ? (
+                                    table.getRowModel().rows.map((row) => (
+                                        <TableRow key={row.id}>
+                                            {row
+                                                .getVisibleCells()
+                                                .map((cell) => {
+                                                    const isActionsColumn =
+                                                        cell.column.id ===
+                                                        "actions";
+                                                    const isSiteColumn =
+                                                        cell.column.id ===
+                                                        "site";
+                                                    return (
+                                                        <TableCell
+                                                            key={cell.id}
+                                                            className={
+                                                                isActionsColumn
+                                                                    ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
+                                                                    : isSiteColumn
+                                                                      ? "w-45"
+                                                                      : ""
+                                                            }
+                                                        >
+                                                            {flexRender(
+                                                                cell.column
+                                                                    .columnDef
+                                                                    .cell,
+                                                                cell.getContext()
+                                                            )}
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <DataTableEmptyState
+                                        colSpan={columns.length}
+                                        message={t("targetNoOne")}
+                                        action={addTargetButton}
+                                    />
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    {hasTargets && (
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center justify-between w-full gap-2">
+                                {addTargetButton}
+                                <div className="flex items-center gap-2">
+                                    <Switch
+                                        id="advanced-mode-toggle"
+                                        checked={isAdvancedMode}
+                                        onCheckedChange={setIsAdvancedMode}
+                                    />
+                                    <label
+                                        htmlFor="advanced-mode-toggle"
+                                        className="text-sm"
                                     >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        {t("addTarget")}
-                                    </Button>
-                                    <div className="flex items-center gap-2">
-                                        <Switch
-                                            id="advanced-mode-toggle"
-                                            checked={isAdvancedMode}
-                                            onCheckedChange={setIsAdvancedMode}
-                                        />
-                                        <label
-                                            htmlFor="advanced-mode-toggle"
-                                            className="text-sm"
-                                        >
-                                            {t("advancedMode")}
-                                        </label>
-                                    </div>
+                                        {t("advancedMode")}
+                                    </label>
                                 </div>
                             </div>
-                        </>
-                    ) : (
-                        <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg p-4">
-                            <p className="text-muted-foreground mb-4">
-                                {t("targetNoOne")}
-                            </p>
-                            <Button onClick={addNewTarget} variant="outline">
-                                <Plus className="h-4 w-4 mr-2" />
-                                {t("addTarget")}
-                            </Button>
                         </div>
                     )}
                     {build === "saas" &&

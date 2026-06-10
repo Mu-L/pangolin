@@ -1,6 +1,4 @@
 import {
-    browserGatewayTarget,
-    BrowserGatewayTarget,
     clients,
     clientSiteResourcesAssociationsCache,
     clientSitesAssociationsCache,
@@ -16,7 +14,7 @@ import {
 } from "@server/db";
 import logger from "@server/logger";
 import { initPeerAddHandshake, updatePeer } from "../olm/peers";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import {
@@ -154,34 +152,64 @@ export async function buildClientConfigurationForNewtClient(
 
     const targetsToSend: SubnetProxyTargetV2[] = [];
 
-    for (const resource of allSiteResources) {
-        // Get clients associated with this specific resource
-        const resourceClients = await db
-            .select({
-                clientId: clients.clientId,
-                pubKey: clients.pubKey,
-                subnet: clients.subnet
-            })
-            .from(clients)
-            .innerJoin(
-                clientSiteResourcesAssociationsCache,
-                eq(
-                    clients.clientId,
-                    clientSiteResourcesAssociationsCache.clientId
-                )
-            )
-            .where(
-                eq(
-                    clientSiteResourcesAssociationsCache.siteResourceId,
-                    resource.siteResourceId
-                )
-            );
+    if (allSiteResources.length === 0) {
+        return {
+            peers: validPeers,
+            targets: targetsToSend
+        };
+    }
 
-        const resourceTargets = await generateSubnetProxyTargetV2(
-            resource,
-            resourceClients
+    // Batch fetch all client associations for every site resource in one query
+    // to avoid an N+1 lookup that would issue thousands of queries when a site
+    // has many resources.
+    const siteResourceIds = allSiteResources.map((r) => r.siteResourceId);
+
+    const resourceClientRows = await db
+        .select({
+            siteResourceId: clientSiteResourcesAssociationsCache.siteResourceId,
+            clientId: clients.clientId,
+            pubKey: clients.pubKey,
+            subnet: clients.subnet
+        })
+        .from(clients)
+        .innerJoin(
+            clientSiteResourcesAssociationsCache,
+            eq(clients.clientId, clientSiteResourcesAssociationsCache.clientId)
+        )
+        .where(
+            inArray(
+                clientSiteResourcesAssociationsCache.siteResourceId,
+                siteResourceIds
+            )
         );
 
+    const clientsByResourceId = new Map<
+        number,
+        { clientId: number; pubKey: string | null; subnet: string | null }[]
+    >();
+    for (const row of resourceClientRows) {
+        let list = clientsByResourceId.get(row.siteResourceId);
+        if (!list) {
+            list = [];
+            clientsByResourceId.set(row.siteResourceId, list);
+        }
+        list.push({
+            clientId: row.clientId,
+            pubKey: row.pubKey,
+            subnet: row.subnet
+        });
+    }
+
+    const resourceTargetsArr = await Promise.all(
+        allSiteResources.map((resource) =>
+            generateSubnetProxyTargetV2(
+                resource,
+                clientsByResourceId.get(resource.siteResourceId) ?? []
+            )
+        )
+    );
+
+    for (const resourceTargets of resourceTargetsArr) {
         if (resourceTargets) {
             targetsToSend.push(...resourceTargets);
         }
@@ -211,7 +239,13 @@ export async function buildTargetConfigurationForNewtClient(
         })
         .from(targets)
         .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
-        .where(and(eq(targets.siteId, siteId), eq(targets.enabled, true)));
+        .where(
+            and(
+                eq(targets.siteId, siteId),
+                eq(targets.enabled, true),
+                inArray(targets.mode, ["http", "udp", "tcp"])
+            )
+        );
 
     const allHealthChecks = await db
         .select({
@@ -236,10 +270,27 @@ export async function buildTargetConfigurationForNewtClient(
         .from(targetHealthCheck)
         .where(eq(targetHealthCheck.siteId, siteId));
 
+    // Get all enabled targets with their resource mode information
     const allBrowserGatewayTargets = await db
-        .select()
-        .from(browserGatewayTarget)
-        .where(eq(browserGatewayTarget.siteId, siteId));
+        .select({
+            resourceId: targets.resourceId,
+            targetId: targets.targetId,
+            ip: targets.ip,
+            method: targets.method,
+            port: targets.port,
+            enabled: targets.enabled,
+            mode: resources.mode,
+            authToken: targets.authToken
+        })
+        .from(targets)
+        .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+        .where(
+            and(
+                eq(targets.siteId, siteId),
+                eq(targets.enabled, true),
+                inArray(targets.mode, ["ssh", "rdp", "vnc"])
+            )
+        );
 
     const { tcpTargets, udpTargets } = allTargets.reduce(
         (acc, target) => {
@@ -315,12 +366,15 @@ export async function buildTargetConfigurationForNewtClient(
 
     const serverSecret = config.getRawConfig().server.secret!;
     const browserGatewayTargets = allBrowserGatewayTargets.map((t) => {
+        if (!t.ip || !t.port || !t.authToken) {
+            return null;
+        }
         const decryptAuthToken = decrypt(t.authToken, serverSecret);
         return {
-            id: t.browserGatewayTargetId,
-            type: t.type,
-            destination: t.destination,
-            destinationPort: t.destinationPort,
+            id: t.targetId,
+            type: t.mode,
+            destination: t.ip,
+            destinationPort: t.port,
             authToken: decryptAuthToken
         };
     });

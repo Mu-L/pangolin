@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { resourcePassword } from "@server/db";
+import {
+    resourcePassword,
+    resourcePolicyPassword,
+    resources
+} from "@server/db";
 import { eq } from "drizzle-orm";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -42,7 +46,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -85,17 +89,49 @@ export async function setResourcePassword(
         const { resourceId } = parsedParams.data;
         const { password } = parsedBody.data;
 
+        const [resource] = await db
+            .select()
+            .from(resources)
+            .where(eq(resources.resourceId, resourceId))
+            .limit(1);
+
+        if (!resource) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Resource not found")
+            );
+        }
+
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
+
         await db.transaction(async (trx) => {
-            await trx
-                .delete(resourcePassword)
-                .where(eq(resourcePassword.resourceId, resourceId));
-
-            if (password) {
-                const passwordHash = await hashPassword(password);
-
+            if (isInlinePolicy) {
+                const policyId = resource.defaultResourcePolicyId!;
                 await trx
-                    .insert(resourcePassword)
-                    .values({ resourceId, passwordHash });
+                    .delete(resourcePolicyPassword)
+                    .where(
+                        eq(resourcePolicyPassword.resourcePolicyId, policyId)
+                    );
+
+                if (password) {
+                    const passwordHash = await hashPassword(password);
+                    await trx
+                        .insert(resourcePolicyPassword)
+                        .values({ resourcePolicyId: policyId, passwordHash });
+                }
+            } else {
+                await trx
+                    .delete(resourcePassword)
+                    .where(eq(resourcePassword.resourceId, resourceId));
+
+                if (password) {
+                    const passwordHash = await hashPassword(password);
+
+                    await trx
+                        .insert(resourcePassword)
+                        .values({ resourceId, passwordHash });
+                }
             }
         });
 

@@ -10,7 +10,15 @@ import {
 import { CheckboxWithLabel } from "./ui/checkbox";
 import { OptionSelect, type OptionSelectOption } from "./OptionSelect";
 import { useState } from "react";
-import { FaApple, FaCubes, FaDocker, FaLinux, FaWindows } from "react-icons/fa";
+import {
+    FaApple,
+    FaCubes,
+    FaDocker,
+    FaHdd,
+    FaLinux,
+    FaWindows
+} from "react-icons/fa";
+import { ExternalLink } from "lucide-react";
 import { SiKubernetes, SiNixos } from "react-icons/si";
 
 export type CommandItem = string | { title: string; command: string };
@@ -20,6 +28,7 @@ const PLATFORMS = [
     "macos",
     "docker",
     "kubernetes",
+    "advantech",
     "podman",
     "nixos",
     "windows"
@@ -43,10 +52,14 @@ export function NewtSiteInstallCommands({
     const t = useTranslations();
 
     const [acceptClients, setAcceptClients] = useState(true);
+    const [allowPangolinSsh, setAllowPangolinSsh] = useState(true);
     const [platform, setPlatform] = useState<Platform>("linux");
     const [architecture, setArchitecture] = useState(
         () => getArchitectures(platform)[0]
     );
+
+    const showSiteConfiguration = platform !== "advantech";
+    const supportsSshOption = platform === "linux" || platform === "nixos";
 
     const acceptClientsFlag = !acceptClients ? " --disable-clients" : "";
     const acceptClientsEnv = !acceptClients
@@ -57,6 +70,11 @@ export function NewtSiteInstallCommands({
       --set newtInstances[0].acceptClients=true`
         : "";
 
+    const disableSshFlag =
+        supportsSshOption && !allowPangolinSsh ? " --disable-ssh" : "";
+    const runAsRootPrefix =
+        supportsSshOption && allowPangolinSsh ? "sudo " : "";
+
     const commandList: Record<Platform, Record<string, CommandItem[]>> = {
         linux: {
             Run: [
@@ -66,7 +84,7 @@ export function NewtSiteInstallCommands({
                 },
                 {
                     title: t("run"),
-                    command: `newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
+                    command: `${runAsRootPrefix}newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}${disableSshFlag}`
                 }
             ],
             "Systemd Service": [
@@ -85,6 +103,11 @@ PANGOLIN_ENDPOINT=${endpoint}${
                         !acceptClients
                             ? `
 DISABLE_CLIENTS=true`
+                            : ""
+                    }${
+                        !allowPangolinSsh
+                            ? `
+DISABLE_SSH=true`
                             : ""
                     }
 EOF
@@ -180,6 +203,9 @@ sudo systemctl enable --now newt`
   --set-string newtInstances[0].auth.existingSecretName="newt-main-tunnel-auth"${acceptClientsHelmValue}`
             ]
         },
+        advantech: {
+            Documentation: []
+        },
         podman: {
             "Podman Quadlet": [
                 `[Unit]
@@ -205,7 +231,7 @@ WantedBy=default.target`
         },
         nixos: {
             Flake: [
-                `nix run 'nixpkgs#fosrl-newt' -- --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
+                `${runAsRootPrefix}nix run 'nixpkgs#fosrl-newt' -- --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}${disableSshFlag}`
             ]
         }
     };
@@ -257,45 +283,87 @@ WantedBy=default.target`
                     className="mt-4"
                 />
 
-                <div className="pt-4">
-                    <p className="font-semibold mb-3">
-                        {t("siteConfiguration")}
-                    </p>
-                    <div className="flex items-center space-x-2 mb-2">
-                        <CheckboxWithLabel
-                            id="acceptClients"
-                            aria-describedby="acceptClients-desc"
-                            checked={acceptClients}
-                            onCheckedChange={(checked) => {
-                                const value = checked as boolean;
-                                setAcceptClients(value);
-                            }}
-                            label={t("siteAcceptClientConnections")}
-                        />
+                {showSiteConfiguration && (
+                    <div className="pt-4">
+                        <p className="font-semibold mb-3">
+                            {t("siteConfiguration")}
+                        </p>
+                        <div className="flex items-center space-x-2 mb-2">
+                            <CheckboxWithLabel
+                                id="acceptClients"
+                                aria-describedby="acceptClients-desc"
+                                checked={acceptClients}
+                                onCheckedChange={(checked) => {
+                                    const value = checked as boolean;
+                                    setAcceptClients(value);
+                                }}
+                                label={t("siteAcceptClientConnections")}
+                            />
+                        </div>
+                        <p
+                            id="acceptClients-desc"
+                            className="text-sm text-muted-foreground"
+                        >
+                            {t("siteAcceptClientConnectionsDescription")}
+                        </p>
+                        {supportsSshOption && (
+                            <>
+                                <div className="flex items-center space-x-2 mb-2 mt-2">
+                                    <CheckboxWithLabel
+                                        id="allowPangolinSsh"
+                                        checked={allowPangolinSsh}
+                                        onCheckedChange={(checked) => {
+                                            const value = checked as boolean;
+                                            setAllowPangolinSsh(value);
+                                        }}
+                                        label="Allow Pangolin SSH"
+                                    />
+                                </div>
+                                <p
+                                    id="allowPangolinSsh-desc"
+                                    className="text-sm text-muted-foreground"
+                                >
+                                    {t("sitePangolinSshDescription")}
+                                </p>
+                            </>
+                        )}
                     </div>
-                    <p
-                        id="acceptClients-desc"
-                        className="text-sm text-muted-foreground"
-                    >
-                        {t("siteAcceptClientConnectionsDescription")}
-                    </p>
-                </div>
+                )}
 
                 <div className="pt-4">
                     <p className="font-semibold mb-3">{t("commands")}</p>
                     {platform === "kubernetes" && (
                         <p className="text-sm text-muted-foreground mb-3">
-                            For more and up to date Kubernetes installation
-                            information, see{" "}
-                            <a
-                                href="https://docs.pangolin.net/manage/sites/install-kubernetes"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="underline"
-                            >
-                                docs.pangolin.net/manage/sites/install-kubernetes
-                            </a>
-                            .
+                            {t.rich("siteInstallKubernetesDocsDescription", {
+                                docsLink: (chunks) => (
+                                    <a
+                                        href="https://docs.pangolin.net/manage/sites/install-kubernetes"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline inline-flex items-center gap-1"
+                                    >
+                                        {chunks}
+                                        <ExternalLink className="size-3.5 shrink-0" />
+                                    </a>
+                                )
+                            })}
+                        </p>
+                    )}
+                    {platform === "advantech" && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                            {t.rich("siteInstallAdvantechDocsDescription", {
+                                docsLink: (chunks) => (
+                                    <a
+                                        href="https://docs.pangolin.net/manage/sites/install-advantech"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline inline-flex items-center gap-1"
+                                    >
+                                        {chunks}
+                                        <ExternalLink className="size-3.5 shrink-0" />
+                                    </a>
+                                )
+                            })}
                         </p>
                     )}
                     <div className="mt-2 space-y-3">
@@ -342,6 +410,8 @@ function getPlatformIcon(platformName: Platform) {
             return <FaDocker className="h-4 w-4 mr-2" />;
         case "kubernetes":
             return <SiKubernetes className="h-4 w-4 mr-2" />;
+        case "advantech":
+            return <FaHdd className="h-4 w-4 mr-2" />;
         case "podman":
             return <FaCubes className="h-4 w-4 mr-2" />;
         case "nixos":
@@ -363,6 +433,8 @@ function getPlatformName(platformName: Platform) {
             return "Docker";
         case "kubernetes":
             return "Kubernetes";
+        case "advantech":
+            return "Advantech";
         case "podman":
             return "Podman";
         case "nixos":
@@ -384,6 +456,8 @@ function getArchitectures(platform: Platform) {
             return ["Docker Compose", "Docker Run"];
         case "kubernetes":
             return ["Helm Chart"];
+        case "advantech":
+            return ["Documentation"];
         case "podman":
             return ["Podman Quadlet", "Podman Run"];
         case "nixos":

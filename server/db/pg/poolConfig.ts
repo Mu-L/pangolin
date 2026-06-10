@@ -1,5 +1,4 @@
 import { Pool, PoolConfig } from "pg";
-import logger from "@server/logger";
 
 export function createPoolConfig(
     connectionString: string,
@@ -27,7 +26,7 @@ export function attachPoolErrorHandlers(pool: Pool, label: string): void {
     pool.on("error", (err) => {
         // This catches errors on idle clients in the pool. Without this
         // handler an unexpected disconnect would crash the process.
-        logger.error(
+        console.error(
             `Unexpected error on idle ${label} database client: ${err.message}`
         );
     });
@@ -36,7 +35,7 @@ export function attachPoolErrorHandlers(pool: Pool, label: string): void {
         // Set a statement timeout on every new connection so a single slow
         // query can't block the pool forever
         client.query("SET statement_timeout = '30s'").catch((err: Error) => {
-            logger.warn(
+            console.warn(
                 `Failed to set statement_timeout on ${label} client: ${err.message}`
             );
         });

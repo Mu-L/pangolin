@@ -120,7 +120,7 @@ export function ColumnMultiFilterButton({
                                     }}
                                     className="text-muted-foreground"
                                 >
-                                    {t("accessUsersRoleFilterClear")}
+                                    {t("accessFilterClear")}
                                 </CommandItem>
                             )}
                             {options.map((option) => (
@@ -130,6 +130,7 @@ export function ColumnMultiFilterButton({
                                     onSelect={() => {
                                         toggle(option.value);
                                     }}
+                                    className="break-all"
                                 >
                                     <Checkbox
                                         className="pointer-events-none shrink-0"

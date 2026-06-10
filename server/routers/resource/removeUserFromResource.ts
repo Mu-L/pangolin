@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, resources } from "@server/db";
-import { userResources } from "@server/db";
+import { userResources, userPolicies } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -46,7 +46,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -103,34 +103,70 @@ export async function removeUserFromResource(
             );
         }
 
-        // Check if user exists in resource
-        const existingEntry = await db
-            .select()
-            .from(userResources)
-            .where(
-                and(
-                    eq(userResources.resourceId, resourceId),
-                    eq(userResources.userId, userId)
-                )
-            );
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
 
-        if (existingEntry.length === 0) {
-            return next(
-                createHttpError(
-                    HttpCode.NOT_FOUND,
-                    "User not found in resource"
-                )
-            );
+        if (isInlinePolicy) {
+            const policyId = resource.defaultResourcePolicyId!;
+
+            const existingEntry = await db
+                .select()
+                .from(userPolicies)
+                .where(
+                    and(
+                        eq(userPolicies.resourcePolicyId, policyId),
+                        eq(userPolicies.userId, userId)
+                    )
+                );
+
+            if (existingEntry.length === 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        "User not found in resource"
+                    )
+                );
+            }
+
+            await db
+                .delete(userPolicies)
+                .where(
+                    and(
+                        eq(userPolicies.resourcePolicyId, policyId),
+                        eq(userPolicies.userId, userId)
+                    )
+                );
+        } else {
+            // Check if user exists in resource
+            const existingEntry = await db
+                .select()
+                .from(userResources)
+                .where(
+                    and(
+                        eq(userResources.resourceId, resourceId),
+                        eq(userResources.userId, userId)
+                    )
+                );
+
+            if (existingEntry.length === 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        "User not found in resource"
+                    )
+                );
+            }
+
+            await db
+                .delete(userResources)
+                .where(
+                    and(
+                        eq(userResources.resourceId, resourceId),
+                        eq(userResources.userId, userId)
+                    )
+                );
         }
-
-        await db
-            .delete(userResources)
-            .where(
-                and(
-                    eq(userResources.resourceId, resourceId),
-                    eq(userResources.userId, userId)
-                )
-            );
 
         return response(res, {
             data: {},

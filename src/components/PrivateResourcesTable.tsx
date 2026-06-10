@@ -2,9 +2,17 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
+import CreatePrivateResourceDialog from "@app/components/CreatePrivateResourceDialog";
+import EditPrivateResourceDialog from "@app/components/EditPrivateResourceDialog";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
+import {
+    ResourceSitesStatusCell,
+    type ResourceSiteRow
+} from "@app/components/ResourceSitesStatusCell";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -18,53 +26,35 @@ import {
     PopoverTrigger
 } from "@app/components/ui/popover";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { cn } from "@app/lib/cn";
+import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
+import { formatSiteResourceDestinationDisplay } from "@app/lib/formatSiteResourceAccess";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
+import { build } from "@server/build";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
     ArrowUp10Icon,
     ArrowUpDown,
-    ArrowUpRight,
-    ChevronDown,
     ChevronsUpDownIcon,
     Funnel,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Selectedsite, SitesSelector } from "@app/components/site-selector";
-import {
-    startTransition,
-    useEffect,
-    useMemo,
-    useState,
-    useTransition
-} from "react";
-import CreatePrivateResourceDialog from "@app/components/CreatePrivateResourceDialog";
-import EditPrivateResourceDialog from "@app/components/EditPrivateResourceDialog";
-import type { PaginationState } from "@tanstack/react-table";
-import { ControlledDataTable } from "./ui/controlled-data-table";
-import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { startTransition, useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { ColumnFilterButton } from "./ColumnFilterButton";
-import { cn } from "@app/lib/cn";
-import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
-import { formatSiteResourceDestinationDisplay } from "@app/lib/formatSiteResourceAccess";
-import {
-    ResourceSitesStatusCell,
-    type ResourceSiteRow
-} from "@app/components/ResourceSitesStatusCell";
-import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
-import { build } from "@server/build";
-import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { type SelectedLabel } from "./labels-selector";
-import { LabelsTableCell } from "./LabelsTableCell";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
-import { useLocalLabels } from "@app/hooks/useLocalLabels";
-import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
+import { LabelsTableCell } from "./LabelsTableCell";
+import { ControlledDataTable } from "./ui/controlled-data-table";
+import { SitesColumnFilterButton } from "./SitesColumnFilterButton";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
@@ -157,7 +147,6 @@ export default function PrivateResourcesTable({
     const [editingResource, setEditingResource] =
         useState<InternalResourceRow | null>();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
 
     const [isRefreshing, startRefreshTransition] = useTransition();
 
@@ -170,22 +159,6 @@ export default function PrivateResourcesTable({
     //     }, 30_000);
     //     return () => clearInterval(interval);
     // }, [router]);
-
-    const siteIdQ = searchParams.get("siteId");
-    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
-    const selectedSite: Selectedsite | null = useMemo(() => {
-        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
-            return null;
-        }
-        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
-            return initialFilterSite;
-        }
-        return {
-            siteId: siteIdNum,
-            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
-            type: "newt"
-        };
-    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
 
     const refreshData = () => {
         startRefreshTransition(() => {
@@ -280,58 +253,27 @@ export default function PrivateResourcesTable({
                 accessorFn: (row) =>
                     row.sites.map((s) => s.siteName).join(", "),
                 friendlyName: t("sites"),
-                header: () => (
-                    <Popover
-                        open={siteFilterOpen}
-                        onOpenChange={setSiteFilterOpen}
-                    >
-                        <PopoverTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                role="combobox"
-                                className={cn(
-                                    "justify-between text-sm h-8 px-2 w-full p-3",
-                                    !selectedSite && "text-muted-foreground"
-                                )}
-                            >
-                                <div className="flex items-center gap-2 min-w-0">
-                                    {t("sites")}
-                                    <Funnel className="size-4 flex-none" />
-                                    {selectedSite && (
-                                        <Badge
-                                            className="truncate max-w-[10rem]"
-                                            variant="secondary"
-                                        >
-                                            {selectedSite.name}
-                                        </Badge>
-                                    )}
-                                </div>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                            className={dataTableFilterPopoverContentClassName}
-                            align="start"
-                        >
-                            <div className="border-b p-1">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-full justify-start font-normal"
-                                    onClick={clearSiteFilter}
-                                >
-                                    {t("standaloneHcFilterAnySite")}
-                                </Button>
-                            </div>
-                            <SitesSelector
-                                orgId={orgId}
-                                selectedSite={selectedSite}
-                                onSelectSite={onPickSite}
-                            />
-                        </PopoverContent>
-                    </Popover>
-                ),
+                header: () => {
+                    const siteIdQ = searchParams.get("siteId");
+                    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+
+                    const selectedSiteId =
+                        !siteIdQ ||
+                        !Number.isInteger(siteIdNum) ||
+                        siteIdNum <= 0
+                            ? null
+                            : siteIdNum;
+
+                    return (
+                        <SitesColumnFilterButton
+                            selectedSiteId={selectedSiteId}
+                            onValueChange={(value) =>
+                                handleFilterChange("siteId", value?.toString())
+                            }
+                            orgId={orgId}
+                        />
+                    );
+                },
                 cell: ({ row }) => {
                     const resourceRow = row.original;
                     return (
@@ -421,7 +363,7 @@ export default function PrivateResourcesTable({
                 ),
                 cell: ({ row }) => {
                     const resourceRow = row.original;
-                    if (resourceRow.mode === "host" && resourceRow.alias) {
+                    if (resourceRow.alias) {
                         return (
                             <CopyToClipboard
                                 text={resourceRow.alias}
@@ -580,16 +522,6 @@ export default function PrivateResourcesTable({
             searchParams
         });
     }
-
-    const clearSiteFilter = () => {
-        handleFilterChange("siteId", undefined);
-        setSiteFilterOpen(false);
-    };
-
-    const onPickSite = (site: Selectedsite) => {
-        handleFilterChange("siteId", String(site.siteId));
-        setSiteFilterOpen(false);
-    };
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
