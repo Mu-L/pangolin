@@ -455,7 +455,7 @@ export default function GeneralForm() {
                                         )}
                                         { !["tcp", "udp"].includes(
                                                 resource.mode
-                                            ) && (
+                                            ) && !env.flags.disableEnterpriseFeatures && (
                                             <>
                                                 <SettingsFormCell span="full">
                                                     <SettingsSubsectionHeader>
