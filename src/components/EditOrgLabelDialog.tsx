@@ -1,8 +1,10 @@
 "use client";
 
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
@@ -18,6 +20,7 @@ import {
     CredenzaTitle
 } from "./Credenza";
 import { OrgLabelForm } from "./OrgLabelForm";
+import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { Button } from "./ui/button";
 
 export type EditOrgLabelDialogProps = {
@@ -41,6 +44,8 @@ export function EditOrgLabelDialog({
 }: EditOrgLabelDialogProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
+    const { isPaidUser } = usePaidStatus();
+    const canManageLabels = isPaidUser(tierMatrix.labels);
     const [isSubmitting, startTransition] = useTransition();
 
     async function editOrgLabel(data: { name: string; color: string }) {
@@ -85,9 +90,12 @@ export function EditOrgLabelDialog({
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
+                    <PaidFeaturesAlert tiers={tierMatrix.labels} />
                     <OrgLabelForm
+                        disabled={!canManageLabels}
                         defaultValue={label}
                         onSubmit={(data) => {
+                            if (!canManageLabels) return;
                             startTransition(async () => editOrgLabel(data));
                         }}
                     />
@@ -105,7 +113,7 @@ export function EditOrgLabelDialog({
                     <Button
                         type="submit"
                         form="org-label-form"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !canManageLabels}
                         loading={isSubmitting}
                     >
                         {t("labelEdit")}

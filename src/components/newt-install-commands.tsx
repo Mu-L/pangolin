@@ -354,7 +354,7 @@ WantedBy=default.target`
                             {t.rich("siteInstallAdvantechDocsDescription", {
                                 docsLink: (chunks) => (
                                     <a
-                                        href="https://docs.pangolin.net/manage/sites/install-advantech"
+                                        href="https://docs.pangolin.net/manage/sites/install-site"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-primary hover:underline inline-flex items-center gap-1"

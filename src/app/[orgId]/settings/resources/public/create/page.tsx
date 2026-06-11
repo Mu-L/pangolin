@@ -80,7 +80,6 @@ import { toASCII } from "punycode";
 import {
     useMemo,
     useState,
-    useTransition,
     useEffect
 } from "react";
 import { useForm, type Resolver } from "react-hook-form";
@@ -229,7 +228,7 @@ export default function Page() {
     >([]);
     const [loadingExitNodes, setLoadingExitNodes] = useState(build === "saas");
 
-    const [createLoading, startTransition] = useTransition();
+    const [createLoading, setCreateLoading] = useState(false);
     const [showSnippets, setShowSnippets] = useState(false);
     const [niceId, setNiceId] = useState<string>("");
 
@@ -461,6 +460,7 @@ export default function Page() {
     };
 
     async function onSubmit() {
+        setCreateLoading(true);
         const baseData = baseForm.getValues();
 
         try {
@@ -707,6 +707,8 @@ export default function Page() {
                     t("resourceErrorCreateMessageDescription")
                 )
             });
+        } finally {
+            setCreateLoading(false);
         }
     }
 
@@ -1097,7 +1099,7 @@ export default function Page() {
                                                                     "sshDaemonDisclaimer"
                                                                 )}{" "}
                                                                 <a
-                                                                    href="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                    href="https://docs.pangolin.net/manage/ssh"
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="text-primary hover:underline inline-flex items-center gap-1"
@@ -1235,7 +1237,7 @@ export default function Page() {
                                                                 sitesField="selectedSites"
                                                                 destinationField="destination"
                                                                 destinationPortField="destinationPort"
-                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh#site-and-host-configuration"
                                                                 defaultPort={22}
                                                             />
                                                         </Form>
@@ -1256,7 +1258,7 @@ export default function Page() {
                                                                 siteField="selectedSite"
                                                                 destinationField="destination"
                                                                 destinationPortField="destinationPort"
-                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh#site-and-host-configuration"
                                                                 defaultPort={22}
                                                             />
                                                         </Form>
@@ -1306,7 +1308,7 @@ export default function Page() {
                                                     sitesField="selectedSites"
                                                     destinationField="destination"
                                                     destinationPortField="destinationPort"
-                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp#site-and-host-configuration"
                                                     defaultPort={3389}
                                                 />
                                             </Form>
@@ -1353,7 +1355,7 @@ export default function Page() {
                                                     sitesField="selectedSites"
                                                     destinationField="destination"
                                                     destinationPortField="destinationPort"
-                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc#site-and-host-configuration"
                                                     defaultPort={5900}
                                                 />
                                             </Form>
@@ -1427,7 +1429,7 @@ export default function Page() {
                                         }
                                     }}
                                     loading={createLoading}
-                                    disabled={!areAllTargetsValid() || browserGatewayDisabled}
+                                    disabled={!areAllTargetsValid() || browserGatewayDisabled || createLoading}
                                 >
                                     {t("resourceCreate")}
                                 </Button>

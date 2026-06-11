@@ -8,13 +8,14 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 
 import { orgQueries } from "@app/lib/queries";
 import { build } from "@server/build";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { useQuery } from "@tanstack/react-query";
 
 import { useMemo } from "react";
 import { EditPolicyNameSectionForm } from "./EditPolicyNameSectionForm";
 import { PolicyAuthStackSection } from "./PolicyAuthStackSection";
 import { PolicyAccessRulesSection } from "./PolicyAccessRulesSection";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 
 export type EditPolicyFormSection = "general" | "authentication" | "rules";
 
@@ -71,13 +72,17 @@ export function EditPolicyForm({
         return <></>;
     }
 
+    const policyTiers = tierMatrix[TierFeature.ResourcePolicies];
+    const isDisabled = !isPaidUser(policyTiers);
+    const effectiveReadonly = readonly || isDisabled;
+
     const authSection = (
         <PolicyAuthStackSection
             mode="edit"
             orgId={org.org.orgId}
             allIdps={allIdps}
             emailEnabled={env.email.emailEnabled}
-            readonly={readonly}
+            readonly={effectiveReadonly}
             resourceId={resourceId}
         />
     );
@@ -87,32 +92,82 @@ export function EditPolicyForm({
             mode="edit"
             isMaxmindAvailable={isMaxmindAvailable}
             isMaxmindAsnAvailable={isMaxmindASNAvailable}
-            readonly={readonly}
+            readonly={effectiveReadonly}
             resourceId={resourceId}
         />
     );
 
     if (section === "general") {
-        return <EditPolicyNameSectionForm readonly={readonly} />;
+        return (
+            <>
+                <PaidFeaturesAlert tiers={policyTiers} />
+                <div
+                    className={
+                        isDisabled
+                            ? "pointer-events-none opacity-50"
+                            : undefined
+                    }
+                >
+                    <EditPolicyNameSectionForm readonly={effectiveReadonly} />
+                </div>
+            </>
+        );
     }
 
     if (section === "authentication") {
-        return authSection;
+        return (
+            <>
+                <PaidFeaturesAlert tiers={policyTiers} />
+                <div
+                    className={
+                        isDisabled
+                            ? "pointer-events-none opacity-50"
+                            : undefined
+                    }
+                >
+                    {authSection}
+                </div>
+            </>
+        );
     }
 
     if (section === "rules") {
-        return rulesSection;
+        return (
+            <>
+                <PaidFeaturesAlert tiers={policyTiers} />
+                <div
+                    className={
+                        isDisabled
+                            ? "pointer-events-none opacity-50"
+                            : undefined
+                    }
+                >
+                    {rulesSection}
+                </div>
+            </>
+        );
     }
 
     return (
-        <SettingsContainer>
-            {!hidePolicyNameForm && !isOverlay && (
-                <EditPolicyNameSectionForm readonly={readonly} />
-            )}
+        <>
+            <PaidFeaturesAlert tiers={policyTiers} />
+            <div
+                className={
+                    isDisabled ? "pointer-events-none opacity-50" : undefined
+                }
+            >
+                <SettingsContainer>
+                    {!hidePolicyNameForm && !isOverlay && (
+                        <EditPolicyNameSectionForm
+                            readonly={effectiveReadonly}
+                        />
+                    )}
 
-            {authSection}
+                    {authSection}
 
-            {rulesSection}
-        </SettingsContainer>
+                    {rulesSection}
+                </SettingsContainer>
+            </div>
+        </>
     );
 }
