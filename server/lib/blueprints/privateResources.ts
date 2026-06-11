@@ -415,7 +415,11 @@ export async function updatePrivateResources(
         } else {
             let aliasAddress: string | null = null;
             let releaseAliasLock: (() => Promise<void>) | null = null;
-            if (resourceData.mode === "host" || resourceData.mode === "http") {
+            if (
+                resourceData.mode === "host" ||
+                resourceData.mode === "http" ||
+                resourceData.mode === "ssh"
+            ) {
                 const { value, release } = await getNextAvailableAliasAddress(
                     orgId,
                     trx

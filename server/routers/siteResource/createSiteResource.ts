@@ -445,7 +445,7 @@ export async function createSiteResource(
 
         let aliasAddress: string | null = null;
         let releaseAliasLock: (() => Promise<void>) | null = null;
-        if (mode === "host" || mode === "http") {
+        if (mode === "host" || mode === "http" || mode === "ssh") {
             const { value, release } =
                 await getNextAvailableAliasAddress(orgId);
             aliasAddress = value;
