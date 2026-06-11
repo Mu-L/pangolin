@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, Org } from "@server/db";
+import { db, Org, primaryDb } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -635,9 +635,7 @@ export async function validateOidcCallback(
                 }
             });
 
-            db.transaction(async (trx) => {
-                await calculateUserClientsForOrgs(userId!, trx);
-            }).catch((err) => {
+            calculateUserClientsForOrgs(userId!, primaryDb).catch((err) => {
                 logger.error(
                     "Error calculating user clients after syncing orgs and roles for OIDC user",
                     { error: err }
