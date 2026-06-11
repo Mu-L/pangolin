@@ -20,6 +20,7 @@ import {
 } from "react-icons/fa";
 import { ExternalLink } from "lucide-react";
 import { SiKubernetes, SiNixos } from "react-icons/si";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 
 export type CommandItem = string | { title: string; command: string };
 
@@ -50,9 +51,12 @@ export function NewtSiteInstallCommands({
     version = "latest"
 }: NewtSiteInstallCommandsProps) {
     const t = useTranslations();
+    const { env } = useEnvContext();
 
     const [acceptClients, setAcceptClients] = useState(true);
-    const [allowPangolinSsh, setAllowPangolinSsh] = useState(true);
+    const [allowPangolinSsh, setAllowPangolinSsh] = useState(
+        !env.flags.disableEnterpriseFeatures
+    );
     const [platform, setPlatform] = useState<Platform>("linux");
     const [architecture, setArchitecture] = useState(
         () => getArchitectures(platform)[0]
@@ -71,7 +75,11 @@ export function NewtSiteInstallCommands({
         : "";
 
     const disableSshFlag =
-        supportsSshOption && !allowPangolinSsh ? " --disable-ssh" : "";
+        supportsSshOption &&
+        !allowPangolinSsh &&
+        !env.flags.disableEnterpriseFeatures
+            ? " --disable-ssh"
+            : "";
     const runAsRootPrefix =
         supportsSshOption && allowPangolinSsh ? "sudo " : "";
 
@@ -306,27 +314,29 @@ WantedBy=default.target`
                         >
                             {t("siteAcceptClientConnectionsDescription")}
                         </p>
-                        {supportsSshOption && (
-                            <>
-                                <div className="flex items-center space-x-2 mb-2 mt-2">
-                                    <CheckboxWithLabel
-                                        id="allowPangolinSsh"
-                                        checked={allowPangolinSsh}
-                                        onCheckedChange={(checked) => {
-                                            const value = checked as boolean;
-                                            setAllowPangolinSsh(value);
-                                        }}
-                                        label="Allow Pangolin SSH"
-                                    />
-                                </div>
-                                <p
-                                    id="allowPangolinSsh-desc"
-                                    className="text-sm text-muted-foreground"
-                                >
-                                    {t("sitePangolinSshDescription")}
-                                </p>
-                            </>
-                        )}
+                        {supportsSshOption &&
+                            !env.flags.disableEnterpriseFeatures && (
+                                <>
+                                    <div className="flex items-center space-x-2 mb-2 mt-2">
+                                        <CheckboxWithLabel
+                                            id="allowPangolinSsh"
+                                            checked={allowPangolinSsh}
+                                            onCheckedChange={(checked) => {
+                                                const value =
+                                                    checked as boolean;
+                                                setAllowPangolinSsh(value);
+                                            }}
+                                            label="Allow Pangolin SSH"
+                                        />
+                                    </div>
+                                    <p
+                                        id="allowPangolinSsh-desc"
+                                        className="text-sm text-muted-foreground"
+                                    >
+                                        {t("sitePangolinSshDescription")}
+                                    </p>
+                                </>
+                            )}
                     </div>
                 )}
 

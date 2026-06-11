@@ -228,7 +228,7 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
-            UPDATE 'siteResources' SET 'destination2' = 'destination';
+            UPDATE 'siteResources' SET "destination2" = "destination";
                 `
             ).run();
             db.prepare(
@@ -349,9 +349,9 @@ export default async function migration() {
             db.prepare(
                 `
             UPDATE 'targets'
-            SET 'mode' = (
-                SELECT 'mode' FROM 'resources'
-                WHERE 'resources'.'resourceId' = 'targets'.'resourceId'
+            SET "mode" = (
+                SELECT "mode" FROM 'resources'
+                WHERE "resources"."resourceId" = "targets"."resourceId"
             );
                 `
             ).run();

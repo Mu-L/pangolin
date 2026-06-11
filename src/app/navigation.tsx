@@ -156,10 +156,11 @@ export const orgNavSections = (
                   ]
                 : []),
             // PaidFeaturesAlert
-            ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||
-            build === "saas" ||
-            env?.app.identityProviderMode === "org" ||
-            (env?.app.identityProviderMode === undefined && build !== "oss")
+            ...(!env?.flags.disableEnterpriseFeatures &&
+            (build === "saas" ||
+                env?.app.identityProviderMode === "org" ||
+                (env?.app.identityProviderMode === undefined &&
+                    build !== "oss"))
                 ? [
                       {
                           title: "sidebarIdentityProviders",
