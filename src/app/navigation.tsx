@@ -259,7 +259,7 @@ export const orgNavSections = (
                         href: "/{orgId}/settings/api-keys",
                         icon: <KeyRound className="size-4 flex-none" />
                     },
-                    ...(build !== "oss"
+                    ...(!env?.flags.disableEnterpriseFeatures
                         ? [
                               {
                                   title: "labels",

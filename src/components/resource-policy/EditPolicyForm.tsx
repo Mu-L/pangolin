@@ -73,7 +73,9 @@ export function EditPolicyForm({
     }
 
     const policyTiers = tierMatrix[TierFeature.ResourcePolicies];
-    const isDisabled = !isPaidUser(policyTiers);
+    const isInlinePolicy = hidePolicyNameForm && resourceId === undefined;
+    const showPaidAlert = !isInlinePolicy;
+    const isDisabled = showPaidAlert && !isPaidUser(policyTiers);
     const effectiveReadonly = readonly || isDisabled;
 
     const authSection = (
@@ -100,7 +102,7 @@ export function EditPolicyForm({
     if (section === "general") {
         return (
             <>
-                <PaidFeaturesAlert tiers={policyTiers} />
+                {showPaidAlert && <PaidFeaturesAlert tiers={policyTiers} />}
                 <div
                     className={
                         isDisabled
@@ -117,7 +119,7 @@ export function EditPolicyForm({
     if (section === "authentication") {
         return (
             <>
-                <PaidFeaturesAlert tiers={policyTiers} />
+                {showPaidAlert && <PaidFeaturesAlert tiers={policyTiers} />}
                 <div
                     className={
                         isDisabled
@@ -134,7 +136,7 @@ export function EditPolicyForm({
     if (section === "rules") {
         return (
             <>
-                <PaidFeaturesAlert tiers={policyTiers} />
+                {showPaidAlert && <PaidFeaturesAlert tiers={policyTiers} />}
                 <div
                     className={
                         isDisabled
@@ -150,7 +152,7 @@ export function EditPolicyForm({
 
     return (
         <>
-            <PaidFeaturesAlert tiers={policyTiers} />
+            {showPaidAlert && <PaidFeaturesAlert tiers={policyTiers} />}
             <div
                 className={
                     isDisabled ? "pointer-events-none opacity-50" : undefined
