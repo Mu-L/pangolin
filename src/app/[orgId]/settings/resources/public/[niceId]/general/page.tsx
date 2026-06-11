@@ -19,14 +19,14 @@ import {
     SettingsSectionBody,
     SettingsSectionDescription,
     SettingsSectionFooter,
-    SettingsFormCell,
     SettingsFormGrid,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle,
     SettingsSubsectionDescription,
     SettingsSubsectionHeader,
-    SettingsSubsectionTitle
+    SettingsSubsectionTitle,
+    SettingsFormCell
 } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { useEnvContext } from "@app/hooks/useEnvContext";
@@ -70,7 +70,7 @@ export default function GeneralForm() {
 
     const api = createApiClient({ env });
 
-    const showResourcePolicy =
+    const hasResourcePolicies =
         build !== "oss" &&
         isPaidUser(tierMatrix[TierFeature.ResourcePolicies]);
 
@@ -86,7 +86,7 @@ export default function GeneralForm() {
         ...orgQueries.resourcePolicy({
             resourcePolicyId: selectedSharedPolicyId!
         }),
-        enabled: showResourcePolicy && selectedSharedPolicyId !== null
+        enabled: hasResourcePolicies && selectedSharedPolicyId !== null
     });
 
     const [resourceFullDomain, setResourceFullDomain] = useState(
@@ -153,11 +153,10 @@ export default function GeneralForm() {
 
         let resourcePolicyId: number | null | undefined;
 
-        if (
-            showResourcePolicy &&
-            !["tcp", "udp"].includes(resource.mode)
-        ) {
-            resourcePolicyId = selectedSharedPolicyId;
+        if (!["tcp", "udp"].includes(resource.mode)) {
+            if (hasResourcePolicies || selectedSharedPolicyId === null) {
+                resourcePolicyId = selectedSharedPolicyId;
+            }
         }
 
         const res = await api
@@ -295,28 +294,6 @@ export default function GeneralForm() {
                                                     </FormItem>
                                                 )}
                                             />
-                                        </SettingsFormCell>
-
-                                        <SettingsFormCell span="full">
-                                            <SettingsSubsectionHeader>
-                                                <SettingsSubsectionTitle>
-                                                    {t(
-                                                        "resourceGeneralDetailsSubsection"
-                                                    )}
-                                                </SettingsSubsectionTitle>
-                                                <SettingsSubsectionDescription>
-                                                    {t(
-                                                        [
-                                                            "tcp",
-                                                            "udp",
-                                                        ].includes(
-                                                            resource.mode
-                                                        )
-                                                            ? "resourceGeneralDetailsSubsectionPortDescription"
-                                                            : "resourceGeneralDetailsSubsectionDescription"
-                                                    )}
-                                                </SettingsSubsectionDescription>
-                                            </SettingsSubsectionHeader>
                                         </SettingsFormCell>
 
                                         <SettingsFormCell span="half">
@@ -476,8 +453,7 @@ export default function GeneralForm() {
                                                 </div>
                                             </SettingsFormCell>
                                         )}
-                                        {showResourcePolicy &&
-                                            !["tcp", "udp"].includes(
+                                        { !["tcp", "udp"].includes(
                                                 resource.mode
                                             ) && (
                                             <>
