@@ -1097,7 +1097,7 @@ export default function Page() {
                                                                     "sshDaemonDisclaimer"
                                                                 )}{" "}
                                                                 <a
-                                                                    href="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                    href="https://docs.pangolin.net/manage/ssh"
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="text-primary hover:underline inline-flex items-center gap-1"
@@ -1235,7 +1235,7 @@ export default function Page() {
                                                                 sitesField="selectedSites"
                                                                 destinationField="destination"
                                                                 destinationPortField="destinationPort"
-                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh#site-and-host-configuration"
                                                                 defaultPort={22}
                                                             />
                                                         </Form>
@@ -1256,7 +1256,7 @@ export default function Page() {
                                                                 siteField="selectedSite"
                                                                 destinationField="destination"
                                                                 destinationPortField="destinationPort"
-                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh#site-and-host-configuration"
                                                                 defaultPort={22}
                                                             />
                                                         </Form>
@@ -1306,7 +1306,7 @@ export default function Page() {
                                                     sitesField="selectedSites"
                                                     destinationField="destination"
                                                     destinationPortField="destinationPort"
-                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp#site-and-host-configuration"
                                                     defaultPort={3389}
                                                 />
                                             </Form>
@@ -1353,7 +1353,7 @@ export default function Page() {
                                                     sitesField="selectedSites"
                                                     destinationField="destination"
                                                     destinationPortField="destinationPort"
-                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc#site-and-host-configuration"
                                                     defaultPort={5900}
                                                 />
                                             </Form>
