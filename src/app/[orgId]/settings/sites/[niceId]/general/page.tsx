@@ -317,7 +317,7 @@ export default function GeneralPage() {
                                                             "siteAutoUpdateDescription"
                                                         )}{" "}
                                                         <a
-                                                            href="https://docs.pangolin.net/manage/sites/configure-site#auto-update"
+                                                            href="https://docs.pangolin.net/manage/sites/auto-update"
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="text-primary hover:underline inline-flex items-center gap-1"

@@ -222,7 +222,7 @@ export function BrowserGatewayTargetForm<T extends FieldValues>(
                     <a
                         href={
                             props.learnMoreHref ??
-                            "https://docs.pangolin.net/manage/resources/public/ssh"
+                            "https://docs.pangolin.net/manage/resources/private/multi-site-routing"
                         }
                         target="_blank"
                         rel="noopener noreferrer"

@@ -229,7 +229,7 @@ function RdpServerForm({
                                 sitesField="selectedSites"
                                 destinationField="destination"
                                 destinationPortField="destinationPort"
-                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
+                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp#site-and-host-configuration"
                                 defaultPort={3389}
                             />
                         </SettingsSectionForm>
