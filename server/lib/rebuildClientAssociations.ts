@@ -8,6 +8,7 @@ import {
     exitNodes,
     newts,
     olms,
+    primaryDb,
     roleSiteResources,
     Site,
     SiteResource,
@@ -40,6 +41,7 @@ import {
     removeTargets as removeSubnetProxyTargets
 } from "@server/routers/client/targets";
 import { lockManager } from "#dynamic/lib/lock";
+import { rebuildQueue } from "#dynamic/lib/rebuildQueue";
 
 // TTL for rebuild-association locks. These functions can fan out into many
 // peer/proxy updates, so give them a generous window.
@@ -167,11 +169,32 @@ export async function rebuildClientAssociationsFromSiteResource(
         subnet: string | null;
     }[];
 }> {
-    return await lockManager.withLock(
-        `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
-        () => rebuildClientAssociationsFromSiteResourceImpl(siteResource, trx),
-        REBUILD_ASSOCIATIONS_LOCK_TTL_MS
-    );
+    try {
+        return await lockManager.withLock(
+            `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
+            () =>
+                rebuildClientAssociationsFromSiteResourceImpl(
+                    siteResource,
+                    trx
+                ),
+            REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+        );
+    } catch (err: any) {
+        if (
+            typeof err?.message === "string" &&
+            err.message.startsWith("Failed to acquire lock")
+        ) {
+            logger.warn(
+                `rebuildClientAssociations: could not acquire lock for site resource ${siteResource.siteResourceId}, queuing for deferred processing`
+            );
+            await rebuildQueue.enqueue({
+                type: "site-resource",
+                id: siteResource.siteResourceId
+            });
+            return { mergedAllClients: [] };
+        }
+        throw err;
+    }
 }
 
 async function rebuildClientAssociationsFromSiteResourceImpl(
@@ -956,11 +979,28 @@ export async function rebuildClientAssociationsFromClient(
     client: Client,
     trx: Transaction | typeof db = db
 ): Promise<void> {
-    return await lockManager.withLock(
-        `rebuild-client-associations:client:${client.clientId}`,
-        () => rebuildClientAssociationsFromClientImpl(client, trx),
-        REBUILD_ASSOCIATIONS_LOCK_TTL_MS
-    );
+    try {
+        return await lockManager.withLock(
+            `rebuild-client-associations:client:${client.clientId}`,
+            () => rebuildClientAssociationsFromClientImpl(client, trx),
+            REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+        );
+    } catch (err: any) {
+        if (
+            typeof err?.message === "string" &&
+            err.message.startsWith("Failed to acquire lock")
+        ) {
+            logger.warn(
+                `rebuildClientAssociations: could not acquire lock for client ${client.clientId}, queuing for deferred processing`
+            );
+            await rebuildQueue.enqueue({
+                type: "client",
+                id: client.clientId
+            });
+            return;
+        }
+        throw err;
+    }
 }
 
 async function rebuildClientAssociationsFromClientImpl(
@@ -1905,4 +1945,48 @@ export async function cleanupSiteAssociations(
     });
 
     logger.debug(`cleanupSiteAssociations: DONE siteId=${siteId}`);
+}
+
+/**
+ * Start the background rebuild queue processor. This should be called once
+ * during server startup. Only one server instance at a time will actively
+ * consume the queue (enforced via a distributed Redis lock); all other
+ * instances will poll and wait until the lock becomes available.
+ */
+export function startRebuildQueueProcessor(): void {
+    rebuildQueue.startProcessing({
+        onSiteResource: async (siteResourceId: number) => {
+            const [siteResource] = await primaryDb
+                .select()
+                .from(siteResources)
+                .where(eq(siteResources.siteResourceId, siteResourceId));
+
+            if (!siteResource) {
+                logger.warn(
+                    `Rebuild queue: site resource ${siteResourceId} not found, skipping`
+                );
+                return;
+            }
+
+            await rebuildClientAssociationsFromSiteResource(
+                siteResource,
+                primaryDb
+            );
+        },
+        onClient: async (clientId: number) => {
+            const [client] = await primaryDb
+                .select()
+                .from(clients)
+                .where(eq(clients.clientId, clientId));
+
+            if (!client) {
+                logger.warn(
+                    `Rebuild queue: client ${clientId} not found, skipping`
+                );
+                return;
+            }
+
+            await rebuildClientAssociationsFromClient(client, primaryDb);
+        }
+    });
 }
