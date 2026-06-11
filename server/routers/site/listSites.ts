@@ -327,27 +327,6 @@ export async function listSites(
             );
         }
 
-        let accessibleSites;
-        if (req.user) {
-            accessibleSites = await db
-                .select({
-                    siteId: sql<number>`COALESCE(${userSites.siteId}, ${roleSites.siteId})`
-                })
-                .from(userSites)
-                .fullJoin(roleSites, eq(userSites.siteId, roleSites.siteId))
-                .where(
-                    or(
-                        eq(userSites.userId, req.user!.userId),
-                        inArray(roleSites.roleId, req.userOrgRoleIds!)
-                    )
-                );
-        } else {
-            accessibleSites = await db
-                .select({ siteId: sites.siteId })
-                .from(sites)
-                .where(eq(sites.orgId, orgId));
-        }
-
         const isLabelFeatureEnabled = await isLicensedOrSubscribed(
             orgId,
             tierMatrix.labels
@@ -364,14 +343,38 @@ export async function listSites(
             labels: labelFilter
         } = parsedQuery.data;
 
-        const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
+        const conditions = [eq(sites.orgId, orgId)];
 
-        const conditions = [
-            and(
-                inArray(sites.siteId, accessibleSiteIds),
-                eq(sites.orgId, orgId)
-            )
-        ];
+        if (req.user) {
+            const userAccessConditions = [
+                inArray(
+                    sites.siteId,
+                    db
+                        .select({ siteId: userSites.siteId })
+                        .from(userSites)
+                        .where(eq(userSites.userId, req.user.userId))
+                )
+            ];
+
+            const roleIds = req.userOrgRoleIds ?? [];
+            if (roleIds.length > 0) {
+                userAccessConditions.push(
+                    inArray(
+                        sites.siteId,
+                        db
+                            .select({ siteId: roleSites.siteId })
+                            .from(roleSites)
+                            .where(inArray(roleSites.roleId, roleIds))
+                    )
+                );
+            }
+
+            conditions.push(
+                userAccessConditions.length === 1
+                    ? userAccessConditions[0]
+                    : or(...userAccessConditions)!
+            );
+        }
 
         if (typeof online !== "undefined") {
             conditions.push(eq(sites.online, online));
@@ -418,17 +421,15 @@ export async function listSites(
                     )
                 );
             }
-            conditions.push(or(...queryList));
+            conditions.push(or(...queryList)!);
         }
 
         const baseQuery = querySitesBase().where(and(...conditions));
 
-        // we need to add `as` so that drizzle filters the result as a subquery
-        const countQuery = db.$count(
-            querySitesBase()
-                .where(and(...conditions))
-                .as("filtered_sites")
-        );
+        const countQuery = db
+            .select({ count: sql<number>`count(*)` })
+            .from(sites)
+            .where(and(...conditions));
 
         const siteListQuery = baseQuery
             .limit(pageSize)
@@ -441,10 +442,12 @@ export async function listSites(
                     : asc(sites.name)
             );
 
-        const [totalCount, rows] = await Promise.all([
+        const [countRows, rows] = await Promise.all([
             countQuery,
             siteListQuery
         ]);
+
+        const totalCount = Number(countRows[0]?.count ?? 0);
 
         // Get latest version asynchronously without blocking the response
         const latestNewtVersionPromise = getLatestNewtVersion();
