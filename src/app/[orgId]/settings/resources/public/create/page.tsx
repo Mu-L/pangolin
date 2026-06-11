@@ -80,7 +80,6 @@ import { toASCII } from "punycode";
 import {
     useMemo,
     useState,
-    useTransition,
     useEffect
 } from "react";
 import { useForm, type Resolver } from "react-hook-form";
@@ -229,7 +228,7 @@ export default function Page() {
     >([]);
     const [loadingExitNodes, setLoadingExitNodes] = useState(build === "saas");
 
-    const [createLoading, startTransition] = useTransition();
+    const [createLoading, setCreateLoading] = useState(false);
     const [showSnippets, setShowSnippets] = useState(false);
     const [niceId, setNiceId] = useState<string>("");
 
@@ -461,6 +460,7 @@ export default function Page() {
     };
 
     async function onSubmit() {
+        setCreateLoading(true);
         const baseData = baseForm.getValues();
 
         try {
@@ -707,6 +707,8 @@ export default function Page() {
                     t("resourceErrorCreateMessageDescription")
                 )
             });
+        } finally {
+            setCreateLoading(false);
         }
     }
 
@@ -1427,7 +1429,7 @@ export default function Page() {
                                         }
                                     }}
                                     loading={createLoading}
-                                    disabled={!areAllTargetsValid() || browserGatewayDisabled}
+                                    disabled={!areAllTargetsValid() || browserGatewayDisabled || createLoading}
                                 >
                                     {t("resourceCreate")}
                                 </Button>
