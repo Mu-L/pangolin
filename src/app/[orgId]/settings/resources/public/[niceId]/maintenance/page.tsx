@@ -169,20 +169,27 @@ export default function ResourceMaintenancePage() {
         {
             id: "automatic",
             title: `${t("automatic")} (${t("recommended")})`,
-            description: t("automaticModeDescription"),
-            disabled: isMaintenanceDisabled
+            description: t("automaticModeDescription")
         },
         {
             id: "forced",
             title: t("forced"),
-            description: t("forcedModeDescription"),
-            disabled: isMaintenanceDisabled
+            description: t("forcedModeDescription")
         }
     ];
 
     return (
-        <SettingsContainer>
-            <SettingsSection>
+        <>
+            <PaidFeaturesAlert tiers={tierMatrix.maintencePage} />
+            <div
+                className={
+                    isMaintenanceDisabled
+                        ? "pointer-events-none opacity-50"
+                        : undefined
+                }
+            >
+                <SettingsContainer>
+                    <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>
                         {t("maintenanceMode")}
@@ -193,7 +200,6 @@ export default function ResourceMaintenancePage() {
                 </SettingsSectionHeader>
 
                 <SettingsSectionBody>
-                    <PaidFeaturesAlert tiers={tierMatrix.maintencePage} />
                     <SettingsSectionForm variant="half">
                         <Form {...maintenanceForm}>
                             <form
@@ -205,46 +211,33 @@ export default function ResourceMaintenancePage() {
                                         <FormField
                                             control={maintenanceForm.control}
                                             name="maintenanceModeEnabled"
-                                            render={({ field }) => {
-                                                const isDisabled = !isPaidUser(
-                                                    tierMatrix.maintencePage
-                                                );
-
-                                                return (
-                                                    <FormItem>
-                                                        <FormControl>
-                                                            <SwitchInput
-                                                                id="enable-maintenance"
-                                                                checked={
-                                                                    field.value
-                                                                }
-                                                                label={t(
-                                                                    "enableMaintenanceMode"
-                                                                )}
-                                                                description={t(
-                                                                    "enableMaintenanceModeDescription"
-                                                                )}
-                                                                disabled={
-                                                                    isDisabled
-                                                                }
-                                                                onCheckedChange={(
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <SwitchInput
+                                                            id="enable-maintenance"
+                                                            checked={
+                                                                field.value
+                                                            }
+                                                            label={t(
+                                                                "enableMaintenanceMode"
+                                                            )}
+                                                            description={t(
+                                                                "enableMaintenanceModeDescription"
+                                                            )}
+                                                            onCheckedChange={(
+                                                                val
+                                                            ) => {
+                                                                maintenanceForm.setValue(
+                                                                    "maintenanceModeEnabled",
                                                                     val
-                                                                ) => {
-                                                                    if (
-                                                                        !isDisabled
-                                                                    ) {
-                                                                        maintenanceForm.setValue(
-                                                                            "maintenanceModeEnabled",
-                                                                            val
-                                                                        );
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                );
-                                            }}
+                                                                );
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
                                         />
                                     </SettingsFormCell>
 
@@ -329,11 +322,6 @@ export default function ResourceMaintenancePage() {
                                                             <FormControl>
                                                                 <Input
                                                                     {...field}
-                                                                    disabled={
-                                                                        !isPaidUser(
-                                                                            tierMatrix.maintencePage
-                                                                        )
-                                                                    }
                                                                     placeholder="We'll be back soon!"
                                                                 />
                                                             </FormControl>
@@ -365,11 +353,6 @@ export default function ResourceMaintenancePage() {
                                                                 <Textarea
                                                                     {...field}
                                                                     rows={4}
-                                                                    disabled={
-                                                                        !isPaidUser(
-                                                                            tierMatrix.maintencePage
-                                                                        )
-                                                                    }
                                                                     placeholder={t(
                                                                         "maintenancePageMessagePlaceholder"
                                                                     )}
@@ -402,11 +385,6 @@ export default function ResourceMaintenancePage() {
                                                             <FormControl>
                                                                 <Input
                                                                     {...field}
-                                                                    disabled={
-                                                                        !isPaidUser(
-                                                                            tierMatrix.maintencePage
-                                                                        )
-                                                                    }
                                                                     placeholder={t(
                                                                         "maintenanceTime"
                                                                     )}
@@ -430,20 +408,19 @@ export default function ResourceMaintenancePage() {
                     </SettingsSectionForm>
                 </SettingsSectionBody>
 
-                <SettingsSectionFooter>
-                    <Button
-                        type="submit"
-                        loading={maintenanceSaveLoading}
-                        disabled={
-                            maintenanceSaveLoading ||
-                            !isPaidUser(tierMatrix.maintencePage)
-                        }
-                        form="maintenance-settings-form"
-                    >
-                        {t("saveSettings")}
-                    </Button>
-                </SettingsSectionFooter>
-            </SettingsSection>
-        </SettingsContainer>
+                        <SettingsSectionFooter>
+                            <Button
+                                type="submit"
+                                loading={maintenanceSaveLoading}
+                                disabled={maintenanceSaveLoading}
+                                form="maintenance-settings-form"
+                            >
+                                {t("saveSettings")}
+                            </Button>
+                        </SettingsSectionFooter>
+                    </SettingsSection>
+                </SettingsContainer>
+            </div>
+        </>
     );
 }
