@@ -764,7 +764,7 @@ export default function Page() {
             ssh: "SSH",
             rdp: "RDP",
             vnc: "VNC",
-        }
+        };
     }
 
     const typeOptions: OptionSelectOption<NewResourceType>[] =
