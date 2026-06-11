@@ -75,7 +75,11 @@ export function NewtSiteInstallCommands({
         : "";
 
     const disableSshFlag =
-        supportsSshOption && !allowPangolinSsh ? " --disable-ssh" : "";
+        supportsSshOption &&
+        !allowPangolinSsh &&
+        !env.flags.disableEnterpriseFeatures
+            ? " --disable-ssh"
+            : "";
     const runAsRootPrefix =
         supportsSshOption && allowPangolinSsh ? "sudo " : "";
 
