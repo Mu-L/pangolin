@@ -124,21 +124,21 @@ export default function VncClient({
             authToken: target.authToken
         });
 
-        try {
-            const checkParams = new URLSearchParams(params);
-            checkParams.set("checkOnly", "1");
-            const response = await fetch(`${base}?${checkParams.toString()}`);
-            if (!response.ok) {
-                const detail = (await response.text()).trim();
-                setConnectError(detail || t("sshErrorConnectionClosed"));
-                setConnecting(false);
-                return;
-            }
-        } catch {
-            setConnectError(t("sshErrorWebSocket"));
-            setConnecting(false);
-            return;
-        }
+        // try {
+        //     const checkParams = new URLSearchParams(params);
+        //     checkParams.set("checkOnly", "1");
+        //     const response = await fetch(`${base}?${checkParams.toString()}`);
+        //     if (!response.ok) {
+        //         const detail = (await response.text()).trim();
+        //         setConnectError(detail || t("sshErrorConnectionClosed"));
+        //         setConnecting(false);
+        //         return;
+        //     }
+        // } catch {
+        //     setConnectError(t("sshErrorWebSocket"));
+        //     setConnecting(false);
+        //     return;
+        // }
 
         let RFB: new (
             target: HTMLElement,
