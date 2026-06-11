@@ -1,8 +1,23 @@
 import { z } from "zod";
+import { existsSync } from "node:fs";
 import { portRangeStringSchema } from "@server/lib/ip";
 import { MaintenanceSchema } from "#dynamic/lib/blueprints/MaintenanceSchema";
 import { isValidRegionId } from "@server/db/regions";
 import { wildcardSubdomainSchema } from "@server/lib/schemas";
+import config from "@server/lib/config";
+
+const maxmindDbPath = config.getRawConfig().server.maxmind_db_path;
+const maxmindAsnPath = config.getRawConfig().server.maxmind_asn_path;
+
+const hasMaxmindCountryDb =
+    typeof maxmindDbPath === "string" &&
+    maxmindDbPath.length > 0 &&
+    existsSync(maxmindDbPath);
+
+const hasMaxmindAsnDb =
+    typeof maxmindAsnPath === "string" &&
+    maxmindAsnPath.length > 0 &&
+    existsSync(maxmindAsnPath);
 
 export const SiteSchema = z.object({
     name: z.string().min(1).max(100),
@@ -117,6 +132,9 @@ export const RuleSchema = z
     .refine(
         (rule) => {
             if (rule.match === "country") {
+                if (!hasMaxmindCountryDb) {
+                    return false;
+                }
                 // Check if it's a valid 2-letter country code or "ALL"
                 return /^[A-Z]{2}$/.test(rule.value) || rule.value === "ALL";
             }
@@ -125,12 +143,15 @@ export const RuleSchema = z
         {
             path: ["value"],
             message:
-                "Value must be a 2-letter country code or 'ALL' when match is 'country'"
+                "Country rules require a valid existing server.maxmind_db_path and value must be a 2-letter country code or 'ALL'"
         }
     )
     .refine(
         (rule) => {
             if (rule.match === "asn") {
+                if (!hasMaxmindCountryDb || !hasMaxmindAsnDb) {
+                    return false;
+                }
                 // Check if it's either AS<number> format or "ALL"
                 const asNumberPattern = /^AS\d+$/i;
                 return asNumberPattern.test(rule.value) || rule.value === "ALL";
@@ -140,7 +161,7 @@ export const RuleSchema = z
         {
             path: ["value"],
             message:
-                "Value must be 'AS<number>' format or 'ALL' when match is 'asn'"
+                "ASN rules require valid existing server.maxmind_db_path and server.maxmind_asn_path, and value must be 'AS<number>' format or 'ALL'"
         }
     )
     .refine(

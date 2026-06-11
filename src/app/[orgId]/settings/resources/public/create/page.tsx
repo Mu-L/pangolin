@@ -73,19 +73,13 @@ import {
     ProxyResourceTargetsForm
 } from "@app/app/[orgId]/settings/resources/public/ProxyResourceTargetsForm";
 import { AxiosResponse } from "axios";
-import {
-    ChevronsUpDown,
-    ExternalLink,
-    SquareArrowOutUpRight
-} from "lucide-react";
+import { ChevronsUpDown, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII } from "punycode";
 import {
     useMemo,
     useState,
-    useTransition,
     useEffect
 } from "react";
 import { useForm, type Resolver } from "react-hook-form";
@@ -234,7 +228,7 @@ export default function Page() {
     >([]);
     const [loadingExitNodes, setLoadingExitNodes] = useState(build === "saas");
 
-    const [createLoading, startTransition] = useTransition();
+    const [createLoading, setCreateLoading] = useState(false);
     const [showSnippets, setShowSnippets] = useState(false);
     const [niceId, setNiceId] = useState<string>("");
 
@@ -466,6 +460,7 @@ export default function Page() {
     };
 
     async function onSubmit() {
+        setCreateLoading(true);
         const baseData = baseForm.getValues();
 
         try {
@@ -712,6 +707,8 @@ export default function Page() {
                     t("resourceErrorCreateMessageDescription")
                 )
             });
+        } finally {
+            setCreateLoading(false);
         }
     }
 
@@ -767,7 +764,7 @@ export default function Page() {
             ssh: "SSH",
             rdp: "RDP",
             vnc: "VNC",
-        }
+        };
     }
 
     const typeOptions: OptionSelectOption<NewResourceType>[] =
@@ -1102,7 +1099,7 @@ export default function Page() {
                                                                     "sshDaemonDisclaimer"
                                                                 )}{" "}
                                                                 <a
-                                                                    href="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                    href="https://docs.pangolin.net/manage/ssh"
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="text-primary hover:underline inline-flex items-center gap-1"
@@ -1240,7 +1237,7 @@ export default function Page() {
                                                                 sitesField="selectedSites"
                                                                 destinationField="destination"
                                                                 destinationPortField="destinationPort"
-                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh#site-and-host-configuration"
                                                                 defaultPort={22}
                                                             />
                                                         </Form>
@@ -1261,7 +1258,7 @@ export default function Page() {
                                                                 siteField="selectedSite"
                                                                 destinationField="destination"
                                                                 destinationPortField="destinationPort"
-                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh#site-and-host-configuration"
                                                                 defaultPort={22}
                                                             />
                                                         </Form>
@@ -1311,7 +1308,7 @@ export default function Page() {
                                                     sitesField="selectedSites"
                                                     destinationField="destination"
                                                     destinationPortField="destinationPort"
-                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp#site-and-host-configuration"
                                                     defaultPort={3389}
                                                 />
                                             </Form>
@@ -1358,7 +1355,7 @@ export default function Page() {
                                                     sitesField="selectedSites"
                                                     destinationField="destination"
                                                     destinationPortField="destinationPort"
-                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc#site-and-host-configuration"
                                                     defaultPort={5900}
                                                 />
                                             </Form>
@@ -1432,7 +1429,7 @@ export default function Page() {
                                         }
                                     }}
                                     loading={createLoading}
-                                    disabled={!areAllTargetsValid() || browserGatewayDisabled}
+                                    disabled={!areAllTargetsValid() || browserGatewayDisabled || createLoading}
                                 >
                                     {t("resourceCreate")}
                                 </Button>
@@ -1446,54 +1443,63 @@ export default function Page() {
                                         {t("resourceConfig")}
                                     </SettingsSectionTitle>
                                     <SettingsSectionDescription>
-                                        {t("resourceConfigDescription")}
+                                        {t("resourceConfigDescription")}{" "}
+                                        <a
+                                            href="https://docs.pangolin.net/manage/resources/public/raw-resources"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                        >
+                                            {t("learnMore")}
+                                            <ExternalLink className="size-3.5 shrink-0" />
+                                        </a>
                                     </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
-                                    <div className="space-y-6">
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">
-                                                {t("resourceAddEntrypoints")}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "resourceAddEntrypointsEditFile"
-                                                )}
-                                            </p>
+                                    <SettingsSectionForm variant="half">
+                                        <SettingsFormGrid>
+                                        <SettingsFormCell span="full">
+                                            <SettingsSubsectionHeader>
+                                                <SettingsSubsectionTitle>
+                                                    {t("resourceAddEntrypoints")}
+                                                </SettingsSubsectionTitle>
+                                                <SettingsSubsectionDescription>
+                                                    {t(
+                                                        "resourceAddEntrypointsEditFile"
+                                                    )}
+                                                </SettingsSubsectionDescription>
+                                            </SettingsSubsectionHeader>
+                                        </SettingsFormCell>
+                                        <SettingsFormCell span="full">
                                             <CopyTextBox
                                                 text={`entryPoints:
   ${tcpUdpForm.getValues("protocol")}-${tcpUdpForm.getValues("proxyPort")}:
     address: ":${tcpUdpForm.getValues("proxyPort")}/${tcpUdpForm.getValues("protocol")}"`}
                                                 wrapText={false}
                                             />
-                                        </div>
+                                        </SettingsFormCell>
 
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">
-                                                {t("resourceExposePorts")}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "resourceExposePortsEditFile"
-                                                )}
-                                            </p>
+                                        <SettingsFormCell span="full">
+                                            <SettingsSubsectionHeader>
+                                                <SettingsSubsectionTitle>
+                                                    {t("resourceExposePorts")}
+                                                </SettingsSubsectionTitle>
+                                                <SettingsSubsectionDescription>
+                                                    {t(
+                                                        "resourceExposePortsEditFile"
+                                                    )}
+                                                </SettingsSubsectionDescription>
+                                            </SettingsSubsectionHeader>
+                                        </SettingsFormCell>
+                                        <SettingsFormCell span="full">
                                             <CopyTextBox
                                                 text={`ports:
   - ${tcpUdpForm.getValues("proxyPort")}:${tcpUdpForm.getValues("proxyPort")}${tcpUdpForm.getValues("protocol") === "tcp" ? "" : "/" + tcpUdpForm.getValues("protocol")}`}
                                                 wrapText={false}
                                             />
-                                        </div>
-
-                                        <Link
-                                            className="text-sm text-primary flex items-center gap-1"
-                                            href="https://docs.pangolin.net/manage/resources/public/raw-resources"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <span>{t("resourceLearnRaw")}</span>
-                                            <SquareArrowOutUpRight size={14} />
-                                        </Link>
-                                    </div>
+                                        </SettingsFormCell>
+                                    </SettingsFormGrid>
+                                    </SettingsSectionForm>
                                 </SettingsSectionBody>
                             </SettingsSection>
 

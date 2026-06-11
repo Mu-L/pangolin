@@ -510,11 +510,7 @@ export default function SshClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>
-                                {resourceName
-                                    ? `${t("sshSignInTitle")} - ${resourceName}`
-                                    : t("sshSignInTitle")}
-                            </CardTitle>
+                            <CardTitle>{t("sshSignInTitle")}</CardTitle>
                             <CardDescription>
                                 {resourceName
                                     ? `${t("sshSignInDescription")} (${resourceName})`
@@ -600,7 +596,7 @@ export default function SshClient({
                                         <p className="text-sm text-muted-foreground">
                                             {t("sshPrivateKeyDisclaimer")}{" "}
                                             <Link
-                                                href="https://docs.pangolin.net/"
+                                                href="https://docs.pangolin.net/manage/ssh#authentication-method"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-primary hover:underline inline-flex items-center gap-1"

@@ -219,7 +219,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -445,7 +445,7 @@ export async function createSiteResource(
 
         let aliasAddress: string | null = null;
         let releaseAliasLock: (() => Promise<void>) | null = null;
-        if (mode === "host" || mode === "http") {
+        if (mode === "host" || mode === "http" || mode === "ssh") {
             const { value, release } =
                 await getNextAvailableAliasAddress(orgId);
             aliasAddress = value;

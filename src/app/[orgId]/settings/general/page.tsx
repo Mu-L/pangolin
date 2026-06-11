@@ -42,6 +42,7 @@ import { SwitchInput } from "@app/components/SwitchInput";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { ExternalLink } from "lucide-react";
 
 // Schema for general organization settings
 const GeneralFormSchema = z.object({
@@ -279,7 +280,16 @@ function GeneralSectionForm({ org }: SectionFormProps) {
                                             />
                                         </FormControl>
                                         <FormDescription>
-                                            {t("newtAutoUpdateDescription")}
+                                            {t("newtAutoUpdateDescription")}{" "}
+                                            <a
+                                                href="https://docs.pangolin.net/manage/sites/auto-update"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary hover:underline inline-flex items-center gap-1"
+                                            >
+                                                {t("learnMore")}
+                                                <ExternalLink className="size-3.5 shrink-0" />
+                                            </a>
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>

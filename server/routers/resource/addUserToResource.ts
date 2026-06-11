@@ -28,7 +28,8 @@ const addUserToResourceParamsSchema = z
 registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/users/add",
-    description: "Add a single user to a resource.",
+    description:
+        "Add a single user to a resource. When the resource has an inline policy defined (no shared resource policy assigned), the user is added to the inline policy instead of directly to the resource.",
     tags: [OpenAPITags.PublicResource, OpenAPITags.User],
     request: {
         params: addUserToResourceParamsSchema,
@@ -46,7 +47,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),

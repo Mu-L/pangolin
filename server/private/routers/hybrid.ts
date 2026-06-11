@@ -219,9 +219,9 @@ export type ResourceWithAuth = {
     password: ResourcePassword | ResourcePolicyPassword | null;
     headerAuth: ResourceHeaderAuth | ResourcePolicyHeaderAuth | null;
     headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
-    applyRules: boolean;
-    sso: boolean;
-    emailWhitelistEnabled: boolean;
+    applyRules: boolean | null;
+    sso: boolean | null;
+    emailWhitelistEnabled: boolean | null;
     org: Org;
 };
 

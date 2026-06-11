@@ -42,16 +42,16 @@ export function MultiSelectTagInput<T extends TagValue>({
                         buttonVariants({
                             variant: "outline"
                         }),
-                        "justify-between w-full inline-flex",
-                        "text-muted-foreground pl-1.5 cursor-text h-9 py-0",
+                        "justify-between w-full flex items-center",
+                        "text-muted-foreground pl-1.5 cursor-text h-auto min-h-9 py-1.5",
+                        "whitespace-normal",
                         "hover:bg-transparent hover:text-muted-foreground",
                         props.disabled && "pointer-events-none opacity-50"
                     )}
                 >
                     <span
                         className={cn(
-                            "inline-flex items-center gap-1 min-w-0 flex-1",
-                            "overflow-x-auto flex-nowrap h-full"
+                            "flex items-center gap-1 min-w-0 flex-1 flex-wrap"
                         )}
                     >
                         {props.value.map((option) => {
@@ -60,15 +60,13 @@ export function MultiSelectTagInput<T extends TagValue>({
                                 <span
                                     key={option.id}
                                     className={cn(
-                                        "bg-muted-foreground/10 font-normal text-foreground rounded-sm flex-none",
-                                        "py-0.5 pl-1.5 pr-0.5 text-xs inline-flex items-center gap-0.5",
+                                        "bg-muted-foreground/10 font-normal text-foreground rounded-sm shrink-0",
+                                        "py-0.5 pl-1.5 pr-0.5 text-xs inline-flex items-center gap-0.5 whitespace-nowrap",
                                         isLocked && "opacity-60"
                                     )}
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <span className="max-w-40 text-ellipsis overflow-hidden">
-                                        {option.text}
-                                    </span>
+                                    <span>{option.text}</span>
                                     {isLocked ? (
                                         <span className="p-0.5 flex-none">
                                             <LockIcon className="size-3" />

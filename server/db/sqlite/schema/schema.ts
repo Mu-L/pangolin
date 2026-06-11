@@ -165,14 +165,12 @@ export const resources = sqliteTable("resources", {
     blockAccess: integer("blockAccess", { mode: "boolean" })
         .notNull()
         .default(false),
-    sso: integer("sso", { mode: "boolean" }).notNull().default(true),
     proxyPort: integer("proxyPort"),
-    emailWhitelistEnabled: integer("emailWhitelistEnabled", { mode: "boolean" })
-        .notNull()
-        .default(false),
-    applyRules: integer("applyRules", { mode: "boolean" })
-        .notNull()
-        .default(false),
+    sso: integer("sso", { mode: "boolean" }),
+    emailWhitelistEnabled: integer("emailWhitelistEnabled", {
+        mode: "boolean"
+    }),
+    applyRules: integer("applyRules", { mode: "boolean" }),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     stickySession: integer("stickySession", { mode: "boolean" })
         .notNull()

@@ -1,16 +1,12 @@
 "use client";
 
 import {
-    SettingsFormCell,
-    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionForm,
     SettingsSectionFooter,
     SettingsSectionHeader,
-    SettingsSubsectionDescription,
-    SettingsSubsectionHeader,
-    SettingsSubsectionTitle,
     SettingsSectionTitle
 } from "@app/components/Settings";
 import {
@@ -25,14 +21,23 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { resourceQueries } from "@app/lib/queries";
+import ResourceContext from "@app/contexts/resourceContext";
 import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { GetResourcePolicyResponse } from "@server/routers/policy";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import {
+    useActionState,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { createPolicySchema } from ".";
 import {
@@ -41,15 +46,9 @@ import {
     PasscodeCredenza,
     PincodeCredenza
 } from "./PolicyAuthMethodCredenzas";
-import { PolicyAuthMethodRow } from "./PolicyAuthMethodRow";
+import { PolicyAuthOtherMethodsSection } from "./PolicyAuthOtherMethodsSection";
 import { PolicyAuthSsoSection } from "./PolicyAuthSsoSection";
 import type { PolicyAuthMethodId } from "./policy-auth-method-id";
-import {
-    getEmailWhitelistSummary,
-    getHeaderAuthSummary,
-    getPasscodeSummary,
-    getPincodeSummary
-} from "./policy-auth-summaries";
 import { SharedPolicyResourceNotice } from "./SharedPolicyResourceNotice";
 import z from "zod";
 
@@ -105,7 +104,8 @@ export function PolicyAuthStackSectionEdit({
 }: PolicyAuthStackSectionEditProps) {
     const t = useTranslations();
     const router = useRouter();
-    const { policy } = useResourcePolicyContext();
+    const { policy, updatePolicy } = useResourcePolicyContext();
+    const resourceContext = useContext(ResourceContext);
     const api = createApiClient(useEnvContext());
 
     const isResourceOverlay = resourceId !== undefined;
@@ -215,7 +215,7 @@ export function PolicyAuthStackSectionEdit({
             users: policyUserItems,
             password: null,
             pincode: null,
-            headerAuth: policy.headerAuth
+            headerAuth: policy.headerAuth?.id
                 ? {
                       user: "",
                       password: "",
@@ -236,8 +236,12 @@ export function PolicyAuthStackSectionEdit({
     );
     const [pinActive, setPinActive] = useState(Boolean(policy.pincodeId));
     const [headerAuthActive, setHeaderAuthActive] = useState(
-        Boolean(policy.headerAuth)
+        Boolean(policy.headerAuth?.id)
     );
+
+    const passcodeOnServerRef = useRef(Boolean(policy.passwordId));
+    const pincodeOnServerRef = useRef(Boolean(policy.pincodeId));
+    const headerAuthOnServerRef = useRef(Boolean(policy.headerAuth?.id));
     const [editingMethod, setEditingMethod] =
         useState<PolicyAuthMethodId | null>(null);
 
@@ -283,6 +287,7 @@ export function PolicyAuthStackSectionEdit({
 
         const payload = form.getValues();
         const requests: Array<Promise<AxiosResponse<{}> | void>> = [];
+        const policyUpdates: Parameters<typeof updatePolicy>[0] = {};
 
         requests.push(
             api
@@ -307,7 +312,8 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
-        } else if (!passcodeActive && policy.passwordId) {
+            policyUpdates.passwordId = policy.passwordId ?? -1;
+        } else if (!passcodeActive && passcodeOnServerRef.current) {
             requests.push(
                 api
                     .put(
@@ -316,6 +322,7 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
+            policyUpdates.passwordId = null;
         }
 
         if (pinActive && payload.pincode?.pincode?.length === 6) {
@@ -327,7 +334,8 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
-        } else if (!pinActive && policy.pincodeId) {
+            policyUpdates.pincodeId = policy.pincodeId ?? -1;
+        } else if (!pinActive && pincodeOnServerRef.current) {
             requests.push(
                 api
                     .put(
@@ -336,6 +344,7 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
+            policyUpdates.pincodeId = null;
         }
 
         if (
@@ -351,7 +360,12 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
-        } else if (!headerAuthActive && policy.headerAuth) {
+            policyUpdates.headerAuth = {
+                id: policy.headerAuth?.id ?? -1,
+                extendedCompability:
+                    payload.headerAuth.extendedCompatibility ?? true
+            };
+        } else if (!headerAuthActive && headerAuthOnServerRef.current) {
             requests.push(
                 api
                     .put(
@@ -360,6 +374,10 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
+            policyUpdates.headerAuth = {
+                id: null,
+                extendedCompability: null
+            } as unknown as GetResourcePolicyResponse["headerAuth"];
         }
 
         requests.push(
@@ -370,10 +388,37 @@ export function PolicyAuthStackSectionEdit({
                 })
                 .catch(handleError)
         );
+        policyUpdates.emailWhitelistEnabled = payload.emailWhitelistEnabled;
 
         try {
             const results = await Promise.all(requests);
             if (results.every((res) => res && res.status === 200)) {
+                if (policyUpdates.passwordId !== undefined) {
+                    passcodeOnServerRef.current = Boolean(
+                        policyUpdates.passwordId
+                    );
+                }
+                if (policyUpdates.pincodeId !== undefined) {
+                    pincodeOnServerRef.current = Boolean(
+                        policyUpdates.pincodeId
+                    );
+                }
+                if (policyUpdates.headerAuth !== undefined) {
+                    headerAuthOnServerRef.current = Boolean(
+                        policyUpdates.headerAuth?.id
+                    );
+                }
+
+                updatePolicy(policyUpdates);
+
+                resourceContext?.updateAuthInfo({
+                    sso: payload.sso,
+                    whitelist: payload.emailWhitelistEnabled,
+                    password: passcodeOnServerRef.current,
+                    pincode: pincodeOnServerRef.current,
+                    headerAuth: headerAuthOnServerRef.current
+                });
+
                 toast({
                     title: t("success"),
                     description: t("policyUpdatedSuccess")
@@ -473,228 +518,133 @@ export function PolicyAuthStackSectionEdit({
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <div className="space-y-4">
-                            {isResourceOverlay && (
-                                <SharedPolicyResourceNotice section="authentication" />
-                            )}
-                            <SettingsFormGrid>
-                                <SettingsFormCell span="half">
-                                    <PolicyAuthSsoSection
-                                        sso={Boolean(sso)}
-                                        onSsoChange={(active) =>
-                                            form.setValue("sso", active)
-                                        }
-                                        skipToIdpId={skipToIdpId}
-                                        onSkipToIdpChange={(id) =>
-                                            form.setValue("skipToIdpId", id)
-                                        }
-                                        allIdps={allIdps}
-                                        disabled={authReadonly}
-                                        idpDisabled={authReadonly}
-                                        rolesEditor={
-                                            isResourceOverlay ? (
+                        {isResourceOverlay && (
+                            <SharedPolicyResourceNotice section="authentication" />
+                        )}
+                        <SettingsSectionForm variant="half">
+                            <PolicyAuthSsoSection
+                                sso={Boolean(sso)}
+                                onSsoChange={(active) =>
+                                    form.setValue("sso", active)
+                                }
+                                skipToIdpId={skipToIdpId}
+                                onSkipToIdpChange={(id) =>
+                                    form.setValue("skipToIdpId", id)
+                                }
+                                allIdps={allIdps}
+                                disabled={authReadonly}
+                                idpDisabled={authReadonly}
+                                rolesEditor={
+                                    isResourceOverlay ? (
+                                        <RolesSelector
+                                            orgId={orgId}
+                                            selectedRoles={overlayRoles}
+                                            onSelectRoles={(selected) =>
+                                                setCombinedRoles(
+                                                    selected.map((role) => ({
+                                                        ...role,
+                                                        isAdmin: Boolean(
+                                                            role.isAdmin
+                                                        )
+                                                    }))
+                                                )
+                                            }
+                                            disabled={isLoading}
+                                            restrictAdminRole
+                                            lockedIds={policyRoleLockedIds}
+                                        />
+                                    ) : (
+                                        <FormField
+                                            control={form.control}
+                                            name="roles"
+                                            render={({ field }) => (
                                                 <RolesSelector
                                                     orgId={orgId}
-                                                    selectedRoles={overlayRoles}
+                                                    selectedRoles={field.value}
                                                     onSelectRoles={(selected) =>
-                                                        setCombinedRoles(
-                                                            selected.map(
-                                                                (role) => ({
-                                                                    ...role,
-                                                                    isAdmin:
-                                                                        Boolean(
-                                                                            role.isAdmin
-                                                                        )
-                                                                })
-                                                            )
+                                                        form.setValue(
+                                                            "roles",
+                                                            selected
                                                         )
                                                     }
-                                                    disabled={isLoading}
+                                                    disabled={readonly}
                                                     restrictAdminRole
-                                                    lockedIds={
-                                                        policyRoleLockedIds
-                                                    }
                                                 />
-                                            ) : (
-                                                <FormField
-                                                    control={form.control}
-                                                    name="roles"
-                                                    render={({ field }) => (
-                                                        <RolesSelector
-                                                            orgId={orgId}
-                                                            selectedRoles={
-                                                                field.value
-                                                            }
-                                                            onSelectRoles={(
-                                                                selected
-                                                            ) =>
-                                                                form.setValue(
-                                                                    "roles",
-                                                                    selected
-                                                                )
-                                                            }
-                                                            disabled={readonly}
-                                                            restrictAdminRole
-                                                        />
-                                                    )}
-                                                />
-                                            )
-                                        }
-                                        usersEditor={
-                                            isResourceOverlay ? (
+                                            )}
+                                        />
+                                    )
+                                }
+                                usersEditor={
+                                    isResourceOverlay ? (
+                                        <UsersSelector
+                                            orgId={orgId}
+                                            selectedUsers={overlayUsers}
+                                            onSelectUsers={setCombinedUsers}
+                                            disabled={isLoading}
+                                            lockedIds={policyUserLockedIds}
+                                        />
+                                    ) : (
+                                        <FormField
+                                            control={form.control}
+                                            name="users"
+                                            render={({ field }) => (
                                                 <UsersSelector
                                                     orgId={orgId}
-                                                    selectedUsers={overlayUsers}
-                                                    onSelectUsers={
-                                                        setCombinedUsers
+                                                    selectedUsers={field.value}
+                                                    onSelectUsers={(selected) =>
+                                                        form.setValue(
+                                                            "users",
+                                                            selected
+                                                        )
                                                     }
-                                                    disabled={isLoading}
-                                                    lockedIds={
-                                                        policyUserLockedIds
-                                                    }
+                                                    disabled={readonly}
                                                 />
-                                            ) : (
-                                                <FormField
-                                                    control={form.control}
-                                                    name="users"
-                                                    render={({ field }) => (
-                                                        <UsersSelector
-                                                            orgId={orgId}
-                                                            selectedUsers={
-                                                                field.value
-                                                            }
-                                                            onSelectUsers={(
-                                                                selected
-                                                            ) =>
-                                                                form.setValue(
-                                                                    "users",
-                                                                    selected
-                                                                )
-                                                            }
-                                                            disabled={readonly}
-                                                        />
-                                                    )}
-                                                />
-                                            )
-                                        }
-                                    />
-                                </SettingsFormCell>
-                            </SettingsFormGrid>
+                                            )}
+                                        />
+                                    )
+                                }
+                            />
 
-                            <SettingsSubsectionHeader>
-                                <SettingsSubsectionTitle>
-                                    {t("policyAuthOtherMethodsTitle")}
-                                </SettingsSubsectionTitle>
-                                <SettingsSubsectionDescription>
-                                    {t("policyAuthOtherMethodsDescription")}
-                                </SettingsSubsectionDescription>
-                            </SettingsSubsectionHeader>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <PolicyAuthMethodRow
-                                    id="pincode"
-                                    title={t("policyAuthPincodeTitle")}
-                                    description={t(
-                                        "policyAuthPincodeDescription"
-                                    )}
-                                    summary={getPincodeSummary({ t })}
-                                    active={pinActive}
-                                    onConfigure={() =>
-                                        openMethodEditor("pincode")
-                                    }
-                                    onToggle={(active) =>
-                                        handleToggle("pincode", active, () => {
-                                            setPinActive(false);
-                                            form.setValue("pincode", null);
-                                        })
-                                    }
-                                    disabled={authReadonly}
-                                />
-
-                                <PolicyAuthMethodRow
-                                    id="passcode"
-                                    title={t("policyAuthPasscodeTitle")}
-                                    description={t(
-                                        "policyAuthPasscodeDescription"
-                                    )}
-                                    summary={getPasscodeSummary({ t })}
-                                    active={passcodeActive}
-                                    onConfigure={() =>
-                                        openMethodEditor("passcode")
-                                    }
-                                    onToggle={(active) =>
-                                        handleToggle("passcode", active, () => {
-                                            setPasscodeActive(false);
-                                            form.setValue("password", null);
-                                        })
-                                    }
-                                    disabled={authReadonly}
-                                />
-
-                                <PolicyAuthMethodRow
-                                    id="email"
-                                    title={t("policyAuthEmailTitle")}
-                                    description={t(
-                                        "policyAuthEmailDescription"
-                                    )}
-                                    summary={getEmailWhitelistSummary({
-                                        t,
-                                        count: emails.length
-                                    })}
-                                    active={Boolean(emailWhitelistEnabled)}
-                                    onConfigure={() =>
-                                        openMethodEditor("email")
-                                    }
-                                    onToggle={(active) =>
-                                        handleToggle(
-                                            "email",
-                                            active,
-                                            () =>
-                                                form.setValue(
-                                                    "emailWhitelistEnabled",
-                                                    false
-                                                ),
-                                            () =>
-                                                form.setValue(
-                                                    "emailWhitelistEnabled",
-                                                    true
-                                                )
+                            <PolicyAuthOtherMethodsSection
+                                pinActive={pinActive}
+                                passcodeActive={passcodeActive}
+                                emailWhitelistEnabled={Boolean(
+                                    emailWhitelistEnabled
+                                )}
+                                headerAuthActive={headerAuthActive}
+                                headerAuthUser={headerAuth?.user ?? ""}
+                                emailCount={emails.length}
+                                emailEnabled={emailEnabled}
+                                disabled={authReadonly}
+                                onConfigure={openMethodEditor}
+                                onTogglePincode={(active) =>
+                                    handleToggle("pincode", active, () => {
+                                        setPinActive(false);
+                                        form.setValue("pincode", null);
+                                    })
+                                }
+                                onTogglePasscode={(active) =>
+                                    handleToggle("passcode", active, () => {
+                                        setPasscodeActive(false);
+                                        form.setValue("password", null);
+                                    })
+                                }
+                                onToggleEmail={(active) =>
+                                    handleToggle("email", active, () =>
+                                        form.setValue(
+                                            "emailWhitelistEnabled",
+                                            false
                                         )
-                                    }
-                                    disabled={authReadonly || !emailEnabled}
-                                />
-
-                                <PolicyAuthMethodRow
-                                    id="header-auth"
-                                    title={t("policyAuthHeaderAuthTitle")}
-                                    description={t(
-                                        "policyAuthHeaderAuthDescription"
-                                    )}
-                                    summary={getHeaderAuthSummary({
-                                        t,
-                                        headerName: headerAuth?.user ?? ""
-                                    })}
-                                    active={headerAuthActive}
-                                    onConfigure={() =>
-                                        openMethodEditor("headerAuth")
-                                    }
-                                    onToggle={(active) =>
-                                        handleToggle(
-                                            "headerAuth",
-                                            active,
-                                            () => {
-                                                setHeaderAuthActive(false);
-                                                form.setValue(
-                                                    "headerAuth",
-                                                    null
-                                                );
-                                            }
-                                        )
-                                    }
-                                    disabled={authReadonly}
-                                />
-                            </div>
-                        </div>
+                                    )
+                                }
+                                onToggleHeaderAuth={(active) =>
+                                    handleToggle("headerAuth", active, () => {
+                                        setHeaderAuthActive(false);
+                                        form.setValue("headerAuth", null);
+                                    })
+                                }
+                            />
+                        </SettingsSectionForm>
 
                         <PincodeCredenza
                             open={editingMethod === "pincode"}
@@ -723,7 +673,10 @@ export function PolicyAuthStackSectionEdit({
                             emailEnabled={emailEnabled}
                             disabled={authReadonly}
                             emails={emails}
-                            onSave={(value) => form.setValue("emails", value)}
+                            onSave={(value) => {
+                                form.setValue("emails", value);
+                                form.setValue("emailWhitelistEnabled", true);
+                            }}
                         />
 
                         <HeaderAuthCredenza
@@ -740,7 +693,7 @@ export function PolicyAuthStackSectionEdit({
                                       }
                                     : undefined
                             }
-                            existingConfigured={Boolean(policy.headerAuth)}
+                            existingConfigured={Boolean(policy.headerAuth?.id)}
                             onSave={(value) => {
                                 form.setValue("headerAuth", value);
                                 setHeaderAuthActive(true);

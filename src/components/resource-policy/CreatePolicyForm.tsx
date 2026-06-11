@@ -2,6 +2,8 @@
 
 import {
     SettingsContainer,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
@@ -200,21 +202,25 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
                             </SettingsSectionHeader>
                             <SettingsSectionBody>
                                 <SettingsSectionForm variant="half">
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("name")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                    <SettingsFormGrid>
+                                        <SettingsFormCell span="half">
+                                            <FormField
+                                                control={form.control}
+                                                name="name"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("name")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </SettingsFormCell>
+                                    </SettingsFormGrid>
                                 </SettingsSectionForm>
                             </SettingsSectionBody>
                         </SettingsSection>

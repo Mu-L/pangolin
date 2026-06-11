@@ -47,7 +47,7 @@ const paramsSchema = z
 // content: {
 // "application/json": {
 // schema: z.object({
-// data: z.unknown().nullable(),
+// data: z.record(z.string(), z.any()).nullable(),
 // success: z.boolean(),
 // error: z.boolean(),
 // message: z.string(),

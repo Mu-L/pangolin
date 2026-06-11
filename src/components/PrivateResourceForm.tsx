@@ -2060,7 +2060,7 @@ export function PrivateResourceForm({
                                     <p className="text-sm text-muted-foreground">
                                         {t("sshDaemonDisclaimer")}{" "}
                                         <a
-                                            href="https://docs.pangolin.net/manage/resources/private/ssh"
+                                            href="https://docs.pangolin.net/manage/ssh"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-primary hover:underline inline-flex items-center gap-1"

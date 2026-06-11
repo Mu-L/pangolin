@@ -144,6 +144,7 @@ export function BrowserGatewayTargetForm<T extends FieldValues>(
                                                 []
                                             }
                                             onSelectionChange={field.onChange}
+                                            filterTypes={["newt"]}
                                         />
                                     ) : (
                                         <SitesSelector
@@ -155,6 +156,7 @@ export function BrowserGatewayTargetForm<T extends FieldValues>(
                                                 field.onChange(site);
                                                 setSiteOpen(false);
                                             }}
+                                            filterTypes={["newt"]}
                                         />
                                     )}
                                 </PopoverContent>
@@ -220,7 +222,7 @@ export function BrowserGatewayTargetForm<T extends FieldValues>(
                     <a
                         href={
                             props.learnMoreHref ??
-                            "https://docs.pangolin.net/manage/resources/public/ssh"
+                            "https://docs.pangolin.net/manage/resources/private/multi-site-routing"
                         }
                         target="_blank"
                         rel="noopener noreferrer"

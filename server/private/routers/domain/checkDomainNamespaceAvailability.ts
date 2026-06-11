@@ -29,7 +29,7 @@ import { tierMatrix } from "@server/lib/billing/tierMatrix";
 const paramsSchema = z.strictObject({});
 
 const querySchema = z.strictObject({
-    subdomain: z.string(),
+    subdomain: z.string()
     // orgId: build === "saas" ? z.string() : z.string().optional() // Required for saas, optional otherwise
 });
 
@@ -48,7 +48,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),

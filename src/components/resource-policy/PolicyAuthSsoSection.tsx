@@ -1,9 +1,14 @@
 "use client";
 
-import { SettingsSectionForm } from "@app/components/Settings";
+import { SettingsFormCell, SettingsFormGrid } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
-import { FormDescription, FormItem, FormLabel } from "@app/components/ui/form";
+import {
+    FormControl,
+    FormDescription,
+    FormItem,
+    FormLabel
+} from "@app/components/ui/form";
 import {
     Select,
     SelectContent,
@@ -49,28 +54,34 @@ export function PolicyAuthSsoSection({
     const idpSelectDisabled = idpDisabled ?? disabled;
 
     return (
-        <div className="space-y-4">
-            <SwitchInput
-                id="policy-auth-sso"
-                label={t("policyAuthSsoTitle")}
-                description={t("policyAuthSsoDescription")}
-                checked={sso}
-                disabled={disabled}
-                onCheckedChange={onSsoChange}
-            />
+        <SettingsFormGrid>
+            <SettingsFormCell span="full">
+                <SwitchInput
+                    id="policy-auth-sso"
+                    label={t("policyAuthSsoTitle")}
+                    description={t("policyAuthSsoDescription")}
+                    checked={sso}
+                    disabled={disabled}
+                    onCheckedChange={onSsoChange}
+                />
+            </SettingsFormCell>
 
             {sso && (
-                <SettingsSectionForm className="max-w-none space-y-4">
-                    <FormItem className="flex flex-col items-start">
-                        <FormLabel>{t("roles")}</FormLabel>
-                        {rolesEditor}
-                    </FormItem>
-                    <FormItem className="flex flex-col items-start">
-                        <FormLabel>{t("users")}</FormLabel>
-                        {usersEditor}
-                    </FormItem>
+                <>
+                    <SettingsFormCell span="full">
+                        <FormItem>
+                            <FormLabel>{t("roles")}</FormLabel>
+                            {rolesEditor}
+                        </FormItem>
+                    </SettingsFormCell>
+                    <SettingsFormCell span="full">
+                        <FormItem>
+                            <FormLabel>{t("users")}</FormLabel>
+                            {usersEditor}
+                        </FormItem>
+                    </SettingsFormCell>
                     {allIdps.length > 0 && (
-                        <div className="space-y-2">
+                        <SettingsFormCell span="half">
                             {skipToIdpId == null && !showIdpSelect ? (
                                 <Button
                                     type="button"
@@ -83,10 +94,10 @@ export function PolicyAuthSsoSection({
                                     {t("policyAuthAddDefaultIdentityProvider")}
                                 </Button>
                             ) : (
-                                <>
-                                    <label className="text-sm font-medium">
+                                <FormItem>
+                                    <FormLabel>
                                         {t("defaultIdentityProvider")}
-                                    </label>
+                                    </FormLabel>
                                     <Select
                                         disabled={idpSelectDisabled}
                                         onValueChange={(value) => {
@@ -103,13 +114,15 @@ export function PolicyAuthSsoSection({
                                                 : "none"
                                         }
                                     >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue
-                                                placeholder={t(
-                                                    "selectIdpPlaceholder"
-                                                )}
-                                            />
-                                        </SelectTrigger>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue
+                                                    placeholder={t(
+                                                        "selectIdpPlaceholder"
+                                                    )}
+                                                />
+                                            </SelectTrigger>
+                                        </FormControl>
                                         <SelectContent>
                                             <SelectItem value="none">
                                                 {t("none")}
@@ -124,17 +137,17 @@ export function PolicyAuthSsoSection({
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <p className="text-sm text-muted-foreground">
+                                    <FormDescription>
                                         {t(
                                             "defaultIdentityProviderDescription"
                                         )}
-                                    </p>
-                                </>
+                                    </FormDescription>
+                                </FormItem>
                             )}
-                        </div>
+                        </SettingsFormCell>
                     )}
-                </SettingsSectionForm>
+                </>
             )}
-        </div>
+        </SettingsFormGrid>
     );
 }

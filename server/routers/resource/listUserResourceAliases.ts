@@ -7,7 +7,7 @@ import {
     userOrgRoles,
     userOrgs
 } from "@server/db";
-import { and, eq, inArray, asc, isNotNull, ne } from "drizzle-orm";
+import { and, eq, inArray, asc, isNotNull, ne, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
@@ -82,7 +82,7 @@ export type ListUserResourceAliasesResponse = PaginatedResponse<{
 // content: {
 // "application/json": {
 // schema: z.object({
-// data: z.unknown().nullable(),
+// data: z.record(z.string(), z.any()).nullable(),
 // success: z.boolean(),
 // error: z.boolean(),
 // message: z.string(),
@@ -224,7 +224,7 @@ export async function listUserResourceAliases(
         const whereClause = and(
             eq(siteResources.orgId, orgId),
             eq(siteResources.enabled, true),
-            eq(siteResources.mode, "host"),
+            or(eq(siteResources.mode, "host"), eq(siteResources.mode, "ssh")),
             isNotNull(siteResources.alias),
             ne(siteResources.alias, ""),
             inArray(siteResources.siteResourceId, accessibleSiteResourceIds)

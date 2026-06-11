@@ -467,7 +467,7 @@ function SshServerForm({
                                             <p className="text-sm text-muted-foreground">
                                                 {t("sshDaemonDisclaimer")}{" "}
                                                 <a
-                                                    href="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                    href="https://docs.pangolin.net/manage/ssh"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-primary hover:underline inline-flex items-center gap-1"
@@ -525,6 +525,9 @@ function SshServerForm({
                                             name="selectedNativeSite"
                                             render={() => (
                                                 <FormItem>
+                                                    <FormLabel>
+                                                        {t("sites")}
+                                                    </FormLabel>
                                                     <Popover
                                                         open={nativeSiteOpen}
                                                         onOpenChange={
@@ -586,7 +589,7 @@ function SshServerForm({
                                             sitesField="selectedSites"
                                             destinationField="destination"
                                             destinationPortField="destinationPort"
-                                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh#site-and-host-configuration"
                                             defaultPort={22}
                                         />
                                     </SettingsFormCell>
@@ -599,7 +602,7 @@ function SshServerForm({
                                             siteField="selectedSite"
                                             destinationField="destination"
                                             destinationPortField="destinationPort"
-                                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh#site-and-host-configuration"
                                             defaultPort={22}
                                         />
                                     </SettingsFormCell>

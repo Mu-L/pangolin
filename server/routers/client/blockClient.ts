@@ -30,7 +30,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -94,7 +94,11 @@ export async function blockClient(
 
             // Send terminate signal if there's an associated OLM and it's connected
             if (client.olmId && client.online) {
-                await sendTerminateClient(client.clientId, OlmErrorCodes.TERMINATED_BLOCKED, client.olmId);
+                await sendTerminateClient(
+                    client.clientId,
+                    OlmErrorCodes.TERMINATED_BLOCKED,
+                    client.olmId
+                );
             }
         });
 

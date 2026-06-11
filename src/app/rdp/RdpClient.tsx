@@ -373,11 +373,7 @@ export default function RdpClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>
-                                {resourceName
-                                    ? `${t("rdpSignInTitle")} - ${resourceName}`
-                                    : t("rdpSignInTitle")}
-                            </CardTitle>
+                            <CardTitle>{t("rdpSignInTitle")}</CardTitle>
                             <CardDescription>
                                 {resourceName
                                     ? `${t("rdpSignInDescription")} (${resourceName})`

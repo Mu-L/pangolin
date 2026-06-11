@@ -508,117 +508,122 @@ export default function Page() {
                                         />
                                     </>
                                 )}
-
-                                <Form {...form}>
-                                    <form
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault(); // block default enter refresh
-                                            }
-                                        }}
-                                        id="create-site-form"
-                                    >
-                                        <SettingsFormGrid>
-                                            <SettingsFormCell span="half">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="name"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t("name")}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    autoComplete="off"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                            <FormDescription>
-                                                                {t(
-                                                                    "siteNameDescription"
-                                                                )}
-                                                            </FormDescription>
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                <SettingsSectionForm variant="half">
+                                    <Form {...form}>
+                                        <form
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                    e.preventDefault(); // block default enter refresh
+                                                }
+                                            }}
+                                            id="create-site-form"
+                                        >
+                                            <SettingsFormGrid>
+                                                <SettingsFormCell span="half">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="name"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>
+                                                                    {t("name")}
+                                                                </FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        autoComplete="off"
+                                                                        {...field}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                                <FormDescription>
+                                                                    {t(
+                                                                        "siteNameDescription"
+                                                                    )}
+                                                                </FormDescription>
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </SettingsFormCell>
                                                 {form.watch("method") ===
                                                     "newt" && (
                                                     <>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                setShowAdvancedSettings(
-                                                                    !showAdvancedSettings
-                                                                )
-                                                            }
-                                                            className="mt-2 flex items-center gap-2 -ml-3"
-                                                        >
-                                                            {showAdvancedSettings ? (
-                                                                <ChevronUp className="h-4 w-4" />
-                                                            ) : (
-                                                                <ChevronDown className="h-4 w-4" />
-                                                            )}
-                                                            {t(
-                                                                "advancedSettings"
-                                                            )}
-                                                        </Button>
-                                                        {showAdvancedSettings && (
-                                                            <FormField
-                                                                control={
-                                                                    form.control
+                                                        <SettingsFormCell span="full">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    setShowAdvancedSettings(
+                                                                        !showAdvancedSettings
+                                                                    )
                                                                 }
-                                                                name="clientAddress"
-                                                                render={({
-                                                                    field
-                                                                }) => (
-                                                                    <FormItem className="mt-4">
-                                                                        <FormLabel>
-                                                                            {t(
-                                                                                "siteAddress"
-                                                                            )}
-                                                                        </FormLabel>
-                                                                        <FormControl>
-                                                                            <Input
-                                                                                autoComplete="off"
-                                                                                value={
-                                                                                    clientAddress
-                                                                                }
-                                                                                onChange={(
-                                                                                    e
-                                                                                ) => {
-                                                                                    setClientAddress(
-                                                                                        e
-                                                                                            .target
-                                                                                            .value
-                                                                                    );
-                                                                                    field.onChange(
-                                                                                        e
-                                                                                            .target
-                                                                                            .value
-                                                                                    );
-                                                                                }}
-                                                                            />
-                                                                        </FormControl>
-                                                                        <FormMessage />
-                                                                        <FormDescription>
-                                                                            {t(
-                                                                                "siteAddressDescription"
-                                                                            )}
-                                                                        </FormDescription>
-                                                                    </FormItem>
+                                                                className="mt-2 flex items-center gap-2 -ml-3"
+                                                            >
+                                                                {showAdvancedSettings ? (
+                                                                    <ChevronUp className="h-4 w-4" />
+                                                                ) : (
+                                                                    <ChevronDown className="h-4 w-4" />
                                                                 )}
-                                                            />
+                                                                {t(
+                                                                    "advancedSettings"
+                                                                )}
+                                                            </Button>
+                                                        </SettingsFormCell>
+                                                        {showAdvancedSettings && (
+                                                            <SettingsFormCell span="quarter">
+                                                                <FormField
+                                                                    control={
+                                                                        form.control
+                                                                    }
+                                                                    name="clientAddress"
+                                                                    render={({
+                                                                        field
+                                                                    }) => (
+                                                                        <FormItem>
+                                                                            <FormLabel>
+                                                                                {t(
+                                                                                    "siteAddress"
+                                                                                )}
+                                                                            </FormLabel>
+                                                                            <FormControl>
+                                                                                <Input
+                                                                                    autoComplete="off"
+                                                                                    value={
+                                                                                        clientAddress
+                                                                                    }
+                                                                                    onChange={(
+                                                                                        e
+                                                                                    ) => {
+                                                                                        setClientAddress(
+                                                                                            e
+                                                                                                .target
+                                                                                                .value
+                                                                                        );
+                                                                                        field.onChange(
+                                                                                            e
+                                                                                                .target
+                                                                                                .value
+                                                                                        );
+                                                                                    }}
+                                                                                />
+                                                                            </FormControl>
+                                                                            <FormMessage />
+                                                                            <FormDescription>
+                                                                                {t(
+                                                                                    "siteAddressDescription"
+                                                                                )}
+                                                                            </FormDescription>
+                                                                        </FormItem>
+                                                                    )}
+                                                                />
+                                                            </SettingsFormCell>
                                                         )}
                                                     </>
                                                 )}
-                                            </SettingsFormCell>
-                                        </SettingsFormGrid>
-                                    </form>
-                                </Form>
+                                            </SettingsFormGrid>
+                                        </form>
+                                    </Form>
+                                </SettingsSectionForm>
                             </SettingsSectionBody>
                         </SettingsSection>
 

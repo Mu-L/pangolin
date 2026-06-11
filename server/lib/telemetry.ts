@@ -181,6 +181,7 @@ class TelemetryClient {
             let numPrivResourceHosts = 0;
             let numPrivResourceCidr = 0;
             let numPrivResourceHttp = 0;
+            let numPrivResourceSsh = 0;
             for (const res of allPrivateResources) {
                 if (res.mode === "host") {
                     numPrivResourceHosts += 1;
@@ -188,6 +189,8 @@ class TelemetryClient {
                     numPrivResourceCidr += 1;
                 } else if (res.mode === "http") {
                     numPrivResourceHttp += 1;
+                } else if (res.mode === "ssh") {
+                    numPrivResourceSsh += 1;
                 }
 
                 if (res.alias) {
@@ -207,6 +210,7 @@ class TelemetryClient {
                 numPrivateResourceHosts: numPrivResourceHosts,
                 numPrivateResourceCidr: numPrivResourceCidr,
                 numPrivateResourceHttp: numPrivResourceHttp,
+                numPrivateResourceSsh: numPrivResourceSsh,
                 numAlertRules: numAlertRules.count,
                 numUserDevices: userDevicesCount.count,
                 numMachineClients: machineClients.count,

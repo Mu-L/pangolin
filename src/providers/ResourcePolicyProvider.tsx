@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { GetResourcePolicyResponse } from "@server/routers/policy";
 
@@ -15,6 +15,10 @@ export function ResourcePolicyProvider({
 }: ResourcePolicyProviderProps) {
     const [policy, setPolicy] =
         useState<GetResourcePolicyResponse>(serverPolicy);
+
+    useEffect(() => {
+        setPolicy(serverPolicy);
+    }, [serverPolicy]);
 
     const t = useTranslations();
 

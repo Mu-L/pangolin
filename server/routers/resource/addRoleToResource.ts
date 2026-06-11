@@ -28,7 +28,8 @@ const addRoleToResourceParamsSchema = z
 registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/roles/add",
-    description: "Add a single role to a resource.",
+    description:
+        "Add a single role to a resource. When the resource has an inline policy defined (no shared resource policy assigned), the role is added to the inline policy instead of directly to the resource.",
     tags: [OpenAPITags.PublicResource, OpenAPITags.Role],
     request: {
         params: addRoleToResourceParamsSchema,
@@ -46,7 +47,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),

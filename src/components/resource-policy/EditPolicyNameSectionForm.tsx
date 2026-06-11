@@ -1,6 +1,8 @@
 "use client";
 
 import {
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
@@ -138,45 +140,54 @@ export function EditPolicyNameSectionForm({
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
                         <SettingsSectionForm variant="half">
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("name")}</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={readonly}
-                                                placeholder={t(
-                                                    "resourcePolicyNamePlaceholder"
-                                                )}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="niceId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("identifier")}</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={readonly}
-                                                placeholder={t(
-                                                    "enterIdentifier"
-                                                )}
-                                                className="flex-1"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            <SettingsFormGrid>
+                                <SettingsFormCell span="half">
+                                    <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("name")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={readonly}
+                                                        placeholder={t(
+                                                            "resourcePolicyNamePlaceholder"
+                                                        )}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </SettingsFormCell>
+                                <SettingsFormCell span="half">
+                                    <FormField
+                                        control={form.control}
+                                        name="niceId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("identifier")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={readonly}
+                                                        placeholder={t(
+                                                            "enterIdentifier"
+                                                        )}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </SettingsFormCell>
+                            </SettingsFormGrid>
                         </SettingsSectionForm>
                     </SettingsSectionBody>
 

@@ -504,7 +504,7 @@ export function generateRemoteSubnets(
                 const parseResult = cidrSchema.safeParse(sr.destination);
                 return parseResult.success;
             }
-            if (sr.mode === "host") {
+            if (sr.mode === "host" || sr.mode === "ssh") {
                 // check if its a valid IP using zod
                 const ipSchema = z.union([z.ipv4(), z.ipv6()]);
                 const parseResult = ipSchema.safeParse(sr.destination);
@@ -514,7 +514,7 @@ export function generateRemoteSubnets(
         })
         .map((sr) => {
             if (sr.mode === "cidr") return sr.destination;
-            if (sr.mode === "host") {
+            if (sr.mode === "host" || sr.mode === "ssh") {
                 return `${sr.destination}/32`;
             }
             return ""; // This should never be reached due to filtering, but satisfies TypeScript
@@ -531,7 +531,7 @@ export function generateAliasConfig(allSiteResources: SiteResource[]): Alias[] {
         .filter(
             (sr) =>
                 sr.aliasAddress &&
-                ((sr.alias && sr.mode == "host") ||
+                ((sr.alias && (sr.mode == "host" || sr.mode == "ssh")) ||
                     (sr.fullDomain && sr.mode == "http"))
         )
         .map((sr) => ({
@@ -577,6 +577,10 @@ export function generateSubnetProxyTargets(
             continue;
         }
 
+        if (!siteResource.destination) {
+            continue;
+        }
+
         const clientPrefix = `${clientSite.subnet.split("/")[0]}/32`;
         const portRange = [
             ...parsePortRangeString(siteResource.tcpPortRangeString, "tcp"),
@@ -584,7 +588,7 @@ export function generateSubnetProxyTargets(
         ];
         const disableIcmp = siteResource.disableIcmp ?? false;
 
-        if (siteResource.mode == "host") {
+        if (siteResource.mode == "host" || siteResource.mode == "ssh") {
             let destination = siteResource.destination;
             // check if this is a valid ip
             const ipSchema = z.union([z.ipv4(), z.ipv6()]);
@@ -665,6 +669,11 @@ export async function generateSubnetProxyTargetV2(
         return;
     }
 
+    if (!siteResource.destination) {
+        // ssh can have no destination
+        return;
+    }
+
     const targets: SubnetProxyTargetV2[] = [];
 
     const portRange = [
@@ -673,7 +682,7 @@ export async function generateSubnetProxyTargetV2(
     ];
     const disableIcmp = siteResource.disableIcmp ?? false;
 
-    if (siteResource.mode == "host") {
+    if (siteResource.mode == "host" || siteResource.mode == "ssh") {
         let destination = siteResource.destination;
         // check if this is a valid ip
         const ipSchema = z.union([z.ipv4(), z.ipv6()]);
