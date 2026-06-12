@@ -20,6 +20,7 @@ import {
     logsDb,
     newts,
     roles,
+    roleActions,
     rolePolicies,
     roleResources,
     roleSiteResources,
@@ -137,6 +138,27 @@ export async function signSshKey(
                 createHttpError(
                     HttpCode.FORBIDDEN,
                     "User does not belong to the specified organization"
+                )
+            );
+        }
+
+        const roleActionPermission = await db
+            .select({ roleId: roleActions.roleId })
+            .from(roleActions)
+            .where(
+                and(
+                    eq(roleActions.actionId, ActionsEnum.signSshKey),
+                    inArray(roleActions.roleId, roleIds),
+                    eq(roleActions.orgId, orgId)
+                )
+            )
+            .limit(1);
+
+        if (roleActionPermission.length === 0) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "User does not have permission perform this action"
                 )
             );
         }
