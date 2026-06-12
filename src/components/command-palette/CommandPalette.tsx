@@ -9,7 +9,10 @@ import {
     CommandList,
     CommandSeparator
 } from "@app/components/ui/command";
-import type { SidebarNavSection } from "@app/app/navigation";
+import type {
+    CommandBarNavSection,
+    SidebarNavSection
+} from "@app/app/navigation";
 import { Badge } from "@app/components/ui/badge";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import { Loader2 } from "lucide-react";
@@ -28,11 +31,12 @@ import { useCommandPaletteNavigation } from "./useCommandPaletteNavigation";
 import { useCommandPaletteOrganizations } from "./useCommandPaletteOrganizations";
 import { useCommandPaletteSearch } from "./useCommandPaletteSearch";
 import { useUserContext } from "@app/hooks/useUserContext";
+import { cn } from "@app/lib/cn";
 
 type CommandPaletteProps = {
     orgId?: string;
     orgs?: ListUserOrgsResponse["orgs"];
-    navItems: SidebarNavSection[];
+    navItems: CommandBarNavSection[];
 };
 
 /**
@@ -89,28 +93,35 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
             title={t("commandPaletteTitle")}
             description={t("commandPaletteDescription")}
             className="max-w-2xl **:data-[slot=command-input-wrapper]:h-15"
+            commandProps={{
+                loop: true
+            }}
         >
             <CommandInput
                 placeholder={t("commandPaletteSearchPlaceholder")}
                 value={search}
                 onValueChange={setSearch}
             />
-            <CommandList className="max-h-125 min-h-0 h-auto">
+            <CommandList className="max-h-118 min-h-0 h-auto scroll-pb-2.5 scroll-pt-2">
                 <CommandEmpty>{t("commandPaletteNoResults")}</CommandEmpty>
 
                 <CommandGroup
-                    heading='Type ">" to open action mode'
+                    heading={t("commandActionModeInfo")}
                     className="[&_[cmdk-group-heading]]:text-sm"
                 />
 
-                {navigationGroups.map((group, idx) => (
+                {navigationGroups.map((group, groupIndex) => (
                     <React.Fragment key={group.heading}>
-                        {idx > 0 && <CommandSeparator />}
+                        {groupIndex > 0 && <CommandSeparator />}
                         <CommandGroup
                             heading={group.heading}
-                            className="[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5"
+                            className={cn(
+                                "[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5",
+                                groupIndex > 0 &&
+                                    "[&_[cmdk-group-heading]]:pt-3"
+                            )}
                         >
-                            {group.items.map((item) => (
+                            {group.items.map((item, itemIndex) => (
                                 <CommandItem
                                     key={item.id}
                                     value={`${item.title} ${group.heading}`}

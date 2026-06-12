@@ -1,14 +1,14 @@
 "use client";
 
-import type { SidebarNavSection } from "@app/components/SidebarNav";
+import type { CommandBarNavSection } from "@app/app/navigation";
 import { flattenNavSections } from "@app/lib/flattenNavItems";
 import {
     hydrateNavHref,
     navHrefParamsFromRoute
 } from "@app/lib/hydrateNavHref";
+import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { useTranslations } from "next-intl";
 
 export type NavigationCommand = {
     id: string;
@@ -24,7 +24,7 @@ export type NavigationCommandGroup = {
 };
 
 export function useCommandPaletteNavigation(
-    navItems: SidebarNavSection[]
+    navItems: CommandBarNavSection[]
 ): NavigationCommandGroup[] {
     const params = useParams();
     const t = useTranslations();

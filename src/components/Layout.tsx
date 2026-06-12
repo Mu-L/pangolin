@@ -1,7 +1,10 @@
 import React from "react";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import type { SidebarNavSection } from "@app/app/navigation";
+import type {
+    CommandBarNavSection,
+    SidebarNavSection
+} from "@app/app/navigation";
 import { LayoutSidebar } from "@app/components/LayoutSidebar";
 import { LayoutHeader } from "@app/components/LayoutHeader";
 import { LayoutMobileMenu } from "@app/components/LayoutMobileMenu";
@@ -13,7 +16,7 @@ interface LayoutProps {
     orgId?: string;
     orgs?: ListUserOrgsResponse["orgs"];
     navItems?: SidebarNavSection[];
-    commandNavItems?: SidebarNavSection[];
+    commandNavItems?: CommandBarNavSection[];
     showSidebar?: boolean;
     showHeader?: boolean;
     showTopBar?: boolean;
