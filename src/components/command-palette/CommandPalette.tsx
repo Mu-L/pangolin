@@ -14,7 +14,7 @@ import { Badge } from "@app/components/ui/badge";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import {
+import React, {
     createContext,
     useCallback,
     useContext,
@@ -27,12 +27,19 @@ import { useCommandPaletteActions } from "./useCommandPaletteActions";
 import { useCommandPaletteNavigation } from "./useCommandPaletteNavigation";
 import { useCommandPaletteOrganizations } from "./useCommandPaletteOrganizations";
 import { useCommandPaletteSearch } from "./useCommandPaletteSearch";
+import { useUserContext } from "@app/hooks/useUserContext";
 
 type CommandPaletteProps = {
     orgId?: string;
     orgs?: ListUserOrgsResponse["orgs"];
     navItems: SidebarNavSection[];
 };
+
+/**
+ * Plan for command bar:
+ * - the nav items should be custom items instead of all of the ones in the sidebar
+ * - actions should be triggered by using `>` (like in Github)
+ */
 
 export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
     const t = useTranslations();
@@ -41,7 +48,7 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
     const [search, setSearch] = useState("");
 
     const navigationGroups = useCommandPaletteNavigation(navItems);
-    const organizations = useCommandPaletteOrganizations(orgs);
+    // const organizations = useCommandPaletteOrganizations(orgs);
     const actions = useCommandPaletteActions(orgId, orgs);
     const { shouldSearch, sites, resources, users, machineClients, isLoading } =
         useCommandPaletteSearch({
@@ -69,45 +76,58 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
         [setOpen]
     );
 
-    const hasEntityResults =
-        sites.length > 0 ||
-        resources.length > 0 ||
-        users.length > 0 ||
-        machineClients.length > 0;
+    // const hasEntityResults =
+    //     sites.length > 0 ||
+    //     resources.length > 0 ||
+    //     users.length > 0 ||
+    //     machineClients.length > 0;
 
     return (
         <CommandDialog
-            open={open}
+            open //={open}
             onOpenChange={handleOpenChange}
             title={t("commandPaletteTitle")}
             description={t("commandPaletteDescription")}
+            className="max-w-2xl **:data-[slot=command-input-wrapper]:h-15"
         >
             <CommandInput
                 placeholder={t("commandPaletteSearchPlaceholder")}
                 value={search}
                 onValueChange={setSearch}
             />
-            <CommandList>
+            <CommandList className="max-h-125 min-h-0 h-auto">
                 <CommandEmpty>{t("commandPaletteNoResults")}</CommandEmpty>
 
-                {navigationGroups.map((group) => (
-                    <CommandGroup key={group.heading} heading={group.heading}>
-                        {group.items.map((item) => (
-                            <CommandItem
-                                key={item.id}
-                                value={`${item.title} ${group.heading}`}
-                                onSelect={() =>
-                                    runCommand(() => router.push(item.href))
-                                }
-                            >
-                                {item.icon}
-                                <span>{item.title}</span>
-                            </CommandItem>
-                        ))}
-                    </CommandGroup>
+                <CommandGroup
+                    heading='Type ">" to open action mode'
+                    className="[&_[cmdk-group-heading]]:text-sm"
+                />
+
+                {navigationGroups.map((group, idx) => (
+                    <React.Fragment key={group.heading}>
+                        {idx > 0 && <CommandSeparator />}
+                        <CommandGroup
+                            heading={group.heading}
+                            className="[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5"
+                        >
+                            {group.items.map((item) => (
+                                <CommandItem
+                                    key={item.id}
+                                    value={`${item.title} ${group.heading}`}
+                                    onSelect={() =>
+                                        runCommand(() => router.push(item.href))
+                                    }
+                                    className="h-9"
+                                >
+                                    {item.icon}
+                                    <span>{item.title}</span>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </React.Fragment>
                 ))}
 
-                {organizations.length > 1 && (
+                {/* {organizations.length > 1 && (
                     <>
                         <CommandSeparator />
                         <CommandGroup
@@ -137,9 +157,9 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                             ))}
                         </CommandGroup>
                     </>
-                )}
+                )} */}
 
-                {shouldSearch && orgId && (
+                {/* {shouldSearch && orgId && (
                     <>
                         <CommandSeparator />
                         {isLoading && !hasEntityResults ? (
@@ -243,12 +263,15 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                             </>
                         )}
                     </>
-                )}
+                )} */}
 
-                {actions.length > 0 && (
+                {/* {actions.length > 0 && (
                     <>
                         <CommandSeparator />
-                        <CommandGroup heading={t("commandPaletteActions")}>
+                        <CommandGroup
+                            heading={t("commandPaletteActions")}
+                            className="pb-2.5"
+                        >
                             {actions.map((action) => (
                                 <CommandItem
                                     key={action.id}
@@ -269,7 +292,7 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                             ))}
                         </CommandGroup>
                     </>
-                )}
+                )} */}
             </CommandList>
         </CommandDialog>
     );

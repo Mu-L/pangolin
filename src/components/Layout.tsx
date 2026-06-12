@@ -13,6 +13,7 @@ interface LayoutProps {
     orgId?: string;
     orgs?: ListUserOrgsResponse["orgs"];
     navItems?: SidebarNavSection[];
+    commandNavItems?: SidebarNavSection[];
     showSidebar?: boolean;
     showHeader?: boolean;
     showTopBar?: boolean;
@@ -24,6 +25,7 @@ export async function Layout({
     orgId,
     orgs,
     navItems = [],
+    commandNavItems = [],
     showSidebar = true,
     showHeader = true,
     showTopBar = true,
@@ -38,7 +40,11 @@ export async function Layout({
         (sidebarStateCookie !== "expanded" && defaultSidebarCollapsed);
 
     return (
-        <CommandPaletteProvider orgId={orgId} orgs={orgs} navItems={navItems}>
+        <CommandPaletteProvider
+            orgId={orgId}
+            orgs={orgs}
+            navItems={commandNavItems}
+        >
             <div className="flex h-screen-safe overflow-hidden">
                 {/* Desktop Sidebar */}
                 {showSidebar && (

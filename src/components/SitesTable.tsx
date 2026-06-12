@@ -113,13 +113,6 @@ export default function SitesTable({
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
 
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         router.refresh();
-    //     }, 30_000);
-    //     return () => clearInterval(interval);
-    // }, []);
-
     const booleanSearchFilterSchema = z
         .enum(["true", "false"])
         .optional()
