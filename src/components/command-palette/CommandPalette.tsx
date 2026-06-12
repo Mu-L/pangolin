@@ -88,13 +88,18 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
 
     return (
         <CommandDialog
-            open //={open}
+            open //={open} // TODO: flip back to normal
             onOpenChange={handleOpenChange}
             title={t("commandPaletteTitle")}
             description={t("commandPaletteDescription")}
             className="max-w-2xl **:data-[slot=command-input-wrapper]:h-15"
             commandProps={{
-                loop: true
+                loop: true,
+                filter(value, search) {
+                    if (value.toLowerCase().includes(search.toLowerCase()))
+                        return 1;
+                    return 0;
+                }
             }}
         >
             <CommandInput
