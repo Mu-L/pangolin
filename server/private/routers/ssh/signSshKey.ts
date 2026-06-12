@@ -20,6 +20,7 @@ import {
     logsDb,
     newts,
     roles,
+    rolePolicies,
     roleResources,
     roleSiteResources,
     resources,
@@ -40,7 +41,7 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { canUserAccessResource } from "@server/auth/canUserAccessResource";
 import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResource";
 import { signPublicKey, getOrgCAKeys } from "@server/lib/sshCA";
@@ -435,50 +436,106 @@ export async function signSshKey(
                 usernameToUse = userOrg.pamUsername;
             }
 
-            const roleRows =
-                type === "private"
-                    ? await db
-                          .select({
-                              sshSudoCommands: roles.sshSudoCommands,
-                              sshUnixGroups: roles.sshUnixGroups,
-                              sshCreateHomeDir: roles.sshCreateHomeDir,
-                              sshSudoMode: roles.sshSudoMode
-                          })
-                          .from(roles)
-                          .innerJoin(
-                              roleSiteResources,
-                              eq(roleSiteResources.roleId, roles.roleId)
-                          )
-                          .where(
-                              and(
-                                  inArray(roles.roleId, roleIds),
-                                  eq(
-                                      roleSiteResources.siteResourceId,
-                                      (resource as SiteResource).siteResourceId
-                                  )
-                              )
-                          )
-                    : await db
-                          .select({
-                              sshSudoCommands: roles.sshSudoCommands,
-                              sshUnixGroups: roles.sshUnixGroups,
-                              sshCreateHomeDir: roles.sshCreateHomeDir,
-                              sshSudoMode: roles.sshSudoMode
-                          })
-                          .from(roles)
-                          .innerJoin(
-                              roleResources,
-                              eq(roleResources.roleId, roles.roleId)
-                          )
-                          .where(
-                              and(
-                                  inArray(roles.roleId, roleIds),
-                                  eq(
-                                      roleResources.resourceId,
-                                      (resource as Resource).resourceId
-                                  )
-                              )
-                          );
+            type RoleSshMeta = {
+                roleId: number;
+                sshSudoCommands: string | null;
+                sshUnixGroups: string | null;
+                sshCreateHomeDir: boolean | null;
+                sshSudoMode: string | null;
+            };
+
+            let roleRows: RoleSshMeta[] = [];
+
+            if (type === "private") {
+                roleRows = await db
+                    .select({
+                        roleId: roles.roleId,
+                        sshSudoCommands: roles.sshSudoCommands,
+                        sshUnixGroups: roles.sshUnixGroups,
+                        sshCreateHomeDir: roles.sshCreateHomeDir,
+                        sshSudoMode: roles.sshSudoMode
+                    })
+                    .from(roles)
+                    .innerJoin(
+                        roleSiteResources,
+                        eq(roleSiteResources.roleId, roles.roleId)
+                    )
+                    .where(
+                        and(
+                            inArray(roles.roleId, roleIds),
+                            eq(
+                                roleSiteResources.siteResourceId,
+                                (resource as SiteResource).siteResourceId
+                            )
+                        )
+                    );
+            } else {
+                const publicResourceId = (resource as Resource).resourceId;
+                const [directRoleRows, policyRoleRows] = await Promise.all([
+                    db
+                        .select({
+                            roleId: roles.roleId,
+                            sshSudoCommands: roles.sshSudoCommands,
+                            sshUnixGroups: roles.sshUnixGroups,
+                            sshCreateHomeDir: roles.sshCreateHomeDir,
+                            sshSudoMode: roles.sshSudoMode
+                        })
+                        .from(roles)
+                        .innerJoin(
+                            roleResources,
+                            eq(roleResources.roleId, roles.roleId)
+                        )
+                        .where(
+                            and(
+                                inArray(roles.roleId, roleIds),
+                                eq(roleResources.resourceId, publicResourceId)
+                            )
+                        ),
+                    db
+                        .select({
+                            roleId: roles.roleId,
+                            sshSudoCommands: roles.sshSudoCommands,
+                            sshUnixGroups: roles.sshUnixGroups,
+                            sshCreateHomeDir: roles.sshCreateHomeDir,
+                            sshSudoMode: roles.sshSudoMode
+                        })
+                        .from(roles)
+                        .innerJoin(
+                            rolePolicies,
+                            eq(rolePolicies.roleId, roles.roleId)
+                        )
+                        .innerJoin(
+                            resources,
+                            or(
+                                eq(
+                                    resources.resourcePolicyId,
+                                    rolePolicies.resourcePolicyId
+                                ),
+                                and(
+                                    isNull(resources.resourcePolicyId),
+                                    eq(
+                                        resources.defaultResourcePolicyId,
+                                        rolePolicies.resourcePolicyId
+                                    )
+                                )
+                            )
+                        )
+                        .where(
+                            and(
+                                inArray(roles.roleId, roleIds),
+                                eq(resources.resourceId, publicResourceId)
+                            )
+                        )
+                ]);
+
+                const uniqueByRoleId = new Map<number, RoleSshMeta>();
+                for (const row of [...directRoleRows, ...policyRoleRows]) {
+                    if (!uniqueByRoleId.has(row.roleId)) {
+                        uniqueByRoleId.set(row.roleId, row);
+                    }
+                }
+                roleRows = Array.from(uniqueByRoleId.values());
+            }
 
             const parsedSudoCommands: string[] = [];
             const parsedGroupsSet = new Set<string>();
