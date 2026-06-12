@@ -43,6 +43,7 @@ type CommandPaletteProps = {
  * Plan for command bar:
  * - the nav items should be custom items instead of all of the ones in the sidebar
  * - actions should be triggered by using `>` (like in Github)
+ *   -> if search starts with `>`, the filter should exclude that char in the filter string
  */
 
 export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
