@@ -644,14 +644,6 @@ export async function signSshKey(
                 messageIds.push(message.messageId);
 
                 const agentHost = siteAgentHostMap.get(siteId);
-                if (!agentHost) {
-                    return next(
-                        createHttpError(
-                            HttpCode.INTERNAL_SERVER_ERROR,
-                            `Unable to determine agent host for site ${siteId}`
-                        )
-                    );
-                }
 
                 await sendToClient(newt.newtId, {
                     type: `newt/pam/connection`,
