@@ -561,7 +561,7 @@ export default function Page() {
                                                             </Button>
                                                         </SettingsFormCell>
                                                         {showAdvancedSettings && (
-                                                            <SettingsFormCell span="quarter">
+                                                            <SettingsFormCell span="half">
                                                                 <FormField
                                                                     control={
                                                                         form.control
