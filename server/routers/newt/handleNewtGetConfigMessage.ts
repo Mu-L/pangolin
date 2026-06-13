@@ -54,7 +54,7 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
         // TODO: somehow we should make sure a recent hole punch has happened if this occurs (hole punch could be from the last restart if done quickly)
     }
 
-    if (existingSite.lastHolePunch && now - existingSite.lastHolePunch > 5) {
+    if (existingSite.lastHolePunch && now - existingSite.lastHolePunch > 12) {
         logger.warn(
             `Site last hole punch is too old; skipping this register. The site is failing to hole punch and identify its network address with the server. Can the site reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`
         );
