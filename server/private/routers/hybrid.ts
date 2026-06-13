@@ -277,6 +277,8 @@ hybridRouter.get(
             );
         }
 
+        const browserGatewayUiUrl = config.getRawConfig().app.dashboard_url; // points to the dashboard to serve from there
+
         try {
             const traefikConfig = await getTraefikConfig(
                 remoteExitNode.exitNodeId,
@@ -285,7 +287,7 @@ hybridRouter.get(
                 false, // Dont include login pages,
                 true, // allow raw resources
                 false, // dont generate maintenance page
-                false // dont generate browser gateway targets
+                browserGatewayUiUrl // generate browser gateway targets
             );
 
             return response(res, {

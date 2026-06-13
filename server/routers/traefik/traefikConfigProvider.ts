@@ -17,13 +17,18 @@ export async function traefikConfigProvider(
         // Get the current exit node name from config
         const currentExitNodeId = await getCurrentExitNodeId();
 
+        const maintenancePort = config.getRawConfig().server.next_port;
+        const maintenanceHost = config.getRawConfig().server.internal_hostname;
+        const browserGatewayUiUrl = `http://${maintenanceHost}:${maintenancePort}`;
+
         const traefikConfig = await getTraefikConfig(
             currentExitNodeId,
             config.getRawConfig().traefik.site_types,
             build == "oss", // filter out the namespace domains in open source
             build != "oss", // generate the login pages on the cloud and and enterprise,
             config.getRawConfig().traefik.allow_raw_resources,
-            build != "oss" // generate browser gateway resources on cloud and enterprise
+            build != "oss", // generate maintenance page on cloud and enterprise
+            browserGatewayUiUrl
         );
 
         if (traefikConfig?.http?.middlewares) {
