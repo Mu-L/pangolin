@@ -44,7 +44,7 @@ export async function getTraefikConfig(
     filterOutNamespaceDomains = false, // UNUSED BUT USED IN PRIVATE
     generateLoginPageRouters = false, // UNUSED BUT USED IN PRIVATE
     allowRawResources = true,
-    allowMaintenancePage = true, // UNUSED BUT USED IN PRIVATE
+    maintenancePageUiUrl: string | null = null, // UNUSED BUT USED IN PRIVATE
     browserGatewayUiUrl: string | null = null // UNUSED BUT USED IN PRIVATE
 ): Promise<any> {
     // Get resources with their targets and sites in a single optimized query
