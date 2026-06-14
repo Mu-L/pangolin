@@ -19,7 +19,7 @@ export async function traefikConfigProvider(
 
         const maintenancePort = config.getRawConfig().server.next_port;
         const maintenanceHost = config.getRawConfig().server.internal_hostname;
-        const browserGatewayUiUrl = `http://${maintenanceHost}:${maintenancePort}`;
+        const pangolinUIUrl = `http://${maintenanceHost}:${maintenancePort}`;
 
         const traefikConfig = await getTraefikConfig(
             currentExitNodeId,
@@ -27,8 +27,8 @@ export async function traefikConfigProvider(
             build == "oss", // filter out the namespace domains in open source
             build != "oss", // generate the login pages on the cloud and and enterprise,
             config.getRawConfig().traefik.allow_raw_resources,
-            build != "oss", // generate maintenance page on cloud and enterprise
-            browserGatewayUiUrl
+            pangolinUIUrl,
+            pangolinUIUrl
         );
 
         if (traefikConfig?.http?.middlewares) {

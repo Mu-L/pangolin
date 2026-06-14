@@ -527,7 +527,7 @@ export class TraefikConfigManager {
                 build == "saas"
                     ? false
                     : config.getRawConfig().traefik.allow_raw_resources, // dont allow raw resources on saas otherwise use config
-                build != "oss", // generate maintenance pages on cloud and hybrid
+                build != "oss" ? browserGatewayUiUrl : null, // generate maintenance pages on cloud and hybrid
                 browserGatewayUiUrl // generate browser gateway targets on cloud and hybrid
             );
 

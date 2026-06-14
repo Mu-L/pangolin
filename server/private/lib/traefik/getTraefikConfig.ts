@@ -84,7 +84,7 @@ export async function getTraefikConfig(
     filterOutNamespaceDomains = false,
     generateLoginPageRouters = false,
     allowRawResources = true,
-    allowMaintenancePage = true,
+    maintenancePageUiUrl: string | null = null,
     browserGatewayUiUrl: string | null = null
 ): Promise<any> {
     // Get resources with their targets and sites in a single optimized query
@@ -630,7 +630,7 @@ export async function getTraefikConfig(
                 }
             }
 
-            if (showMaintenancePage && allowMaintenancePage) {
+            if (showMaintenancePage && maintenancePageUiUrl) {
                 const maintenanceServiceName = `${key}-maintenance-service`;
                 const maintenanceRouterName = `${key}-maintenance-router`;
                 const rewriteMiddlewareName = `${key}-maintenance-rewrite`;
@@ -646,15 +646,11 @@ export async function getTraefikConfig(
                     ? `*.${domainParts.slice(1).join(".")}`
                     : fullDomain;
 
-                const maintenancePort = config.getRawConfig().server.next_port;
-                const maintenanceHost =
-                    config.getRawConfig().server.internal_hostname;
-
                 config_output.http.services[maintenanceServiceName] = {
                     loadBalancer: {
                         servers: [
                             {
-                                url: `http://${maintenanceHost}:${maintenancePort}`
+                                url: maintenancePageUiUrl
                             }
                         ],
                         passHostHeader: true
@@ -1119,7 +1115,7 @@ export async function getTraefikConfig(
                 }
             }
 
-            if (showBgMaintenancePage && allowMaintenancePage) {
+            if (showBgMaintenancePage && maintenancePageUiUrl) {
                 const bgMaintenanceServiceName = `bg-r${bgResource.resourceId}-maintenance-service`;
                 const bgMaintenanceRouterName = `bg-r${bgResource.resourceId}-maintenance-router`;
                 const bgRewriteMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-rewrite`;
@@ -1140,7 +1136,7 @@ export async function getTraefikConfig(
                     loadBalancer: {
                         servers: [
                             {
-                                url: browserGatewayUiUrl
+                                url: maintenancePageUiUrl
                             }
                         ],
                         passHostHeader: true
