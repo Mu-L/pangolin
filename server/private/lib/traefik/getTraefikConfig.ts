@@ -634,6 +634,7 @@ export async function getTraefikConfig(
                 const maintenanceServiceName = `${key}-maintenance-service`;
                 const maintenanceRouterName = `${key}-maintenance-router`;
                 const rewriteMiddlewareName = `${key}-maintenance-rewrite`;
+                const maintenanceHeadersMiddlewareName = `${key}-maintenance-headers`;
 
                 const entrypointHttp =
                     config.getRawConfig().traefik.http_entrypoint;
@@ -669,12 +670,26 @@ export async function getTraefikConfig(
                     }
                 };
 
+                config_output.http.middlewares[
+                    maintenanceHeadersMiddlewareName
+                ] = {
+                    headers: {
+                        customRequestHeaders: {
+                            Host: "app.pangolin.net", // if we are sending to the cloud the host needs to be this but we will pull the p-host to find the resource
+                            "p-host": fullDomain
+                        }
+                    }
+                };
+
                 config_output.http.routers[maintenanceRouterName] = {
                     entryPoints: [
                         resource.ssl ? entrypointHttps : entrypointHttp
                     ],
                     service: maintenanceServiceName,
-                    middlewares: [rewriteMiddlewareName],
+                    middlewares: [
+                        rewriteMiddlewareName,
+                        maintenanceHeadersMiddlewareName
+                    ],
                     rule: rule,
                     priority: 2000,
                     ...(resource.ssl ? { tls } : {})
@@ -687,6 +702,7 @@ export async function getTraefikConfig(
                             resource.ssl ? entrypointHttps : entrypointHttp
                         ],
                         service: maintenanceServiceName,
+                        middlewares: [maintenanceHeadersMiddlewareName],
                         rule: `${rule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`)) `,
                         priority: 2001,
                         ...(resource.ssl ? { tls } : {})
@@ -1119,6 +1135,7 @@ export async function getTraefikConfig(
                 const bgMaintenanceServiceName = `bg-r${bgResource.resourceId}-maintenance-service`;
                 const bgMaintenanceRouterName = `bg-r${bgResource.resourceId}-maintenance-router`;
                 const bgRewriteMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-rewrite`;
+                const bgMaintenanceHeadersMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-headers`;
 
                 const entrypointHttp =
                     config.getRawConfig().traefik.http_entrypoint;
@@ -1150,12 +1167,26 @@ export async function getTraefikConfig(
                     }
                 };
 
+                config_output.http.middlewares![
+                    bgMaintenanceHeadersMiddlewareName
+                ] = {
+                    headers: {
+                        customRequestHeaders: {
+                            Host: "app.pangolin.net", // if we are sending to the cloud the host needs to be this but we will pull the p-host to find the resource
+                            "p-host": fullDomain
+                        }
+                    }
+                };
+
                 config_output.http.routers![bgMaintenanceRouterName] = {
                     entryPoints: [
                         bgResource.ssl ? entrypointHttps : entrypointHttp
                     ],
                     service: bgMaintenanceServiceName,
-                    middlewares: [bgRewriteMiddlewareName],
+                    middlewares: [
+                        bgRewriteMiddlewareName,
+                        bgMaintenanceHeadersMiddlewareName
+                    ],
                     rule: hostRule,
                     priority: 2000,
                     ...(bgResource.ssl ? { tls } : {})
@@ -1168,6 +1199,7 @@ export async function getTraefikConfig(
                         bgResource.ssl ? entrypointHttps : entrypointHttp
                     ],
                     service: bgMaintenanceServiceName,
+                    middlewares: [bgMaintenanceHeadersMiddlewareName],
                     rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
                     priority: 2001,
                     ...(bgResource.ssl ? { tls } : {})
@@ -1227,6 +1259,7 @@ export async function getTraefikConfig(
             // how the maintenance page rewrites everything to /maintenance-screen.
             const primaryType = typeMap.keys().next().value as string;
             const uiRewriteMiddlewareName = `bg-r${bgResource.resourceId}-ui-rewrite`;
+            const uiHeadersMiddlewareName = `bg-r${bgResource.resourceId}-ui-headers`;
             const entrypoint = bgResource.ssl
                 ? config.getRawConfig().traefik.https_entrypoint
                 : config.getRawConfig().traefik.http_entrypoint;
@@ -1239,6 +1272,15 @@ export async function getTraefikConfig(
                 replacePathRegex: {
                     regex: "^/(.*)",
                     replacement: `/${primaryType}`
+                }
+            };
+
+            config_output.http.middlewares![uiHeadersMiddlewareName] = {
+                headers: {
+                    customRequestHeaders: {
+                        Host: "app.pangolin.net", // if we are sending to the cloud the host needs to be this but we will pull the p-host to find the resource
+                        "p-host": fullDomain
+                    }
                 }
             };
 
@@ -1257,7 +1299,11 @@ export async function getTraefikConfig(
                 `bg-r${bgResource.resourceId}-assets-router`
             ] = {
                 entryPoints: [entrypoint],
-                middlewares: routerMiddlewares,
+                middlewares: [
+                    ...routerMiddlewares,
+                    uiRewriteMiddlewareName,
+                    uiHeadersMiddlewareName
+                ],
                 service: bgUiServiceName,
                 rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
                 priority: 101,
@@ -1269,7 +1315,11 @@ export async function getTraefikConfig(
                 `bg-r${bgResource.resourceId}-ui-router`
             ] = {
                 entryPoints: [entrypoint],
-                middlewares: [...routerMiddlewares, uiRewriteMiddlewareName],
+                middlewares: [
+                    ...routerMiddlewares,
+                    uiRewriteMiddlewareName,
+                    uiHeadersMiddlewareName
+                ],
                 service: bgUiServiceName,
                 rule: hostRule,
                 priority: 100,
