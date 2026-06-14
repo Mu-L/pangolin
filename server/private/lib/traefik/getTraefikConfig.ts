@@ -84,8 +84,8 @@ export async function getTraefikConfig(
     filterOutNamespaceDomains = false,
     generateLoginPageRouters = false,
     allowRawResources = true,
-    allowMaintenancePage = true,
-    allowBrowserGatewayResources = true
+    maintenancePageUiUrl: string | null = null,
+    browserGatewayUiUrl: string | null = null
 ): Promise<any> {
     // Get resources with their targets and sites in a single optimized query
     // Start from sites on this exit node, then join to targets and resources
@@ -317,7 +317,7 @@ export async function getTraefikConfig(
         BrowserGatewayResourceEntry
     >();
 
-    if (allowBrowserGatewayResources) {
+    if (browserGatewayUiUrl) {
         for (const row of resourcesWithTargetsAndSites) {
             if (!["ssh", "vnc", "rdp"].includes(row.mode)) {
                 continue;
@@ -630,7 +630,7 @@ export async function getTraefikConfig(
                 }
             }
 
-            if (showMaintenancePage && allowMaintenancePage) {
+            if (showMaintenancePage && maintenancePageUiUrl) {
                 const maintenanceServiceName = `${key}-maintenance-service`;
                 const maintenanceRouterName = `${key}-maintenance-router`;
                 const rewriteMiddlewareName = `${key}-maintenance-rewrite`;
@@ -646,15 +646,11 @@ export async function getTraefikConfig(
                     ? `*.${domainParts.slice(1).join(".")}`
                     : fullDomain;
 
-                const maintenancePort = config.getRawConfig().server.next_port;
-                const maintenanceHost =
-                    config.getRawConfig().server.internal_hostname;
-
                 config_output.http.services[maintenanceServiceName] = {
                     loadBalancer: {
                         servers: [
                             {
-                                url: `http://${maintenanceHost}:${maintenancePort}`
+                                url: maintenancePageUiUrl
                             }
                         ],
                         passHostHeader: true
@@ -1027,7 +1023,7 @@ export async function getTraefikConfig(
         }
     }
 
-    if (allowBrowserGatewayResources) {
+    if (browserGatewayUiUrl) {
         // Generate Traefik config for browser gateway resources
         const browserGatewayPort = 39999;
         for (const [, bgResource] of browserGatewayResourcesMap.entries()) {
@@ -1119,7 +1115,7 @@ export async function getTraefikConfig(
                 }
             }
 
-            if (showBgMaintenancePage && allowMaintenancePage) {
+            if (showBgMaintenancePage && maintenancePageUiUrl) {
                 const bgMaintenanceServiceName = `bg-r${bgResource.resourceId}-maintenance-service`;
                 const bgMaintenanceRouterName = `bg-r${bgResource.resourceId}-maintenance-router`;
                 const bgRewriteMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-rewrite`;
@@ -1128,10 +1124,6 @@ export async function getTraefikConfig(
                     config.getRawConfig().traefik.http_entrypoint;
                 const entrypointHttps =
                     config.getRawConfig().traefik.https_entrypoint;
-
-                const maintenancePort = config.getRawConfig().server.next_port;
-                const maintenanceHost =
-                    config.getRawConfig().server.internal_hostname;
 
                 if (!config_output.http.services)
                     config_output.http.services = {};
@@ -1144,7 +1136,7 @@ export async function getTraefikConfig(
                     loadBalancer: {
                         servers: [
                             {
-                                url: `http://${maintenanceHost}:${maintenancePort}`
+                                url: maintenancePageUiUrl
                             }
                         ],
                         passHostHeader: true
