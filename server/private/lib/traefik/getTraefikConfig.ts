@@ -1294,16 +1294,14 @@ export async function getTraefikConfig(
                 }
             };
 
-            // Assets router at higher priority so /_next files load without rewrite
+            // Assets router at higher priority so /_next files load without rewrite.
+            // Do NOT apply the path-rewrite middleware here — static assets must
+            // keep their original path; only the host headers are needed.
             config_output.http.routers![
                 `bg-r${bgResource.resourceId}-assets-router`
             ] = {
                 entryPoints: [entrypoint],
-                middlewares: [
-                    ...routerMiddlewares,
-                    uiRewriteMiddlewareName,
-                    uiHeadersMiddlewareName
-                ],
+                middlewares: [...routerMiddlewares, uiHeadersMiddlewareName],
                 service: bgUiServiceName,
                 rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
                 priority: 101,
