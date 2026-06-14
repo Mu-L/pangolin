@@ -1226,8 +1226,6 @@ export async function getTraefikConfig(
             // The primary type is used for the path rewrite (e.g. /rdp), mirroring
             // how the maintenance page rewrites everything to /maintenance-screen.
             const primaryType = typeMap.keys().next().value as string;
-            const internalHost = config.getRawConfig().server.internal_hostname;
-            const internalPort = config.getRawConfig().server.next_port;
             const uiRewriteMiddlewareName = `bg-r${bgResource.resourceId}-ui-rewrite`;
             const entrypoint = bgResource.ssl
                 ? config.getRawConfig().traefik.https_entrypoint
@@ -1248,7 +1246,7 @@ export async function getTraefikConfig(
                 loadBalancer: {
                     servers: [
                         {
-                            url: `http://${internalHost}:${internalPort}`
+                            url: browserGatewayUiUrl
                         }
                     ]
                 }
@@ -1304,10 +1302,6 @@ export async function getTraefikConfig(
             const siteResourceRouterName = `${srKey}-router`;
             const siteResourceRewriteMiddlewareName = `${srKey}-rewrite`;
 
-            const maintenancePort = config.getRawConfig().server.next_port;
-            const maintenanceHost =
-                config.getRawConfig().server.internal_hostname;
-
             if (!config_output.http.routers) {
                 config_output.http.routers = {};
             }
@@ -1323,7 +1317,7 @@ export async function getTraefikConfig(
                 loadBalancer: {
                     servers: [
                         {
-                            url: `http://${maintenanceHost}:${maintenancePort}`
+                            url: maintenancePageUiUrl
                         }
                     ],
                     passHostHeader: true
