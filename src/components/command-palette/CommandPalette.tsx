@@ -1,5 +1,9 @@
 "use client";
 
+import type {
+    CommandBarNavSection,
+    SidebarNavSection
+} from "@app/app/navigation";
 import {
     CommandDialog,
     CommandEmpty,
@@ -9,13 +13,9 @@ import {
     CommandList,
     CommandSeparator
 } from "@app/components/ui/command";
-import type {
-    CommandBarNavSection,
-    SidebarNavSection
-} from "@app/app/navigation";
-import { Badge } from "@app/components/ui/badge";
+import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import React, {
     createContext,
@@ -25,13 +25,10 @@ import React, {
     useMemo,
     useState
 } from "react";
-import { useTranslations } from "next-intl";
 import { useCommandPaletteActions } from "./useCommandPaletteActions";
 import { useCommandPaletteNavigation } from "./useCommandPaletteNavigation";
-import { useCommandPaletteOrganizations } from "./useCommandPaletteOrganizations";
 import { useCommandPaletteSearch } from "./useCommandPaletteSearch";
-import { useUserContext } from "@app/hooks/useUserContext";
-import { cn } from "@app/lib/cn";
+import { search } from "jmespath";
 
 type CommandPaletteProps = {
     orgId?: string;
@@ -52,14 +49,16 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
     const { open, setOpen } = useCommandPalette();
     const [search, setSearch] = useState("");
 
+    const isActionMode = search.startsWith(">");
+
     const navigationGroups = useCommandPaletteNavigation(navItems);
     // const organizations = useCommandPaletteOrganizations(orgs);
     const actions = useCommandPaletteActions(orgId, orgs);
     const { shouldSearch, sites, resources, users, machineClients, isLoading } =
         useCommandPaletteSearch({
             orgId,
-            query: search,
-            enabled: open
+            query: search.substring(1),
+            enabled: open && isActionMode
         });
 
     const handleOpenChange = useCallback(
@@ -96,9 +95,24 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
             className="max-w-2xl **:data-[slot=command-input-wrapper]:h-15"
             commandProps={{
                 loop: true,
-                filter(value, search) {
-                    if (value.toLowerCase().includes(search.toLowerCase()))
+                filter(value, query) {
+                    let search = query;
+                    if (query.startsWith(">")) {
+                        search = query.substring(1);
+
+                        console.log({
+                            search,
+                            value
+                        });
+                    }
+
+                    if (
+                        value
+                            .toLowerCase()
+                            .includes(search.trim().toLowerCase())
+                    ) {
                         return 1;
+                    }
                     return 0;
                 }
             }}
@@ -107,8 +121,9 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                 placeholder={t("commandPaletteSearchPlaceholder")}
                 value={search}
                 onValueChange={setSearch}
+                // isLoading
             />
-            <CommandList className="max-h-118 min-h-0 h-auto scroll-pb-2.5 scroll-pt-2">
+            <CommandList className="max-h-118 min-h-0 h-(--cmdk-list-height) scroll-pb-2.5 scroll-pt-2 transition-[height] duration-250 ease-in-out">
                 <CommandEmpty>{t("commandPaletteNoResults")}</CommandEmpty>
 
                 <CommandGroup
@@ -116,33 +131,42 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                     className="[&_[cmdk-group-heading]]:text-sm"
                 />
 
-                {navigationGroups.map((group, groupIndex) => (
-                    <React.Fragment key={group.heading}>
-                        {groupIndex > 0 && <CommandSeparator />}
-                        <CommandGroup
-                            heading={group.heading}
-                            className={cn(
-                                "[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5",
-                                groupIndex > 0 &&
-                                    "[&_[cmdk-group-heading]]:pt-3"
-                            )}
-                        >
-                            {group.items.map((item, itemIndex) => (
-                                <CommandItem
-                                    key={item.id}
-                                    value={`${item.title} ${group.heading}`}
-                                    onSelect={() =>
-                                        runCommand(() => router.push(item.href))
-                                    }
-                                    className="h-9"
+                {!isActionMode &&
+                    navigationGroups.map((group, groupIndex) => {
+                        console.log({
+                            groupIndex,
+                            groupHeading: group.heading
+                        });
+                        return (
+                            <React.Fragment key={group.heading}>
+                                {groupIndex > 0 && <CommandSeparator />}
+                                <CommandGroup
+                                    heading={group.heading}
+                                    className={cn(
+                                        "[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5",
+                                        groupIndex > 0 &&
+                                            "[&_[cmdk-group-heading]]:pt-3"
+                                    )}
                                 >
-                                    {item.icon}
-                                    <span>{item.title}</span>
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </React.Fragment>
-                ))}
+                                    {group.items.map((item) => (
+                                        <CommandItem
+                                            key={item.id}
+                                            value={`${item.title} ${group.heading}`}
+                                            onSelect={() =>
+                                                runCommand(() =>
+                                                    router.push(item.href)
+                                                )
+                                            }
+                                            className="h-9"
+                                        >
+                                            {item.icon}
+                                            <span>{item.title}</span>
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </React.Fragment>
+                        );
+                    })}
 
                 {/* {organizations.length > 1 && (
                     <>
@@ -282,7 +306,7 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                     </>
                 )} */}
 
-                {/* {actions.length > 0 && (
+                {isActionMode && actions.length > 0 && (
                     <>
                         <CommandSeparator />
                         <CommandGroup
@@ -309,7 +333,7 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                             ))}
                         </CommandGroup>
                     </>
-                )} */}
+                )}
             </CommandList>
         </CommandDialog>
     );

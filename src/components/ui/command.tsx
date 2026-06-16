@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
-import { SearchIcon } from "lucide-react";
+import { LoaderIcon, SearchIcon } from "lucide-react";
 
 import {
     Dialog,
@@ -68,14 +68,21 @@ function CommandDialog({
 
 function CommandInput({
     className,
+    isLoading,
     ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+    isLoading?: boolean;
+}) {
     return (
         <div
             data-slot="command-input-wrapper"
             className="flex h-9 items-center gap-2 border-b px-3"
         >
-            <SearchIcon className="size-4 shrink-0 opacity-50" />
+            {isLoading ? (
+                <LoaderIcon className="animate-spin size-4 shrink-0 opacity-50" />
+            ) : (
+                <SearchIcon className="size-4 shrink-0 opacity-50" />
+            )}
             <CommandPrimitive.Input
                 data-slot="command-input"
                 className={cn(
