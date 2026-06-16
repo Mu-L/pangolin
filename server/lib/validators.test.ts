@@ -246,14 +246,29 @@ function runTests() {
         "Standard ASN should be valid"
     );
     assertEquals(
+        getResourceRuleValueValidationError("ASN", "  As15169  "),
+        null,
+        "Standard ASN should be valid with mixed case and whitespace"
+    );
+    assertEquals(
         getResourceRuleValueValidationError("ASN", "ALL"),
         null,
         "ALL ASN selector should be valid"
     );
     assertEquals(
+        getResourceRuleValueValidationError("ASN", " all "),
+        null,
+        "ALL ASN selector should be valid with mixed case and whitespace"
+    );
+    assertEquals(
         getResourceRuleValueValidationError("ASN", "AS0"),
         null,
         "AS0 alias should be valid"
+    );
+    assertEquals(
+        getResourceRuleValueValidationError("ASN", " as0 "),
+        null,
+        "AS0 alias should be valid with mixed case and whitespace"
     );
     assertEquals(
         getResourceRuleValueValidationError("ASN", "not-an-asn"),

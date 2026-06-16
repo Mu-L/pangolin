@@ -101,7 +101,7 @@ export function getResourceRuleValueValidationError(
                 : "Invalid country code provided";
         case "ASN":
             const normalizedValue = value.trim().toUpperCase();
-            return /^AS\d+$/i.test(normalizedValue) ||
+            return /^AS\d+$/.test(normalizedValue) ||
                 normalizedValue === "ALL" ||
                 normalizedValue === "AS0"
                 ? null

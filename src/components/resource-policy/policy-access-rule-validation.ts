@@ -87,7 +87,7 @@ export function createPolicyRuleValueSchema(t: TranslateFn, match: string) {
                 (value) => {
                     const normalizedValue = value.trim().toUpperCase();
                     return (
-                        /^AS\d+$/i.test(normalizedValue) ||
+                        /^AS\d+$/.test(normalizedValue) ||
                         normalizedValue === "ALL" ||
                         normalizedValue === "AS0"
                     );
