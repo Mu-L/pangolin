@@ -78,10 +78,14 @@ export interface SendMessageOptions {
 
 // Redis message type for cross-node communication
 export interface RedisMessage {
-    type: "direct" | "broadcast";
+    type: "direct" | "direct-batch" | "broadcast";
     targetClientId?: string;
     excludeClientId?: string;
     message: WSMessage;
+    messages?: {
+        targetClientId: string;
+        message: WSMessage;
+    }[];
     fromNodeId: string;
     options?: SendMessageOptions;
 }
