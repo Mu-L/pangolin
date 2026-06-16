@@ -1626,6 +1626,7 @@
     "commandBilling": "Billing",
     "commandEnterpriseLicenses": "Licenses",
     "commandSettings": "Settings",
+    "commandSearchResults": "Search Results",
     "alertingTitle": "Alerting",
     "alertingDescription": "Define sources, triggers, and actions for notifications",
     "alertingRules": "Alert rules",

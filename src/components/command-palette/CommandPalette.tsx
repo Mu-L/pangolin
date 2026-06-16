@@ -15,6 +15,15 @@ import {
 } from "@app/components/ui/command";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
+import {
+    ChevronRightIcon,
+    GlobeIcon,
+    GlobeLockIcon,
+    LaptopIcon,
+    PlugIcon,
+    ServerIcon,
+    UserIcon
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import React, {
@@ -28,7 +37,7 @@ import React, {
 import { useCommandPaletteActions } from "./useCommandPaletteActions";
 import { useCommandPaletteNavigation } from "./useCommandPaletteNavigation";
 import { useCommandPaletteSearch } from "./useCommandPaletteSearch";
-import { search } from "jmespath";
+import { resources } from "@server/db";
 
 type CommandPaletteProps = {
     orgId?: string;
@@ -54,12 +63,21 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
     const navigationGroups = useCommandPaletteNavigation(navItems);
     // const organizations = useCommandPaletteOrganizations(orgs);
     const actions = useCommandPaletteActions(orgId, orgs);
-    const { shouldSearch, sites, resources, users, machineClients, isLoading } =
-        useCommandPaletteSearch({
-            orgId,
-            query: search.substring(1),
-            enabled: open && isActionMode
-        });
+    const {
+        shouldSearch,
+        sites,
+        publicResources,
+        privateResources,
+        users,
+        machineClients,
+        userDevices,
+        isLoading,
+        hasResults: hasEntityResults
+    } = useCommandPaletteSearch({
+        orgId,
+        query: search,
+        enabled: !isActionMode && open
+    });
 
     const handleOpenChange = useCallback(
         (nextOpen: boolean) => {
@@ -80,15 +98,9 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
         [setOpen]
     );
 
-    // const hasEntityResults =
-    //     sites.length > 0 ||
-    //     resources.length > 0 ||
-    //     users.length > 0 ||
-    //     machineClients.length > 0;
-
     return (
         <CommandDialog
-            open //={open} // TODO: flip back to normal
+            open={open} // TODO: flip back to normal
             onOpenChange={handleOpenChange}
             title={t("commandPaletteTitle")}
             description={t("commandPaletteDescription")}
@@ -121,9 +133,9 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                 placeholder={t("commandPaletteSearchPlaceholder")}
                 value={search}
                 onValueChange={setSearch}
-                // isLoading
+                isLoading={!isActionMode && shouldSearch && isLoading}
             />
-            <CommandList className="max-h-118 min-h-0 h-(--cmdk-list-height) scroll-pb-2.5 scroll-pt-2 transition-[height] duration-250 ease-in-out">
+            <CommandList className="max-h-118 min-h-0  h-(--cmdk-list-height) scroll-pb-4 scroll-pt-2 transition-[height] duration-250 ease-in-out">
                 <CommandEmpty>{t("commandPaletteNoResults")}</CommandEmpty>
 
                 <CommandGroup
@@ -132,41 +144,35 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                 />
 
                 {!isActionMode &&
-                    navigationGroups.map((group, groupIndex) => {
-                        console.log({
-                            groupIndex,
-                            groupHeading: group.heading
-                        });
-                        return (
-                            <React.Fragment key={group.heading}>
-                                {groupIndex > 0 && <CommandSeparator />}
-                                <CommandGroup
-                                    heading={group.heading}
-                                    className={cn(
-                                        "[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5",
-                                        groupIndex > 0 &&
-                                            "[&_[cmdk-group-heading]]:pt-3"
-                                    )}
-                                >
-                                    {group.items.map((item) => (
-                                        <CommandItem
-                                            key={item.id}
-                                            value={`${item.title} ${group.heading}`}
-                                            onSelect={() =>
-                                                runCommand(() =>
-                                                    router.push(item.href)
-                                                )
-                                            }
-                                            className="h-9"
-                                        >
-                                            {item.icon}
-                                            <span>{item.title}</span>
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </React.Fragment>
-                        );
-                    })}
+                    navigationGroups.map((group, groupIndex) => (
+                        <React.Fragment key={group.heading}>
+                            {groupIndex > 0 && <CommandSeparator />}
+                            <CommandGroup
+                                heading={group.heading}
+                                className={cn(
+                                    "[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5",
+                                    groupIndex > 0 &&
+                                        "[&_[cmdk-group-heading]]:pt-3"
+                                )}
+                            >
+                                {group.items.map((item) => (
+                                    <CommandItem
+                                        key={item.id}
+                                        value={`${item.title} ${group.heading}`}
+                                        onSelect={() =>
+                                            runCommand(() =>
+                                                router.push(item.href)
+                                            )
+                                        }
+                                        className="h-9"
+                                    >
+                                        {item.icon}
+                                        <span>{item.title}</span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </React.Fragment>
+                    ))}
 
                 {/* {organizations.length > 1 && (
                     <>
@@ -200,118 +206,157 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                     </>
                 )} */}
 
-                {/* {shouldSearch && orgId && (
-                    <>
-                        <CommandSeparator />
-                        {isLoading && !hasEntityResults ? (
-                            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                                <Loader2 className="size-4 animate-spin" />
-                                {t("commandPaletteSearching")}
-                            </div>
-                        ) : (
-                            <>
-                                {sites.length > 0 && (
-                                    <CommandGroup
-                                        heading={t("commandPaletteSites")}
-                                    >
-                                        {sites.map((site) => (
-                                            <CommandItem
-                                                key={site.id}
-                                                value={`${site.name} site`}
-                                                onSelect={() =>
-                                                    runCommand(() =>
-                                                        router.push(site.href)
-                                                    )
-                                                }
-                                            >
-                                                <span className="truncate">
-                                                    {site.name}
-                                                </span>
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                )}
-                                {resources.length > 0 && (
-                                    <CommandGroup
-                                        heading={t("commandPaletteResources")}
-                                    >
-                                        {resources.map((resource) => (
-                                            <CommandItem
-                                                key={resource.id}
-                                                value={`${resource.name} resource`}
-                                                onSelect={() =>
-                                                    runCommand(() =>
-                                                        router.push(
-                                                            resource.href
-                                                        )
-                                                    )
-                                                }
-                                            >
-                                                <span className="truncate">
-                                                    {resource.name}
-                                                </span>
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                )}
-                                {users.length > 0 && (
-                                    <CommandGroup
-                                        heading={t("commandPaletteUsers")}
-                                    >
-                                        {users.map((user) => (
-                                            <CommandItem
-                                                key={user.id}
-                                                value={`${user.name} ${user.email}`}
-                                                onSelect={() =>
-                                                    runCommand(() =>
-                                                        router.push(user.href)
-                                                    )
-                                                }
-                                            >
-                                                <div className="flex min-w-0 flex-col">
-                                                    <span className="truncate">
-                                                        {user.name}
-                                                    </span>
-                                                    <span className="truncate text-xs text-muted-foreground">
-                                                        {user.email}
-                                                    </span>
-                                                </div>
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                )}
-                                {machineClients.length > 0 && (
-                                    <CommandGroup
-                                        heading={t("commandPaletteClients")}
-                                    >
-                                        {machineClients.map((client) => (
-                                            <CommandItem
-                                                key={client.id}
-                                                value={`${client.name} client`}
-                                                onSelect={() =>
-                                                    runCommand(() =>
-                                                        router.push(client.href)
-                                                    )
-                                                }
-                                            >
-                                                <span className="truncate">
-                                                    {client.name}
-                                                </span>
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                )}
-                            </>
+                {!isActionMode && shouldSearch && orgId && hasEntityResults && (
+                    <CommandGroup
+                        heading={t("commandSearchResults")}
+                        className={cn(
+                            "[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5"
                         )}
-                    </>
-                )} */}
+                    >
+                        {sites.map((site) => (
+                            <CommandItem
+                                key={site.id}
+                                value={`${site.name} site`}
+                                onSelect={() =>
+                                    runCommand(() => router.push(site.href))
+                                }
+                                className="h-9"
+                            >
+                                <div className="inline-flex items-center gap-1">
+                                    <PlugIcon className="size-4 flex-none" />
+                                    <span className="text-muted-foreground">
+                                        {t("commandSites")}
+                                    </span>
+                                    <ChevronRightIcon className="size-3.5! flex-none relative p-0! top-px" />
+                                    <span className="truncate">
+                                        {site.name}
+                                    </span>
+                                </div>
+                            </CommandItem>
+                        ))}
+                        {publicResources.map((resource) => (
+                            <CommandItem
+                                key={resource.id}
+                                value={`${resource.name} public resource`}
+                                onSelect={() =>
+                                    runCommand(() => router.push(resource.href))
+                                }
+                                className="h-9"
+                            >
+                                <div className="inline-flex items-center gap-1">
+                                    <GlobeIcon className="size-4 flex-none" />
+                                    <span className="text-muted-foreground">
+                                        {t("commandProxyResources")}
+                                    </span>
+                                    <ChevronRightIcon className="size-3.5! flex-none relative p-0! top-px" />
+                                    <span className="truncate">
+                                        {resource.name}
+                                    </span>
+                                </div>
+                            </CommandItem>
+                        ))}
+                        {privateResources.map((resource) => (
+                            <CommandItem
+                                key={resource.id}
+                                value={`${resource.name} private resource`}
+                                onSelect={() =>
+                                    runCommand(() => router.push(resource.href))
+                                }
+                                className="h-9"
+                            >
+                                <div className="inline-flex items-center gap-1">
+                                    <GlobeLockIcon className="size-4 flex-none" />
+                                    <span className="text-muted-foreground">
+                                        {t("commandClientResources")}
+                                    </span>
+                                    <ChevronRightIcon className="size-3.5! flex-none relative p-0! top-px" />
+                                    <span className="truncate">
+                                        {resource.name}
+                                    </span>
+                                </div>
+                            </CommandItem>
+                        ))}
+                        {users.map((user) => (
+                            <CommandItem
+                                key={user.id}
+                                value={`${user.name} ${user.email}`}
+                                onSelect={() =>
+                                    runCommand(() => router.push(user.href))
+                                }
+                                className="h-9"
+                            >
+                                <div className="inline-flex items-center gap-1">
+                                    <UserIcon className="size-4 flex-none" />
+                                    <span className="text-muted-foreground">
+                                        {t("commandUsers")}
+                                    </span>
+                                    <ChevronRightIcon className="size-3.5! flex-none relative p-0! top-px" />
+                                    <div className="inline-flex min-w-0 items-center gap-1">
+                                        <span className="truncate">
+                                            {user.name}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            &middot;
+                                        </span>
+                                        <span className="truncate text-xs text-muted-foreground">
+                                            {user.email}
+                                        </span>
+                                    </div>
+                                </div>
+                            </CommandItem>
+                        ))}
+                        {machineClients.map((client) => (
+                            <CommandItem
+                                key={client.id}
+                                value={`${client.name} client`}
+                                onSelect={() =>
+                                    runCommand(() => router.push(client.href))
+                                }
+                                className="h-9"
+                            >
+                                <div className="inline-flex items-center gap-1">
+                                    <ServerIcon className="size-4 flex-none" />
+                                    <span className="text-muted-foreground">
+                                        {t("commandMachineClients")}
+                                    </span>
+                                    <ChevronRightIcon className="size-3.5! flex-none relative p-0! top-px" />
+                                    <span className="truncate">
+                                        {client.name}
+                                    </span>
+                                </div>
+                            </CommandItem>
+                        ))}
+                        {userDevices.map((device) => (
+                            <CommandItem
+                                key={device.id}
+                                value={`${device.name} user device`}
+                                onSelect={() =>
+                                    runCommand(() => router.push(device.href))
+                                }
+                                className="h-9"
+                            >
+                                <div className="inline-flex items-center gap-1">
+                                    <LaptopIcon className="size-4 flex-none" />
+                                    <span className="text-muted-foreground">
+                                        {t("commandUserDevices")}
+                                    </span>
+                                    <ChevronRightIcon className="size-3.5! flex-none relative p-0! top-px" />
+                                    <span className="truncate">
+                                        {device.name}
+                                    </span>
+                                </div>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                )}
 
                 {isActionMode && actions.length > 0 && (
                     <>
-                        <CommandSeparator />
                         <CommandGroup
                             heading={t("commandPaletteActions")}
-                            className="pb-2.5"
+                            className={cn(
+                                "[&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-sm pb-2.5"
+                            )}
                         >
                             {actions.map((action) => (
                                 <CommandItem
@@ -326,6 +371,7 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                                             }
                                         })
                                     }
+                                    className="h-9"
                                 >
                                     {action.icon}
                                     <span>{action.label}</span>
@@ -387,7 +433,7 @@ export function CommandPaletteProvider({
     orgs,
     navItems
 }: CommandPaletteProviderProps) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true); // FIXME: should be set to `false` by default, this is temporary
 
     const toggle = useCallback(() => {
         setOpen((current) => !current);

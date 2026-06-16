@@ -47,7 +47,14 @@ export function useCommandPaletteSearch({
     const shouldSearch =
         enabled && !!orgId && trimmedQuery.length >= MIN_QUERY_LENGTH;
 
-    const [sitesQuery, resourcesQuery, usersQuery, clientsQuery] = useQueries({
+    const [
+        sitesQuery,
+        proxyResourcesQuery,
+        privateResourcesQuery,
+        usersQuery,
+        clientsQuery,
+        userDevicesQuery
+    ] = useQueries({
         queries: [
             {
                 ...orgQueries.sites({
@@ -58,7 +65,15 @@ export function useCommandPaletteSearch({
                 enabled: shouldSearch
             },
             {
-                ...orgQueries.resources({
+                ...orgQueries.proxyResources({
+                    orgId: orgId ?? "",
+                    query: trimmedQuery,
+                    perPage: SEARCH_PER_PAGE
+                }),
+                enabled: shouldSearch
+            },
+            {
+                ...orgQueries.privateResources({
                     orgId: orgId ?? "",
                     query: trimmedQuery,
                     perPage: SEARCH_PER_PAGE
@@ -80,6 +95,14 @@ export function useCommandPaletteSearch({
                     perPage: SEARCH_PER_PAGE
                 }),
                 enabled: shouldSearch
+            },
+            {
+                ...orgQueries.userDevices({
+                    orgId: orgId ?? "",
+                    query: trimmedQuery,
+                    perPage: SEARCH_PER_PAGE
+                }),
+                enabled: shouldSearch
             }
         ]
     });
@@ -93,14 +116,23 @@ export function useCommandPaletteSearch({
         }));
     }, [orgId, sitesQuery.data]);
 
-    const resources = useMemo((): ResourceSearchResult[] => {
-        if (!orgId || !resourcesQuery.data) return [];
-        return resourcesQuery.data.map((resource) => ({
+    const publicResources = useMemo((): ResourceSearchResult[] => {
+        if (!orgId || !proxyResourcesQuery.data) return [];
+        return proxyResourcesQuery.data.map((resource) => ({
             id: `resource-${resource.resourceId}`,
             name: resource.name,
             href: `/${orgId}/settings/resources/proxy/${resource.niceId}`
         }));
-    }, [orgId, resourcesQuery.data]);
+    }, [orgId, proxyResourcesQuery.data]);
+
+    const privateResources = useMemo((): ResourceSearchResult[] => {
+        if (!orgId || !privateResourcesQuery.data) return [];
+        return privateResourcesQuery.data.map((resource) => ({
+            id: `site-resource-${resource.siteResourceId}`,
+            name: resource.name,
+            href: `/${orgId}/settings/resources/private?query=${resource.name}`
+        }));
+    }, [orgId, privateResourcesQuery.data]);
 
     const users = useMemo((): UserSearchResult[] => {
         if (!orgId || !usersQuery.data) return [];
@@ -123,20 +155,44 @@ export function useCommandPaletteSearch({
             }));
     }, [orgId, clientsQuery.data]);
 
+    const userDevices = useMemo((): ClientSearchResult[] => {
+        if (!orgId || !userDevicesQuery.data) return [];
+        return userDevicesQuery.data
+            .filter((client) => !client.userId)
+            .map((client) => ({
+                id: `client-${client.clientId}`,
+                name: client.name,
+                href: `/${orgId}/settings/clients/user/${client.niceId}`
+            }));
+    }, [orgId, userDevicesQuery.data]);
+
     const isLoading =
         shouldSearch &&
         (sitesQuery.isFetching ||
-            resourcesQuery.isFetching ||
+            proxyResourcesQuery.isFetching ||
+            privateResourcesQuery.isFetching ||
             usersQuery.isFetching ||
+            userDevicesQuery.isFetching ||
             clientsQuery.isFetching);
+
+    const hasResults =
+        sites.length > 0 ||
+        publicResources.length > 0 ||
+        users.length > 0 ||
+        privateResources.length > 0 ||
+        userDevices.length > 0 ||
+        machineClients.length > 0;
 
     return {
         debouncedQuery: trimmedQuery,
         shouldSearch,
         sites,
-        resources,
+        publicResources,
+        privateResources,
         users,
         machineClients,
-        isLoading
+        userDevices,
+        isLoading,
+        hasResults
     };
 }
