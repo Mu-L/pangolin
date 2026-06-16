@@ -188,7 +188,7 @@ const wss: WebSocketServer = new WebSocketServer({ noServer: true });
 const NODE_ID = uuidv4();
 const REDIS_CHANNEL = "websocket_messages";
 const REDIS_DIRECT_BATCH_SIZE = 250;
-const REDIS_DIRECT_FLUSH_MS = 10;
+const REDIS_DIRECT_FLUSH_INTERVAL_MS = 10;
 
 // Client tracking map (local to this node)
 const connectedClients: Map<string, AuthenticatedWebSocket[]> = new Map();
@@ -234,10 +234,6 @@ const publishDirectBatch = async (
             targetClientId: entry.targetClientId,
             message: entry.message
         })),
-        message: {
-            type: "batch",
-            data: {}
-        },
         fromNodeId: NODE_ID
     };
 
@@ -289,7 +285,7 @@ const enqueueRedisDirectMessage = async (
         if (!redisDirectFlushTimer) {
             redisDirectFlushTimer = setTimeout(() => {
                 void flushPendingRedisDirectMessages();
-            }, REDIS_DIRECT_FLUSH_MS);
+            }, REDIS_DIRECT_FLUSH_INTERVAL_MS);
         }
     });
 };

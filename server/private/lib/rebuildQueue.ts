@@ -70,8 +70,13 @@ class RedisRebuildQueue {
             );
         } catch (err) {
             await redis
-                ?.srem(QUEUED_SET_KEY, `${job.type}:${job.id}`)
-                .catch(() => undefined);
+                .srem(QUEUED_SET_KEY, `${job.type}:${job.id}`)
+                .catch((cleanupErr) =>
+                    logger.warn(
+                        `Rebuild queue: failed to cleanup dedupe key for ${job.type}:${job.id} after enqueue failure:`,
+                        cleanupErr
+                    )
+                );
             logger.error(
                 `Rebuild queue: failed to enqueue ${job.type}:${job.id}:`,
                 err
@@ -138,7 +143,12 @@ class RedisRebuildQueue {
                         // can be re-queued while this one is in progress.
                         await redis
                             .srem(QUEUED_SET_KEY, `${job.type}:${job.id}`)
-                            .catch(() => undefined);
+                            .catch((cleanupErr) =>
+                                logger.warn(
+                                    `Rebuild queue: failed to remove dedupe key for ${job.type}:${job.id} on dequeue:`,
+                                    cleanupErr
+                                )
+                            );
 
                         logger.debug(
                             `Rebuild queue: processing ${job.type}:${job.id}`
