@@ -100,7 +100,7 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
 
     return (
         <CommandDialog
-            open={open} // TODO: flip back to normal
+            open={open}
             onOpenChange={handleOpenChange}
             title={t("commandPaletteTitle")}
             description={t("commandPaletteDescription")}
@@ -433,7 +433,7 @@ export function CommandPaletteProvider({
     orgs,
     navItems
 }: CommandPaletteProviderProps) {
-    const [open, setOpen] = useState(true); // FIXME: should be set to `false` by default, this is temporary
+    const [open, setOpen] = useState(false);
 
     const toggle = useCallback(() => {
         setOpen((current) => !current);
