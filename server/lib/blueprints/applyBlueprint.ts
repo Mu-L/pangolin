@@ -48,18 +48,18 @@ export async function applyBlueprint({
     name,
     source = "API"
 }: ApplyBlueprintArgs): Promise<Blueprint> {
-    // Validate the input data
-    const validationResult = ConfigSchema.safeParse(configData);
-    if (!validationResult.success) {
-        throw new Error(fromError(validationResult.error).toString());
-    }
-
-    const config: Config = validationResult.data;
     let blueprintSucceeded: boolean = false;
-    let blueprintMessage: string;
+    let blueprintMessage = "";
     let error: any | null = null;
 
     try {
+        const validationResult = ConfigSchema.safeParse(configData);
+        if (!validationResult.success) {
+            throw new Error(fromError(validationResult.error).toString());
+        }
+
+        const config: Config = validationResult.data;
+
         let proxyResourcesResults: PublicResourcesResults = [];
         let clientResourcesResults: ClientResourcesResults = [];
         await db.transaction(async (trx) => {
