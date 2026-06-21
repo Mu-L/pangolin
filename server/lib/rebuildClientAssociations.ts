@@ -629,6 +629,21 @@ async function handleMessagesForSiteClients(
         }
     }
 
+    // Batch-fetch all olm IDs for the clients we need to process
+    const clientIdsToProcess = Array.from(clientsToProcess.keys());
+    const olmRows =
+        clientIdsToProcess.length > 0
+            ? await trx
+                  .select({ olmId: olms.olmId, clientId: olms.clientId })
+                  .from(olms)
+                  .where(inArray(olms.clientId, clientIdsToProcess))
+            : [];
+    const olmByClientId = new Map<number, string>(
+        olmRows
+            .filter((r) => r.clientId !== null)
+            .map((r) => [r.clientId as number, r.olmId])
+    );
+
     for (const client of clientsToProcess.values()) {
         // UPDATE THE NEWT
         if (!client.subnet || !client.pubKey) {
@@ -645,14 +660,8 @@ async function handleMessagesForSiteClients(
             continue;
         }
 
-        const [olm] = await trx
-            .select({
-                olmId: olms.olmId
-            })
-            .from(olms)
-            .where(eq(olms.clientId, client.clientId))
-            .limit(1);
-        if (!olm) {
+        const olmId = olmByClientId.get(client.clientId);
+        if (!olmId) {
             logger.warn(
                 `Olm not found for client ${client.clientId} so cannot add/delete peers`
             );
@@ -669,7 +678,7 @@ async function handleMessagesForSiteClients(
                 clientId: client.clientId,
                 siteId,
                 publicKey: site.publicKey,
-                olmId: olm.olmId
+                olmId
             });
         }
 
@@ -691,7 +700,7 @@ async function handleMessagesForSiteClients(
                         endpoint: exitNode.endpoint
                     }
                 },
-                olmId: olm.olmId
+                olmId
             });
         }
 
