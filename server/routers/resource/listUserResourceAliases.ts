@@ -15,8 +15,7 @@ import logger from "@server/logger";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import type { PaginatedResponse } from "@server/types/Pagination";
-import { OpenAPITags, registry } from "@server/openApi";
-import { localCache } from "#dynamic/lib/cache";
+import { regionalCache as cache } from "#dynamic/lib/cache";
 
 const USER_RESOURCE_ALIASES_CACHE_TTL_SEC = 60;
 
@@ -153,7 +152,7 @@ export async function listUserResourceAliases(
             pageSize
         );
         const cachedData: ListUserResourceAliasesResponse | undefined =
-            localCache.get(cacheKey);
+            await cache.get(cacheKey);
 
         if (cachedData) {
             return response<ListUserResourceAliasesResponse>(res, {
@@ -211,7 +210,11 @@ export async function listUserResourceAliases(
                     page
                 }
             };
-            localCache.set(cacheKey, data, USER_RESOURCE_ALIASES_CACHE_TTL_SEC);
+            await cache.set(
+                cacheKey,
+                data,
+                USER_RESOURCE_ALIASES_CACHE_TTL_SEC
+            );
             return response<ListUserResourceAliasesResponse>(res, {
                 data,
                 success: true,
@@ -256,7 +259,7 @@ export async function listUserResourceAliases(
                 page
             }
         };
-        localCache.set(cacheKey, data, USER_RESOURCE_ALIASES_CACHE_TTL_SEC);
+        await cache.set(cacheKey, data, USER_RESOURCE_ALIASES_CACHE_TTL_SEC);
 
         return response<ListUserResourceAliasesResponse>(res, {
             data,

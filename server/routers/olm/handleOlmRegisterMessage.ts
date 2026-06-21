@@ -20,7 +20,7 @@ import { handleFingerprintInsertion } from "./fingerprintingUtils";
 import { build } from "@server/build";
 import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";
-import cache from "#dynamic/lib/cache";
+import cache from "#dynamic/lib/cache"; // not using regional here because we need this in the register message handler before we know where the client is
 
 const HOLEPUNCH_STALE_CHAIN_THRESHOLD = 18;
 const HOLEPUNCH_STALE_CHAIN_TTL_SECONDS = 1800;

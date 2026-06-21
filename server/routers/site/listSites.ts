@@ -14,7 +14,7 @@ import {
     siteLabels,
     type Label
 } from "@server/db";
-import cache from "#dynamic/lib/cache";
+import { regionalCache as cache } from "#dynamic/lib/cache";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
