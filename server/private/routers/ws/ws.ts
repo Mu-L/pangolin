@@ -38,6 +38,7 @@ import { messageHandlers } from "@server/routers/ws/messageHandlers";
 import { messageHandlers as privateMessageHandlers } from "#private/routers/ws/messageHandlers";
 import {
     AuthenticatedWebSocket,
+    BatchSendMessage,
     ClientType,
     WSMessage,
     TokenPayload,
@@ -736,6 +737,76 @@ const sendToClient = async (
     return localSent;
 };
 
+const sendToClientsBatch = async (
+    entries: BatchSendMessage[]
+): Promise<void> => {
+    if (entries.length === 0) {
+        return;
+    }
+
+    const remoteEntries: { targetClientId: string; message: WSMessage }[] = [];
+
+    for (const entry of entries) {
+        const options = entry.options || {};
+        const { clientId, message } = entry;
+
+        let configVersion = await getClientConfigVersion(clientId);
+        if (options.incrementConfigVersion) {
+            configVersion = await incrementClientConfigVersion(clientId);
+        }
+
+        logger.debug(
+            `sendToClientsBatch: Message type ${message.type} queued for clientId ${clientId} (new configVersion: ${configVersion})`
+        );
+
+        const localSent = await sendToClientLocal(
+            clientId,
+            message,
+            options,
+            configVersion
+        );
+
+        if (!localSent && redisManager.isRedisEnabled()) {
+            remoteEntries.push({
+                targetClientId: clientId,
+                message: {
+                    ...message,
+                    configVersion
+                }
+            });
+        } else if (!localSent && !redisManager.isRedisEnabled()) {
+            logger.debug(
+                `Could not deliver batch message to ${clientId} - not connected locally and Redis unavailable`
+            );
+        }
+    }
+
+    if (!redisManager.isRedisEnabled() || remoteEntries.length === 0) {
+        return;
+    }
+
+    for (let i = 0; i < remoteEntries.length; i += REDIS_DIRECT_BATCH_SIZE) {
+        const messages = remoteEntries.slice(i, i + REDIS_DIRECT_BATCH_SIZE);
+        try {
+            const redisMessage: RedisMessage = {
+                type: "direct-batch",
+                messages,
+                fromNodeId: NODE_ID
+            };
+
+            await redisManager.publish(
+                REDIS_CHANNEL,
+                JSON.stringify(redisMessage)
+            );
+        } catch (error) {
+            logger.error(
+                "Failed to send explicit direct batch via Redis, messages may be lost:",
+                error
+            );
+        }
+    }
+};
+
 const broadcastToAllExcept = async (
     message: WSMessage,
     excludeClientId?: string,
@@ -1239,6 +1310,7 @@ export {
     router,
     handleWSUpgrade,
     sendToClient,
+    sendToClientsBatch,
     broadcastToAllExcept,
     connectedClients,
     hasActiveConnections,

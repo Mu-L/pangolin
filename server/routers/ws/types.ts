@@ -76,6 +76,12 @@ export interface SendMessageOptions {
     compress?: boolean;
 }
 
+export interface BatchSendMessage {
+    clientId: string;
+    message: WSMessage;
+    options?: SendMessageOptions;
+}
+
 // Redis message types for cross-node communication
 export type RedisMessage =
     | {
