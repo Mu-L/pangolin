@@ -1,20 +1,21 @@
 import {
     db,
     exitNodes,
+    labels,
     newts,
     orgs,
     remoteExitNodes,
     roleSites,
+    siteLabels,
     siteNetworks,
     siteResources,
-    targets,
     sites,
+    targets,
     userSites,
-    labels,
-    siteLabels,
     type Label
 } from "@server/db";
 import { regionalCache as cache } from "#dynamic/lib/cache";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -23,11 +24,9 @@ import type { PaginatedResponse } from "@server/types/Pagination";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import semver from "semver";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const listSitesParamsSchema = z.strictObject({
     orgId: z.string()
@@ -355,6 +354,8 @@ export async function listSites(
             countQuery,
             siteListQuery
         ]);
+
+        const totalCount = Number(countRows[0]?.count ?? 0);
 
         const siteIds = rows.map((site) => site.siteId);
 
