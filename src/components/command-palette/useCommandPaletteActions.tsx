@@ -87,6 +87,12 @@ export function useCommandPaletteActions(
                 href: `/${orgId}/settings/resources/proxy/create`
             });
             actions.push({
+                id: "create-machine-client",
+                label: t("commandPaletteCreateMachineClient"),
+                icon: <MonitorUp className="size-4" />,
+                href: `/${orgId}/settings/clients/machine/create`
+            });
+            actions.push({
                 id: "create-user",
                 label: t("commandPaletteCreateUser"),
                 icon: <UserPlus className="size-4" />,
@@ -97,12 +103,6 @@ export function useCommandPaletteActions(
                 label: t("commandPaletteCreateApiKey"),
                 icon: <KeyRound className="size-4" />,
                 href: `/${orgId}/settings/api-keys/create`
-            });
-            actions.push({
-                id: "create-machine-client",
-                label: t("commandPaletteCreateMachineClient"),
-                icon: <MonitorUp className="size-4" />,
-                href: `/${orgId}/settings/clients/machine/create`
             });
 
             if (!env?.flags.disableEnterpriseFeatures) {
@@ -127,17 +127,6 @@ export function useCommandPaletteActions(
                     href: `/${orgId}/settings/idp/create`
                 });
             }
-        }
-
-        const canChooseOrganization = !isAdminPage && (orgs?.length ?? 0) > 1;
-
-        if (canChooseOrganization) {
-            actions.push({
-                id: "choose-org",
-                label: t("commandPaletteChooseOrganization"),
-                icon: <Building2 className="size-4" />,
-                href: "/?orgs=1"
-            });
         }
 
         actions.push({

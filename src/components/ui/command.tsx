@@ -174,10 +174,11 @@ function CommandShortcut({
     ...props
 }: React.ComponentProps<"span">) {
     return (
-        <span
+        <kbd
             data-slot="command-shortcut"
             className={cn(
                 "text-muted-foreground ml-auto text-xs tracking-widest",
+                "px-1 py-0.5 rounded-sm border-border bg-muted border",
                 className
             )}
             {...props}
