@@ -2967,6 +2967,7 @@
     "orgOrDomainIdMissing": "Chybí ID organizace nebo domény",
     "loadingDNSRecords": "Načítání DNS záznamů...",
     "olmUpdateAvailableInfo": "Je k dispozici aktualizovaná verze Olm. Pro nejlepší zážitek prosím aktualizujte na nejnovější verzi.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "Zákazník",
     "proxyProtocol": "Nastavení proxy protokolu",
     "proxyProtocolDescription": "Konfigurace Proxy protokolu pro zachování klientských IP adres pro služby TCP.",
