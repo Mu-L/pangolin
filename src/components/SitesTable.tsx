@@ -55,6 +55,9 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { LabelsTableCell } from "./LabelsTableCell";
+import { useQuery } from "@tanstack/react-query";
+import { productUpdatesQueries } from "@app/lib/queries";
+import semver from "semver";
 
 export type SiteRow = {
     id: number;
@@ -113,12 +116,11 @@ export default function SitesTable({
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
 
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         router.refresh();
-    //     }, 30_000);
-    //     return () => clearInterval(interval);
-    // }, []);
+    const { data: latestVersions } = useQuery(
+        productUpdatesQueries.latestVersion(true)
+    );
+
+    const latestNewtVersion = latestVersions?.data?.newt?.latestVersion;
 
     const booleanSearchFilterSchema = z
         .enum(["true", "false"])
@@ -333,6 +335,11 @@ export default function SitesTable({
                 cell: ({ row }) => {
                     const originalRow = row.original;
 
+                    let updateAvailable =
+                        latestNewtVersion &&
+                        originalRow.newtVersion &&
+                        semver.lt(originalRow.newtVersion, latestNewtVersion);
+
                     if (originalRow.type === "newt") {
                         return (
                             <div className="flex items-center space-x-1">
@@ -346,7 +353,7 @@ export default function SitesTable({
                                         )}
                                     </div>
                                 </Badge>
-                                {originalRow.newtUpdateAvailable && (
+                                {updateAvailable && (
                                     <InfoPopup
                                         info={t("newtUpdateAvailableInfo")}
                                     />
@@ -561,7 +568,7 @@ export default function SitesTable({
         }
 
         return cols;
-    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
+    }, [isLabelFeatureEnabled, orgId, t, searchParams, latestNewtVersion]);
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
