@@ -2967,6 +2967,7 @@
     "orgOrDomainIdMissing": "Manca l'ID dell'organizzazione o del dominio",
     "loadingDNSRecords": "Caricamento record DNS...",
     "olmUpdateAvailableInfo": "È disponibile una versione aggiornata di Olm. Si prega di aggiornare all'ultima versione per la migliore esperienza.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "Client",
     "proxyProtocol": "Impostazioni Protocollo Proxy",
     "proxyProtocolDescription": "Configurare il protocollo proxy per preservare gli indirizzi IP client per i servizi TCP.",
