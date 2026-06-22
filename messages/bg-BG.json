@@ -2967,6 +2967,7 @@
     "orgOrDomainIdMissing": "Липсва идентификатор на организация или домейн",
     "loadingDNSRecords": "Зареждане на DNS записи...",
     "olmUpdateAvailableInfo": "Налична е актуализирана версия на Olm. Моля, актуализирайте до най-новата версия за най-добро преживяване.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "Клиент",
     "proxyProtocol": "Настройки на прокси протокол",
     "proxyProtocolDescription": "Конфигурирайте Proxy Protocol, за да запазите IP адресите на клиентите за TCP услуги.",
