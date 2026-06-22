@@ -2967,6 +2967,7 @@
     "orgOrDomainIdMissing": "Organizasyon veya Alan Adı Kimliği eksik",
     "loadingDNSRecords": "DNS kayıtları yükleniyor...",
     "olmUpdateAvailableInfo": "Olm'nin güncellenmiş bir sürümü mevcut. En iyi deneyim için lütfen en son sürüme güncelleyin.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "İstemci",
     "proxyProtocol": "Proxy Protokol Ayarları",
     "proxyProtocolDescription": "TCP hizmetleri için istemci IP adreslerini korumak amacıyla Proxy Protokolünü yapılandırın.",
