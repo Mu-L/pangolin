@@ -8,6 +8,7 @@ import {
     exitNodes,
     newts,
     olms,
+    primaryDb,
     roleSiteResources,
     Site,
     SiteResource,
@@ -20,10 +21,10 @@ import {
 } from "@server/db";
 import { and, count, eq, inArray, ne } from "drizzle-orm";
 
-import { deletePeer as newtDeletePeer } from "@server/routers/newt/peers";
+import { deletePeersBatch as newtDeletePeersBatch } from "@server/routers/newt/peers";
 import {
-    initPeerAddHandshake,
-    deletePeer as olmDeletePeer
+    initPeerAddHandshakeBatch,
+    deletePeersBatch as olmDeletePeersBatch
 } from "@server/routers/olm/peers";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
 import logger from "@server/logger";
@@ -34,12 +35,13 @@ import {
     parseEndpoint
 } from "@server/lib/ip";
 import {
-    addPeerData,
-    addTargets as addSubnetProxyTargets,
-    removePeerData,
-    removeTargets as removeSubnetProxyTargets
+    addPeerDataBatch,
+    addTargetsBatch as addSubnetProxyTargetsBatch,
+    removePeerDataBatch,
+    removeTargetsBatch as removeSubnetProxyTargetsBatch
 } from "@server/routers/client/targets";
 import { lockManager } from "#dynamic/lib/lock";
+import { rebuildQueue } from "#dynamic/lib/rebuildQueue";
 
 // TTL for rebuild-association locks. These functions can fan out into many
 // peer/proxy updates, so give them a generous window.
@@ -160,18 +162,33 @@ export async function getClientSiteResourceAccess(
 export async function rebuildClientAssociationsFromSiteResource(
     siteResource: SiteResource,
     trx: Transaction | typeof db = db
-): Promise<{
-    mergedAllClients: {
-        clientId: number;
-        pubKey: string | null;
-        subnet: string | null;
-    }[];
-}> {
-    return await lockManager.withLock(
-        `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
-        () => rebuildClientAssociationsFromSiteResourceImpl(siteResource, trx),
-        REBUILD_ASSOCIATIONS_LOCK_TTL_MS
-    );
+) {
+    try {
+        return await lockManager.withLock(
+            `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
+            () =>
+                rebuildClientAssociationsFromSiteResourceImpl(
+                    siteResource,
+                    trx
+                ),
+            REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+        );
+    } catch (err: any) {
+        if (
+            typeof err?.message === "string" &&
+            err.message.startsWith("Failed to acquire lock")
+        ) {
+            logger.warn(
+                `rebuildClientAssociations: could not acquire lock for site resource ${siteResource.siteResourceId}, queuing for deferred processing`
+            );
+            await rebuildQueue.enqueue({
+                type: "site-resource",
+                id: siteResource.siteResourceId
+            });
+            return { mergedAllClients: [] };
+        }
+        throw err;
+    }
 }
 
 async function rebuildClientAssociationsFromSiteResourceImpl(
@@ -536,6 +553,28 @@ async function handleMessagesForSiteClients(
     const newtJobs: Promise<any>[] = [];
     const olmJobs: Promise<any>[] = [];
     const exitNodeJobs: Promise<any>[] = [];
+    const newtPeerDeletes: {
+        siteId: number;
+        publicKey: string;
+        newtId: string;
+    }[] = [];
+    const olmPeerDeletes: {
+        clientId: number;
+        siteId: number;
+        publicKey: string;
+        olmId: string;
+    }[] = [];
+    const olmPeerAddHandshakes: {
+        clientId: number;
+        peer: {
+            siteId: number;
+            exitNode: {
+                publicKey: string;
+                endpoint: string;
+            };
+        };
+        olmId: string;
+    }[] = [];
 
     // Combine all clients that need processing (those being added or removed)
     const clientsToProcess = new Map<
@@ -584,6 +623,21 @@ async function handleMessagesForSiteClients(
         }
     }
 
+    // Batch-fetch all olm IDs for the clients we need to process
+    const clientIdsToProcess = Array.from(clientsToProcess.keys());
+    const olmRows =
+        clientIdsToProcess.length > 0
+            ? await trx
+                  .select({ olmId: olms.olmId, clientId: olms.clientId })
+                  .from(olms)
+                  .where(inArray(olms.clientId, clientIdsToProcess))
+            : [];
+    const olmByClientId = new Map<number, string>(
+        olmRows
+            .filter((r) => r.clientId !== null)
+            .map((r) => [r.clientId as number, r.olmId])
+    );
+
     for (const client of clientsToProcess.values()) {
         // UPDATE THE NEWT
         if (!client.subnet || !client.pubKey) {
@@ -600,14 +654,8 @@ async function handleMessagesForSiteClients(
             continue;
         }
 
-        const [olm] = await trx
-            .select({
-                olmId: olms.olmId
-            })
-            .from(olms)
-            .where(eq(olms.clientId, client.clientId))
-            .limit(1);
-        if (!olm) {
+        const olmId = olmByClientId.get(client.clientId);
+        if (!olmId) {
             logger.warn(
                 `Olm not found for client ${client.clientId} so cannot add/delete peers`
             );
@@ -615,15 +663,17 @@ async function handleMessagesForSiteClients(
         }
 
         if (isDelete) {
-            newtJobs.push(newtDeletePeer(siteId, client.pubKey, newt.newtId));
-            olmJobs.push(
-                olmDeletePeer(
-                    client.clientId,
-                    siteId,
-                    site.publicKey,
-                    olm.olmId
-                )
-            );
+            newtPeerDeletes.push({
+                siteId,
+                publicKey: client.pubKey,
+                newtId: newt.newtId
+            });
+            olmPeerDeletes.push({
+                clientId: client.clientId,
+                siteId,
+                publicKey: site.publicKey,
+                olmId
+            });
         }
 
         if (isAdd) {
@@ -635,21 +685,32 @@ async function handleMessagesForSiteClients(
                 continue;
             }
 
-            await initPeerAddHandshake(
-                // this will kick off the add peer process for the client
-                client.clientId,
-                {
+            olmPeerAddHandshakes.push({
+                clientId: client.clientId,
+                peer: {
                     siteId,
                     exitNode: {
                         publicKey: exitNode.publicKey,
                         endpoint: exitNode.endpoint
                     }
                 },
-                olm.olmId
-            );
+                olmId
+            });
         }
 
         exitNodeJobs.push(updateClientSiteDestinations(client, trx));
+    }
+
+    if (newtPeerDeletes.length > 0) {
+        newtJobs.push(newtDeletePeersBatch(newtPeerDeletes));
+    }
+
+    if (olmPeerDeletes.length > 0) {
+        olmJobs.push(olmDeletePeersBatch(olmPeerDeletes));
+    }
+
+    if (olmPeerAddHandshakes.length > 0) {
+        olmJobs.push(initPeerAddHandshakeBatch(olmPeerAddHandshakes));
     }
 
     Promise.all(exitNodeJobs).catch((error) => {
@@ -812,6 +873,20 @@ async function handleSubnetProxyTargetUpdates(
 ): Promise<void> {
     const proxyJobs: Promise<any>[] = [];
     const olmJobs: Promise<any>[] = [];
+    const targetsToAddBatch: {
+        newtId: string;
+        targets: NonNullable<
+            Awaited<ReturnType<typeof generateSubnetProxyTargetV2>>
+        >;
+        version: string | null;
+    }[] = [];
+    const targetsToRemoveBatch: {
+        newtId: string;
+        targets: NonNullable<
+            Awaited<ReturnType<typeof generateSubnetProxyTargetV2>>
+        >;
+        version: string | null;
+    }[] = [];
 
     for (const siteData of sitesList) {
         const siteId = siteData.siteId;
@@ -843,25 +918,25 @@ async function handleSubnetProxyTargetUpdates(
                 );
 
                 if (targetsToAdd) {
-                    proxyJobs.push(
-                        addSubnetProxyTargets(
-                            newt.newtId,
-                            targetsToAdd,
-                            newt.version
-                        )
-                    );
+                    targetsToAddBatch.push({
+                        newtId: newt.newtId,
+                        targets: targetsToAdd,
+                        version: newt.version
+                    });
                 }
 
-                for (const client of addedClients) {
-                    olmJobs.push(
-                        addPeerData(
-                            client.clientId,
+                olmJobs.push(
+                    addPeerDataBatch(
+                        addedClients.map((client) => ({
+                            clientId: client.clientId,
                             siteId,
-                            generateRemoteSubnets([siteResource]),
-                            generateAliasConfig([siteResource])
-                        )
-                    );
-                }
+                            remoteSubnets: generateRemoteSubnets([
+                                siteResource
+                            ]),
+                            aliases: generateAliasConfig([siteResource])
+                        }))
+                    )
+                );
             }
         }
 
@@ -880,14 +955,19 @@ async function handleSubnetProxyTargetUpdates(
                 );
 
                 if (targetsToRemove) {
-                    proxyJobs.push(
-                        removeSubnetProxyTargets(
-                            newt.newtId,
-                            targetsToRemove,
-                            newt.version
-                        )
-                    );
+                    targetsToRemoveBatch.push({
+                        newtId: newt.newtId,
+                        targets: targetsToRemove,
+                        version: newt.version
+                    });
                 }
+
+                const peerDataRemovals: {
+                    clientId: number;
+                    siteId: number;
+                    remoteSubnets: string[];
+                    aliases: ReturnType<typeof generateAliasConfig>;
+                }[] = [];
 
                 for (const client of removedClients) {
                     if (!siteResource.destination) {
@@ -936,31 +1016,58 @@ async function handleSubnetProxyTargetUpdates(
                             ? []
                             : generateRemoteSubnets([siteResource]);
 
-                    olmJobs.push(
-                        removePeerData(
-                            client.clientId,
-                            siteId,
-                            remoteSubnetsToRemove,
-                            generateAliasConfig([siteResource])
-                        )
-                    );
+                    peerDataRemovals.push({
+                        clientId: client.clientId,
+                        siteId,
+                        remoteSubnets: remoteSubnetsToRemove,
+                        aliases: generateAliasConfig([siteResource])
+                    });
+                }
+
+                if (peerDataRemovals.length > 0) {
+                    olmJobs.push(removePeerDataBatch(peerDataRemovals));
                 }
             }
         }
     }
 
-    await Promise.all(proxyJobs);
+    if (targetsToAddBatch.length > 0) {
+        proxyJobs.push(addSubnetProxyTargetsBatch(targetsToAddBatch));
+    }
+
+    if (targetsToRemoveBatch.length > 0) {
+        proxyJobs.push(removeSubnetProxyTargetsBatch(targetsToRemoveBatch));
+    }
+
+    await Promise.all([...proxyJobs, ...olmJobs]);
 }
 
 export async function rebuildClientAssociationsFromClient(
     client: Client,
     trx: Transaction | typeof db = db
 ): Promise<void> {
-    return await lockManager.withLock(
-        `rebuild-client-associations:client:${client.clientId}`,
-        () => rebuildClientAssociationsFromClientImpl(client, trx),
-        REBUILD_ASSOCIATIONS_LOCK_TTL_MS
-    );
+    try {
+        return await lockManager.withLock(
+            `rebuild-client-associations:client:${client.clientId}`,
+            () => rebuildClientAssociationsFromClientImpl(client, trx),
+            REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+        );
+    } catch (err: any) {
+        if (
+            typeof err?.message === "string" &&
+            err.message.startsWith("Failed to acquire lock")
+        ) {
+            logger.warn(
+                `rebuildClientAssociations: could not acquire lock for client ${client.clientId}, queuing for deferred processing`
+            );
+            await rebuildQueue.enqueue({
+                type: "client",
+                id: client.clientId
+            });
+            return;
+        }
+        throw err;
+    }
 }
 
 async function rebuildClientAssociationsFromClientImpl(
@@ -1237,6 +1344,28 @@ async function handleMessagesForClientSites(
     const newtJobs: Promise<any>[] = [];
     const olmJobs: Promise<any>[] = [];
     const exitNodeJobs: Promise<any>[] = [];
+    const newtPeerDeletes: {
+        siteId: number;
+        publicKey: string;
+        newtId: string;
+    }[] = [];
+    const olmPeerDeletes: {
+        clientId: number;
+        siteId: number;
+        publicKey: string;
+        olmId: string;
+    }[] = [];
+    const olmPeerAddHandshakes: {
+        clientId: number;
+        peer: {
+            siteId: number;
+            exitNode: {
+                publicKey: string;
+                endpoint: string;
+            };
+        };
+        olmId: string;
+    }[] = [];
 
     const totalSitesOnClient = await trx
         .select({ count: count(clientSitesAssociationsCache.siteId) })
@@ -1268,19 +1397,19 @@ async function handleMessagesForClientSites(
 
         if (isRemove) {
             // Remove peer from newt
-            newtJobs.push(
-                newtDeletePeer(site.siteId, client.pubKey, newt.newtId)
-            );
+            newtPeerDeletes.push({
+                siteId: site.siteId,
+                publicKey: client.pubKey,
+                newtId: newt.newtId
+            });
             try {
                 // Remove peer from olm
-                olmJobs.push(
-                    olmDeletePeer(
-                        client.clientId,
-                        site.siteId,
-                        site.publicKey,
-                        olmId
-                    )
-                );
+                olmPeerDeletes.push({
+                    clientId: client.clientId,
+                    siteId: site.siteId,
+                    publicKey: site.publicKey,
+                    olmId
+                });
             } catch (error) {
                 // if the error includes not found then its just because the olm does not exist anymore or yet and its fine if we dont send
                 if (
@@ -1312,10 +1441,9 @@ async function handleMessagesForClientSites(
                 continue;
             }
 
-            await initPeerAddHandshake(
-                // this will kick off the add peer process for the client
-                client.clientId,
-                {
+            olmPeerAddHandshakes.push({
+                clientId: client.clientId,
+                peer: {
                     siteId: site.siteId,
                     exitNode: {
                         publicKey: exitNode.publicKey,
@@ -1323,7 +1451,7 @@ async function handleMessagesForClientSites(
                     }
                 },
                 olmId
-            );
+            });
         }
 
         // Update exit node destinations
@@ -1337,6 +1465,18 @@ async function handleMessagesForClientSites(
                 trx
             )
         );
+    }
+
+    if (newtPeerDeletes.length > 0) {
+        newtJobs.push(newtDeletePeersBatch(newtPeerDeletes));
+    }
+
+    if (olmPeerDeletes.length > 0) {
+        olmJobs.push(olmDeletePeersBatch(olmPeerDeletes));
+    }
+
+    if (olmPeerAddHandshakes.length > 0) {
+        olmJobs.push(initPeerAddHandshakeBatch(olmPeerAddHandshakes));
     }
 
     Promise.all(exitNodeJobs).catch((error) => {
@@ -1437,6 +1577,20 @@ async function handleMessagesForClientResources(
                 continue;
             }
 
+            const targetsToAddBatch: {
+                newtId: string;
+                targets: NonNullable<
+                    Awaited<ReturnType<typeof generateSubnetProxyTargetV2>>
+                >;
+                version: string | null;
+            }[] = [];
+            const peerDataAdds: {
+                clientId: number;
+                siteId: number;
+                remoteSubnets: string[];
+                aliases: ReturnType<typeof generateAliasConfig>;
+            }[] = [];
+
             for (const resource of resources) {
                 const targets = await generateSubnetProxyTargetV2(resource, [
                     {
@@ -1447,25 +1601,21 @@ async function handleMessagesForClientResources(
                 ]);
 
                 if (targets) {
-                    proxyJobs.push(
-                        addSubnetProxyTargets(
-                            newt.newtId,
-                            targets,
-                            newt.version
-                        )
-                    );
+                    targetsToAddBatch.push({
+                        newtId: newt.newtId,
+                        targets,
+                        version: newt.version
+                    });
                 }
 
                 try {
                     // Add peer data to olm
-                    olmJobs.push(
-                        addPeerData(
-                            client.clientId,
-                            siteId,
-                            generateRemoteSubnets([resource]),
-                            generateAliasConfig([resource])
-                        )
-                    );
+                    peerDataAdds.push({
+                        clientId: client.clientId,
+                        siteId,
+                        remoteSubnets: generateRemoteSubnets([resource]),
+                        aliases: generateAliasConfig([resource])
+                    });
                 } catch (error) {
                     // if the error includes not found then its just because the olm does not exist anymore or yet and its fine if we dont send
                     if (
@@ -1479,6 +1629,14 @@ async function handleMessagesForClientResources(
                         throw error;
                     }
                 }
+            }
+
+            if (targetsToAddBatch.length > 0) {
+                proxyJobs.push(addSubnetProxyTargetsBatch(targetsToAddBatch));
+            }
+
+            if (peerDataAdds.length > 0) {
+                olmJobs.push(addPeerDataBatch(peerDataAdds));
             }
         }
     }
@@ -1546,6 +1704,20 @@ async function handleMessagesForClientResources(
                 continue;
             }
 
+            const targetsToRemoveBatch: {
+                newtId: string;
+                targets: NonNullable<
+                    Awaited<ReturnType<typeof generateSubnetProxyTargetV2>>
+                >;
+                version: string | null;
+            }[] = [];
+            const peerDataRemovals: {
+                clientId: number;
+                siteId: number;
+                remoteSubnets: string[];
+                aliases: ReturnType<typeof generateAliasConfig>;
+            }[] = [];
+
             for (const resource of resources) {
                 const targets = await generateSubnetProxyTargetV2(resource, [
                     {
@@ -1556,13 +1728,11 @@ async function handleMessagesForClientResources(
                 ]);
 
                 if (targets) {
-                    proxyJobs.push(
-                        removeSubnetProxyTargets(
-                            newt.newtId,
-                            targets,
-                            newt.version
-                        )
-                    );
+                    targetsToRemoveBatch.push({
+                        newtId: newt.newtId,
+                        targets,
+                        version: newt.version
+                    });
                 }
 
                 try {
@@ -1613,14 +1783,12 @@ async function handleMessagesForClientResources(
                             : generateRemoteSubnets([resource]);
 
                     // Remove peer data from olm
-                    olmJobs.push(
-                        removePeerData(
-                            client.clientId,
-                            siteId,
-                            remoteSubnetsToRemove,
-                            generateAliasConfig([resource])
-                        )
-                    );
+                    peerDataRemovals.push({
+                        clientId: client.clientId,
+                        siteId,
+                        remoteSubnets: remoteSubnetsToRemove,
+                        aliases: generateAliasConfig([resource])
+                    });
                 } catch (error) {
                     // if the error includes not found then its just because the olm does not exist anymore or yet and its fine if we dont send
                     if (
@@ -1634,6 +1802,16 @@ async function handleMessagesForClientResources(
                         throw error;
                     }
                 }
+            }
+
+            if (targetsToRemoveBatch.length > 0) {
+                proxyJobs.push(
+                    removeSubnetProxyTargetsBatch(targetsToRemoveBatch)
+                );
+            }
+
+            if (peerDataRemovals.length > 0) {
+                olmJobs.push(removePeerDataBatch(peerDataRemovals));
             }
         }
     }
@@ -1884,17 +2062,30 @@ export async function cleanupSiteAssociations(
 
     // 7. Fire all removal messages in parallel.
     const jobs: Promise<any>[] = [];
+    const olmPeerDeletes: {
+        clientId: number;
+        siteId: number;
+        publicKey: string;
+    }[] = [];
 
     for (const client of allClients) {
         // Tell each olm to drop the site's WireGuard peer.
         if (site.publicKey) {
-            jobs.push(olmDeletePeer(client.clientId, siteId, site.publicKey));
+            olmPeerDeletes.push({
+                clientId: client.clientId,
+                siteId,
+                publicKey: site.publicKey
+            });
         }
 
         // Recompute and push updated relay destinations (now excluding this site).
         if (client.pubKey && client.subnet) {
             jobs.push(updateClientSiteDestinations(client, trx));
         }
+    }
+
+    if (olmPeerDeletes.length > 0) {
+        jobs.push(olmDeletePeersBatch(olmPeerDeletes));
     }
 
     await Promise.all(jobs).catch((error) => {
@@ -1905,4 +2096,48 @@ export async function cleanupSiteAssociations(
     });
 
     logger.debug(`cleanupSiteAssociations: DONE siteId=${siteId}`);
+}
+
+/**
+ * Start the background rebuild queue processor. This should be called once
+ * during server startup. Only one server instance at a time will actively
+ * consume the queue (enforced via a distributed Redis lock); all other
+ * instances will poll and wait until the lock becomes available.
+ */
+export function startRebuildQueueProcessor(): void {
+    rebuildQueue.startProcessing({
+        onSiteResource: async (siteResourceId: number) => {
+            const [siteResource] = await primaryDb
+                .select()
+                .from(siteResources)
+                .where(eq(siteResources.siteResourceId, siteResourceId));
+
+            if (!siteResource) {
+                logger.warn(
+                    `Rebuild queue: site resource ${siteResourceId} not found, skipping`
+                );
+                return;
+            }
+
+            await rebuildClientAssociationsFromSiteResource(
+                siteResource,
+                primaryDb
+            );
+        },
+        onClient: async (clientId: number) => {
+            const [client] = await primaryDb
+                .select()
+                .from(clients)
+                .where(eq(clients.clientId, clientId));
+
+            if (!client) {
+                logger.warn(
+                    `Rebuild queue: client ${clientId} not found, skipping`
+                );
+                return;
+            }
+
+            await rebuildClientAssociationsFromClient(client, primaryDb);
+        }
+    });
 }
