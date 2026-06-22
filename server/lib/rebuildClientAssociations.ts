@@ -162,13 +162,7 @@ export async function getClientSiteResourceAccess(
 export async function rebuildClientAssociationsFromSiteResource(
     siteResource: SiteResource,
     trx: Transaction | typeof db = db
-): Promise<{
-    mergedAllClients: {
-        clientId: number;
-        pubKey: string | null;
-        subnet: string | null;
-    }[];
-}> {
+) {
     try {
         return await lockManager.withLock(
             `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,

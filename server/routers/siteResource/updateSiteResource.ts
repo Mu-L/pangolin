@@ -28,7 +28,10 @@ import {
     isIpInCidr,
     portRangeStringSchema
 } from "@server/lib/ip";
-import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import {
+    getClientSiteResourceAccess,
+    rebuildClientAssociationsFromSiteResource
+} from "@server/lib/rebuildClientAssociations";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import { NextFunction, Request, Response } from "express";
@@ -846,9 +849,14 @@ export async function handleMessagingForUpdatedSiteResource(
         updatedSiteResource
     );
 
-    const { mergedAllClients } =
-        await rebuildClientAssociationsFromSiteResource(
-            existingSiteResource || updatedSiteResource, // we want to rebuild based on the existing resource then we will apply the change to the destination below
+    await rebuildClientAssociationsFromSiteResource(
+        existingSiteResource || updatedSiteResource, // we want to rebuild based on the existing resource then we will apply the change to the destination below
+        trx
+    );
+
+    const { sitesList, mergedAllClients, mergedAllClientIds } =
+        await getClientSiteResourceAccess(
+            existingSiteResource || updatedSiteResource,
             trx
         );
 
