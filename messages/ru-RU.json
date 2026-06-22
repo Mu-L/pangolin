@@ -2967,6 +2967,7 @@
     "orgOrDomainIdMissing": "Отсутствует организация или ID домена",
     "loadingDNSRecords": "Загрузка записей DNS...",
     "olmUpdateAvailableInfo": "Доступна обновленная версия Олма. Пожалуйста, обновитесь до последней версии.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "Клиент",
     "proxyProtocol": "Настройки протокола прокси",
     "proxyProtocolDescription": "Настроить Прокси-протокол для сохранения IP-адресов клиента для служб TCP.",
