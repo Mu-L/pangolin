@@ -2967,6 +2967,7 @@
     "orgOrDomainIdMissing": "Organisatie of domein ID ontbreekt",
     "loadingDNSRecords": "DNS-records laden...",
     "olmUpdateAvailableInfo": "Er is een bijgewerkte versie van Olm beschikbaar. Update alstublieft naar de nieuwste versie voor de beste ervaring.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "Klant",
     "proxyProtocol": "Proxy Protocol Instellingen",
     "proxyProtocolDescription": "Proxyprotocol configureren om de IP-adressen van de client voor TCP-diensten te bewaren.",
