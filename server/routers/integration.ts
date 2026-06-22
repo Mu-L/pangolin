@@ -17,7 +17,6 @@ import {
     verifyApiKey,
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction,
-    verifyApiKeyCanSetUserOrgRoles,
     verifyApiKeySiteAccess,
     verifyApiKeyResourceAccess,
     verifyApiKeyTargetAccess,
@@ -972,6 +971,13 @@ authenticated.get(
     verifyApiKeyIsRoot,
     verifyApiKeyHasAction(ActionsEnum.getIdp),
     idp.getIdp
+);
+
+authenticated.delete(
+    "/idp/:idpId",
+    verifyApiKeyIsRoot,
+    verifyApiKeyHasAction(ActionsEnum.deleteIdp),
+    idp.deleteIdp
 );
 
 authenticated.put(
