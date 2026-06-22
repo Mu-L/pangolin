@@ -2967,6 +2967,7 @@
     "orgOrDomainIdMissing": "ID for organisasjon eller domene mangler",
     "loadingDNSRecords": "Laster DNS-poster...",
     "olmUpdateAvailableInfo": "En oppdatert versjon av Olm er tilgjengelig. Oppdater til den nyeste versjonen for å få den beste opplevelsen.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "Klient",
     "proxyProtocol": "Protokoll innstillinger for Protokoll",
     "proxyProtocolDescription": "Konfigurer Proxy-protokoll for å bevare klientens IP-adresser til TCP-tjenester.",
