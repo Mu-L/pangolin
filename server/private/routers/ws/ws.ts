@@ -659,38 +659,52 @@ const broadcastToAllExceptLocal = async (
     excludeClientId?: string,
     options: SendMessageOptions = {}
 ): Promise<void> => {
-    for (const [mapKey, clients] of connectedClients.entries()) {
-        const [type, id] = mapKey.split(":");
-        const clientId = mapKey; // mapKey is the clientId
-        if (!(excludeClientId && clientId === excludeClientId)) {
-            // Handle config version per client
-            let configVersion = await getClientConfigVersion(clientId);
-            if (options.incrementConfigVersion) {
-                configVersion = await incrementClientConfigVersion(clientId);
-            }
+    const sendPlans = await Promise.all(
+        Array.from(connectedClients.entries()).map(
+            async ([mapKey, clients]) => {
+                const clientId = mapKey; // mapKey is the clientId
+                if (excludeClientId && clientId === excludeClientId) {
+                    return null;
+                }
 
-            // Add config version to message
-            const messageWithVersion = {
-                ...message,
-                configVersion
-            };
+                let configVersion = await getClientConfigVersion(clientId);
+                if (options.incrementConfigVersion) {
+                    configVersion =
+                        await incrementClientConfigVersion(clientId);
+                }
 
-            if (options.compress) {
-                const compressed = zlib.gzipSync(
-                    Buffer.from(JSON.stringify(messageWithVersion), "utf8")
-                );
-                clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(compressed);
+                return {
+                    clients,
+                    messageWithVersion: {
+                        ...message,
+                        configVersion
                     }
-                });
-            } else {
-                clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify(messageWithVersion));
-                    }
-                });
+                };
             }
+        )
+    );
+
+    for (const plan of sendPlans) {
+        if (!plan) {
+            continue;
+        }
+
+        if (options.compress) {
+            const compressed = zlib.gzipSync(
+                Buffer.from(JSON.stringify(plan.messageWithVersion), "utf8")
+            );
+            plan.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(compressed);
+                }
+            });
+        } else {
+            const messageString = JSON.stringify(plan.messageWithVersion);
+            plan.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(messageString);
+                }
+            });
         }
     }
 };
@@ -711,7 +725,12 @@ const sendToClient = async (
     );
 
     // Try to send locally first
-    const localSent = await sendToClientLocal(clientId, message, options);
+    const localSent = await sendToClientLocal(
+        clientId,
+        message,
+        options,
+        configVersion
+    );
 
     // Only send via Redis if the client is not connected locally and Redis is enabled
     if (!localSent && redisManager.isRedisEnabled()) {
@@ -745,15 +764,34 @@ const sendToClientsBatch = async (
     }
 
     const remoteEntries: { targetClientId: string; message: WSMessage }[] = [];
+    const clientsWithIncrement = new Set(
+        entries
+            .filter((entry) => !!entry.options?.incrementConfigVersion)
+            .map((entry) => entry.clientId)
+    );
+    const nonIncrementOnlyClientIds = Array.from(
+        new Set(
+            entries
+                .map((entry) => entry.clientId)
+                .filter((clientId) => !clientsWithIncrement.has(clientId))
+        )
+    );
+    const stableConfigVersionByClient = new Map<string, number | undefined>(
+        await Promise.all(
+            nonIncrementOnlyClientIds.map(
+                async (clientId) =>
+                    [clientId, await getClientConfigVersion(clientId)] as const
+            )
+        )
+    );
 
     for (const entry of entries) {
         const options = entry.options || {};
         const { clientId, message } = entry;
 
-        let configVersion = await getClientConfigVersion(clientId);
-        if (options.incrementConfigVersion) {
-            configVersion = await incrementClientConfigVersion(clientId);
-        }
+        const configVersion = options.incrementConfigVersion
+            ? await incrementClientConfigVersion(clientId)
+            : stableConfigVersionByClient.get(clientId);
 
         logger.debug(
             `sendToClientsBatch: Message type ${message.type} queued for clientId ${clientId} (new configVersion: ${configVersion})`

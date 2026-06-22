@@ -873,6 +873,20 @@ async function handleSubnetProxyTargetUpdates(
 ): Promise<void> {
     const proxyJobs: Promise<any>[] = [];
     const olmJobs: Promise<any>[] = [];
+    const targetsToAddBatch: {
+        newtId: string;
+        targets: NonNullable<
+            Awaited<ReturnType<typeof generateSubnetProxyTargetV2>>
+        >;
+        version: string | null;
+    }[] = [];
+    const targetsToRemoveBatch: {
+        newtId: string;
+        targets: NonNullable<
+            Awaited<ReturnType<typeof generateSubnetProxyTargetV2>>
+        >;
+        version: string | null;
+    }[] = [];
 
     for (const siteData of sitesList) {
         const siteId = siteData.siteId;
@@ -904,15 +918,11 @@ async function handleSubnetProxyTargetUpdates(
                 );
 
                 if (targetsToAdd) {
-                    proxyJobs.push(
-                        addSubnetProxyTargetsBatch([
-                            {
-                                newtId: newt.newtId,
-                                targets: targetsToAdd,
-                                version: newt.version
-                            }
-                        ])
-                    );
+                    targetsToAddBatch.push({
+                        newtId: newt.newtId,
+                        targets: targetsToAdd,
+                        version: newt.version
+                    });
                 }
 
                 olmJobs.push(
@@ -945,15 +955,11 @@ async function handleSubnetProxyTargetUpdates(
                 );
 
                 if (targetsToRemove) {
-                    proxyJobs.push(
-                        removeSubnetProxyTargetsBatch([
-                            {
-                                newtId: newt.newtId,
-                                targets: targetsToRemove,
-                                version: newt.version
-                            }
-                        ])
-                    );
+                    targetsToRemoveBatch.push({
+                        newtId: newt.newtId,
+                        targets: targetsToRemove,
+                        version: newt.version
+                    });
                 }
 
                 const peerDataRemovals: {
@@ -1025,7 +1031,15 @@ async function handleSubnetProxyTargetUpdates(
         }
     }
 
-    await Promise.all(proxyJobs);
+    if (targetsToAddBatch.length > 0) {
+        proxyJobs.push(addSubnetProxyTargetsBatch(targetsToAddBatch));
+    }
+
+    if (targetsToRemoveBatch.length > 0) {
+        proxyJobs.push(removeSubnetProxyTargetsBatch(targetsToRemoveBatch));
+    }
+
+    await Promise.all([...proxyJobs, ...olmJobs]);
 }
 
 export async function rebuildClientAssociationsFromClient(
@@ -2048,25 +2062,30 @@ export async function cleanupSiteAssociations(
 
     // 7. Fire all removal messages in parallel.
     const jobs: Promise<any>[] = [];
+    const olmPeerDeletes: {
+        clientId: number;
+        siteId: number;
+        publicKey: string;
+    }[] = [];
 
     for (const client of allClients) {
         // Tell each olm to drop the site's WireGuard peer.
         if (site.publicKey) {
-            jobs.push(
-                olmDeletePeersBatch([
-                    {
-                        clientId: client.clientId,
-                        siteId,
-                        publicKey: site.publicKey
-                    }
-                ])
-            );
+            olmPeerDeletes.push({
+                clientId: client.clientId,
+                siteId,
+                publicKey: site.publicKey
+            });
         }
 
         // Recompute and push updated relay destinations (now excluding this site).
         if (client.pubKey && client.subnet) {
             jobs.push(updateClientSiteDestinations(client, trx));
         }
+    }
+
+    if (olmPeerDeletes.length > 0) {
+        jobs.push(olmDeletePeersBatch(olmPeerDeletes));
     }
 
     await Promise.all(jobs).catch((error) => {
