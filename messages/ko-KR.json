@@ -2967,6 +2967,7 @@
     "orgOrDomainIdMissing": "조직 ID 또는 도메인 ID가 누락되었습니다",
     "loadingDNSRecords": "DNS 레코드를 로드하는 중...",
     "olmUpdateAvailableInfo": "올름의 새 버전이 이용 가능합니다. 최상의 경험을 위해 최신 버전으로 업데이트하세요.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "클라이언트",
     "proxyProtocol": "프록시 프로토콜 설정",
     "proxyProtocolDescription": "TCP 서비스에 대한 클라이언트 IP 주소를 유지하도록 프록시 프로토콜을 구성하세요.",
