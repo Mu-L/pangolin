@@ -580,6 +580,7 @@ export function PrivateResourceForm({
     });
 
     const mode = form.watch("mode");
+    const aliasValue = form.watch("alias");
     const httpConfigSubdomain = form.watch("httpConfigSubdomain");
     const httpConfigDomainId = form.watch("httpConfigDomainId");
     const httpConfigFullDomain = form.watch("httpConfigFullDomain");
@@ -595,6 +596,9 @@ export function PrivateResourceForm({
         !isNative &&
         pamMode === "push" &&
         authDaemonMode === "remote";
+    const aliasEndsWithLocal =
+        typeof aliasValue === "string" &&
+        aliasValue.trim().toLowerCase().endsWith(".local");
     const hasInitialized = useRef(false);
     const previousResourceId = useRef<number | null>(null);
     const initialSitesRef = useRef(initialSites);
@@ -1209,6 +1213,13 @@ export function PrivateResourceForm({
                                                             }
                                                         />
                                                     </FormControl>
+                                                    {aliasEndsWithLocal && (
+                                                        <p className="text-xs text-amber-700/80 mt-1">
+                                                            {t(
+                                                                "internalResourceAliasLocalWarning"
+                                                            )}
+                                                        </p>
+                                                    )}
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
