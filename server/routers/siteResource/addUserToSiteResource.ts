@@ -124,11 +124,9 @@ export async function addUserToSiteResource(
             );
         }
 
-        await db.transaction(async (trx) => {
-            await trx.insert(userSiteResources).values({
-                userId,
-                siteResourceId
-            });
+        await db.insert(userSiteResources).values({
+            userId,
+            siteResourceId
         });
 
         rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {

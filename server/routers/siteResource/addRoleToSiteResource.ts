@@ -155,11 +155,9 @@ export async function addRoleToSiteResource(
             );
         }
 
-        await db.transaction(async (trx) => {
-            await trx.insert(roleSiteResources).values({
-                roleId,
-                siteResourceId
-            });
+        await db.insert(roleSiteResources).values({
+            roleId,
+            siteResourceId
         });
 
         rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {

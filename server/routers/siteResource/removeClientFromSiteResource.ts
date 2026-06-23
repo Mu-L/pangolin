@@ -148,16 +148,14 @@ export async function removeClientFromSiteResource(
             );
         }
 
-        await db.transaction(async (trx) => {
-            await trx
-                .delete(clientSiteResources)
-                .where(
-                    and(
-                        eq(clientSiteResources.siteResourceId, siteResourceId),
-                        eq(clientSiteResources.clientId, clientId)
-                    )
-                );
-        });
+        await db
+            .delete(clientSiteResources)
+            .where(
+                and(
+                    eq(clientSiteResources.siteResourceId, siteResourceId),
+                    eq(clientSiteResources.clientId, clientId)
+                )
+            );
 
         rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {
             logger.error(

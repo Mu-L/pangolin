@@ -390,7 +390,6 @@ export async function updateSiteResource(
             );
         }
 
-        let sitesChanged = false;
         const existingSiteIds = existingSiteResource.networkId
             ? await db
                   .select()
@@ -399,16 +398,7 @@ export async function updateSiteResource(
                       eq(siteNetworks.networkId, existingSiteResource.networkId)
                   )
             : [];
-
         const existingSiteIdSet = new Set(existingSiteIds.map((s) => s.siteId));
-        const newSiteIdSet = new Set(siteIds);
-
-        if (
-            existingSiteIdSet.size !== newSiteIdSet.size ||
-            ![...existingSiteIdSet].every((id) => newSiteIdSet.has(id))
-        ) {
-            sitesChanged = true;
-        }
 
         let fullDomain: string | null = null;
         let finalSubdomain: string | null = null;
@@ -615,15 +605,13 @@ export async function updateSiteResource(
             throw new Error("No updated resource found after update");
         }
 
-        if (sitesChanged) {
-            rebuildClientAssociationsFromSiteResource(
-                updatedSiteResource
-            ).catch((e) => {
+        rebuildClientAssociationsFromSiteResource(updatedSiteResource).catch(
+            (e) => {
                 logger.error(
                     `Failed to rebuild client associations for site resource ${siteResourceId}. Error: ${e}`
                 );
-            });
-        }
+            }
+        );
 
         handleMessagingForUpdatedSiteResource(
             existingSiteResource,
