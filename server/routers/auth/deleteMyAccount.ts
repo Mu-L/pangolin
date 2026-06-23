@@ -224,7 +224,7 @@ export async function deleteMyAccount(
             }
         });
 
-        calculateUserClientsForOrgs(userId, primaryDb).catch((e) => {
+        calculateUserClientsForOrgs(userId).catch((e) => {
             logger.error(
                 `Failed to calculate user clients after deleting account for user ${userId}: ${e}`
             );

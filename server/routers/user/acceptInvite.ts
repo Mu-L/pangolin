@@ -202,13 +202,11 @@ export async function acceptInvite(
             );
         });
 
-        calculateUserClientsForOrgs(existingUser[0].userId, primaryDb).catch(
-            (e) => {
-                logger.error(
-                    `Failed to calculate user clients after accepting invite for user ${existingUser[0].userId}: ${e}`
-                );
-            }
-        );
+        calculateUserClientsForOrgs(existingUser[0].userId).catch((e) => {
+            logger.error(
+                `Failed to calculate user clients after accepting invite for user ${existingUser[0].userId}: ${e}`
+            );
+        });
 
         return response<AcceptInviteResponse>(res, {
             data: { accepted: true, orgId: existingInvite.orgId },
