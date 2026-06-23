@@ -32,7 +32,7 @@ const listUserResourceAliasesParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const listUserResourceAliasesQuerySchema = z.object({
+const listUserResourceAliasesQuerySchema = z.strictObject({
     pageSize: z.coerce
         .number<string>()
         .int()

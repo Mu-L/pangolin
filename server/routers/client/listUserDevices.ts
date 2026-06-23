@@ -40,7 +40,7 @@ const listUserDevicesParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const listUserDevicesSchema = z.object({
+const listUserDevicesSchema = z.strictObject({
     pageSize: z.coerce
         .number<string>() // for prettier formatting
         .int()

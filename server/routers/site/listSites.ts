@@ -32,7 +32,7 @@ const listSitesParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const listSitesSchema = z.object({
+const listSitesSchema = z.strictObject({
     pageSize: z.coerce
         .number<string>() // for prettier formatting
         .int()
