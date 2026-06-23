@@ -42,7 +42,7 @@ function runQueuedClientAssociationRebuilds(
     void (async () => {
         for (const client of uniqueClientsById.values()) {
             try {
-                await rebuildClientAssociationsFromClient(client, db);
+                await rebuildClientAssociationsFromClient(client);
             } catch (error) {
                 logger.error(
                     `Failed rebuilding associations for client ${client.clientId} (user ${userId}): ${String(error)}`

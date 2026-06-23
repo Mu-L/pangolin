@@ -159,13 +159,11 @@ export async function addUserRoleLegacy(
         });
 
         for (const orgClient of orgClientsToRebuild) {
-            rebuildClientAssociationsFromClient(orgClient, primaryDb).catch(
-                (e) => {
-                    logger.error(
-                        `Failed to rebuild client associations for client ${orgClient.clientId} after adding role: ${e}`
-                    );
-                }
-            );
+            rebuildClientAssociationsFromClient(orgClient).catch((e) => {
+                logger.error(
+                    `Failed to rebuild client associations for client ${orgClient.clientId} after adding role: ${e}`
+                );
+            });
         }
 
         return response(res, {

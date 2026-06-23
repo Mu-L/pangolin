@@ -255,13 +255,11 @@ export async function createUserClient(
         });
 
         if (newClient) {
-            rebuildClientAssociationsFromClient(newClient, primaryDb).catch(
-                (e) => {
-                    logger.error(
-                        `Failed to rebuild client associations after creating user client: ${e}`
-                    );
-                }
-            );
+            rebuildClientAssociationsFromClient(newClient).catch((e) => {
+                logger.error(
+                    `Failed to rebuild client associations after creating user client: ${e}`
+                );
+            });
         }
 
         return response<CreateClientAndOlmResponse>(res, {

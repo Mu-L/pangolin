@@ -109,13 +109,11 @@ export async function deleteClient(
         });
 
         if (deletedClient) {
-            rebuildClientAssociationsFromClient(deletedClient, primaryDb).catch(
-                (e) => {
-                    logger.error(
-                        `Failed to rebuild client associations after deleting client ${clientId}: ${e}`
-                    );
-                }
-            );
+            rebuildClientAssociationsFromClient(deletedClient).catch((e) => {
+                logger.error(
+                    `Failed to rebuild client associations after deleting client ${clientId}: ${e}`
+                );
+            });
             if (olm) {
                 sendTerminateClient(
                     deletedClient.clientId,

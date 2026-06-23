@@ -150,13 +150,11 @@ export async function setUserOrgRoles(
         });
 
         for (const orgClient of orgClientsToRebuild) {
-            rebuildClientAssociationsFromClient(orgClient, primaryDb).catch(
-                (e) => {
-                    logger.error(
-                        `Failed to rebuild client associations for client ${orgClient.clientId} after setting roles: ${e}`
-                    );
-                }
-            );
+            rebuildClientAssociationsFromClient(orgClient).catch((e) => {
+                logger.error(
+                    `Failed to rebuild client associations for client ${orgClient.clientId} after setting roles: ${e}`
+                );
+            });
         }
 
         return response(res, {

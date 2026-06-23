@@ -235,7 +235,7 @@ export async function batchAddClientToSiteResources(
             }
         });
 
-        rebuildClientAssociationsFromClient(client, primaryDb).catch((e) => {
+        rebuildClientAssociationsFromClient(client).catch((e) => {
             logger.error(
                 `Failed to rebuild client associations after batch adding site resources for client ${clientId}: ${e}`
             );

@@ -1043,9 +1043,9 @@ async function handleSubnetProxyTargetUpdates(
 }
 
 export async function rebuildClientAssociationsFromClient(
-    client: Client,
-    trx: Transaction | typeof db = db
+    client: Client
 ): Promise<void> {
+    const trx = primaryDb;
     try {
         return await lockManager.withLock(
             `rebuild-client-associations:client:${client.clientId}`,
@@ -2137,7 +2137,7 @@ export function startRebuildQueueProcessor(): void {
                 return;
             }
 
-            await rebuildClientAssociationsFromClient(client, primaryDb);
+            await rebuildClientAssociationsFromClient(client);
         }
     });
 }
