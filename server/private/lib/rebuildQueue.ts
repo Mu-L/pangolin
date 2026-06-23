@@ -12,7 +12,7 @@
  */
 
 import { redis } from "#private/lib/redis";
-import { lockManager } from "#dynamic/lib/lock";
+import { lockManager } from "#private/lib/lock";
 import logger from "@server/logger";
 
 export type RebuildJobType = "site-resource" | "client";
