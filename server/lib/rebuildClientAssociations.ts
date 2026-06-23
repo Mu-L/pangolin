@@ -160,9 +160,9 @@ export async function getClientSiteResourceAccess(
 }
 
 export async function rebuildClientAssociationsFromSiteResource(
-    siteResource: SiteResource,
-    trx: Transaction | typeof db = db
+    siteResource: SiteResource
 ) {
+    const trx = primaryDb;
     try {
         return await lockManager.withLock(
             `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
@@ -2119,10 +2119,7 @@ export function startRebuildQueueProcessor(): void {
                 return;
             }
 
-            await rebuildClientAssociationsFromSiteResource(
-                siteResource,
-                primaryDb
-            );
+            await rebuildClientAssociationsFromSiteResource(siteResource);
         },
         onClient: async (clientId: number) => {
             const [client] = await primaryDb

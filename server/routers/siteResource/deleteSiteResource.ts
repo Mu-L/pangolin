@@ -88,15 +88,14 @@ export async function deleteSiteResource(
         // own transaction so it always executes on the primary — avoiding any
         // replica-lag issues while still allowing the HTTP response to return
         // early.
-        rebuildClientAssociationsFromSiteResource(
-            removedSiteResource,
-            primaryDb
-        ).catch((err) => {
-            logger.error(
-                `Error rebuilding client associations for site resource ${removedSiteResource!.siteResourceId}:`,
-                err
-            );
-        });
+        rebuildClientAssociationsFromSiteResource(removedSiteResource).catch(
+            (err) => {
+                logger.error(
+                    `Error rebuilding client associations for site resource ${removedSiteResource!.siteResourceId}:`,
+                    err
+                );
+            }
+        );
 
         logger.info(`Deleted site resource ${siteResourceId}`);
 

@@ -157,8 +157,12 @@ export async function removeClientFromSiteResource(
                         eq(clientSiteResources.clientId, clientId)
                     )
                 );
+        });
 
-            await rebuildClientAssociationsFromSiteResource(siteResource, trx);
+        rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {
+            logger.error(
+                `Failed to rebuild client associations for site resource ${siteResourceId}. Error: ${e}`
+            );
         });
 
         return response(res, {
