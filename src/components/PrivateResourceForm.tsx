@@ -1748,6 +1748,7 @@ export function PrivateResourceForm({
                                                         field.value ?? []
                                                     }
                                                     orgId={orgId}
+                                                    restrictAdminRole
                                                     onSelectRoles={(
                                                         newUsers
                                                     ) => {
