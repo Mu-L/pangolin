@@ -55,9 +55,6 @@ export async function verifyOrgAccess(
                 userId,
                 session: req.session
             });
-            logger.debug("failed policy check", {
-                policyCheck
-            });
             req.orgPolicyAllowed = policyCheck.allowed;
             if (!policyCheck.allowed || policyCheck.error) {
                 return next(
