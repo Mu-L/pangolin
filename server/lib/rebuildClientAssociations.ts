@@ -312,14 +312,62 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
 
     /////////// process the client-siteResource associations ///////////
 
+    const existingClientSiteResources = await trx
+        .select({
+            clientId: clientSiteResourcesAssociationsCache.clientId
+        })
+        .from(clientSiteResourcesAssociationsCache)
+        .where(
+            eq(
+                clientSiteResourcesAssociationsCache.siteResourceId,
+                siteResource.siteResourceId
+            )
+        );
+
+    const existingClientSiteResourceIds = existingClientSiteResources.map(
+        (row) => row.clientId
+    );
+
     // get all of the clients associated with other site resources that share
     // any of the same sites as this site resource (via siteNetworks). We can't
     // simply filter by networkId since each site resource has its own network;
     // two site resources serving the same site typically belong to different
     // networks that both happen to include the site through siteNetworks.
     const sitesListSiteIds = sitesList.map((s) => s.siteId);
+
+    // We must also consider sites where these clients are currently cached,
+    // otherwise removing a site from this resource can leave stale
+    // client-site cache entries behind for the removed site.
+    const cachedSiteRowsForResourceClients =
+        existingClientSiteResourceIds.length > 0
+            ? await trx
+                  .select({ siteId: clientSitesAssociationsCache.siteId })
+                  .from(clientSitesAssociationsCache)
+                  .where(
+                      inArray(
+                          clientSitesAssociationsCache.clientId,
+                          existingClientSiteResourceIds
+                      )
+                  )
+            : [];
+
+    const allCandidateSiteIds = Array.from(
+        new Set([
+            ...sitesListSiteIds,
+            ...cachedSiteRowsForResourceClients.map((r) => r.siteId)
+        ])
+    );
+
+    const sitesToProcess =
+        allCandidateSiteIds.length > 0
+            ? await trx
+                  .select()
+                  .from(sites)
+                  .where(inArray(sites.siteId, allCandidateSiteIds))
+            : [];
+    const currentSiteIdSet = new Set(sitesListSiteIds);
     const allUpdatedClientsFromOtherResourcesOnThisSite =
-        sitesListSiteIds.length > 0
+        allCandidateSiteIds.length > 0
             ? await trx
                   .select({
                       clientId: clientSiteResourcesAssociationsCache.clientId,
@@ -339,7 +387,7 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
                   )
                   .where(
                       and(
-                          inArray(siteNetworks.siteId, sitesListSiteIds),
+                          inArray(siteNetworks.siteId, allCandidateSiteIds),
                           ne(
                               siteResources.siteResourceId,
                               siteResource.siteResourceId
@@ -357,22 +405,6 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
         }
         clientsFromOtherResourcesBySite.get(row.siteId)!.add(row.clientId);
     }
-
-    const existingClientSiteResources = await trx
-        .select({
-            clientId: clientSiteResourcesAssociationsCache.clientId
-        })
-        .from(clientSiteResourcesAssociationsCache)
-        .where(
-            eq(
-                clientSiteResourcesAssociationsCache.siteResourceId,
-                siteResource.siteResourceId
-            )
-        );
-
-    const existingClientSiteResourceIds = existingClientSiteResources.map(
-        (row) => row.clientId
-    );
 
     logger.debug(
         `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} existingResourceClientIds=[${existingClientSiteResourceIds.join(", ")}]`
@@ -456,10 +488,10 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
     /////////// process the client-site associations ///////////
 
     logger.debug(
-        `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} beginning client-site association loop over ${sitesList.length} site(s)`
+        `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} beginning client-site association loop over ${sitesToProcess.length} site(s) (current=${sitesList.length})`
     );
 
-    for (const site of sitesList) {
+    for (const site of sitesToProcess) {
         const siteId = site.siteId;
 
         logger.debug(
@@ -501,7 +533,13 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
             `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} otherResourceClientIds=[${[...otherResourceClientIds].join(", ")}] mergedAllClientIds=[${mergedAllClientIds.join(", ")}]`
         );
 
-        const clientSitesToAdd = mergedAllClientIds.filter(
+        // Expected clients from this resource are site-scoped: if this site is
+        // no longer attached to the resource, the expected set is empty.
+        const expectedClientIdsForSite = currentSiteIdSet.has(siteId)
+            ? mergedAllClientIds
+            : [];
+
+        const clientSitesToAdd = expectedClientIdsForSite.filter(
             (clientId) =>
                 !existingClientSiteIds.includes(clientId) &&
                 !otherResourceClientIds.has(clientId) // dont add if already connected via another site resource
@@ -536,7 +574,7 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
         // Now remove any client-site associations that should no longer exist
         const clientSitesToRemove = existingClientSiteIds.filter(
             (clientId) =>
-                !mergedAllClientIds.includes(clientId) &&
+                !expectedClientIdsForSite.includes(clientId) &&
                 !otherResourceClientIds.has(clientId) // dont remove if there is still another connection for another site resource
         );
 
@@ -1211,7 +1249,6 @@ export async function handleMessagingForUpdatedSiteResource(
     );
 
     const oldDestinationStillInUseClientSitePairs = new Set<string>();
-    const oldAliasStillInUseClientSitePairs = new Set<string>();
     if (
         existingSiteResource?.destination &&
         allSiteIds.length > 0 &&
@@ -1316,11 +1353,6 @@ export async function handleMessagingForUpdatedSiteResource(
                         `${client.clientId}:${siteId}`
                     );
 
-                if (oldDestinationStillInUseByASite && allSiteIds.length > 0) {
-                    // nothing in the message anyway lets just continue
-                    continue;
-                }
-
                 peerDataRemoves.push({
                     // this might happen twice after the rebuild function but that is okay
                     clientId: client.clientId,
@@ -1328,10 +1360,7 @@ export async function handleMessagingForUpdatedSiteResource(
                     remoteSubnets: !oldDestinationStillInUseByASite
                         ? generateRemoteSubnets([updatedSiteResource])
                         : [],
-                    aliases:
-                        allSiteIds.length == 0
-                            ? generateAliasConfig([updatedSiteResource])
-                            : []
+                    aliases: generateAliasConfig([updatedSiteResource])
                 });
             }
         }
