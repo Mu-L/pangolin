@@ -1140,9 +1140,14 @@ export async function handleMessagingForUpdatedSiteResource(
     existingSiteResource: SiteResource | undefined,
     updatedSiteResource: SiteResource,
     existingSiteIds: number[],
-    updatedSiteIds: number[],
-    trx: Transaction | typeof db = db
+    updatedSiteIds: number[]
 ) {
+    const trx = primaryDb;
+
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: START siteResourceId=${updatedSiteResource.siteResourceId} existingSiteIds=[${existingSiteIds.join(", ")}] updatedSiteIds=[${updatedSiteIds.join(", ")}]`
+    );
+
     logger.debug(
         "handleMessagingForUpdatedSiteResource: existingSiteResource is: ",
         existingSiteResource
@@ -1153,6 +1158,10 @@ export async function handleMessagingForUpdatedSiteResource(
     );
 
     const allSiteIds = [...new Set([...existingSiteIds, ...updatedSiteIds])];
+
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: allSiteIds=[${allSiteIds.join(", ")}] count=${allSiteIds.length}`
+    );
 
     const newtsForSites =
         allSiteIds.length > 0
@@ -1165,21 +1174,53 @@ export async function handleMessagingForUpdatedSiteResource(
         newtsForSites.map((newt) => [newt.siteId, newt])
     );
 
-    // get all of the clients from the cache
-    const { mergedAllClients, mergedAllClientIds } =
-        await getClientSiteResourceAccess(updatedSiteResource, trx);
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: fetched newts for ${newtsForSites.length}/${allSiteIds.length} site(s)`
+    );
+
+    // WARNING: THIS RELIES ON THE CACHE TABLES BEING UP TO DATE, SO CALL THIS AFTER THE ASSOCIATION CACHE IS UPDATED
+    const mergedAllClients = await trx
+        .select({
+            clientId: clientSiteResourcesAssociationsCache.clientId,
+            pubKey: clients.pubKey,
+            subnet: clients.subnet
+        })
+        .from(clientSiteResourcesAssociationsCache)
+        .innerJoin(
+            clients,
+            eq(clientSiteResourcesAssociationsCache.clientId, clients.clientId)
+        )
+        .where(
+            eq(
+                clientSiteResourcesAssociationsCache.siteResourceId,
+                updatedSiteResource.siteResourceId
+            )
+        );
+
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: resolved merged clients count=${mergedAllClients.length} clientIds=[${mergedAllClients.map((c) => c.clientId).join(", ")}]`
+    );
 
     const targets = await generateSubnetProxyTargetV2(
         updatedSiteResource,
         mergedAllClients
     );
 
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: generated updated targets count=${targets ? targets.length : 0}`
+    );
+
     const oldDestinationStillInUseClientSitePairs = new Set<string>();
+    const oldAliasStillInUseClientSitePairs = new Set<string>();
     if (
         existingSiteResource?.destination &&
         allSiteIds.length > 0 &&
-        mergedAllClientIds.length > 0
+        mergedAllClients.length > 0
     ) {
+        logger.debug(
+            `handleMessagingForUpdatedSiteResource: checking old destination reuse destination=${existingSiteResource.destination} across siteCount=${allSiteIds.length} clientCount=${mergedAllClients.length}`
+        );
+
         const oldDestinationStillInUseRows = await trx
             .select({
                 clientId: clientSiteResourcesAssociationsCache.clientId,
@@ -1201,7 +1242,7 @@ export async function handleMessagingForUpdatedSiteResource(
                 and(
                     inArray(
                         clientSiteResourcesAssociationsCache.clientId,
-                        mergedAllClientIds
+                        mergedAllClients.map((c) => c.clientId)
                     ),
                     inArray(siteNetworks.siteId, allSiteIds),
                     eq(
@@ -1220,11 +1261,23 @@ export async function handleMessagingForUpdatedSiteResource(
                 `${row.clientId}:${row.siteId}`
             );
         }
+
+        logger.debug(
+            `handleMessagingForUpdatedSiteResource: old destination still in use rows=${oldDestinationStillInUseRows.length} uniqueClientSitePairs=${oldDestinationStillInUseClientSitePairs.size}`
+        );
+    } else {
+        logger.debug(
+            "handleMessagingForUpdatedSiteResource: skipping old destination reuse check (missing existing destination or no sites/clients)"
+        );
     }
 
     //////////////////////////// FROM HERE DOWN WE ARE DEALING WITH REMOVING SITES
     const removedSiteIds = existingSiteIds.filter(
         (id) => !updatedSiteIds.includes(id)
+    );
+
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: removing sites removedSiteIds=[${removedSiteIds.join(", ")}] count=${removedSiteIds.length}`
     );
 
     const targetsToRemoveBatch: {
@@ -1242,8 +1295,16 @@ export async function handleMessagingForUpdatedSiteResource(
         for (const siteId of removedSiteIds) {
             const newt = newtBySiteId.get(siteId);
             if (!newt) {
+                logger.debug(
+                    `handleMessagingForUpdatedSiteResource: skipping remove for siteId=${siteId} because no newt found`
+                );
                 continue;
             }
+
+            logger.debug(
+                `handleMessagingForUpdatedSiteResource: preparing remove batches for siteId=${siteId} newtId=${newt.newtId}`
+            );
+
             targetsToRemoveBatch.push({
                 newtId: newt.newtId,
                 targets: targets,
@@ -1254,6 +1315,12 @@ export async function handleMessagingForUpdatedSiteResource(
                     oldDestinationStillInUseClientSitePairs.has(
                         `${client.clientId}:${siteId}`
                     );
+
+                if (oldDestinationStillInUseByASite && allSiteIds.length > 0) {
+                    // nothing in the message anyway lets just continue
+                    continue;
+                }
+
                 peerDataRemoves.push({
                     // this might happen twice after the rebuild function but that is okay
                     clientId: client.clientId,
@@ -1261,19 +1328,42 @@ export async function handleMessagingForUpdatedSiteResource(
                     remoteSubnets: !oldDestinationStillInUseByASite
                         ? generateRemoteSubnets([updatedSiteResource])
                         : [],
-                    aliases: generateAliasConfig([updatedSiteResource])
+                    aliases:
+                        allSiteIds.length == 0
+                            ? generateAliasConfig([updatedSiteResource])
+                            : []
                 });
             }
         }
+    } else {
+        logger.debug(
+            "handleMessagingForUpdatedSiteResource: skipping removal batch generation because targets were empty"
+        );
     }
 
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: remove batches prepared targetBatchCount=${targetsToRemoveBatch.length} peerDataCount=${peerDataRemoves.length}`
+    );
+
+    logger.debug(
+        "handleMessagingForUpdatedSiteResource: dispatching removeSubnetProxyTargetsBatch"
+    );
+
     removeSubnetProxyTargetsBatch(targetsToRemoveBatch);
+
+    logger.debug(
+        "handleMessagingForUpdatedSiteResource: dispatching removePeerDataBatch"
+    );
 
     removePeerDataBatch(peerDataRemoves);
 
     //////////////////////////// FROM HERE DOWN WE ARE DEALING WITH ADDING NEW SITES
     const addedSiteIds = updatedSiteIds.filter(
         (id) => !existingSiteIds.includes(id)
+    );
+
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: adding sites addedSiteIds=[${addedSiteIds.join(", ")}] count=${addedSiteIds.length}`
     );
 
     const targetsToAddBatch: {
@@ -1291,8 +1381,16 @@ export async function handleMessagingForUpdatedSiteResource(
         for (const siteId of addedSiteIds) {
             const newt = newtBySiteId.get(siteId);
             if (!newt) {
+                logger.debug(
+                    `handleMessagingForUpdatedSiteResource: skipping add for siteId=${siteId} because no newt found`
+                );
                 continue;
             }
+
+            logger.debug(
+                `handleMessagingForUpdatedSiteResource: preparing add batches for siteId=${siteId} newtId=${newt.newtId}`
+            );
+
             targetsToAddBatch.push({
                 newtId: newt.newtId,
                 targets: targets,
@@ -1307,9 +1405,25 @@ export async function handleMessagingForUpdatedSiteResource(
                 });
             }
         }
+    } else {
+        logger.debug(
+            "handleMessagingForUpdatedSiteResource: skipping add batch generation because targets were empty"
+        );
     }
 
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: add batches prepared targetBatchCount=${targetsToAddBatch.length} peerDataCount=${peerDataAdds.length}`
+    );
+
+    logger.debug(
+        "handleMessagingForUpdatedSiteResource: dispatching addSubnetProxyTargetsBatch"
+    );
+
     addSubnetProxyTargetsBatch(targetsToAddBatch);
+
+    logger.debug(
+        "handleMessagingForUpdatedSiteResource: dispatching addPeerDataBatch"
+    );
 
     addPeerDataBatch(peerDataAdds);
 
@@ -1317,6 +1431,10 @@ export async function handleMessagingForUpdatedSiteResource(
 
     const unchangedSiteIds = existingSiteIds.filter((id) =>
         updatedSiteIds.includes(id)
+    );
+
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: unchangedSiteIds=[${unchangedSiteIds.join(", ")}] count=${unchangedSiteIds.length}`
     );
 
     // after everything is rebuilt above we still need to update the targets and remote subnets if the destination changed
@@ -1345,6 +1463,10 @@ export async function handleMessagingForUpdatedSiteResource(
             existingSiteResource.disableIcmp !==
                 updatedSiteResource.disableIcmp);
 
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: change flags destinationChanged=${Boolean(destinationChanged)} destinationPortChanged=${Boolean(destinationPortChanged)} aliasChanged=${Boolean(aliasChanged)} fullDomainChanged=${Boolean(fullDomainChanged)} sslChanged=${Boolean(sslChanged)} portRangesChanged=${Boolean(portRangesChanged)}`
+    );
+
     // if the existingSiteResource is undefined (new resource) we don't need to do anything here, the rebuild above handled it all
 
     if (
@@ -1361,6 +1483,11 @@ export async function handleMessagingForUpdatedSiteResource(
             portRangesChanged ||
             fullDomainChanged ||
             destinationPortChanged;
+
+        logger.debug(
+            `handleMessagingForUpdatedSiteResource: entering unchanged-site update path shouldUpdateTargets=${shouldUpdateTargets}`
+        );
+
         const oldTargets = shouldUpdateTargets
             ? await generateSubnetProxyTargetV2(
                   existingSiteResource,
@@ -1374,13 +1501,24 @@ export async function handleMessagingForUpdatedSiteResource(
               )
             : [];
 
+        logger.debug(
+            `handleMessagingForUpdatedSiteResource: target update payload sizes oldTargets=${oldTargets ? oldTargets.length : 0} newTargets=${newTargets ? newTargets.length : 0}`
+        );
+
         const peerDataUpdateBatch: Parameters<typeof updatePeerDataBatch>[0] =
             [];
 
         for (const siteId of unchangedSiteIds) {
             const newt = newtBySiteId.get(siteId);
 
+            logger.debug(
+                `handleMessagingForUpdatedSiteResource: processing unchanged siteId=${siteId}`
+            );
+
             if (!newt) {
+                logger.error(
+                    `handleMessagingForUpdatedSiteResource: missing newt for unchanged siteId=${siteId}`
+                );
                 throw new Error(
                     "Newt not found for site during site resource update"
                 );
@@ -1388,6 +1526,9 @@ export async function handleMessagingForUpdatedSiteResource(
 
             // Only update targets on newt if these items change
             if (shouldUpdateTargets) {
+                logger.debug(
+                    `handleMessagingForUpdatedSiteResource: updating targets for siteId=${siteId} newtId=${newt.newtId}`
+                );
                 await updateTargets(
                     newt.newtId,
                     {
@@ -1401,6 +1542,9 @@ export async function handleMessagingForUpdatedSiteResource(
             for (const client of mergedAllClients) {
                 // does this client have access to another resource on this site that has the same destination still? if so we dont want to remove it from their olm yet
                 if (!existingSiteResource.destination) {
+                    logger.debug(
+                        `handleMessagingForUpdatedSiteResource: skipping peerData update for clientId=${client.clientId} siteId=${siteId} because existing destination is empty`
+                    );
                     continue;
                 }
 
@@ -1440,8 +1584,20 @@ export async function handleMessagingForUpdatedSiteResource(
             }
         }
 
+        logger.debug(
+            `handleMessagingForUpdatedSiteResource: dispatching updatePeerDataBatch count=${peerDataUpdateBatch.length}`
+        );
+
         updatePeerDataBatch(peerDataUpdateBatch);
+    } else {
+        logger.debug(
+            "handleMessagingForUpdatedSiteResource: no unchanged-site update required because no relevant fields changed"
+        );
     }
+
+    logger.debug(
+        `handleMessagingForUpdatedSiteResource: DONE siteResourceId=${updatedSiteResource.siteResourceId}`
+    );
 }
 
 export async function rebuildClientAssociationsFromClient(
