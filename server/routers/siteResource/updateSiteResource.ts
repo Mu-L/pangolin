@@ -17,7 +17,11 @@ import response from "@server/lib/response";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
 import { isIpInCidr, portRangeStringSchema } from "@server/lib/ip";
-import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import {
+    handleMessagingForUpdatedSiteResource,
+    rebuildClientAssociationsFromSiteResource,
+    waitForSiteResourceRebuildIdle
+} from "@server/lib/rebuildClientAssociations";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import { NextFunction, Request, Response } from "express";
@@ -592,24 +596,27 @@ export async function updateSiteResource(
             throw new Error("No updated resource found after update");
         }
 
-        rebuildClientAssociationsFromSiteResource(updatedSiteResource).catch(
-            (e) => {
-                logger.error(
-                    `Failed to rebuild client associations for site resource ${siteResourceId}. Error: ${e}`
-                );
-            }
-        );
+        const finalUpdatedSiteResource = updatedSiteResource;
 
-        handleMessagingForUpdatedSiteResource(
-            existingSiteResource,
-            updatedSiteResource,
-            existingSiteIds,
-            updatedSiteIds
-        ).catch((e) => {
-            logger.error(
-                `Failed to handle messaging for updated site resource ${siteResourceId}. Error: ${e}`
-            );
-        });
+        rebuildClientAssociationsFromSiteResource(finalUpdatedSiteResource)
+            .then(() =>
+                waitForSiteResourceRebuildIdle(
+                    finalUpdatedSiteResource.siteResourceId
+                )
+            )
+            .then(() =>
+                handleMessagingForUpdatedSiteResource(
+                    existingSiteResource,
+                    finalUpdatedSiteResource,
+                    existingSiteIds,
+                    updatedSiteIds
+                )
+            )
+            .catch((e) => {
+                logger.error(
+                    `Failed to rebuild and handle messaging for site resource ${siteResourceId}. Error: ${e}`
+                );
+            });
 
         return response(res, {
             data: updatedSiteResource,

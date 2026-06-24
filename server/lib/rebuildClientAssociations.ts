@@ -49,6 +49,112 @@ import { rebuildQueue } from "#dynamic/lib/rebuildQueue";
 // peer/proxy updates, so give them a generous window.
 const REBUILD_ASSOCIATIONS_LOCK_TTL_MS = 120000;
 
+const REBUILD_IDLE_POLL_INTERVAL_MS = 300;
+const REBUILD_IDLE_DEFAULT_TIMEOUT_MS = 130_000; // slightly longer than lock TTL
+const REBUILD_IDLE_HANDLER_TIMEOUT_MS = 5_000;
+
+/**
+ * Returns true if a rebuild for the given site resource is currently active
+ * (holding the distributed lock) or is pending in the rebuild queue.
+ */
+export async function hasActiveSiteResourceRebuild(
+    siteResourceId: number
+): Promise<boolean> {
+    const lockKey = `rebuild-client-associations:site-resource:${siteResourceId}`;
+    const lockInfo = await lockManager.getLockInfo(lockKey);
+    if (lockInfo.exists) return true;
+    return rebuildQueue.isQueued({ type: "site-resource", id: siteResourceId });
+}
+
+/**
+ * Resolves once there is no active or queued rebuild for the given site resource.
+ * Logs a warning and resolves early if the timeout is reached.
+ */
+export async function waitForSiteResourceRebuildIdle(
+    siteResourceId: number,
+    timeoutMs = REBUILD_IDLE_DEFAULT_TIMEOUT_MS
+): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (!(await hasActiveSiteResourceRebuild(siteResourceId))) return;
+        await new Promise<void>((r) =>
+            setTimeout(r, REBUILD_IDLE_POLL_INTERVAL_MS)
+        );
+    }
+    logger.warn(
+        `waitForSiteResourceRebuildIdle: timed out after ${timeoutMs}ms waiting for siteResourceId=${siteResourceId}`
+    );
+}
+
+/**
+ * Resolves once there are no active or queued rebuilds for any site resource
+ * associated with the given site.
+ */
+export async function waitForSiteRebuildIdle(
+    siteId: number,
+    timeoutMs = REBUILD_IDLE_HANDLER_TIMEOUT_MS
+): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const resourceRows = await db
+            .select({ siteResourceId: siteResources.siteResourceId })
+            .from(siteResources)
+            .innerJoin(
+                siteNetworks,
+                eq(siteNetworks.networkId, siteResources.networkId)
+            )
+            .where(eq(siteNetworks.siteId, siteId));
+        let allIdle = true;
+        for (const { siteResourceId } of resourceRows) {
+            if (await hasActiveSiteResourceRebuild(siteResourceId)) {
+                allIdle = false;
+                break;
+            }
+        }
+        if (allIdle) return;
+        await new Promise<void>((r) =>
+            setTimeout(r, REBUILD_IDLE_POLL_INTERVAL_MS)
+        );
+    }
+    logger.warn(
+        `waitForSiteRebuildIdle: timed out after ${timeoutMs}ms waiting for siteId=${siteId}`
+    );
+}
+
+/**
+ * Resolves once there are no active or queued rebuilds for any site resource
+ * associated with the given client.
+ */
+export async function waitForClientRebuildIdle(
+    clientId: number,
+    timeoutMs = REBUILD_IDLE_HANDLER_TIMEOUT_MS
+): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const resourceRows = await db
+            .select({
+                siteResourceId:
+                    clientSiteResourcesAssociationsCache.siteResourceId
+            })
+            .from(clientSiteResourcesAssociationsCache)
+            .where(eq(clientSiteResourcesAssociationsCache.clientId, clientId));
+        let allIdle = true;
+        for (const { siteResourceId } of resourceRows) {
+            if (await hasActiveSiteResourceRebuild(siteResourceId)) {
+                allIdle = false;
+                break;
+            }
+        }
+        if (allIdle) return;
+        await new Promise<void>((r) =>
+            setTimeout(r, REBUILD_IDLE_POLL_INTERVAL_MS)
+        );
+    }
+    logger.warn(
+        `waitForClientRebuildIdle: timed out after ${timeoutMs}ms waiting for clientId=${clientId}`
+    );
+}
+
 export async function getClientSiteResourceAccess(
     siteResource: SiteResource,
     trx: Transaction | typeof db = db
@@ -1060,6 +1166,8 @@ export async function handleMessagingForUpdatedSiteResource(
     );
 
     // get all of the clients from the cache
+    const { mergedAllClients, mergedAllClientIds } =
+        await getClientSiteResourceAccess(updatedSiteResource, trx);
 
     const targets = await generateSubnetProxyTargetV2(
         updatedSiteResource,

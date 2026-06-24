@@ -9,6 +9,7 @@ import { buildClientConfigurationForNewtClient } from "./buildConfiguration";
 import { convertTargetsIfNecessary } from "../client/targets";
 import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";
+import { waitForSiteRebuildIdle } from "@server/lib/rebuildClientAssociations";
 
 export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
@@ -60,6 +61,8 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
         );
         return;
     }
+
+    await waitForSiteRebuildIdle(siteId);
 
     // update the endpoint and the public key
     const [site] = await db

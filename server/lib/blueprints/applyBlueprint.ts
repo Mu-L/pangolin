@@ -29,8 +29,11 @@ import { updateResourcePolicies } from "./resourcePolicies";
 import { BlueprintSource } from "@server/routers/blueprints/types";
 import { stringify as stringifyYaml } from "yaml";
 import { generateName } from "@server/db/names";
-import { handleMessagingForUpdatedSiteResource } from "@server/routers/siteResource";
-import { rebuildClientAssociationsFromSiteResource } from "../rebuildClientAssociations";
+import {
+    handleMessagingForUpdatedSiteResource,
+    rebuildClientAssociationsFromSiteResource,
+    waitForSiteResourceRebuildIdle
+} from "../rebuildClientAssociations";
 
 type ApplyBlueprintArgs = {
     orgId: string;
@@ -138,26 +141,25 @@ export async function applyBlueprint({
             for (const result of privateResourcesResults) {
                 rebuildClientAssociationsFromSiteResource(
                     result.newSiteResource
-                ).catch((e) => {
-                    logger.error(
-                        `Failed to rebuild client associations for site resource ${result.newSiteResource.siteResourceId}. Error: ${e}`
-                    );
-                });
-
-                handleMessagingForUpdatedSiteResource(
-                    result.oldSiteResource,
-                    result.newSiteResource,
-                    result.oldSites.map((site) => ({
-                        // only need to run this on the old sites because the new sites are added above
-                        siteId: site.siteId,
-                        orgId: result.newSiteResource.orgId
-                    }))
-                ).catch((err) => {
-                    logger.error(
-                        `Error handling messaging for updated site resource ${result.newSiteResource.siteResourceId}:`,
-                        err
-                    );
-                });
+                )
+                    .then(() =>
+                        waitForSiteResourceRebuildIdle(
+                            result.newSiteResource.siteResourceId
+                        )
+                    )
+                    .then(() =>
+                        handleMessagingForUpdatedSiteResource(
+                            result.oldSiteResource,
+                            result.newSiteResource,
+                            result.oldSites.map((s) => s.siteId),
+                            result.newSites.map((s) => s.siteId)
+                        )
+                    )
+                    .catch((e) => {
+                        logger.error(
+                            `Failed to rebuild and handle messaging for site resource ${result.newSiteResource.siteResourceId}. Error: ${e}`
+                        );
+                    });
             }
 
             logger.debug(

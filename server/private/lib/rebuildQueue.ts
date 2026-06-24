@@ -46,6 +46,17 @@ const POLL_INTERVAL_MS = 500;
 class RedisRebuildQueue {
     private processingStarted = false;
 
+    async isQueued(job: RebuildJob): Promise<boolean> {
+        if (!redis || redis.status !== "ready") return false;
+        const dedupeKey = `${job.type}:${job.id}`;
+        try {
+            const member = await redis.sismember(QUEUED_SET_KEY, dedupeKey);
+            return member === 1;
+        } catch {
+            return false;
+        }
+    }
+
     async enqueue(job: RebuildJob): Promise<void> {
         if (!redis || redis.status !== "ready") {
             logger.warn(

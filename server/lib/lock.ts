@@ -35,7 +35,7 @@ export class LockManager {
         ttl: number;
         owner?: string;
     }> {
-        return { exists: true, ownedByMe: true, ttl: 0 };
+        return { exists: false, ownedByMe: false, ttl: 0 };
     }
 
     /**
