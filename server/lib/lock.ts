@@ -1,4 +1,24 @@
+const instanceId = `local-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+
+type LocalLockRecord = {
+    owner: string;
+    expiresAt: number;
+};
+
+const localLocks = new Map<string, LocalLockRecord>();
+
 export class LockManager {
+    private clearExpiredLocalLock(lockKey: string): void {
+        const current = localLocks.get(lockKey);
+        if (current && current.expiresAt <= Date.now()) {
+            localLocks.delete(lockKey);
+        }
+    }
+
+    private getLocalOwnerToken(): string {
+        return `${instanceId}:`;
+    }
+
     /**
      * Acquire a distributed lock using Redis SET with NX and PX options
      * @param lockKey - Unique identifier for the lock
@@ -7,22 +27,57 @@ export class LockManager {
      */
     async acquireLock(
         lockKey: string,
-        ttlMs: number = 30000
+        ttlMs: number = 30000,
+        maxRetries: number = 3,
+        retryDelayMs: number = 100
     ): Promise<boolean> {
-        return true;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            this.clearExpiredLocalLock(lockKey);
+
+            const existing = localLocks.get(lockKey);
+            if (!existing) {
+                localLocks.set(lockKey, {
+                    owner: this.getLocalOwnerToken(),
+                    expiresAt: Date.now() + ttlMs
+                });
+                return true;
+            }
+
+            if (existing.owner === this.getLocalOwnerToken()) {
+                existing.expiresAt = Date.now() + ttlMs;
+                localLocks.set(lockKey, existing);
+                return true;
+            }
+
+            if (attempt < maxRetries - 1) {
+                const delay = retryDelayMs * Math.pow(2, attempt);
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+        }
+
+        return false;
     }
 
     /**
      * Release a lock using Lua script to ensure atomicity
      * @param lockKey - Unique identifier for the lock
      */
-    async releaseLock(lockKey: string): Promise<void> {}
+    async releaseLock(lockKey: string): Promise<void> {
+        this.clearExpiredLocalLock(lockKey);
+        const existing = localLocks.get(lockKey);
+
+        if (existing && existing.owner === this.getLocalOwnerToken()) {
+            localLocks.delete(lockKey);
+        }
+    }
 
     /**
      * Force release a lock regardless of owner (use with caution)
      * @param lockKey - Unique identifier for the lock
      */
-    async forceReleaseLock(lockKey: string): Promise<void> {}
+    async forceReleaseLock(lockKey: string): Promise<void> {
+        localLocks.delete(lockKey);
+    }
 
     /**
      * Check if a lock exists and get its info
@@ -35,7 +90,20 @@ export class LockManager {
         ttl: number;
         owner?: string;
     }> {
-        return { exists: false, ownedByMe: false, ttl: 0 };
+        this.clearExpiredLocalLock(lockKey);
+        const existing = localLocks.get(lockKey);
+
+        if (!existing) {
+            return { exists: false, ownedByMe: false, ttl: 0 };
+        }
+
+        const ttl = Math.max(0, existing.expiresAt - Date.now());
+        return {
+            exists: true,
+            ownedByMe: existing.owner === this.getLocalOwnerToken(),
+            ttl,
+            owner: existing.owner.split(":")[0]
+        };
     }
 
     /**
@@ -45,6 +113,15 @@ export class LockManager {
      * @returns Promise<boolean> - true if extended successfully
      */
     async extendLock(lockKey: string, ttlMs: number): Promise<boolean> {
+        this.clearExpiredLocalLock(lockKey);
+        const existing = localLocks.get(lockKey);
+
+        if (!existing || existing.owner !== this.getLocalOwnerToken()) {
+            return false;
+        }
+
+        existing.expiresAt = Date.now() + ttlMs;
+        localLocks.set(lockKey, existing);
         return true;
     }
 
@@ -62,7 +139,26 @@ export class LockManager {
         maxRetries: number = 5,
         baseDelayMs: number = 100
     ): Promise<boolean> {
-        return true;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            const acquired = await this.acquireLock(
+                lockKey,
+                ttlMs,
+                1,
+                baseDelayMs
+            );
+
+            if (acquired) {
+                return true;
+            }
+
+            if (attempt < maxRetries) {
+                const delay =
+                    baseDelayMs * Math.pow(2, attempt) + Math.random() * 100;
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -99,7 +195,21 @@ export class LockManager {
         activeLocksCount: number;
         locksOwnedByMe: number;
     }> {
-        return { activeLocksCount: 0, locksOwnedByMe: 0 };
+        const now = Date.now();
+        for (const [key, value] of localLocks.entries()) {
+            if (value.expiresAt <= now) {
+                localLocks.delete(key);
+            }
+        }
+
+        let locksOwnedByMe = 0;
+        for (const value of localLocks.values()) {
+            if (value.owner === this.getLocalOwnerToken()) {
+                locksOwnedByMe++;
+            }
+        }
+
+        return { activeLocksCount: localLocks.size, locksOwnedByMe };
     }
 
     /**
