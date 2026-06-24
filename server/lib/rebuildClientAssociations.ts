@@ -35,6 +35,7 @@ import {
     parseEndpoint
 } from "@server/lib/ip";
 import {
+    addPeerData,
     addPeerDataBatch,
     addTargetsBatch as addSubnetProxyTargetsBatch,
     removePeerDataBatch,
@@ -1258,6 +1259,7 @@ export async function handleMessagingForUpdatedSiteResource(
             `handleMessagingForUpdatedSiteResource: checking old destination reuse destination=${existingSiteResource.destination} across siteCount=${allSiteIds.length} clientCount=${mergedAllClients.length}`
         );
 
+        // we need to do this because the client only knows about peers not resources so we need to make sure that we dont remove it if there is still a another resource
         const oldDestinationStillInUseRows = await trx
             .select({
                 clientId: clientSiteResourcesAssociationsCache.clientId,
@@ -1348,20 +1350,23 @@ export async function handleMessagingForUpdatedSiteResource(
                 version: newt.version
             });
             for (const client of mergedAllClients) {
-                const oldDestinationStillInUseByASite =
+                // we need to do this because the client only knows about peers not resources so we need to make sure that we dont remove it if there is still a another resource
+                const oldDestinationStillInUseBySite =
                     oldDestinationStillInUseClientSitePairs.has(
                         `${client.clientId}:${siteId}`
                     );
 
-                peerDataRemoves.push({
-                    // this might happen twice after the rebuild function but that is okay
-                    clientId: client.clientId,
-                    siteId,
-                    remoteSubnets: !oldDestinationStillInUseByASite
-                        ? generateRemoteSubnets([updatedSiteResource])
-                        : [],
-                    aliases: generateAliasConfig([updatedSiteResource])
-                });
+                if (existingSiteResource) {
+                    peerDataRemoves.push({
+                        // this might happen twice after the rebuild function but that is okay
+                        clientId: client.clientId,
+                        siteId,
+                        remoteSubnets: !oldDestinationStillInUseBySite
+                            ? generateRemoteSubnets([existingSiteResource])
+                            : [],
+                        aliases: generateAliasConfig([existingSiteResource])
+                    });
+                }
             }
         }
     } else {
@@ -1577,7 +1582,8 @@ export async function handleMessagingForUpdatedSiteResource(
                     continue;
                 }
 
-                const oldDestinationStillInUseByASite =
+                // we need to do this because the client only knows about peers not resources so we need to make sure that we dont remove it if there is still a another resource
+                const oldDestinationStillInUseBySite =
                     oldDestinationStillInUseClientSitePairs.has(
                         `${client.clientId}:${siteId}`
                     );
@@ -1588,7 +1594,7 @@ export async function handleMessagingForUpdatedSiteResource(
                     siteId,
                     remoteSubnets: destinationChanged
                         ? {
-                              oldRemoteSubnets: !oldDestinationStillInUseByASite
+                              oldRemoteSubnets: !oldDestinationStillInUseBySite
                                   ? generateRemoteSubnets([
                                         existingSiteResource
                                     ])
@@ -2363,7 +2369,7 @@ async function handleMessagesForClientResources(
                             )
                         );
 
-                    // Only remove remote subnet if no other resource uses the same destination
+                    // Only remove remote subnet if no other resource uses the same destination on the same site
                     const remoteSubnetsToRemove =
                         destinationStillInUse.length > 0
                             ? []
