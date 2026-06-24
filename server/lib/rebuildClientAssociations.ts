@@ -38,7 +38,9 @@ import {
     addPeerDataBatch,
     addTargetsBatch as addSubnetProxyTargetsBatch,
     removePeerDataBatch,
-    removeTargetsBatch as removeSubnetProxyTargetsBatch
+    removeTargetsBatch as removeSubnetProxyTargetsBatch,
+    updatePeerDataBatch,
+    updateTargets
 } from "@server/routers/client/targets";
 import { lockManager } from "#dynamic/lib/lock";
 import { rebuildQueue } from "#dynamic/lib/rebuildQueue";
@@ -162,15 +164,10 @@ export async function getClientSiteResourceAccess(
 export async function rebuildClientAssociationsFromSiteResource(
     siteResource: SiteResource
 ) {
-    const trx = primaryDb;
     try {
         return await lockManager.withLock(
             `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
-            () =>
-                rebuildClientAssociationsFromSiteResourceImpl(
-                    siteResource,
-                    trx
-                ),
+            () => rebuildClientAssociationsFromSiteResourceImpl(siteResource),
             REBUILD_ASSOCIATIONS_LOCK_TTL_MS
         );
     } catch (err: any) {
@@ -192,15 +189,10 @@ export async function rebuildClientAssociationsFromSiteResource(
 }
 
 async function rebuildClientAssociationsFromSiteResourceImpl(
-    siteResource: SiteResource,
-    trx: Transaction | typeof db = db
-): Promise<{
-    mergedAllClients: {
-        clientId: number;
-        pubKey: string | null;
-        subnet: string | null;
-    }[];
-}> {
+    siteResource: SiteResource
+) {
+    const trx = primaryDb;
+
     logger.debug(
         `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] START siteResourceId=${siteResource.siteResourceId} networkId=${siteResource.networkId} orgId=${siteResource.orgId}`
     );
@@ -485,10 +477,6 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
         clientSiteResourcesToRemove,
         trx
     );
-
-    return {
-        mergedAllClients
-    };
 }
 
 async function handleMessagesForSiteClients(
@@ -1040,6 +1028,312 @@ async function handleSubnetProxyTargetUpdates(
     }
 
     await Promise.all([...proxyJobs, ...olmJobs]);
+}
+
+export async function handleMessagingForUpdatedSiteResource(
+    existingSiteResource: SiteResource | undefined,
+    updatedSiteResource: SiteResource,
+    existingSiteIds: number[],
+    updatedSiteIds: number[],
+    trx: Transaction | typeof db = db
+) {
+    logger.debug(
+        "handleMessagingForUpdatedSiteResource: existingSiteResource is: ",
+        existingSiteResource
+    );
+    logger.debug(
+        "handleMessagingForUpdatedSiteResource: updatedSiteResource is: ",
+        updatedSiteResource
+    );
+
+    const allSiteIds = [...new Set([...existingSiteIds, ...updatedSiteIds])];
+
+    const newtsForSites =
+        allSiteIds.length > 0
+            ? await trx
+                  .select()
+                  .from(newts)
+                  .where(inArray(newts.siteId, allSiteIds))
+            : [];
+    const newtBySiteId = new Map(
+        newtsForSites.map((newt) => [newt.siteId, newt])
+    );
+
+    // get all of the clients from the cache
+
+    const targets = await generateSubnetProxyTargetV2(
+        updatedSiteResource,
+        mergedAllClients
+    );
+
+    const oldDestinationStillInUseClientSitePairs = new Set<string>();
+    if (
+        existingSiteResource?.destination &&
+        allSiteIds.length > 0 &&
+        mergedAllClientIds.length > 0
+    ) {
+        const oldDestinationStillInUseRows = await trx
+            .select({
+                clientId: clientSiteResourcesAssociationsCache.clientId,
+                siteId: siteNetworks.siteId
+            })
+            .from(siteResources)
+            .innerJoin(
+                clientSiteResourcesAssociationsCache,
+                eq(
+                    clientSiteResourcesAssociationsCache.siteResourceId,
+                    siteResources.siteResourceId
+                )
+            )
+            .innerJoin(
+                siteNetworks,
+                eq(siteNetworks.networkId, siteResources.networkId)
+            )
+            .where(
+                and(
+                    inArray(
+                        clientSiteResourcesAssociationsCache.clientId,
+                        mergedAllClientIds
+                    ),
+                    inArray(siteNetworks.siteId, allSiteIds),
+                    eq(
+                        siteResources.destination,
+                        existingSiteResource.destination
+                    ),
+                    ne(
+                        siteResources.siteResourceId,
+                        existingSiteResource.siteResourceId
+                    )
+                )
+            );
+
+        for (const row of oldDestinationStillInUseRows) {
+            oldDestinationStillInUseClientSitePairs.add(
+                `${row.clientId}:${row.siteId}`
+            );
+        }
+    }
+
+    //////////////////////////// FROM HERE DOWN WE ARE DEALING WITH REMOVING SITES
+    const removedSiteIds = existingSiteIds.filter(
+        (id) => !updatedSiteIds.includes(id)
+    );
+
+    const targetsToRemoveBatch: {
+        newtId: string;
+        targets: any[];
+        version: string | null;
+    }[] = [];
+    const peerDataRemoves: {
+        clientId: number;
+        siteId: number;
+        remoteSubnets: string[];
+        aliases: ReturnType<typeof generateAliasConfig>;
+    }[] = [];
+    if (targets) {
+        for (const siteId of removedSiteIds) {
+            const newt = newtBySiteId.get(siteId);
+            if (!newt) {
+                continue;
+            }
+            targetsToRemoveBatch.push({
+                newtId: newt.newtId,
+                targets: targets,
+                version: newt.version
+            });
+            for (const client of mergedAllClients) {
+                const oldDestinationStillInUseByASite =
+                    oldDestinationStillInUseClientSitePairs.has(
+                        `${client.clientId}:${siteId}`
+                    );
+                peerDataRemoves.push({
+                    // this might happen twice after the rebuild function but that is okay
+                    clientId: client.clientId,
+                    siteId,
+                    remoteSubnets: !oldDestinationStillInUseByASite
+                        ? generateRemoteSubnets([updatedSiteResource])
+                        : [],
+                    aliases: generateAliasConfig([updatedSiteResource])
+                });
+            }
+        }
+    }
+
+    removeSubnetProxyTargetsBatch(targetsToRemoveBatch);
+
+    removePeerDataBatch(peerDataRemoves);
+
+    //////////////////////////// FROM HERE DOWN WE ARE DEALING WITH ADDING NEW SITES
+    const addedSiteIds = updatedSiteIds.filter(
+        (id) => !existingSiteIds.includes(id)
+    );
+
+    const targetsToAddBatch: {
+        newtId: string;
+        targets: any[];
+        version: string | null;
+    }[] = [];
+    const peerDataAdds: {
+        clientId: number;
+        siteId: number;
+        remoteSubnets: string[];
+        aliases: ReturnType<typeof generateAliasConfig>;
+    }[] = [];
+    if (targets) {
+        for (const siteId of addedSiteIds) {
+            const newt = newtBySiteId.get(siteId);
+            if (!newt) {
+                continue;
+            }
+            targetsToAddBatch.push({
+                newtId: newt.newtId,
+                targets: targets,
+                version: newt.version
+            });
+            for (const client of mergedAllClients) {
+                peerDataAdds.push({
+                    clientId: client.clientId,
+                    siteId,
+                    remoteSubnets: generateRemoteSubnets([updatedSiteResource]),
+                    aliases: generateAliasConfig([updatedSiteResource])
+                });
+            }
+        }
+    }
+
+    addSubnetProxyTargetsBatch(targetsToAddBatch);
+
+    addPeerDataBatch(peerDataAdds);
+
+    //////////////////////////// FROM HERE DOWN WE ARE DEALING WITH UPDATING THE EXISTING SITES
+
+    const unchangedSiteIds = existingSiteIds.filter((id) =>
+        updatedSiteIds.includes(id)
+    );
+
+    // after everything is rebuilt above we still need to update the targets and remote subnets if the destination changed
+    const destinationChanged =
+        existingSiteResource &&
+        existingSiteResource.destination !== updatedSiteResource.destination;
+    const destinationPortChanged =
+        existingSiteResource &&
+        existingSiteResource.destinationPort !==
+            updatedSiteResource.destinationPort;
+    const aliasChanged =
+        existingSiteResource &&
+        existingSiteResource.alias !== updatedSiteResource.alias;
+    const fullDomainChanged =
+        existingSiteResource &&
+        existingSiteResource.fullDomain !== updatedSiteResource.fullDomain;
+    const sslChanged =
+        existingSiteResource &&
+        existingSiteResource.ssl !== updatedSiteResource.ssl;
+    const portRangesChanged =
+        existingSiteResource &&
+        (existingSiteResource.tcpPortRangeString !==
+            updatedSiteResource.tcpPortRangeString ||
+            existingSiteResource.udpPortRangeString !==
+                updatedSiteResource.udpPortRangeString ||
+            existingSiteResource.disableIcmp !==
+                updatedSiteResource.disableIcmp);
+
+    // if the existingSiteResource is undefined (new resource) we don't need to do anything here, the rebuild above handled it all
+
+    if (
+        destinationChanged ||
+        aliasChanged ||
+        fullDomainChanged ||
+        sslChanged ||
+        portRangesChanged ||
+        destinationPortChanged
+    ) {
+        const shouldUpdateTargets =
+            destinationChanged ||
+            sslChanged ||
+            portRangesChanged ||
+            fullDomainChanged ||
+            destinationPortChanged;
+        const oldTargets = shouldUpdateTargets
+            ? await generateSubnetProxyTargetV2(
+                  existingSiteResource,
+                  mergedAllClients
+              )
+            : [];
+        const newTargets = shouldUpdateTargets
+            ? await generateSubnetProxyTargetV2(
+                  updatedSiteResource,
+                  mergedAllClients
+              )
+            : [];
+
+        const peerDataUpdateBatch: Parameters<typeof updatePeerDataBatch>[0] =
+            [];
+
+        for (const siteId of unchangedSiteIds) {
+            const newt = newtBySiteId.get(siteId);
+
+            if (!newt) {
+                throw new Error(
+                    "Newt not found for site during site resource update"
+                );
+            }
+
+            // Only update targets on newt if these items change
+            if (shouldUpdateTargets) {
+                await updateTargets(
+                    newt.newtId,
+                    {
+                        oldTargets: oldTargets ? oldTargets : [],
+                        newTargets: newTargets ? newTargets : []
+                    },
+                    newt.version
+                );
+            }
+
+            for (const client of mergedAllClients) {
+                // does this client have access to another resource on this site that has the same destination still? if so we dont want to remove it from their olm yet
+                if (!existingSiteResource.destination) {
+                    continue;
+                }
+
+                const oldDestinationStillInUseByASite =
+                    oldDestinationStillInUseClientSitePairs.has(
+                        `${client.clientId}:${siteId}`
+                    );
+
+                // we also need to update the remote subnets on the olms for each client that has access to this site
+                peerDataUpdateBatch.push({
+                    clientId: client.clientId,
+                    siteId,
+                    remoteSubnets: destinationChanged
+                        ? {
+                              oldRemoteSubnets: !oldDestinationStillInUseByASite
+                                  ? generateRemoteSubnets([
+                                        existingSiteResource
+                                    ])
+                                  : [],
+                              newRemoteSubnets: generateRemoteSubnets([
+                                  updatedSiteResource
+                              ])
+                          }
+                        : undefined,
+                    aliases:
+                        aliasChanged || fullDomainChanged // the full domain is sent down as an alias
+                            ? {
+                                  oldAliases: generateAliasConfig([
+                                      existingSiteResource
+                                  ]),
+                                  newAliases: generateAliasConfig([
+                                      updatedSiteResource
+                                  ])
+                              }
+                            : undefined
+                });
+            }
+        }
+
+        updatePeerDataBatch(peerDataUpdateBatch);
+    }
 }
 
 export async function rebuildClientAssociationsFromClient(

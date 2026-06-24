@@ -438,6 +438,70 @@ export async function removePeerDataBatch(
     await sendToClientsBatch(payloads);
 }
 
+export async function updatePeerDataBatch(
+    entries: {
+        clientId: number;
+        siteId: number;
+        remoteSubnets:
+            | {
+                  oldRemoteSubnets: string[];
+                  newRemoteSubnets: string[];
+              }
+            | undefined;
+        aliases:
+            | {
+                  oldAliases: Alias[];
+                  newAliases: Alias[];
+              }
+            | undefined;
+        olmId?: string;
+        version?: string | null;
+    }[]
+) {
+    if (entries.length === 0) {
+        return;
+    }
+
+    const resolvedTargets = await resolveOlmTargets(entries);
+
+    if (resolvedTargets.length === 0) {
+        return;
+    }
+
+    const payloads = entries
+        .map((entry) => {
+            const resolved = resolvedTargets.find(
+                (target) => target.clientId === entry.clientId
+            );
+            if (!resolved) {
+                return null;
+            }
+
+            return {
+                clientId: resolved.olmId,
+                message: {
+                    type: `olm/wg/peer/data/update`,
+                    data: {
+                        siteId: entry.siteId,
+                        ...entry.remoteSubnets,
+                        ...entry.aliases
+                    }
+                },
+                options: {
+                    incrementConfigVersion: true,
+                    compress: canCompress(resolved.version, "olm")
+                }
+            };
+        })
+        .filter((entry) => entry !== null);
+
+    if (payloads.length === 0) {
+        return;
+    }
+
+    await sendToClientsBatch(payloads);
+}
+
 export async function updatePeerData(
     clientId: number,
     siteId: number,
