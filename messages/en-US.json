@@ -1638,7 +1638,7 @@
     "alertingActionType": "Action type",
     "alertingNotifyUsers": "Users",
     "alertingNotifyRoles": "Roles",
-    "alertingNotifyEmails": "Email addresses",
+    "alertingNotifyEmails": "Email Addresses",
     "alertingEmailPlaceholder": "Add email and press Enter",
     "alertingWebhookMethod": "HTTP method",
     "alertingWebhookSecret": "Signing secret (optional)",
