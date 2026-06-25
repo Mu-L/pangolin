@@ -966,7 +966,17 @@ export const resourceRules = pgTable("resourceRules", {
     enabled: boolean("enabled").notNull().default(true),
     priority: integer("priority").notNull(),
     action: varchar("action").notNull(), // ACCEPT, DROP, PASS
-    match: varchar("match").notNull(), // CIDR, PATH, IP
+    match: varchar("match")
+        .$type<
+            | "CIDR"
+            | "PATH"
+            | "IP"
+            | "COUNTRY"
+            | "COUNTRY_IS_NOT"
+            | "ASN"
+            | "REGION"
+        >()
+        .notNull(), // CIDR, PATH, IP
     value: varchar("value").notNull()
 });
 

@@ -1205,7 +1205,17 @@ export const resourceRules = sqliteTable("resourceRules", {
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     priority: integer("priority").notNull(),
     action: text("action").notNull(), // ACCEPT, DROP, PASS
-    match: text("match").notNull(), // CIDR, PATH, IP
+    match: text("match")
+        .$type<
+            | "CIDR"
+            | "PATH"
+            | "IP"
+            | "COUNTRY"
+            | "COUNTRY_IS_NOT"
+            | "ASN"
+            | "REGION"
+        >()
+        .notNull(), // CIDR, PATH, IP
     value: text("value").notNull()
 });
 
