@@ -56,7 +56,6 @@ const bodySchema = z
 export type CreateOrgUserResponse = {};
 const CreateOrgUserResponseDataSchema = z.object({});
 
-
 registry.registerPath({
     method: "put",
     path: "/org/{orgId}/user",
@@ -77,7 +76,9 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: createApiResponseSchema(CreateOrgUserResponseDataSchema)
+                    schema: createApiResponseSchema(
+                        CreateOrgUserResponseDataSchema
+                    )
                 }
             }
         }
@@ -326,13 +327,11 @@ export async function createOrgUser(
             });
 
             if (userIdForClients) {
-                calculateUserClientsForOrgs(userIdForClients, primaryDb).catch(
-                    (e) => {
-                        logger.error(
-                            `Failed to calculate user clients after creating org user: ${e}`
-                        );
-                    }
-                );
+                calculateUserClientsForOrgs(userIdForClients).catch((e) => {
+                    logger.error(
+                        `Failed to calculate user clients after creating org user: ${e}`
+                    );
+                });
             }
         } else {
             return next(

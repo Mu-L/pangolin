@@ -19,6 +19,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { InfoPopup } from "@app/components/ui/info-popup";
@@ -55,6 +56,9 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { LabelsTableCell } from "./LabelsTableCell";
+import { useQuery } from "@tanstack/react-query";
+import { productUpdatesQueries } from "@app/lib/queries";
+import semver from "semver";
 
 export type SiteRow = {
     id: number;
@@ -101,6 +105,7 @@ export default function SitesTable({
     } = useNavigationContext();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteWithResources, setDeleteWithResources] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
     const [resourcesDialogSite, setResourcesDialogSite] =
         useState<SiteRow | null>(null);
@@ -113,12 +118,11 @@ export default function SitesTable({
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
 
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         router.refresh();
-    //     }, 30_000);
-    //     return () => clearInterval(interval);
-    // }, []);
+    const { data: latestVersions } = useQuery(
+        productUpdatesQueries.latestVersion(true)
+    );
+
+    const latestNewtVersion = latestVersions?.data?.newt?.latestVersion;
 
     const booleanSearchFilterSchema = z
         .enum(["true", "false"])
@@ -155,10 +159,12 @@ export default function SitesTable({
         });
     }
 
-    function deleteSite(siteId: number) {
+    function deleteSite(siteId: number, withResources: boolean) {
         startTransition(async () => {
             await api
-                .delete(`/site/${siteId}`)
+                .delete(`/site/${siteId}`, {
+                    params: { deleteResources: withResources }
+                })
                 .catch((e) => {
                     console.error(t("siteErrorDelete"), e);
                     toast({
@@ -333,6 +339,11 @@ export default function SitesTable({
                 cell: ({ row }) => {
                     const originalRow = row.original;
 
+                    let updateAvailable =
+                        latestNewtVersion &&
+                        originalRow.newtVersion &&
+                        semver.lt(originalRow.newtVersion, latestNewtVersion);
+
                     if (originalRow.type === "newt") {
                         return (
                             <div className="flex items-center space-x-1">
@@ -346,7 +357,7 @@ export default function SitesTable({
                                         )}
                                     </div>
                                 </Badge>
-                                {originalRow.newtUpdateAvailable && (
+                                {updateAvailable && (
                                     <InfoPopup
                                         info={t("newtUpdateAvailableInfo")}
                                     />
@@ -514,16 +525,33 @@ export default function SitesTable({
                                             )}
                                         </DropdownMenuItem>
                                     </Link>
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                         onClick={() => {
                                             setSelectedSite(siteRow);
+                                            setDeleteWithResources(false);
                                             setIsDeleteModalOpen(true);
                                         }}
                                     >
                                         <span className="text-red-500">
-                                            {t("delete")}
+                                            {t("sitesTableDeleteSite")}
                                         </span>
                                     </DropdownMenuItem>
+                                    {siteRow.resourceCount <= 250 && (
+                                        <DropdownMenuItem
+                                            onClick={() => {
+                                                setSelectedSite(siteRow);
+                                                setDeleteWithResources(true);
+                                                setIsDeleteModalOpen(true);
+                                            }}
+                                        >
+                                            <span className="text-red-500">
+                                                {t(
+                                                    "sitesTableDeleteSiteAndResources"
+                                                )}
+                                            </span>
+                                        </DropdownMenuItem>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <Link
@@ -561,7 +589,7 @@ export default function SitesTable({
         }
 
         return cols;
-    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
+    }, [isLabelFeatureEnabled, orgId, t, searchParams, latestNewtVersion]);
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
@@ -632,19 +660,38 @@ export default function SitesTable({
                     setOpen={(val) => {
                         setIsDeleteModalOpen(val);
                         setSelectedSite(null);
+                        setDeleteWithResources(false);
                     }}
                     dialog={
                         <div className="space-y-2">
-                            <p>{t("siteQuestionRemove")}</p>
-                            <p>{t("siteMessageRemove")}</p>
+                            <p>
+                                {deleteWithResources
+                                    ? t("siteQuestionRemoveAndResources")
+                                    : t("siteQuestionRemove")}
+                            </p>
+                            <p>
+                                {deleteWithResources
+                                    ? t("siteMessageRemoveAndResources")
+                                    : t("siteMessageRemove")}
+                            </p>
                         </div>
                     }
-                    buttonText={t("siteConfirmDelete")}
+                    buttonText={
+                        deleteWithResources
+                            ? t("siteConfirmDeleteAndResources")
+                            : t("siteConfirmDelete")
+                    }
                     onConfirm={async () =>
-                        startTransition(() => deleteSite(selectedSite!.id))
+                        startTransition(() =>
+                            deleteSite(selectedSite!.id, deleteWithResources)
+                        )
                     }
                     string={selectedSite.name}
-                    title={t("siteDelete")}
+                    title={
+                        deleteWithResources
+                            ? t("siteDeleteAndResources")
+                            : t("siteDelete")
+                    }
                 />
             )}
 

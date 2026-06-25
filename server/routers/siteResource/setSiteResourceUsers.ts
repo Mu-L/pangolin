@@ -10,6 +10,7 @@ import { fromError } from "zod-validation-error";
 import { eq } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
 import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import { error } from "node:console";
 
 const setSiteResourceUsersBodySchema = z
     .object({
@@ -120,8 +121,12 @@ export async function setSiteResourceUsers(
                         userIds.map((userId) => ({ userId, siteResourceId }))
                     );
             }
+        });
 
-            await rebuildClientAssociationsFromSiteResource(siteResource, trx);
+        rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {
+            logger.error(
+                `Failed to rebuild client associations for site resource ${siteResourceId}. Error: ${e}`
+            );
         });
 
         return response(res, {

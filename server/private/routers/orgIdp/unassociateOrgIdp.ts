@@ -121,7 +121,7 @@ export async function unassociateOrgIdp(
         });
 
         for (const userId of userIdsToRemove) {
-            calculateUserClientsForOrgs(userId, primaryDb).catch((e) => {
+            calculateUserClientsForOrgs(userId).catch((e) => {
                 logger.error(
                     `Failed to calculate user clients after removing user ${userId} from org ${orgId} during IdP unassociation: ${e}`
                 );

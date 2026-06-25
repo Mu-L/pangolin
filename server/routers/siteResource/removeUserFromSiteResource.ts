@@ -126,17 +126,19 @@ export async function removeUserFromSiteResource(
             );
         }
 
-        await db.transaction(async (trx) => {
-            await trx
-                .delete(userSiteResources)
-                .where(
-                    and(
-                        eq(userSiteResources.siteResourceId, siteResourceId),
-                        eq(userSiteResources.userId, userId)
-                    )
-                );
+        await db
+            .delete(userSiteResources)
+            .where(
+                and(
+                    eq(userSiteResources.siteResourceId, siteResourceId),
+                    eq(userSiteResources.userId, userId)
+                )
+            );
 
-            await rebuildClientAssociationsFromSiteResource(siteResource, trx);
+        rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {
+            logger.error(
+                `Failed to rebuild client associations for site resource ${siteResourceId} after removing user ${userId}: ${e}`
+            );
         });
 
         return response(res, {

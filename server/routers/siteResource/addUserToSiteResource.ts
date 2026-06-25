@@ -124,13 +124,15 @@ export async function addUserToSiteResource(
             );
         }
 
-        await db.transaction(async (trx) => {
-            await trx.insert(userSiteResources).values({
-                userId,
-                siteResourceId
-            });
+        await db.insert(userSiteResources).values({
+            userId,
+            siteResourceId
+        });
 
-            await rebuildClientAssociationsFromSiteResource(siteResource, trx);
+        rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {
+            logger.error(
+                `Failed to rebuild client associations for site resource ${siteResourceId}. Error: ${e}`
+            );
         });
 
         return response(res, {

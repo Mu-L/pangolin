@@ -49,20 +49,22 @@ export const handleNewtPingMessage: MessageHandler = async (context) => {
             `Newt ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
         );
 
-        const [site] = await db
-            .select()
-            .from(sites)
-            .where(eq(sites.siteId, newt.siteId))
-            .limit(1);
+        // TODO: IMPLEMENT THE SYNC ON THE NEWT SIDE AND COMMENT THIS BACK IN
 
-        if (!site) {
-            logger.warn(
-                `Newt ping message: site with ID ${newt.siteId} not found`
-            );
-            return;
-        }
+        // const [site] = await db
+        //     .select()
+        //     .from(sites)
+        //     .where(eq(sites.siteId, newt.siteId))
+        //     .limit(1);
 
-        await sendNewtSyncMessage(newt, site);
+        // if (!site) {
+        //     logger.warn(
+        //         `Newt ping message: site with ID ${newt.siteId} not found`
+        //     );
+        //     return;
+        // }
+
+        // await sendNewtSyncMessage(newt, site);
     }
 
     return {

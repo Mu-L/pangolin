@@ -625,15 +625,14 @@ export async function createSiteResource(
         // own transaction so it always executes on the primary — avoiding any
         // replica-lag issues while still allowing the HTTP response to return
         // early.
-        rebuildClientAssociationsFromSiteResource(
-            newSiteResource!,
-            primaryDb
-        ).catch((err) => {
-            logger.error(
-                `Error rebuilding client associations for site resource ${newSiteResource!.siteResourceId}:`,
-                err
-            );
-        });
+        rebuildClientAssociationsFromSiteResource(newSiteResource!).catch(
+            (err) => {
+                logger.error(
+                    `Error rebuilding client associations for site resource ${newSiteResource!.siteResourceId}:`,
+                    err
+                );
+            }
+        );
 
         return response(res, {
             data: newSiteResource,

@@ -155,13 +155,15 @@ export async function addRoleToSiteResource(
             );
         }
 
-        await db.transaction(async (trx) => {
-            await trx.insert(roleSiteResources).values({
-                roleId,
-                siteResourceId
-            });
+        await db.insert(roleSiteResources).values({
+            roleId,
+            siteResourceId
+        });
 
-            await rebuildClientAssociationsFromSiteResource(siteResource, trx);
+        rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {
+            logger.error(
+                `Failed to rebuild client associations for site resource ${siteResourceId}. Error: ${e}`
+            );
         });
 
         return response(res, {

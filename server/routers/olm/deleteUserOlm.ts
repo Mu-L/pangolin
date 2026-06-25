@@ -86,13 +86,11 @@ export async function deleteUserOlm(
         });
 
         if (deletedClient) {
-            rebuildClientAssociationsFromClient(deletedClient, primaryDb).catch(
-                (e) => {
-                    logger.error(
-                        `Failed to rebuild client-site associations after deleting OLM ${olmId}: ${e}`
-                    );
-                }
-            );
+            rebuildClientAssociationsFromClient(deletedClient).catch((e) => {
+                logger.error(
+                    `Failed to rebuild client-site associations after deleting OLM ${olmId}: ${e}`
+                );
+            });
             sendTerminateClient(
                 deletedClient.clientId,
                 OlmErrorCodes.TERMINATED_DELETED,

@@ -6,6 +6,7 @@ import {
     db,
     olms,
     orgs,
+    primaryDb,
     roleClients,
     roles,
     Transaction,
@@ -23,10 +24,44 @@ import { rebuildClientAssociationsFromClient } from "./rebuildClientAssociations
 import { OlmErrorCodes } from "@server/routers/olm/error";
 import { tierMatrix } from "./billing/tierMatrix";
 
-export async function calculateUserClientsForOrgs(
+type ClientRow = typeof clients.$inferSelect;
+
+function runQueuedClientAssociationRebuilds(
     userId: string,
-    trx: Transaction | typeof db = db
+    queuedClients: ClientRow[]
+): void {
+    if (queuedClients.length === 0) {
+        return;
+    }
+
+    const uniqueClientsById = new Map<number, ClientRow>();
+    for (const client of queuedClients) {
+        uniqueClientsById.set(client.clientId, client);
+    }
+
+    void (async () => {
+        for (const client of uniqueClientsById.values()) {
+            try {
+                await rebuildClientAssociationsFromClient(client);
+            } catch (error) {
+                logger.error(
+                    `Failed rebuilding associations for client ${client.clientId} (user ${userId}): ${String(error)}`
+                );
+            }
+        }
+
+        logger.debug(
+            `Queued association rebuild completed for ${uniqueClientsById.size} client(s) (user ${userId})`
+        );
+    })();
+}
+
+export async function calculateUserClientsForOrgs(
+    userId: string
 ): Promise<void> {
+    const trx = primaryDb;
+    const queuedAssociationRebuilds: ClientRow[] = [];
+
     const execute = async (transaction: Transaction | typeof db) => {
         const orgCache = new Map<string, typeof orgs.$inferSelect | null>();
         const adminRoleCache = new Map<
@@ -189,7 +224,12 @@ export async function calculateUserClientsForOrgs(
 
         if (userOlms.length === 0) {
             // No OLMs for this user, but we should still clean up any orphaned clients
-            await cleanupOrphanedClients(userId, transaction);
+            await cleanupOrphanedClients(
+                userId,
+                transaction,
+                [],
+                queuedAssociationRebuilds
+            );
             return;
         }
 
@@ -382,10 +422,7 @@ export async function calculateUserClientsForOrgs(
                         .returning();
                 }
 
-                await rebuildClientAssociationsFromClient(
-                    newClient,
-                    transaction
-                );
+                queuedAssociationRebuilds.push(newClient);
 
                 // Grant admin role access to the client
                 await transaction.insert(roleClients).values({
@@ -414,24 +451,22 @@ export async function calculateUserClientsForOrgs(
         }
 
         // Clean up clients in orgs the user is no longer in
-        await cleanupOrphanedClients(userId, transaction, userOrgIds);
+        await cleanupOrphanedClients(
+            userId,
+            transaction,
+            userOrgIds,
+            queuedAssociationRebuilds
+        );
     };
 
-    if (trx) {
-        // Use provided transaction
-        await execute(trx);
-    } else {
-        // Create new transaction
-        await db.transaction(async (transaction) => {
-            await execute(transaction);
-        });
-    }
+    runQueuedClientAssociationRebuilds(userId, queuedAssociationRebuilds);
 }
 
 async function cleanupOrphanedClients(
     userId: string,
     trx: Transaction | typeof db,
-    userOrgIds: string[] = []
+    userOrgIds: string[] = [],
+    queuedAssociationRebuilds: ClientRow[] = []
 ): Promise<void> {
     // Find all OLM clients for this user that should be deleted
     // If userOrgIds is empty, delete all OLM clients (user has no orgs)
@@ -461,9 +496,9 @@ async function cleanupOrphanedClients(
             )
             .returning();
 
-        // Rebuild associations for each deleted client to clean up related data
+        // Queue deleted clients for post-transaction association cleanup.
         for (const deletedClient of deletedClients) {
-            await rebuildClientAssociationsFromClient(deletedClient, trx);
+            queuedAssociationRebuilds.push(deletedClient);
 
             if (deletedClient.olmId) {
                 await sendTerminateClient(

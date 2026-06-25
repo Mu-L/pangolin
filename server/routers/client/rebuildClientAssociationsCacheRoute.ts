@@ -60,13 +60,17 @@ export async function rebuildClientAssociationsCacheRoute(
             );
         }
 
-        await rebuildClientAssociationsFromClient(client);
+        rebuildClientAssociationsFromClient(client).catch((e) => {
+            logger.error(
+                `Failed to rebuild client associations for client ${clientId}: ${e}`
+            );
+        });
 
         return response(res, {
             data: null,
             success: true,
             error: false,
-            message: "Client association cache rebuilt successfully",
+            message: "Client association cache queued successfully",
             status: HttpCode.OK
         });
     } catch (error) {

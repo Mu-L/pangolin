@@ -12,7 +12,7 @@ import {
 import { FeatureId, getFeatureMeterId } from "./features";
 import logger from "@server/logger";
 import { build } from "@server/build";
-import cache from "#dynamic/lib/cache";
+import { regionalCache as cache } from "#dynamic/lib/cache";
 
 export function noop() {
     if (build !== "saas") {
@@ -22,7 +22,6 @@ export function noop() {
 }
 
 export class UsageService {
-
     constructor() {
         if (noop()) {
             return;
@@ -57,7 +56,10 @@ export class UsageService {
             try {
                 let usage;
                 if (transaction) {
-                    const orgIdToUse = await this.getBillingOrg(orgId, transaction);
+                    const orgIdToUse = await this.getBillingOrg(
+                        orgId,
+                        transaction
+                    );
                     usage = await this.internalAddUsage(
                         orgIdToUse,
                         featureId,

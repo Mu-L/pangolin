@@ -63,6 +63,34 @@ export type LatestVersionResponse = {
         latestVersion: string;
         releaseNotes: string;
     };
+    newt: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    cli: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    "panglin-node": {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    windows: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    android: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    mac: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    ios: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
 };
 
 export const productUpdatesQueries = {

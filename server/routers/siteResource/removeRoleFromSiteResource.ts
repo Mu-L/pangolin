@@ -156,17 +156,19 @@ export async function removeRoleFromSiteResource(
             );
         }
 
-        await db.transaction(async (trx) => {
-            await trx
-                .delete(roleSiteResources)
-                .where(
-                    and(
-                        eq(roleSiteResources.siteResourceId, siteResourceId),
-                        eq(roleSiteResources.roleId, roleId)
-                    )
-                );
+        await db
+            .delete(roleSiteResources)
+            .where(
+                and(
+                    eq(roleSiteResources.siteResourceId, siteResourceId),
+                    eq(roleSiteResources.roleId, roleId)
+                )
+            );
 
-            await rebuildClientAssociationsFromSiteResource(siteResource, trx);
+        rebuildClientAssociationsFromSiteResource(siteResource).catch((e) => {
+            logger.error(
+                `Failed to rebuild client associations for site resource ${siteResourceId}. Error: ${e}`
+            );
         });
 
         return response(res, {

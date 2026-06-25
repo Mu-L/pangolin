@@ -280,13 +280,11 @@ export async function createClient(
         });
 
         if (newClient) {
-            rebuildClientAssociationsFromClient(newClient, primaryDb).catch(
-                (e) => {
-                    logger.error(
-                        `Failed to rebuild client associations after creating client: ${e}`
-                    );
-                }
-            );
+            rebuildClientAssociationsFromClient(newClient).catch((e) => {
+                logger.error(
+                    `Failed to rebuild client associations after creating client: ${e}`
+                );
+            });
         }
 
         return response<CreateClientResponse>(res, {

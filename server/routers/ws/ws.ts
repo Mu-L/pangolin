@@ -26,7 +26,8 @@ import {
     WebSocketRequest,
     WSMessage,
     AuthenticatedWebSocket,
-    SendMessageOptions
+    SendMessageOptions,
+    BatchSendMessage
 } from "./types";
 import { validateSessionToken } from "@server/auth/sessions/app";
 
@@ -210,6 +211,20 @@ const sendToClient = async (
     );
 
     return localSent;
+};
+
+const sendToClientsBatch = async (
+    entries: BatchSendMessage[]
+): Promise<void> => {
+    if (entries.length === 0) {
+        return;
+    }
+
+    await Promise.all(
+        entries.map((entry) =>
+            sendToClient(entry.clientId, entry.message, entry.options)
+        )
+    );
 };
 
 const broadcastToAllExcept = async (
@@ -552,6 +567,7 @@ export {
     router,
     handleWSUpgrade,
     sendToClient,
+    sendToClientsBatch,
     broadcastToAllExcept,
     connectedClients,
     hasActiveConnections,

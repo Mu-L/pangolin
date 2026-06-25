@@ -109,7 +109,7 @@ export async function removeUserOrg(
             await removeUserFromOrg(org, userId, trx);
         });
 
-        calculateUserClientsForOrgs(userId, primaryDb).catch((e) => {
+        calculateUserClientsForOrgs(userId).catch((e) => {
             logger.error(
                 `Failed to calculate user clients after removing user ${userId} from org ${orgId}: ${e}`
             );

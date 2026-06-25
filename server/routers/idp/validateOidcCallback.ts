@@ -635,7 +635,7 @@ export async function validateOidcCallback(
                 }
             });
 
-            calculateUserClientsForOrgs(userId!, primaryDb).catch((err) => {
+            calculateUserClientsForOrgs(userId!).catch((err) => {
                 logger.error(
                     "Error calculating user clients after syncing orgs and roles for OIDC user",
                     { error: err }
