@@ -981,7 +981,15 @@ export const resourcePolicyRules = pgTable("resourcePolicyRules", {
     priority: integer("priority").notNull(),
     action: varchar("action").$type<"ACCEPT" | "DROP" | "PASS">().notNull(),
     match: varchar("match")
-        .$type<"CIDR" | "PATH" | "IP" | "COUNTRY" | "ASN" | "REGION">()
+        .$type<
+            | "CIDR"
+            | "PATH"
+            | "IP"
+            | "COUNTRY"
+            | "COUNTRY_IS_NOT"
+            | "ASN"
+            | "REGION"
+        >()
         .notNull(),
     value: varchar("value").notNull()
 });
@@ -1553,3 +1561,4 @@ export type Label = InferSelectModel<typeof labels>;
 export type ResourcePolicy = InferSelectModel<typeof resourcePolicies>;
 export type RolePolicy = InferSelectModel<typeof rolePolicies>;
 export type UserPolicy = InferSelectModel<typeof userPolicies>;
+export type ResourcePolicyRule = InferSelectModel<typeof resourcePolicyRules>;

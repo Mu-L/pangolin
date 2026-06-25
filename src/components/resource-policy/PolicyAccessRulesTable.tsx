@@ -229,6 +229,7 @@ export function PolicyAccessRulesTable({
             IP: "IP",
             CIDR: t("ipAddressRange"),
             COUNTRY: t("country"),
+            COUNTRY_IS_NOT: t("countryIsNot"),
             ASN: "ASN",
             REGION: t("region")
         }),
@@ -441,13 +442,15 @@ export function PolicyAccessRulesTable({
                                 | "IP"
                                 | "PATH"
                                 | "COUNTRY"
+                                | "COUNTRY_IS_NOT"
                                 | "ASN"
                                 | "REGION"
                         ) =>
                             updateRule(row.original.ruleId, {
                                 match: value,
                                 value:
-                                    value === "COUNTRY"
+                                    value === "COUNTRY" ||
+                                    value === "COUNTRY_IS_NOT"
                                         ? "US"
                                         : value === "ASN"
                                           ? "AS15169"
@@ -469,9 +472,14 @@ export function PolicyAccessRulesTable({
                                 {RuleMatch.CIDR}
                             </SelectItem>
                             {isMaxmindAvailable && (
-                                <SelectItem value="COUNTRY">
-                                    {RuleMatch.COUNTRY}
-                                </SelectItem>
+                                <>
+                                    <SelectItem value="COUNTRY">
+                                        {RuleMatch.COUNTRY}
+                                    </SelectItem>
+                                    <SelectItem value="COUNTRY_IS_NOT">
+                                        {RuleMatch.COUNTRY_IS_NOT}
+                                    </SelectItem>
+                                </>
                             )}
                             {includeRegionMatch && isMaxmindAvailable && (
                                 <SelectItem value="REGION">
@@ -491,7 +499,8 @@ export function PolicyAccessRulesTable({
                 accessorKey: "value",
                 header: () => <span className="p-3">{t("value")}</span>,
                 cell: ({ row }) =>
-                    row.original.match === "COUNTRY" ? (
+                    row.original.match === "COUNTRY" ||
+                    row.original.match === "COUNTRY_IS_NOT" ? (
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button

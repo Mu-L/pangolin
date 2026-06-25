@@ -1321,7 +1321,7 @@ function getRuleAction(input: string) {
 
 function getRuleValue(match: string, value: string) {
     // if the match is a country, uppercase the value
-    if (match == "COUNTRY") {
+    if (match === "COUNTRY" || match === "COUNTRY_IS_NOT") {
         return value.toUpperCase();
     }
     return value;

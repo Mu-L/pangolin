@@ -17,6 +17,7 @@ export const POLICY_RULE_MATCH_TYPES = [
     "IP",
     "PATH",
     "COUNTRY",
+    "COUNTRY_IS_NOT",
     "ASN",
     "REGION"
 ] as const;

@@ -1252,7 +1252,15 @@ export const resourcePolicyRules = sqliteTable("resourcePolicyRules", {
     priority: integer("priority").notNull(),
     action: text("action").$type<"ACCEPT" | "DROP" | "PASS">().notNull(),
     match: text("match")
-        .$type<"CIDR" | "PATH" | "IP" | "COUNTRY" | "ASN" | "REGION">()
+        .$type<
+            | "CIDR"
+            | "PATH"
+            | "IP"
+            | "COUNTRY"
+            | "COUNTRY_IS_NOT"
+            | "ASN"
+            | "REGION"
+        >()
         .notNull(),
     value: text("value").notNull()
 });
