@@ -105,7 +105,7 @@ function getColumnClassName(columnId: string) {
         return "w-42 max-w-42";
     }
     if (columnId === "match") {
-        return "w-36 max-w-36";
+        return "w-42 max-w-42";
     }
     return "";
 }
@@ -460,7 +460,7 @@ export function PolicyAccessRulesTable({
                             })
                         }
                     >
-                        <SelectTrigger className="h-8 w-full min-w-0">
+                        <SelectTrigger className="h-8 w-36 min-w-0">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
