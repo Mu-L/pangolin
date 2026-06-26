@@ -1054,7 +1054,10 @@ async function checkRules(
             isPathAllowed(rule.value, path)
         ) {
             return rule.action as any;
-        } else if (clientIp && rule.match == "COUNTRY") {
+        } else if (
+            clientIp &&
+            (rule.match === "COUNTRY" || rule.match === "COUNTRY_IS_NOT")
+        ) {
             // COUNTRY=ALL should not affect local/private/CGNAT addresses.
             if (
                 rule.value.toUpperCase() === "ALL" &&
@@ -1063,7 +1066,10 @@ async function checkRules(
                 continue;
             }
 
-            if (await isIpInGeoIP(ipCC, rule.value)) {
+            const inCountry = await isIpInGeoIP(ipCC, rule.value);
+            const matched = rule.match === "COUNTRY" ? inCountry : !inCountry;
+
+            if (matched) {
                 return rule.action as any;
             }
         } else if (clientIp && rule.match == "ASN") {
