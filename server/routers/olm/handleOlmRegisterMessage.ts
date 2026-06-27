@@ -197,15 +197,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             policyCheck
         });
 
-        if (policyCheck?.error) {
-            logger.error(
-                `[handleOlmRegisterMessage] Error checking access policies for olm user ${olm.userId} in org ${orgId}: ${policyCheck?.error}`,
-                { orgId: client.orgId, clientId: client.clientId }
-            );
-            sendOlmError(OlmErrorCodes.ORG_ACCESS_POLICY_DENIED, olm.olmId);
-            return;
-        }
-
         if (policyCheck.policies?.passwordAge?.compliant === false) {
             logger.warn(
                 `[handleOlmRegisterMessage] Olm user ${olm.userId} has non-compliant password age for org ${orgId}`,
@@ -238,7 +229,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 olm.olmId
             );
             return;
-        } else if (!policyCheck.allowed) {
+        } else if (!policyCheck.allowed || policyCheck.error) {
             logger.warn(
                 `[handleOlmRegisterMessage] Olm user ${olm.userId} does not pass access policies for org ${orgId}: ${policyCheck.error}`,
                 { orgId: client.orgId, clientId: client.clientId }

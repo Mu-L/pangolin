@@ -74,6 +74,8 @@ import {
     sortPolicyRulesForResourceOverlay,
     type PolicyAccessRule
 } from "./policy-access-rule-utils";
+import { countryCodeToFlagEmoji } from "@app/lib/countryCodeToFlagEmoji";
+import type { readonly } from "zod";
 
 export type PolicyAccessRulesTableProps = {
     rules: PolicyAccessRule[];
@@ -498,9 +500,18 @@ export function PolicyAccessRulesTable({
             {
                 accessorKey: "value",
                 header: () => <span className="p-3">{t("value")}</span>,
-                cell: ({ row }) =>
-                    row.original.match === "COUNTRY" ||
-                    row.original.match === "COUNTRY_IS_NOT" ? (
+                cell: ({ row }) => {
+                    let selectedCountry: (typeof COUNTRIES)[number] | undefined;
+                    if (
+                        row.original.match === "COUNTRY" &&
+                        row.original.value
+                    ) {
+                        selectedCountry = COUNTRIES.find(
+                            (c) => c.code === row.original.value
+                        );
+                    }
+                    return row.original.match === "COUNTRY" ||
+                        row.original.match === "COUNTRY_IS_NOT" ? (
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
@@ -511,15 +522,22 @@ export function PolicyAccessRulesTable({
                                     }
                                     className="w-full min-w-0 justify-between"
                                 >
-                                    {row.original.value
-                                        ? COUNTRIES.find(
-                                              (c) =>
-                                                  c.code === row.original.value
-                                          )?.name +
-                                          " (" +
-                                          row.original.value +
-                                          ")"
-                                        : t("selectCountry")}
+                                    {selectedCountry ? (
+                                        <>
+                                            <span>
+                                                {selectedCountry.code === "ALL"
+                                                    ? "🌍"
+                                                    : countryCodeToFlagEmoji(
+                                                          selectedCountry.code
+                                                      )}
+                                                &nbsp;&nbsp;
+                                                {selectedCountry.name} (
+                                                {selectedCountry.code})
+                                            </span>
+                                        </>
+                                    ) : (
+                                        t("selectCountry")
+                                    )}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
@@ -549,6 +567,13 @@ export function PolicyAccessRulesTable({
                                                     <Check
                                                         className={`mr-2 h-4 w-4 ${row.original.value === country.code ? "opacity-100" : "opacity-0"}`}
                                                     />
+                                                    <span>
+                                                        {country.code === "ALL"
+                                                            ? "🌍"
+                                                            : countryCodeToFlagEmoji(
+                                                                  country.code
+                                                              )}
+                                                    </span>
                                                     {country.name} (
                                                     {country.code})
                                                 </CommandItem>
@@ -776,7 +801,8 @@ export function PolicyAccessRulesTable({
                                 });
                             }}
                         />
-                    )
+                    );
+                }
             },
             {
                 accessorKey: "enabled",

@@ -172,7 +172,9 @@ export async function applyBlueprint({
     } catch (err) {
         blueprintSucceeded = false;
         blueprintMessage = `Blueprint applied with errors: ${err}`;
-        logger.error(blueprintMessage);
+        logger.debug(
+            `Org ${orgId} blueprint apply issues: ${blueprintMessage}`
+        );
         error = err;
     }
 
