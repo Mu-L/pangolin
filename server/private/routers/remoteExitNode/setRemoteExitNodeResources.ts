@@ -13,13 +13,20 @@
 
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
-import { db, remoteExitNodeResources, remoteExitNodes } from "@server/db";
+import {
+    db,
+    newts,
+    remoteExitNodeResources,
+    remoteExitNodes,
+    sites
+} from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
+import { sendToClientsBatch } from "#private/routers/ws";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().min(1),
@@ -112,6 +119,25 @@ export async function setRemoteExitNodeResources(
             .where(
                 eq(remoteExitNodeResources.remoteExitNodeId, remoteExitNodeId)
             );
+
+        // Notify all newts connected to this remote exit node's exit node
+        if (remoteExitNode.exitNodeId) {
+            const connectedNewts = await db
+                .select({ newtId: newts.newtId })
+                .from(newts)
+                .innerJoin(sites, eq(newts.siteId, sites.siteId))
+                .where(eq(sites.exitNodeId, remoteExitNode.exitNodeId));
+
+            await sendToClientsBatch(
+                connectedNewts.map(({ newtId }) => ({
+                    clientId: newtId,
+                    message: {
+                        type: "newt/wg/subnets/update",
+                        data: { subnets: destinations }
+                    }
+                }))
+            );
+        }
 
         return response<SetRemoteExitNodeResourcesResponse>(res, {
             data: { resources },
