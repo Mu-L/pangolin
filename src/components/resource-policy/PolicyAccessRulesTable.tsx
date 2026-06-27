@@ -503,7 +503,8 @@ export function PolicyAccessRulesTable({
                 cell: ({ row }) => {
                     let selectedCountry: (typeof COUNTRIES)[number] | undefined;
                     if (
-                        row.original.match === "COUNTRY" &&
+                        (row.original.match === "COUNTRY" ||
+                            row.original.match === "COUNTRY_IS_NOT") &&
                         row.original.value
                     ) {
                         selectedCountry = COUNTRIES.find(
