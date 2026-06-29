@@ -156,7 +156,7 @@ export async function createClient(
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
-                        "Public resource limit exceeded. Please upgrade your plan."
+                        "Machine client limit exceeded. Please upgrade your plan."
                     )
                 );
             }
