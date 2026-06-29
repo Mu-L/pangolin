@@ -12,7 +12,10 @@ export const freeLimitSet: LimitSet = {
     [LimitId.USERS]: { value: 5, description: "Basic limit" },
     [LimitId.DOMAINS]: { value: 5, description: "Basic limit" },
     [LimitId.REMOTE_EXIT_NODES]: { value: 1, description: "Basic limit" },
-    [LimitId.ORGANIZATIONS]: { value: 1, description: "Basic limit" }
+    [LimitId.ORGANIZATIONS]: { value: 1, description: "Basic limit" },
+    [LimitId.PUBLIC_RESOURCES]: { value: 15, description: "Basic limit" },
+    [LimitId.PRIVATE_RESOURCES]: { value: 15, description: "Basic limit" },
+    [LimitId.MACHINE_CLIENTS]: { value: 5, description: "Basic limit" }
 };
 
 export const tier1LimitSet: LimitSet = {
@@ -20,7 +23,10 @@ export const tier1LimitSet: LimitSet = {
     [LimitId.SITES]: { value: 10, description: "Home limit" },
     [LimitId.DOMAINS]: { value: 10, description: "Home limit" },
     [LimitId.REMOTE_EXIT_NODES]: { value: 1, description: "Home limit" },
-    [LimitId.ORGANIZATIONS]: { value: 1, description: "Home limit" }
+    [LimitId.ORGANIZATIONS]: { value: 1, description: "Home limit" },
+    [LimitId.PUBLIC_RESOURCES]: { value: 30, description: "Home limit" },
+    [LimitId.PRIVATE_RESOURCES]: { value: 30, description: "Home limit" },
+    [LimitId.MACHINE_CLIENTS]: { value: 10, description: "Home limit" }
 };
 
 export const tier2LimitSet: LimitSet = {
@@ -43,7 +49,10 @@ export const tier2LimitSet: LimitSet = {
     [LimitId.ORGANIZATIONS]: {
         value: 1,
         description: "Team limit"
-    }
+    },
+    [LimitId.PUBLIC_RESOURCES]: { value: 150, description: "Team limit" },
+    [LimitId.PRIVATE_RESOURCES]: { value: 150, description: "Team limit" },
+    [LimitId.MACHINE_CLIENTS]: { value: 25, description: "Team limit" }
 };
 
 export const tier3LimitSet: LimitSet = {
@@ -66,5 +75,8 @@ export const tier3LimitSet: LimitSet = {
     [LimitId.ORGANIZATIONS]: {
         value: 5,
         description: "Business limit"
-    }
+    },
+    [LimitId.PUBLIC_RESOURCES]: { value: 750, description: "Business limit" },
+    [LimitId.PRIVATE_RESOURCES]: { value: 750, description: "Business limit" },
+    [LimitId.MACHINE_CLIENTS]: { value: 100, description: "Business limit" }
 };

@@ -15,6 +15,8 @@ import {
 } from "@server/lib/rebuildClientAssociations";
 import { sendTerminateClient } from "./terminate";
 import { OlmErrorCodes } from "../olm/error";
+import { LimitId } from "@server/lib/billing/features";
+import { usageService } from "@server/lib/billing/usageService";
 
 const deleteClientSchema = z.strictObject({
     clientId: z.coerce.number().int().positive()
@@ -118,6 +120,13 @@ export async function deleteClient(
             if (!client.userId && client.olmId) {
                 await trx.delete(olms).where(eq(olms.olmId, client.olmId));
             }
+
+            await usageService.add(
+                deletedClient.orgId,
+                LimitId.MACHINE_CLIENTS,
+                -1,
+                trx
+            );
         });
 
         if (deletedClient) {

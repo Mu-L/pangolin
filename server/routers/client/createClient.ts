@@ -30,6 +30,8 @@ import {
 } from "@server/lib/rebuildClientAssociations";
 import { getUniqueClientName } from "@server/db/names";
 import { build } from "@server/build";
+import { LimitId } from "@server/lib/billing";
+import { usageService } from "@server/lib/billing/usageService";
 
 const createClientParamsSchema = z.strictObject({
     orgId: z.string()
@@ -126,6 +128,38 @@ export async function createClient(
                     "Invalid subnet format. Please provide a valid IP."
                 )
             );
+        }
+
+        if (build == "saas") {
+            const usage = await usageService.getUsage(
+                orgId,
+                LimitId.MACHINE_CLIENTS
+            );
+            if (!usage) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        "No usage data found for this organization"
+                    )
+                );
+            }
+            const rejectClient = await usageService.checkLimitSet(
+                orgId,
+
+                LimitId.MACHINE_CLIENTS,
+                {
+                    ...usage,
+                    instantaneousValue: (usage.instantaneousValue || 0) + 1
+                } // We need to add one to know if we are violating the limit
+            );
+            if (rejectClient) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "Public resource limit exceeded. Please upgrade your plan."
+                    )
+                );
+            }
         }
 
         const [org] = await db.select().from(orgs).where(eq(orgs.orgId, orgId));
@@ -289,6 +323,8 @@ export async function createClient(
                 clientId: newClient.clientId,
                 dateCreated: moment().toISOString()
             });
+
+            await usageService.add(orgId, LimitId.MACHINE_CLIENTS, 1, trx);
         });
 
         if (newClient) {
@@ -303,7 +339,7 @@ export async function createClient(
             data: newClient,
             success: true,
             error: false,
-            message: "Site created successfully",
+            message: "Client created successfully",
             status: HttpCode.CREATED
         });
     } catch (error) {

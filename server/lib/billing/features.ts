@@ -5,6 +5,9 @@ export enum LimitId {
     DOMAINS = "domains",
     REMOTE_EXIT_NODES = "remoteExitNodes",
     ORGANIZATIONS = "organizations",
+    PUBLIC_RESOURCES = "publicResources",
+    PRIVATE_RESOURCES = "privateResources",
+    MACHINE_CLIENTS = "machineClients",
     TIER1 = "tier1"
 }
 

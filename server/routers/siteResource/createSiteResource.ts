@@ -37,6 +37,8 @@ import { fromError } from "zod-validation-error";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
 import { build } from "@server/build";
+import { usageService } from "@server/lib/billing/usageService";
+import { LimitId } from "@server/lib/billing";
 
 const createSiteResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -292,6 +294,38 @@ export async function createSiteResource(
         const siteIds = [...siteIdsInput];
         if (siteId !== undefined && !siteIds.includes(siteId)) {
             siteIds.push(siteId);
+        }
+
+        if (build == "saas") {
+            const usage = await usageService.getUsage(
+                orgId,
+                LimitId.PRIVATE_RESOURCES
+            );
+            if (!usage) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        "No usage data found for this organization"
+                    )
+                );
+            }
+            const rejectResource = await usageService.checkLimitSet(
+                orgId,
+
+                LimitId.PRIVATE_RESOURCES,
+                {
+                    ...usage,
+                    instantaneousValue: (usage.instantaneousValue || 0) + 1
+                } // We need to add one to know if we are violating the limit
+            );
+            if (rejectResource) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "Private resource limit exceeded. Please upgrade your plan."
+                    )
+                );
+            }
         }
 
         if (mode == "http") {
@@ -605,6 +639,13 @@ export async function createSiteResource(
                         );
                     }
                 }
+
+                await usageService.add(
+                    orgId,
+                    LimitId.PRIVATE_RESOURCES,
+                    1,
+                    trx
+                );
             });
         } finally {
             await releaseAliasLock?.();
