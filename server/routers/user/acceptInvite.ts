@@ -17,7 +17,7 @@ import { fromError } from "zod-validation-error";
 import { checkValidInvite } from "@server/auth/checkValidInvite";
 import { verifySession } from "@server/auth/sessions/verifySession";
 import { usageService } from "@server/lib/billing/usageService";
-import { FeatureId } from "@server/lib/billing";
+import { LimitId } from "@server/lib/billing";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { build } from "@server/build";
 import { assignUserToOrg } from "@server/lib/userOrg";
@@ -104,7 +104,7 @@ export async function acceptInvite(
         if (build == "saas") {
             const usage = await usageService.getUsage(
                 existingInvite.orgId,
-                FeatureId.USERS
+                LimitId.USERS
             );
             if (!usage) {
                 return next(
@@ -117,7 +117,7 @@ export async function acceptInvite(
             const rejectUsers = await usageService.checkLimitSet(
                 existingInvite.orgId,
 
-                FeatureId.USERS,
+                LimitId.USERS,
                 {
                     ...usage,
                     instantaneousValue: (usage.instantaneousValue || 0) + 1

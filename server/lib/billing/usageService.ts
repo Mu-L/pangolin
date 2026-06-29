@@ -9,7 +9,7 @@ import {
     Transaction,
     orgs
 } from "@server/db";
-import { FeatureId, getFeatureMeterId } from "./features";
+import { LimitId, getFeatureMeterId } from "./features";
 import logger from "@server/logger";
 import { build } from "@server/build";
 import { regionalCache as cache } from "#dynamic/lib/cache";
@@ -37,7 +37,7 @@ export class UsageService {
 
     public async add(
         orgId: string,
-        featureId: FeatureId,
+        featureId: LimitId,
         value: number,
         transaction: any = null
     ): Promise<Usage | null> {
@@ -114,7 +114,7 @@ export class UsageService {
 
     private async internalAddUsage(
         orgId: string, // here the orgId is the billing org already resolved by getBillingOrg in updateCount
-        featureId: FeatureId,
+        featureId: LimitId,
         value: number,
         trx: Transaction
     ): Promise<Usage> {
@@ -163,7 +163,7 @@ export class UsageService {
 
     async updateCount(
         orgId: string,
-        featureId: FeatureId,
+        featureId: LimitId,
         value?: number,
         customerId?: string
     ): Promise<void> {
@@ -227,7 +227,7 @@ export class UsageService {
 
     private async getCustomerId(
         orgId: string,
-        featureId: FeatureId
+        featureId: LimitId
     ): Promise<string | null> {
         const orgIdToUse = await this.getBillingOrg(orgId);
 
@@ -269,7 +269,7 @@ export class UsageService {
 
     public async getUsage(
         orgId: string,
-        featureId: FeatureId,
+        featureId: LimitId,
         trx: Transaction | typeof db = db
     ): Promise<Usage | null> {
         if (noop()) {
@@ -376,7 +376,7 @@ export class UsageService {
 
     public async checkLimitSet(
         orgId: string,
-        featureId?: FeatureId,
+        featureId?: LimitId,
         usage?: Usage,
         trx: Transaction | typeof db = db
     ): Promise<boolean> {
@@ -424,7 +424,7 @@ export class UsageService {
                 } else {
                     currentUsage = await this.getUsage(
                         orgIdToUse,
-                        limit.featureId as FeatureId,
+                        limit.featureId as LimitId,
                         trx
                     );
                 }

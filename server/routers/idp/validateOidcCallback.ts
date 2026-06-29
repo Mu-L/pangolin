@@ -31,7 +31,7 @@ import {
 } from "@server/auth/sessions/app";
 import { decrypt } from "@server/lib/crypto";
 import { UserType } from "@server/types/UserTypes";
-import { FeatureId } from "@server/lib/billing";
+import { LimitId } from "@server/lib/billing";
 import { usageService } from "@server/lib/billing/usageService";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
@@ -645,7 +645,7 @@ export async function validateOidcCallback(
             for (const orgCount of orgUserCounts) {
                 await usageService.updateCount(
                     orgCount.orgId,
-                    FeatureId.USERS,
+                    LimitId.USERS,
                     orgCount.userCount
                 );
             }

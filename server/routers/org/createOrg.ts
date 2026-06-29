@@ -27,7 +27,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { isValidCIDR } from "@server/lib/validators";
 import { createCustomer } from "#dynamic/lib/billing";
 import { usageService } from "@server/lib/billing/usageService";
-import { FeatureId, limitsService, freeLimitSet } from "@server/lib/billing";
+import { LimitId, limitsService, freeLimitSet } from "@server/lib/billing";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { doCidrsOverlap } from "@server/lib/ip";
@@ -202,7 +202,7 @@ export async function createOrg(
         if (build == "saas" && billingOrgIdForNewOrg) {
             const usage = await usageService.getUsage(
                 billingOrgIdForNewOrg,
-                FeatureId.ORGINIZATIONS
+                LimitId.ORGINIZATIONS
             );
             if (!usage) {
                 return next(
@@ -214,7 +214,7 @@ export async function createOrg(
             }
             const rejectOrgs = await usageService.checkLimitSet(
                 billingOrgIdForNewOrg,
-                FeatureId.ORGINIZATIONS,
+                LimitId.ORGINIZATIONS,
                 {
                     ...usage,
                     instantaneousValue: (usage.instantaneousValue || 0) + 1
@@ -421,7 +421,7 @@ export async function createOrg(
             if (customerId) {
                 await usageService.updateCount(
                     orgId,
-                    FeatureId.USERS,
+                    LimitId.USERS,
                     1,
                     customerId
                 ); // Only 1 because we are creating the org
@@ -431,7 +431,7 @@ export async function createOrg(
         if (numOrgs) {
             usageService.updateCount(
                 billingOrgIdForNewOrg || orgId,
-                FeatureId.ORGINIZATIONS,
+                LimitId.ORGINIZATIONS,
                 numOrgs
             );
         }
