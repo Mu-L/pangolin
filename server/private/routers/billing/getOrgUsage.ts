@@ -102,7 +102,7 @@ export async function getOrgUsage(
         );
         const organizations = await usageService.getUsage(
             orgId,
-            LimitId.ORGINIZATIONS
+            LimitId.ORGANIZATIONS
         );
         // const egressData = await usageService.getUsage(
         //     orgId,

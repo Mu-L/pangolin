@@ -4,7 +4,7 @@ export enum LimitId {
     EGRESS_DATA_MB = "egressDataMb",
     DOMAINS = "domains",
     REMOTE_EXIT_NODES = "remoteExitNodes",
-    ORGINIZATIONS = "organizations",
+    ORGANIZATIONS = "organizations",
     TIER1 = "tier1"
 }
 
@@ -22,7 +22,7 @@ export async function getFeatureDisplayName(
             return "Domains";
         case LimitId.REMOTE_EXIT_NODES:
             return "Remote Exit Nodes";
-        case LimitId.ORGINIZATIONS:
+        case LimitId.ORGANIZATIONS:
             return "Organizations";
         case LimitId.TIER1:
             return "Home Lab";

@@ -12,7 +12,7 @@ export const freeLimitSet: LimitSet = {
     [LimitId.USERS]: { value: 5, description: "Basic limit" },
     [LimitId.DOMAINS]: { value: 5, description: "Basic limit" },
     [LimitId.REMOTE_EXIT_NODES]: { value: 1, description: "Basic limit" },
-    [LimitId.ORGINIZATIONS]: { value: 1, description: "Basic limit" }
+    [LimitId.ORGANIZATIONS]: { value: 1, description: "Basic limit" }
 };
 
 export const tier1LimitSet: LimitSet = {
@@ -20,7 +20,7 @@ export const tier1LimitSet: LimitSet = {
     [LimitId.SITES]: { value: 10, description: "Home limit" },
     [LimitId.DOMAINS]: { value: 10, description: "Home limit" },
     [LimitId.REMOTE_EXIT_NODES]: { value: 1, description: "Home limit" },
-    [LimitId.ORGINIZATIONS]: { value: 1, description: "Home limit" }
+    [LimitId.ORGANIZATIONS]: { value: 1, description: "Home limit" }
 };
 
 export const tier2LimitSet: LimitSet = {
@@ -40,7 +40,7 @@ export const tier2LimitSet: LimitSet = {
         value: 3,
         description: "Team limit"
     },
-    [LimitId.ORGINIZATIONS]: {
+    [LimitId.ORGANIZATIONS]: {
         value: 1,
         description: "Team limit"
     }
@@ -63,7 +63,7 @@ export const tier3LimitSet: LimitSet = {
         value: 20,
         description: "Business limit"
     },
-    [LimitId.ORGINIZATIONS]: {
+    [LimitId.ORGANIZATIONS]: {
         value: 5,
         description: "Business limit"
     }

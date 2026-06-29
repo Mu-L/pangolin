@@ -165,28 +165,28 @@ const tierLimits: Record<
         sites: freeLimitSet[LimitId.SITES]?.value ?? 0,
         domains: freeLimitSet[LimitId.DOMAINS]?.value ?? 0,
         remoteNodes: freeLimitSet[LimitId.REMOTE_EXIT_NODES]?.value ?? 0,
-        organizations: freeLimitSet[LimitId.ORGINIZATIONS]?.value ?? 0
+        organizations: freeLimitSet[LimitId.ORGANIZATIONS]?.value ?? 0
     },
     tier1: {
         users: tier1LimitSet[LimitId.USERS]?.value ?? 0,
         sites: tier1LimitSet[LimitId.SITES]?.value ?? 0,
         domains: tier1LimitSet[LimitId.DOMAINS]?.value ?? 0,
         remoteNodes: tier1LimitSet[LimitId.REMOTE_EXIT_NODES]?.value ?? 0,
-        organizations: tier1LimitSet[LimitId.ORGINIZATIONS]?.value ?? 0
+        organizations: tier1LimitSet[LimitId.ORGANIZATIONS]?.value ?? 0
     },
     tier2: {
         users: tier2LimitSet[LimitId.USERS]?.value ?? 0,
         sites: tier2LimitSet[LimitId.SITES]?.value ?? 0,
         domains: tier2LimitSet[LimitId.DOMAINS]?.value ?? 0,
         remoteNodes: tier2LimitSet[LimitId.REMOTE_EXIT_NODES]?.value ?? 0,
-        organizations: tier2LimitSet[LimitId.ORGINIZATIONS]?.value ?? 0
+        organizations: tier2LimitSet[LimitId.ORGANIZATIONS]?.value ?? 0
     },
     tier3: {
         users: tier3LimitSet[LimitId.USERS]?.value ?? 0,
         sites: tier3LimitSet[LimitId.SITES]?.value ?? 0,
         domains: tier3LimitSet[LimitId.DOMAINS]?.value ?? 0,
         remoteNodes: tier3LimitSet[LimitId.REMOTE_EXIT_NODES]?.value ?? 0,
-        organizations: tier3LimitSet[LimitId.ORGINIZATIONS]?.value ?? 0
+        organizations: tier3LimitSet[LimitId.ORGANIZATIONS]?.value ?? 0
     },
     enterprise: {
         users: 0, // Custom for enterprise

@@ -202,7 +202,7 @@ export async function createOrg(
         if (build == "saas" && billingOrgIdForNewOrg) {
             const usage = await usageService.getUsage(
                 billingOrgIdForNewOrg,
-                LimitId.ORGINIZATIONS
+                LimitId.ORGANIZATIONS
             );
             if (!usage) {
                 return next(
@@ -214,7 +214,7 @@ export async function createOrg(
             }
             const rejectOrgs = await usageService.checkLimitSet(
                 billingOrgIdForNewOrg,
-                LimitId.ORGINIZATIONS,
+                LimitId.ORGANIZATIONS,
                 {
                     ...usage,
                     instantaneousValue: (usage.instantaneousValue || 0) + 1
@@ -431,7 +431,7 @@ export async function createOrg(
         if (numOrgs) {
             usageService.updateCount(
                 billingOrgIdForNewOrg || orgId,
-                LimitId.ORGINIZATIONS,
+                LimitId.ORGANIZATIONS,
                 numOrgs
             );
         }
