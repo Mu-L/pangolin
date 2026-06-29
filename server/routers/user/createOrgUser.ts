@@ -19,6 +19,7 @@ import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { assignUserToOrg } from "@server/lib/userOrg";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { isOrgRebuildRateLimited } from "@server/lib/rebuildClientAssociations";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -225,6 +226,15 @@ export async function createOrgUser(
                     createHttpError(
                         HttpCode.NOT_FOUND,
                         "Organization not found"
+                    )
+                );
+            }
+
+            if (await isOrgRebuildRateLimited(org.orgId)) {
+                return next(
+                    createHttpError(
+                        HttpCode.TOO_MANY_REQUESTS,
+                        "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                     )
                 );
             }
