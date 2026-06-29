@@ -878,3 +878,9 @@ authenticated.post(
     verifyClientAccess,
     client.rebuildClientAssociationsCacheRoute
 );
+
+authenticated.post(
+    "/org/:orgId/logs/access/attempt",
+    verifyOrgAccess,
+    logs.logAccessAuditAttempt
+);

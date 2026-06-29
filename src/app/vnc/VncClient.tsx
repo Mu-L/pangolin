@@ -33,6 +33,8 @@ import {
     loadEncryptedLocalStorage,
     saveEncryptedLocalStorage
 } from "@app/lib/secureLocalStorage";
+import { createApiClient } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 
 type VncCredentialsForm = {
     password: string;
@@ -52,6 +54,7 @@ export default function VncClient({
     primaryColor?: string | null;
 }) {
     const t = useTranslations();
+    const api = createApiClient(useEnvContext());
     const STORAGE_KEY = "pangolin_vnc_credentials";
     const resourceName = target?.name?.trim() || null;
 
@@ -179,6 +182,7 @@ export default function VncClient({
         }
 
         let authConfirmed = false;
+        let auditLogged = false;
 
         rfb.scaleViewport = true;
         rfb.resizeSession = true;
@@ -190,6 +194,12 @@ export default function VncClient({
                 target.authToken
             );
             authConfirmed = true;
+            auditLogged = true;
+            void api.post(`/org/${target.orgId}/logs/access/attempt`, {
+                resourceId: target.resourceId,
+                action: true,
+                type: "vnc"
+            });
             setConnecting(false);
             setConnected(true);
         });
@@ -201,6 +211,17 @@ export default function VncClient({
                 setConnecting(false);
                 setConnected(false);
                 if (!authConfirmed && !e.detail.clean) {
+                    if (!auditLogged) {
+                        auditLogged = true;
+                        void api.post(
+                            `/org/${target.orgId}/logs/access/attempt`,
+                            {
+                                resourceId: target.resourceId,
+                                action: false,
+                                type: "vnc"
+                            }
+                        );
+                    }
                     setConnectError(t("sshErrorConnectionClosed"));
                 }
             }
@@ -209,6 +230,12 @@ export default function VncClient({
         rfb.addEventListener(
             "securityfailure",
             (e: { detail: { status: number; reason?: string } }) => {
+                auditLogged = true;
+                void api.post(`/org/${target.orgId}/logs/access/attempt`, {
+                    resourceId: target.resourceId,
+                    action: false,
+                    type: "vnc"
+                });
                 disconnect();
                 setConnectError(
                     e.detail.reason ??
