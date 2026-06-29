@@ -21,7 +21,10 @@ import {
 } from "@server/lib/ip";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
-import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import {
+    rebuildClientAssociationsFromSiteResource,
+    isOrgRebuildRateLimited
+} from "@server/lib/rebuildClientAssociations";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -335,6 +338,15 @@ export async function createSiteResource(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
                     `Organization with ID ${orgId} has no subnet or utilitySubnet defined defined`
+                )
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(org.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
         }

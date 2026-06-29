@@ -9,7 +9,10 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
+import {
+    rebuildClientAssociationsFromClient,
+    isOrgRebuildRateLimited
+} from "@server/lib/rebuildClientAssociations";
 import { sendTerminateClient } from "./terminate";
 import { OlmErrorCodes } from "../olm/error";
 
@@ -72,6 +75,15 @@ export async function deleteClient(
                 createHttpError(
                     HttpCode.NOT_FOUND,
                     `Client with ID ${clientId} not found`
+                )
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(client.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
         }
