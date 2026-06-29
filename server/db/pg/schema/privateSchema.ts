@@ -216,7 +216,7 @@ export const remoteExitNodePreferenceLabels = pgTable(
         remoteExitNodePreferenceLabelId: serial(
             "remoteExitNodePreferenceLabelId"
         ).primaryKey(),
-        remoteExitNode: integer("remoteExitNode")
+        remoteExitNodeId: varchar("remoteExitNodeId")
             .references(() => remoteExitNodes.remoteExitNodeId, {
                 onDelete: "cascade"
             })
@@ -229,7 +229,7 @@ export const remoteExitNodePreferenceLabels = pgTable(
     },
     (t) => [
         unique("remote_exit_node_preference_label_uniq").on(
-            t.remoteExitNode,
+            t.remoteExitNodeId,
             t.labelId
         )
     ]
