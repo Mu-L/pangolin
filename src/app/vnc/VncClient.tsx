@@ -37,10 +37,12 @@ import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 
 type VncCredentialsForm = {
+    username: string;
     password: string;
 };
 
 const DEFAULT_VNC_CREDENTIALS: VncCredentialsForm = {
+    username: "",
     password: ""
 };
 
@@ -59,6 +61,7 @@ export default function VncClient({
     const resourceName = target?.name?.trim() || null;
 
     const formSchema = z.object({
+        username: z.string(),
         password: z.string()
     });
 
@@ -168,8 +171,11 @@ export default function VncClient({
         screenRef.current.innerHTML = "";
 
         const options: Record<string, unknown> = {};
-        if (values.password) {
-            options.credentials = { password: values.password };
+        if (values.username || values.password) {
+            options.credentials = {
+                username: values.username,
+                password: values.password
+            };
         }
 
         let rfb: any;
@@ -292,6 +298,25 @@ export default function VncClient({
                                     onSubmit={form.handleSubmit(onSubmit)}
                                     className="space-y-4"
                                 >
+                                    <FormField
+                                        control={form.control}
+                                        name="username"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("vncUsernameOptional")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="text"
+                                                        autoComplete="username"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <FormField
                                         control={form.control}
                                         name="password"
