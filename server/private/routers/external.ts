@@ -495,29 +495,31 @@ authRouter.post(
     auth.transferSession
 );
 
-authenticated.post(
-    "/license/activate",
-    verifyUserIsServerAdmin,
-    license.activateLicense
-);
+if (build !== "saas") {
+    authenticated.post(
+        "/license/activate",
+        verifyUserIsServerAdmin,
+        license.activateLicense
+    );
 
-authenticated.get(
-    "/license/keys",
-    verifyUserIsServerAdmin,
-    license.listLicenseKeys
-);
+    authenticated.get(
+        "/license/keys",
+        verifyUserIsServerAdmin,
+        license.listLicenseKeys
+    );
 
-authenticated.delete(
-    "/license/:licenseKey",
-    verifyUserIsServerAdmin,
-    license.deleteLicenseKey
-);
+    authenticated.delete(
+        "/license/:licenseKey",
+        verifyUserIsServerAdmin,
+        license.deleteLicenseKey
+    );
 
-authenticated.post(
-    "/license/recheck",
-    verifyUserIsServerAdmin,
-    license.recheckStatus
-);
+    authenticated.post(
+        "/license/recheck",
+        verifyUserIsServerAdmin,
+        license.recheckStatus
+    );
+}
 
 authenticated.get(
     "/org/:orgId/logs/action",
