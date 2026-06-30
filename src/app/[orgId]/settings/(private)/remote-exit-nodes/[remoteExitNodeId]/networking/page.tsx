@@ -27,11 +27,14 @@ import type { ListRemoteExitNodeResourcesResponse } from "@server/private/router
 import type { SetRemoteExitNodeResourcesResponse } from "@server/private/routers/remoteExitNode/setRemoteExitNodeResources";
 import type { ListRemoteExitNodePreferenceLabelsResponse } from "@server/private/routers/remoteExitNode/listRemoteExitNodePreferenceLabels";
 import type { SetRemoteExitNodePreferenceLabelsResponse } from "@server/private/routers/remoteExitNode/setRemoteExitNodePreferenceLabels";
+import { useTranslations } from "next-intl";
+import { ExternalLink } from "lucide-react";
 
 const cidrRegex =
     /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$|^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4})?:)?((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))(\/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))$/;
 
 export default function NetworkingPage() {
+    const t = useTranslations();
     const { env } = useEnvContext();
     const api = createApiClient({ env });
     const { orgId } = useParams<{
@@ -91,9 +94,10 @@ export default function NetworkingPage() {
             } catch (error) {
                 toast({
                     variant: "destructive",
-                    title: "Error",
+                    title: t("error"),
                     description:
-                        formatAxiosError(error) || "Failed to load subnets"
+                        formatAxiosError(error) ||
+                        t("remoteExitNodeNetworkingSubnetsLoadError")
                 });
             } finally {
                 setLoadingSubnets(false);
@@ -117,9 +121,10 @@ export default function NetworkingPage() {
             } catch (error) {
                 toast({
                     variant: "destructive",
-                    title: "Error",
+                    title: t("error"),
                     description:
-                        formatAxiosError(error) || "Failed to load labels"
+                        formatAxiosError(error) ||
+                        t("remoteExitNodeNetworkingLabelsLoadError")
                 });
             } finally {
                 setLoadingLabels(false);
@@ -138,14 +143,18 @@ export default function NetworkingPage() {
                 { destinations: subnets.map((s) => s.text) }
             );
             toast({
-                title: "Subnets saved",
-                description: "Remote subnets have been updated successfully."
+                title: t("remoteExitNodeNetworkingSubnetsSaveSuccessTitle"),
+                description: t(
+                    "remoteExitNodeNetworkingSubnetsSaveSuccessDescription"
+                )
             });
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Error",
-                description: formatAxiosError(error) || "Failed to save subnets"
+                title: t("error"),
+                description:
+                    formatAxiosError(error) ||
+                    t("remoteExitNodeNetworkingSubnetsSaveError")
             });
         } finally {
             setSavingSubnets(false);
@@ -162,14 +171,18 @@ export default function NetworkingPage() {
                 { labelIds: selectedLabels.map((l) => parseInt(l.id)) }
             );
             toast({
-                title: "Labels saved",
-                description: "Preference labels have been updated successfully."
+                title: t("remoteExitNodeNetworkingLabelsSaveSuccessTitle"),
+                description: t(
+                    "remoteExitNodeNetworkingLabelsSaveSuccessDescription"
+                )
             });
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Error",
-                description: formatAxiosError(error) || "Failed to save labels"
+                title: t("error"),
+                description:
+                    formatAxiosError(error) ||
+                    t("remoteExitNodeNetworkingLabelsSaveError")
             });
         } finally {
             setSavingLabels(false);
@@ -180,18 +193,31 @@ export default function NetworkingPage() {
         <SettingsContainer>
             <SettingsSection>
                 <SettingsSectionHeader>
-                    <SettingsSectionTitle>Remote Subnets</SettingsSectionTitle>
+                    <SettingsSectionTitle>
+                        {t("remoteExitNodeNetworkingSubnetsTitle")}
+                    </SettingsSectionTitle>
                     <SettingsSectionDescription>
-                        Define the CIDR ranges that this remote exit node will
-                        route traffic to. Type a valid CIDR (e.g.{" "}
-                        <code>10.0.0.0/8</code>) and press Enter to add.
+                        {t.rich("remoteExitNodeNetworkingSubnetsDescription", {
+                            code: (chunks) => <code>{chunks}</code>
+                        })}{" "}
+                        <a
+                            href="https://docs.pangolin.net/placeholder"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                            {t("learnMore")}
+                            <ExternalLink className="size-3.5 shrink-0" />
+                        </a>
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
                     <TagInput
                         tags={subnets}
                         setTags={setSubnets}
-                        placeholder="Add a CIDR range (e.g. 10.0.0.0/8)"
+                        placeholder={t(
+                            "remoteExitNodeNetworkingSubnetsPlaceholder"
+                        )}
                         validateTag={(tag) => cidrRegex.test(tag.trim())}
                         activeTagIndex={activeTagIndex}
                         setActiveTagIndex={setActiveTagIndex}
@@ -202,7 +228,7 @@ export default function NetworkingPage() {
                 </SettingsSectionBody>
                 <SettingsSectionFooter>
                     <Button onClick={handleSaveSubnets} loading={savingSubnets}>
-                        Save Subnets
+                        {t("remoteExitNodeNetworkingSubnetsSave")}
                     </Button>
                 </SettingsSectionFooter>
             </SettingsSection>
@@ -210,11 +236,10 @@ export default function NetworkingPage() {
             <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>
-                        Preference Labels
+                        {t("remoteExitNodeNetworkingLabelsTitle")}
                     </SettingsSectionTitle>
                     <SettingsSectionDescription>
-                        Sites with these labels will be enforced to connect
-                        through this remote exit node.
+                        {t("remoteExitNodeNetworkingLabelsDescription")}
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
@@ -225,13 +250,17 @@ export default function NetworkingPage() {
                         onSearch={setLabelSearchQuery}
                         searchQuery={labelSearchQuery}
                         disabled={loadingLabels}
-                        buttonText="Select labels..."
-                        searchPlaceholder="Search labels..."
+                        buttonText={t(
+                            "remoteExitNodeNetworkingLabelsButtonText"
+                        )}
+                        searchPlaceholder={t(
+                            "remoteExitNodeNetworkingLabelsSearchPlaceholder"
+                        )}
                     />
                 </SettingsSectionBody>
                 <SettingsSectionFooter>
                     <Button onClick={handleSaveLabels} loading={savingLabels}>
-                        Save Labels
+                        {t("remoteExitNodeNetworkingLabelsSave")}
                     </Button>
                 </SettingsSectionFooter>
             </SettingsSection>
