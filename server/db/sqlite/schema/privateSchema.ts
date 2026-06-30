@@ -21,9 +21,6 @@ import {
     targetHealthCheck,
     users
 } from "./schema";
-import { serial, varchar } from "drizzle-orm/mysql-core";
-import { pgTable } from "drizzle-orm/pg-core";
-import { bigint } from "zod";
 
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),

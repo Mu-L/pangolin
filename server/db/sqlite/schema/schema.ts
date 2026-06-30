@@ -20,8 +20,10 @@ export const domains = sqliteTable("domains", {
     failed: integer("failed", { mode: "boolean" }).notNull().default(false),
     tries: integer("tries").notNull().default(0),
     certResolver: text("certResolver"),
+    customCertResolver: text("customCertResolver"),
     preferWildcardCert: integer("preferWildcardCert", { mode: "boolean" }),
-    errorMessage: text("errorMessage")
+    errorMessage: text("errorMessage"),
+    lastCheckedAt: integer("lastCheckedAt")
 });
 
 export const dnsRecords = sqliteTable("dnsRecords", {

@@ -25,7 +25,8 @@ export const domains = pgTable("domains", {
     certResolver: varchar("certResolver"),
     customCertResolver: varchar("customCertResolver"),
     preferWildcardCert: boolean("preferWildcardCert"),
-    errorMessage: text("errorMessage")
+    errorMessage: text("errorMessage"),
+    lastCheckedAt: integer("lastCheckedAt")
 });
 
 export const dnsRecords = pgTable("dnsRecords", {
@@ -407,7 +408,9 @@ export const siteResources = pgTable(
         niceId: varchar("niceId").notNull(),
         name: varchar("name").notNull(),
         ssl: boolean("ssl").notNull().default(false),
-        mode: varchar("mode").$type<"host" | "cidr" | "http" | "ssh">().notNull(), // "host" | "cidr" | "http"
+        mode: varchar("mode")
+            .$type<"host" | "cidr" | "http" | "ssh">()
+            .notNull(), // "host" | "cidr" | "http"
         scheme: varchar("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
         proxyPort: integer("proxyPort"), // only for port mode
         destinationPort: integer("destinationPort"), // only for port mode
@@ -415,8 +418,12 @@ export const siteResources = pgTable(
         enabled: boolean("enabled").notNull().default(true),
         alias: varchar("alias"),
         aliasAddress: varchar("aliasAddress"),
-        tcpPortRangeString: varchar("tcpPortRangeString").notNull().default("*"),
-        udpPortRangeString: varchar("udpPortRangeString").notNull().default("*"),
+        tcpPortRangeString: varchar("tcpPortRangeString")
+            .notNull()
+            .default("*"),
+        udpPortRangeString: varchar("udpPortRangeString")
+            .notNull()
+            .default("*"),
         disableIcmp: boolean("disableIcmp").notNull().default(false),
         authDaemonPort: integer("authDaemonPort").default(22123),
         pamMode: varchar("pamMode", { length: 32 })
