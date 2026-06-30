@@ -3,14 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     SettingsContainer,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
     SettingsSectionFooter,
+    SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
 import { Button } from "@app/components/ui/button";
+import { Label } from "@app/components/ui/label";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
@@ -47,13 +51,13 @@ export default function NetworkingPage() {
     const [subnets, setSubnets] = useState<Tag[]>([]);
     const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
     const [loadingSubnets, setLoadingSubnets] = useState(true);
-    const [savingSubnets, setSavingSubnets] = useState(false);
 
     // Labels state
     const [selectedLabels, setSelectedLabels] = useState<TagValue[]>([]);
     const [labelSearchQuery, setLabelSearchQuery] = useState("");
     const [loadingLabels, setLoadingLabels] = useState(true);
-    const [savingLabels, setSavingLabels] = useState(false);
+
+    const [saving, setSaving] = useState(false);
 
     const [debouncedLabelQuery] = useDebounce(labelSearchQuery, 150);
 
@@ -135,17 +139,27 @@ export default function NetworkingPage() {
         loadLabels();
     }, [remoteExitNode.remoteExitNodeId]);
 
-    const handleSaveSubnets = async () => {
-        setSavingSubnets(true);
+    const handleSave = async () => {
+        setSaving(true);
         try {
-            await api.post<AxiosResponse<SetRemoteExitNodeResourcesResponse>>(
-                `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/resources`,
-                { destinations: subnets.map((s) => s.text) }
-            );
+            await Promise.all([
+                api.post<
+                    AxiosResponse<SetRemoteExitNodeResourcesResponse>
+                >(
+                    `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/resources`,
+                    { destinations: subnets.map((s) => s.text) }
+                ),
+                api.post<
+                    AxiosResponse<SetRemoteExitNodePreferenceLabelsResponse>
+                >(
+                    `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/preference-labels`,
+                    { labelIds: selectedLabels.map((l) => parseInt(l.id)) }
+                )
+            ]);
             toast({
-                title: t("remoteExitNodeNetworkingSubnetsSaveSuccessTitle"),
+                title: t("remoteExitNodeNetworkingSaveSuccessTitle"),
                 description: t(
-                    "remoteExitNodeNetworkingSubnetsSaveSuccessDescription"
+                    "remoteExitNodeNetworkingSaveSuccessDescription"
                 )
             });
         } catch (error) {
@@ -154,38 +168,10 @@ export default function NetworkingPage() {
                 title: t("error"),
                 description:
                     formatAxiosError(error) ||
-                    t("remoteExitNodeNetworkingSubnetsSaveError")
+                    t("remoteExitNodeNetworkingSaveError")
             });
         } finally {
-            setSavingSubnets(false);
-        }
-    };
-
-    const handleSaveLabels = async () => {
-        setSavingLabels(true);
-        try {
-            await api.post<
-                AxiosResponse<SetRemoteExitNodePreferenceLabelsResponse>
-            >(
-                `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/preference-labels`,
-                { labelIds: selectedLabels.map((l) => parseInt(l.id)) }
-            );
-            toast({
-                title: t("remoteExitNodeNetworkingLabelsSaveSuccessTitle"),
-                description: t(
-                    "remoteExitNodeNetworkingLabelsSaveSuccessDescription"
-                )
-            });
-        } catch (error) {
-            toast({
-                variant: "destructive",
-                title: t("error"),
-                description:
-                    formatAxiosError(error) ||
-                    t("remoteExitNodeNetworkingLabelsSaveError")
-            });
-        } finally {
-            setSavingLabels(false);
+            setSaving(false);
         }
     };
 
@@ -194,73 +180,93 @@ export default function NetworkingPage() {
             <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>
-                        {t("remoteExitNodeNetworkingSubnetsTitle")}
+                        {t("remoteExitNodeNetworkingTitle")}
                     </SettingsSectionTitle>
                     <SettingsSectionDescription>
-                        {t.rich("remoteExitNodeNetworkingSubnetsDescription", {
-                            code: (chunks) => <code>{chunks}</code>
-                        })}{" "}
-                        <a
-                            href="https://docs.pangolin.net/placeholder"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline inline-flex items-center gap-1"
-                        >
-                            {t("learnMore")}
-                            <ExternalLink className="size-3.5 shrink-0" />
-                        </a>
+                        {t("remoteExitNodeNetworkingDescription")}
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    <TagInput
-                        tags={subnets}
-                        setTags={setSubnets}
-                        placeholder={t(
-                            "remoteExitNodeNetworkingSubnetsPlaceholder"
-                        )}
-                        validateTag={(tag) => cidrRegex.test(tag.trim())}
-                        activeTagIndex={activeTagIndex}
-                        setActiveTagIndex={setActiveTagIndex}
-                        disabled={loadingSubnets}
-                        allowDuplicates={false}
-                        inlineTags={true}
-                    />
+                    <SettingsSectionForm variant="half">
+                        <SettingsFormGrid>
+                            <SettingsFormCell span="half">
+                                <div className="grid gap-2">
+                                    <Label>
+                                        {t(
+                                            "remoteExitNodeNetworkingSubnetsTitle"
+                                        )}
+                                    </Label>
+                                    <TagInput
+                                        tags={subnets}
+                                        setTags={setSubnets}
+                                        placeholder={t(
+                                            "remoteExitNodeNetworkingSubnetsPlaceholder"
+                                        )}
+                                        validateTag={(tag) =>
+                                            cidrRegex.test(tag.trim())
+                                        }
+                                        activeTagIndex={activeTagIndex}
+                                        setActiveTagIndex={setActiveTagIndex}
+                                        disabled={loadingSubnets}
+                                        allowDuplicates={false}
+                                        size="sm"
+                                        inlineTags={true}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        {t.rich(
+                                            "remoteExitNodeNetworkingSubnetsDescription",
+                                            {
+                                                code: (chunks) => (
+                                                    <code>{chunks}</code>
+                                                )
+                                            }
+                                        )}{" "}
+                                        <a
+                                            href="https://docs.pangolin.net/placeholder"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                        >
+                                            {t("learnMore")}
+                                            <ExternalLink className="size-3.5 shrink-0" />
+                                        </a>
+                                    </p>
+                                </div>
+                            </SettingsFormCell>
+                            <SettingsFormCell span="half">
+                                <div className="grid gap-2">
+                                    <Label>
+                                        {t(
+                                            "remoteExitNodeNetworkingLabelsTitle"
+                                        )}
+                                    </Label>
+                                    <MultiSelectTagInput
+                                        value={selectedLabels}
+                                        options={labelsShown}
+                                        onChange={setSelectedLabels}
+                                        onSearch={setLabelSearchQuery}
+                                        searchQuery={labelSearchQuery}
+                                        disabled={loadingLabels}
+                                        buttonText={t(
+                                            "remoteExitNodeNetworkingLabelsButtonText"
+                                        )}
+                                        searchPlaceholder={t(
+                                            "remoteExitNodeNetworkingLabelsSearchPlaceholder"
+                                        )}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        {t(
+                                            "remoteExitNodeNetworkingLabelsDescription"
+                                        )}
+                                    </p>
+                                </div>
+                            </SettingsFormCell>
+                        </SettingsFormGrid>
+                    </SettingsSectionForm>
                 </SettingsSectionBody>
                 <SettingsSectionFooter>
-                    <Button onClick={handleSaveSubnets} loading={savingSubnets}>
-                        {t("remoteExitNodeNetworkingSubnetsSave")}
-                    </Button>
-                </SettingsSectionFooter>
-            </SettingsSection>
-
-            <SettingsSection>
-                <SettingsSectionHeader>
-                    <SettingsSectionTitle>
-                        {t("remoteExitNodeNetworkingLabelsTitle")}
-                    </SettingsSectionTitle>
-                    <SettingsSectionDescription>
-                        {t("remoteExitNodeNetworkingLabelsDescription")}
-                    </SettingsSectionDescription>
-                </SettingsSectionHeader>
-                <SettingsSectionBody>
-                    <MultiSelectTagInput
-                        value={selectedLabels}
-                        options={labelsShown}
-                        onChange={setSelectedLabels}
-                        onSearch={setLabelSearchQuery}
-                        searchQuery={labelSearchQuery}
-                        disabled={loadingLabels}
-                        buttonText={t(
-                            "remoteExitNodeNetworkingLabelsButtonText"
-                        )}
-                        searchPlaceholder={t(
-                            "remoteExitNodeNetworkingLabelsSearchPlaceholder"
-                        )}
-                    />
-                </SettingsSectionBody>
-                <SettingsSectionFooter>
-                    <Button onClick={handleSaveLabels} loading={savingLabels}>
-                        {t("remoteExitNodeNetworkingLabelsSave")}
+                    <Button onClick={handleSave} loading={saving}>
+                        {t("remoteExitNodeNetworkingSave")}
                     </Button>
                 </SettingsSectionFooter>
             </SettingsSection>

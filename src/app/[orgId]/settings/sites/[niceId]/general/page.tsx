@@ -43,7 +43,6 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { Button as ButtonUI } from "@/components/ui/button";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
-import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 
 const GeneralFormSchema = z.object({
     name: z.string().nonempty("Name is required"),
@@ -73,23 +72,6 @@ export default function GeneralPage() {
     const [activeCidrTagIndex, setActiveCidrTagIndex] = useState<number | null>(
         null
     );
-    const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
-
-    async function restartSite() {
-        try {
-            await api.post(`/site/${site?.siteId}/restart`);
-            toast({
-                title: t("siteRestarted"),
-                description: t("siteRestartedDescription")
-            });
-        } catch (e) {
-            toast({
-                variant: "destructive",
-                title: t("siteErrorRestart"),
-                description: formatAxiosError(e, t("siteErrorRestartDescription"))
-            });
-        }
-    }
 
     const orgAutoUpdate = org.org.settingsEnableGlobalNewtAutoUpdate ?? false;
 
@@ -367,52 +349,6 @@ export default function GeneralPage() {
                     </Button>
                 </SettingsSectionFooter>
             </SettingsSection>
-            {site && site.type === "newt" && (
-                <>
-                    <ConfirmDeleteDialog
-                        open={isRestartDialogOpen}
-                        setOpen={setIsRestartDialogOpen}
-                        dialog={
-                            <p>
-                                {t.rich("siteRestartDialogMessage", {
-                                    name: site.name,
-                                    b: (chunks) => <b>{chunks}</b>
-                                })}
-                            </p>
-                        }
-                        buttonText={t("siteRestartButton")}
-                        onConfirm={restartSite}
-                        string={site.name}
-                        warningText={t("siteRestartWarning")}
-                        title={t("siteRestartTitle")}
-                    />
-                    <SettingsSection>
-                        <SettingsSectionHeader>
-                            <SettingsSectionTitle>
-                                {t("siteRestartTitle")}
-                            </SettingsSectionTitle>
-                            <SettingsSectionDescription>
-                                {t("siteRestartDescription")}
-                            </SettingsSectionDescription>
-                        </SettingsSectionHeader>
-                        <SettingsSectionBody>
-                            <SettingsSectionForm>
-                                <p className="text-sm text-muted-foreground">
-                                    {t("siteRestartBody")}
-                                </p>
-                            </SettingsSectionForm>
-                        </SettingsSectionBody>
-                        <SettingsSectionFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsRestartDialogOpen(true)}
-                            >
-                                {t("siteRestartButton")}
-                            </Button>
-                        </SettingsSectionFooter>
-                    </SettingsSection>
-                </>
-            )}
         </SettingsContainer>
     );
 }
