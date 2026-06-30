@@ -254,6 +254,14 @@ authenticated.delete(
     site.deleteSite
 );
 
+authenticated.post(
+    "/site/:siteId/restart",
+    verifySiteAccess,
+    verifyUserHasAction(ActionsEnum.updateSite),
+    logActionAudit(ActionsEnum.updateSite),
+    site.restartSite
+);
+
 // TODO: BREAK OUT THESE ACTIONS SO THEY ARE NOT ALL "getSite"
 authenticated.get(
     "/site/:siteId/docker/status",
