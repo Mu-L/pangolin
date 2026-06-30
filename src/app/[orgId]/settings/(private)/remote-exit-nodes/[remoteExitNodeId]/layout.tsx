@@ -35,6 +35,10 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
 
     const navItems = [
         {
+            title: "Networking",
+            href: "/{orgId}/settings/remote-exit-nodes/{remoteExitNodeId}/networking"
+        },
+        {
             title: t("credentials"),
             href: "/{orgId}/settings/remote-exit-nodes/{remoteExitNodeId}/credentials"
         }
