@@ -3572,6 +3572,7 @@
     "resourceLauncherDeleteView": "Delete View",
     "resourceLauncherViewAsAdmin": "View as Admin",
     "resourceLauncherUnlabeled": "Unlabeled",
+    "resourceLauncherNoSite": "No Site",
     "resourceLauncherNoResourcesInGroup": "No resources in this group",
     "resourceLauncherEmptyStateTitle": "No Resources Available",
     "resourceLauncherEmptyStateDescription": "You don't have access to any resources yet. Contact your administrator to request access.",

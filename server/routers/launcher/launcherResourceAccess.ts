@@ -27,6 +27,7 @@ import {
     countDistinct,
     eq,
     inArray,
+    isNull,
     like,
     or,
     sql
@@ -38,6 +39,7 @@ import {
     formatSiteResourceAccess
 } from "./formatLauncherAccess";
 import {
+    LAUNCHER_NO_SITE_GROUP_KEY,
     LAUNCHER_UNLABELED_GROUP_KEY,
     type LauncherGroup,
     type LauncherLabel,
@@ -508,6 +510,83 @@ async function listSiteGroups(
         }
     }
 
+    let noSiteCount = 0;
+
+    if (accessible.resourceIds.length > 0 && siteFilterIds.length === 0) {
+        const noSitePublicConditions = [
+            inArray(resources.resourceId, accessible.resourceIds),
+            eq(resources.orgId, orgId),
+            eq(resources.enabled, true)
+        ];
+        if (searchPublic) {
+            noSitePublicConditions.push(searchPublic);
+        }
+
+        let noSitePublicQuery = db
+            .select({
+                itemCount: countDistinct(resources.resourceId)
+            })
+            .from(resources)
+            .leftJoin(targets, eq(targets.resourceId, resources.resourceId));
+
+        if (labelFilterIds.length > 0) {
+            noSitePublicQuery = noSitePublicQuery.innerJoin(
+                resourceLabels,
+                eq(resourceLabels.resourceId, resources.resourceId)
+            );
+            noSitePublicConditions.push(
+                inArray(resourceLabels.labelId, labelFilterIds)
+            );
+        }
+
+        const [noSitePublicRow] = await noSitePublicQuery.where(
+            and(...noSitePublicConditions, isNull(targets.targetId))
+        );
+
+        noSiteCount += Number(noSitePublicRow?.itemCount ?? 0);
+    }
+
+    if (accessible.siteResourceIds.length > 0 && siteFilterIds.length === 0) {
+        const noSiteSiteConditions = [
+            inArray(siteResources.siteResourceId, accessible.siteResourceIds),
+            eq(siteResources.orgId, orgId),
+            eq(siteResources.enabled, true)
+        ];
+        if (searchSite) {
+            noSiteSiteConditions.push(searchSite);
+        }
+
+        let noSiteSiteQuery = db
+            .select({
+                itemCount: countDistinct(siteResources.siteResourceId)
+            })
+            .from(siteResources)
+            .leftJoin(
+                siteNetworks,
+                eq(siteResources.networkId, siteNetworks.networkId)
+            )
+            .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId));
+
+        if (labelFilterIds.length > 0) {
+            noSiteSiteQuery = noSiteSiteQuery.innerJoin(
+                siteResourceLabels,
+                eq(
+                    siteResourceLabels.siteResourceId,
+                    siteResources.siteResourceId
+                )
+            );
+            noSiteSiteConditions.push(
+                inArray(siteResourceLabels.labelId, labelFilterIds)
+            );
+        }
+
+        const [noSiteSiteRow] = await noSiteSiteQuery.where(
+            and(...noSiteSiteConditions, isNull(sites.siteId))
+        );
+
+        noSiteCount += Number(noSiteSiteRow?.itemCount ?? 0);
+    }
+
     let groups: LauncherGroup[] = Array.from(siteCountMap.values()).map(
         (row) => ({
             groupKey: String(row.siteId),
@@ -518,6 +597,15 @@ async function listSiteGroups(
             siteOnline: row.online
         })
     );
+
+    if (noSiteCount > 0 && siteFilterIds.length === 0) {
+        groups.push({
+            groupKey: LAUNCHER_NO_SITE_GROUP_KEY,
+            name: "No Site",
+            groupType: "site",
+            itemCount: noSiteCount
+        });
+    }
 
     groups.sort((a, b) => {
         const cmp = a.name.localeCompare(b.name, undefined, {
@@ -923,6 +1011,20 @@ async function mapSiteResources(
     return result;
 }
 
+function filterResourcesBySite(
+    items: LauncherResource[],
+    groupKey: string
+): LauncherResource[] {
+    if (groupKey === LAUNCHER_NO_SITE_GROUP_KEY) {
+        return items.filter((item) => !item.site);
+    }
+    const siteId = Number.parseInt(groupKey, 10);
+    if (!Number.isFinite(siteId)) {
+        return items;
+    }
+    return items.filter((item) => item.site?.siteId === siteId);
+}
+
 function filterResourcesByLabel(
     items: LauncherResource[],
     groupKey: string
@@ -1052,10 +1154,14 @@ export async function listLauncherResourcesForUser(
         filteredSiteResourceIds
     );
 
-    const siteIdFilter =
-        query.groupBy === "site"
+    const parsedSiteId =
+        query.groupBy === "site" &&
+        query.groupKey !== LAUNCHER_NO_SITE_GROUP_KEY
             ? Number.parseInt(query.groupKey, 10)
-            : undefined;
+            : Number.NaN;
+    const siteIdFilter = Number.isFinite(parsedSiteId)
+        ? parsedSiteId
+        : undefined;
 
     const [publicItems, siteItems] = await Promise.all([
         mapPublicResources(
@@ -1077,6 +1183,8 @@ export async function listLauncherResourcesForUser(
 
     if (query.groupBy === "label") {
         items = filterResourcesByLabel(items, query.groupKey);
+    } else if (query.groupBy === "site") {
+        items = filterResourcesBySite(items, query.groupKey);
     }
 
     items = sortLauncherResources(items, query.order);

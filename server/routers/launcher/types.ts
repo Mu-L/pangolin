@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const LAUNCHER_UNLABELED_GROUP_KEY = "unlabeled";
+export const LAUNCHER_NO_SITE_GROUP_KEY = "no-site";
 
 export const launcherViewConfigSchema = z.object({
     groupBy: z.enum(["site", "label"]).default("site"),

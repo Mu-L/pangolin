@@ -16,6 +16,10 @@ import type {
     LauncherResource,
     LauncherViewConfig
 } from "@server/routers/launcher/types";
+import {
+    LAUNCHER_NO_SITE_GROUP_KEY,
+    LAUNCHER_UNLABELED_GROUP_KEY
+} from "@server/routers/launcher/types";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -140,9 +144,11 @@ export function LauncherGroupSection({
     }, [fetchNextPage, hasNextPage, isFetchingNextPage, isOpen]);
 
     const groupTitle =
-        group.groupKey === "unlabeled"
+        group.groupKey === LAUNCHER_UNLABELED_GROUP_KEY
             ? t("resourceLauncherUnlabeled")
-            : group.name;
+            : group.groupKey === LAUNCHER_NO_SITE_GROUP_KEY
+              ? t("resourceLauncherNoSite")
+              : group.name;
 
     return (
         <Collapsible
