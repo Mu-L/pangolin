@@ -3551,6 +3551,7 @@
     "resourceLauncherDefaultView": "Default",
     "resourceLauncherSaveView": "Save View",
     "resourceLauncherSaveToCurrentView": "Save to Current View",
+    "resourceLauncherResetView": "Reset View",
     "resourceLauncherSaveAsNewView": "Save as New View",
     "resourceLauncherSaveAsNewViewDescription": "Give this view a name to save your current filters and layout.",
     "resourceLauncherSaveForEveryone": "Save for Everyone",

@@ -39,12 +39,20 @@ import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useTransition
+} from "react";
 import { useDebouncedCallback } from "use-debounce";
 import type { Selectedsite } from "@app/components/site-selector";
 import type { SelectedLabel } from "@app/components/labels-selector";
 import { LauncherFilterPopover } from "./LauncherFilterPopover";
 import { LauncherGroupList } from "./LauncherGroupList";
+import { LauncherRefreshButton } from "./LauncherRefreshButton";
 import { LauncherSettingsMenu } from "./LauncherSettingsMenu";
 import { LauncherSortButton } from "./LauncherSortButton";
 import { LauncherSaveViewMenu, LauncherViewTabs } from "./LauncherViewTabs";
@@ -83,6 +91,7 @@ export default function ResourceLauncher({
     const api = createApiClient({ env });
     const router = useRouter();
     const { navigate, isNavigating, searchParams } = useNavigationContext();
+    const [isRefreshing, startRefreshTransition] = useTransition();
     const hasRestoredLastView = useRef(false);
 
     const [searchInputResetKey, setSearchInputResetKey] = useState(0);
@@ -312,8 +321,28 @@ export default function ResourceLauncher({
         });
     }, [navigateToConfig]);
 
+    const handleResetView = useCallback(() => {
+        searchInputRef.current = savedConfig.query;
+        setSearchInputResetKey((key) => key + 1);
+        navigateToConfig(activeViewIdRef.current, savedConfig);
+    }, [navigateToConfig, savedConfig]);
+
+    const refreshData = () => {
+        startRefreshTransition(async () => {
+            try {
+                router.refresh();
+            } catch {
+                toast({
+                    title: t("error"),
+                    description: t("refreshError"),
+                    variant: "destructive"
+                });
+            }
+        });
+    };
+
     const handleSaveToCurrent = () => {
-        if (isDefaultView) {
+        if (isDefaultView || (isOrgWideView && !isAdmin)) {
             return;
         }
         updateViewMutation.mutate({
@@ -408,6 +437,7 @@ export default function ResourceLauncher({
                             onSaveAsNew={handleSaveAsNew}
                             onSaveForEveryone={handleSaveForEveryone}
                             onMakePersonal={handleMakePersonal}
+                            onResetView={handleResetView}
                         />
                         <LauncherFilterPopover
                             orgId={orgId}
@@ -444,6 +474,10 @@ export default function ResourceLauncher({
                                     deleteViewMutation.mutate(activeViewId);
                                 }
                             }}
+                        />
+                        <LauncherRefreshButton
+                            onRefresh={refreshData}
+                            isRefreshing={isRefreshing || isNavigating}
                         />
                     </div>
                 </div>

@@ -5,6 +5,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
@@ -71,6 +72,7 @@ type LauncherSaveViewMenuProps = {
     onSaveAsNew: () => void;
     onSaveForEveryone: () => void;
     onMakePersonal: () => void;
+    onResetView: () => void;
 };
 
 export function LauncherSaveViewMenu({
@@ -81,7 +83,8 @@ export function LauncherSaveViewMenu({
     onSaveToCurrent,
     onSaveAsNew,
     onSaveForEveryone,
-    onMakePersonal
+    onMakePersonal,
+    onResetView
 }: LauncherSaveViewMenuProps) {
     const t = useTranslations();
 
@@ -97,7 +100,15 @@ export function LauncherSaveViewMenu({
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                {!isDefaultView ? (
+                {hasUnsavedChanges ? (
+                    <>
+                        <DropdownMenuItem onSelect={onResetView}>
+                            {t("resourceLauncherResetView")}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                    </>
+                ) : null}
+                {!isDefaultView && (isAdmin || !isOrgWideView) ? (
                     <DropdownMenuItem onSelect={onSaveToCurrent}>
                         {t("resourceLauncherSaveToCurrentView")}
                     </DropdownMenuItem>
