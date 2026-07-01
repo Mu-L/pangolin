@@ -10,6 +10,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { sendToClient } from "../ws";
+import { canCompress } from "@server/lib/clientVersionChecks";
 
 const updateSiteParamsSchema = z.strictObject({
     siteId: z.coerce.number().int().positive()
@@ -97,7 +98,10 @@ export async function restartSite(
                 type: "newt/wg/restart",
                 data: {}
             },
-            { incrementConfigVersion: false, compress: false }
+            {
+                incrementConfigVersion: false,
+                compress: canCompress(newt.version, "newt")
+            }
         );
 
         return response(res, {
