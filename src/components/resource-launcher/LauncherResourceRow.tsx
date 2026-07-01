@@ -11,7 +11,7 @@ type LauncherResourceRowProps = {
     resource: LauncherResource;
     showLabels: boolean;
     isLast?: boolean;
-    onSelect: () => void;
+    onSelect?: () => void;
 };
 
 export function LauncherResourceRow({
@@ -21,19 +21,21 @@ export function LauncherResourceRow({
     onSelect
 }: LauncherResourceRowProps) {
     const hasTags = showLabels && resource.labels.length > 0;
-    const clickProps = getLauncherResourceSelectProps(onSelect);
+    const clickProps = onSelect
+        ? getLauncherResourceSelectProps(onSelect)
+        : null;
 
     return (
         <div
             className={cn(
                 "flex items-center gap-2.5 p-4 max-md:min-w-max max-md:whitespace-nowrap",
                 isLast ? undefined : "border-b border-border",
-                clickProps.className
+                clickProps?.className
             )}
-            onClick={clickProps.onClick}
-            onKeyDown={clickProps.onKeyDown}
-            role={clickProps.role}
-            tabIndex={clickProps.tabIndex}
+            onClick={clickProps?.onClick}
+            onKeyDown={clickProps?.onKeyDown}
+            role={clickProps?.role}
+            tabIndex={clickProps?.tabIndex}
         >
             <LauncherResourceIcon
                 iconUrl={resource.iconUrl}

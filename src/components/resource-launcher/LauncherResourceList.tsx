@@ -6,7 +6,7 @@ import { LauncherResourceRow } from "./LauncherResourceRow";
 type LauncherResourceListProps = {
     resources: LauncherResource[];
     showLabels: boolean;
-    onResourceSelect: (resource: LauncherResource) => void;
+    onResourceSelect?: (resource: LauncherResource) => void;
 };
 
 export function LauncherResourceList({
@@ -23,7 +23,11 @@ export function LauncherResourceList({
                         resource={resource}
                         showLabels={showLabels}
                         isLast={index === resources.length - 1}
-                        onSelect={() => onResourceSelect(resource)}
+                        onSelect={
+                            onResourceSelect
+                                ? () => onResourceSelect(resource)
+                                : undefined
+                        }
                     />
                 ))}
             </div>

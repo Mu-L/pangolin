@@ -40,7 +40,7 @@ type LauncherGroupSectionProps = {
         pageSize: number;
     };
     defaultOpen?: boolean;
-    onResourceSelect: (resource: LauncherResource) => void;
+    onResourceSelect?: (resource: LauncherResource) => void;
 };
 
 export function LauncherGroupSection({

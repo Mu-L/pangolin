@@ -37,7 +37,7 @@ export function LauncherViewTabs({
     ];
 
     return (
-        <div className="flex items-center gap-2 overflow-x-auto max-w-full shrink min-w-0">
+        <div className="flex w-max items-center gap-2">
             {viewOptions.map((option) => {
                 const isSelected = activeViewId === option.value;
                 return (

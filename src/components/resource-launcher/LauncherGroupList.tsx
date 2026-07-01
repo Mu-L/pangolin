@@ -26,7 +26,7 @@ type LauncherGroupListProps = {
     };
     resourcesByGroupKey: Record<string, LauncherGroupResources>;
     onClearFilters?: () => void;
-    onResourceSelect: (resource: LauncherResource) => void;
+    onResourceSelect?: (resource: LauncherResource) => void;
 };
 
 function hasActiveLauncherFilters(config: LauncherViewConfig): boolean {

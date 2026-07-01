@@ -32,7 +32,6 @@ import { useToast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import type {
     LauncherGroup,
-    LauncherResource,
     LauncherViewConfig,
     LauncherViewRecord
 } from "@server/routers/launcher/types";
@@ -51,12 +50,13 @@ import {
 import { useDebouncedCallback } from "use-debounce";
 import type { Selectedsite } from "@app/components/site-selector";
 import type { SelectedLabel } from "@app/components/labels-selector";
+import { useMediaQuery } from "@app/hooks/useMediaQuery";
+import { cn } from "@app/lib/cn";
 import { LauncherFilterPopover } from "./LauncherFilterPopover";
 import { LauncherGroupList } from "./LauncherGroupList";
 import { LauncherRefreshButton } from "./LauncherRefreshButton";
 import { LauncherSettingsMenu } from "./LauncherSettingsMenu";
 import { LauncherSortButton } from "./LauncherSortButton";
-import { LauncherResourcePanel } from "./LauncherResourcePanel";
 import { LauncherSaveViewMenu, LauncherViewTabs } from "./LauncherViewTabs";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 
@@ -98,10 +98,10 @@ export default function ResourceLauncher({
 
     const [searchInputResetKey, setSearchInputResetKey] = useState(0);
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-    const [selectedResource, setSelectedResource] =
-        useState<LauncherResource | null>(null);
     const [newViewName, setNewViewName] = useState("");
     const [saveOrgWide, setSaveOrgWide] = useState(false);
+
+    const isDesktop = useMediaQuery("(min-width: 768px)");
 
     const configRef = useRef(config);
     configRef.current = config;
@@ -392,6 +392,90 @@ export default function ResourceLauncher({
         });
     };
 
+    const savedViewTabs = views.map((view) => ({
+        viewId: view.viewId,
+        name: view.name
+    }));
+
+    const renderToolbarSearch = (searchClassName: string) => (
+        <div className={cn("relative shrink-0", searchClassName)}>
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+                key={`${activeViewId}-${searchInputResetKey}`}
+                defaultValue={config.query}
+                onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    searchInputRef.current = value;
+                    debouncedNavigateSearch(activeViewIdRef.current, value);
+                }}
+                placeholder={t("resourceLauncherSearchPlaceholder")}
+                className="pl-8"
+                type="search"
+            />
+        </div>
+    );
+
+    const renderToolbarActions = () => (
+        <>
+            <LauncherSaveViewMenu
+                isDefaultView={isDefaultView}
+                isAdmin={isAdmin}
+                isOrgWideView={isOrgWideView}
+                hasUnsavedChanges={hasUnsavedChanges}
+                onSaveToCurrent={handleSaveToCurrent}
+                onSaveAsNew={handleSaveAsNew}
+                onSaveForEveryone={handleSaveForEveryone}
+                onMakePersonal={handleMakePersonal}
+                onResetView={handleResetView}
+            />
+            <LauncherFilterPopover
+                orgId={orgId}
+                selectedSites={selectedSites}
+                selectedLabels={selectedLabels}
+                onSitesChange={(sites) =>
+                    applyConfigPatch({
+                        siteIds: sites.map((site) => site.siteId)
+                    })
+                }
+                onLabelsChange={(labels) =>
+                    applyConfigPatch({
+                        labelIds: labels.map((label) => label.labelId)
+                    })
+                }
+            />
+            <LauncherSortButton
+                order={config.order}
+                onToggle={() =>
+                    applyConfigPatch({
+                        order: config.order === "asc" ? "desc" : "asc"
+                    })
+                }
+            />
+            <LauncherSettingsMenu
+                config={config}
+                isDefaultView={isDefaultView}
+                onConfigChange={applyConfigPatch}
+                onDeleteView={() => {
+                    if (!isDefaultView) {
+                        deleteViewMutation.mutate(activeViewId);
+                    }
+                }}
+            />
+            <LauncherRefreshButton
+                onRefresh={refreshData}
+                isRefreshing={isRefreshing || isNavigating}
+            />
+        </>
+    );
+
+    const renderToolbarViews = () => (
+        <LauncherViewTabs
+            activeViewId={activeViewId}
+            savedViews={savedViewTabs}
+            onSelectView={selectView}
+        />
+    );
+
     return (
         <div className="flex flex-col" aria-busy={isNavigating}>
             <SettingsSectionTitle
@@ -399,93 +483,27 @@ export default function ResourceLauncher({
                 description={t("resourceLauncherDescription")}
             />
 
-            <div className="flex flex-col gap-3 mb-6">
-                <div className="flex flex-row items-center gap-3 justify-between max-md:flex-col max-md:items-stretch">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0 flex-1 max-md:order-2">
-                        <div className="relative w-full sm:max-w-sm shrink-0">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                            <Input
-                                key={`${activeViewId}-${searchInputResetKey}`}
-                                defaultValue={config.query}
-                                onChange={(event) => {
-                                    const value = event.currentTarget.value;
-                                    searchInputRef.current = value;
-                                    debouncedNavigateSearch(
-                                        activeViewIdRef.current,
-                                        value
-                                    );
-                                }}
-                                placeholder={t(
-                                    "resourceLauncherSearchPlaceholder"
-                                )}
-                                className="pl-8"
-                                type="search"
-                            />
-                        </div>
-                        <LauncherViewTabs
-                            activeViewId={activeViewId}
-                            savedViews={views.map((view) => ({
-                                viewId: view.viewId,
-                                name: view.name
-                            }))}
-                            onSelectView={selectView}
-                        />
+            {isDesktop ? (
+                <div className="mb-6 flex w-full min-w-0 items-center gap-3">
+                    {renderToolbarSearch("w-64")}
+                    <div className="min-w-0 flex-1 overflow-x-auto">
+                        {renderToolbarViews()}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 justify-end max-md:order-1 max-md:justify-start">
-                        <LauncherSaveViewMenu
-                            isDefaultView={isDefaultView}
-                            isAdmin={isAdmin}
-                            isOrgWideView={isOrgWideView}
-                            hasUnsavedChanges={hasUnsavedChanges}
-                            onSaveToCurrent={handleSaveToCurrent}
-                            onSaveAsNew={handleSaveAsNew}
-                            onSaveForEveryone={handleSaveForEveryone}
-                            onMakePersonal={handleMakePersonal}
-                            onResetView={handleResetView}
-                        />
-                        <LauncherFilterPopover
-                            orgId={orgId}
-                            selectedSites={selectedSites}
-                            selectedLabels={selectedLabels}
-                            onSitesChange={(sites) =>
-                                applyConfigPatch({
-                                    siteIds: sites.map((site) => site.siteId)
-                                })
-                            }
-                            onLabelsChange={(labels) =>
-                                applyConfigPatch({
-                                    labelIds: labels.map(
-                                        (label) => label.labelId
-                                    )
-                                })
-                            }
-                        />
-                        <LauncherSortButton
-                            order={config.order}
-                            onToggle={() =>
-                                applyConfigPatch({
-                                    order:
-                                        config.order === "asc" ? "desc" : "asc"
-                                })
-                            }
-                        />
-                        <LauncherSettingsMenu
-                            config={config}
-                            isDefaultView={isDefaultView}
-                            onConfigChange={applyConfigPatch}
-                            onDeleteView={() => {
-                                if (!isDefaultView) {
-                                    deleteViewMutation.mutate(activeViewId);
-                                }
-                            }}
-                        />
-                        <LauncherRefreshButton
-                            onRefresh={refreshData}
-                            isRefreshing={isRefreshing || isNavigating}
-                        />
+                    <div className="flex shrink-0 items-center gap-2">
+                        {renderToolbarActions()}
                     </div>
                 </div>
-            </div>
+            ) : (
+                <div className="mb-6 flex flex-col gap-3">
+                    <div className="flex items-center gap-2 overflow-x-auto">
+                        {renderToolbarActions()}
+                    </div>
+                    {renderToolbarSearch("w-full")}
+                    <div className="overflow-x-auto">
+                        {renderToolbarViews()}
+                    </div>
+                </div>
+            )}
 
             <LauncherGroupList
                 orgId={orgId}
@@ -495,19 +513,6 @@ export default function ResourceLauncher({
                 groupsPagination={groupsPagination}
                 resourcesByGroupKey={resourcesByGroupKey}
                 onClearFilters={handleClearFilters}
-                onResourceSelect={setSelectedResource}
-            />
-
-            <LauncherResourcePanel
-                open={selectedResource != null}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setSelectedResource(null);
-                    }
-                }}
-                resource={selectedResource}
-                orgId={orgId}
-                isAdmin={isAdmin}
             />
 
             <Credenza open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>

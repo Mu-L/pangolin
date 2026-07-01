@@ -10,7 +10,7 @@ import { getLauncherResourceSelectProps } from "./useLauncherResourceAction";
 type LauncherResourceCardProps = {
     resource: LauncherResource;
     showLabels: boolean;
-    onSelect: () => void;
+    onSelect?: () => void;
 };
 
 export function LauncherResourceCard({
@@ -19,18 +19,20 @@ export function LauncherResourceCard({
     onSelect
 }: LauncherResourceCardProps) {
     const hasIcon = Boolean(resource.iconUrl);
-    const clickProps = getLauncherResourceSelectProps(onSelect);
+    const clickProps = onSelect
+        ? getLauncherResourceSelectProps(onSelect)
+        : null;
 
     return (
         <div
             className={cn(
                 "flex min-w-0 flex-col gap-2.5 overflow-hidden rounded-xl border border-border bg-background p-4",
-                clickProps.className
+                clickProps?.className
             )}
-            onClick={clickProps.onClick}
-            onKeyDown={clickProps.onKeyDown}
-            role={clickProps.role}
-            tabIndex={clickProps.tabIndex}
+            onClick={clickProps?.onClick}
+            onKeyDown={clickProps?.onKeyDown}
+            role={clickProps?.role}
+            tabIndex={clickProps?.tabIndex}
         >
             <div
                 className={cn(

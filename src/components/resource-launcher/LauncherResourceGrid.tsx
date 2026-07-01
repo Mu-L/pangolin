@@ -6,7 +6,7 @@ import { LauncherResourceCard } from "./LauncherResourceCard";
 type LauncherResourceGridProps = {
     resources: LauncherResource[];
     showLabels: boolean;
-    onResourceSelect: (resource: LauncherResource) => void;
+    onResourceSelect?: (resource: LauncherResource) => void;
 };
 
 export function LauncherResourceGrid({
@@ -21,7 +21,11 @@ export function LauncherResourceGrid({
                     key={resource.launcherResourceKey}
                     resource={resource}
                     showLabels={showLabels}
-                    onSelect={() => onResourceSelect(resource)}
+                    onSelect={
+                        onResourceSelect
+                            ? () => onResourceSelect(resource)
+                            : undefined
+                    }
                 />
             ))}
         </div>
