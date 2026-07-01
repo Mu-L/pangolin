@@ -19,6 +19,7 @@ import {
     userResources,
     userSiteResources
 } from "@server/db";
+import { regionalCache as cache } from "#dynamic/lib/cache";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
@@ -57,7 +58,18 @@ export type AccessibleIds = {
     siteResourceIds: number[];
 };
 
-export async function resolveAccessibleIds(
+const LAUNCHER_ACCESSIBLE_IDS_TTL_SEC = 60;
+
+function launcherAccessibleIdsCacheKey(
+    orgId: string,
+    userId: string,
+    roleIds: number[]
+) {
+    const rolesKey = [...roleIds].sort((a, b) => a - b).join(",");
+    return `launcherAccessibleIds:${orgId}:${userId}:${rolesKey}`;
+}
+
+async function resolveAccessibleIdsUncached(
     orgId: string,
     userId: string,
     userRoleIds: number[]
@@ -156,6 +168,26 @@ export async function resolveAccessibleIds(
             ])
         )
     };
+}
+
+export async function resolveAccessibleIds(
+    orgId: string,
+    userId: string,
+    userRoleIds: number[]
+): Promise<AccessibleIds> {
+    const cacheKey = launcherAccessibleIdsCacheKey(orgId, userId, userRoleIds);
+    const cached = await cache.get<AccessibleIds>(cacheKey);
+    if (cached) {
+        return cached;
+    }
+
+    const result = await resolveAccessibleIdsUncached(
+        orgId,
+        userId,
+        userRoleIds
+    );
+    await cache.set(cacheKey, result, LAUNCHER_ACCESSIBLE_IDS_TTL_SEC);
+    return result;
 }
 
 function searchPattern(query: string) {
