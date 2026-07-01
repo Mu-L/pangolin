@@ -6,9 +6,10 @@ import {
 } from "@app/components/multi-site-selector";
 import {
     formatLabelsSelectorLabel,
-    LabelsSelector,
+    LABEL_COLORS,
     type SelectedLabel
 } from "@app/components/labels-selector";
+import { LabelsFilterSelector } from "@app/components/LabelsFilterSelector";
 import { Button } from "@app/components/ui/button";
 import {
     Popover,
@@ -16,9 +17,11 @@ import {
     PopoverTrigger
 } from "@app/components/ui/popover";
 import { cn } from "@app/lib/cn";
+import { orgQueries } from "@app/lib/queries";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { ChevronsUpDown, Funnel } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Selectedsite } from "@app/components/site-selector";
 
 type LauncherFilterPopoverProps = {
@@ -39,6 +42,34 @@ export function LauncherFilterPopover({
     const t = useTranslations();
     const [sitesOpen, setSitesOpen] = useState(false);
     const [labelsOpen, setLabelsOpen] = useState(false);
+
+    const { data: labels = [] } = useQuery(
+        orgQueries.labels({
+            orgId,
+            perPage: 500
+        })
+    );
+
+    const selectedLabelIds = useMemo(
+        () => new Set(selectedLabels.map((label) => label.labelId)),
+        [selectedLabels]
+    );
+
+    const resolvedSelectedLabels: SelectedLabel[] = useMemo(
+        () =>
+            selectedLabels.map((selected) => {
+                const found = labels.find(
+                    (label) => label.labelId === selected.labelId
+                );
+                return (
+                    found ?? {
+                        ...selected,
+                        color: selected.color || LABEL_COLORS.gray
+                    }
+                );
+            }),
+        [labels, selectedLabels]
+    );
 
     return (
         <Popover modal={false}>
@@ -101,7 +132,7 @@ export function LauncherFilterPopover({
                                 >
                                     <span className="truncate text-left">
                                         {formatLabelsSelectorLabel(
-                                            selectedLabels,
+                                            resolvedSelectedLabels,
                                             t
                                         )}
                                     </span>
@@ -112,16 +143,15 @@ export function LauncherFilterPopover({
                                 className="w-[var(--radix-popover-trigger-width)] p-0"
                                 align="start"
                             >
-                                <LabelsSelector
+                                <LabelsFilterSelector
                                     orgId={orgId}
-                                    selectedLabels={selectedLabels}
-                                    toggleLabel={(label, action) => {
-                                        if (action === "attach") {
-                                            onLabelsChange([
-                                                ...selectedLabels,
-                                                label
-                                            ]);
-                                        } else {
+                                    isSelected={(label) =>
+                                        selectedLabelIds.has(label.labelId)
+                                    }
+                                    onToggle={(label) => {
+                                        if (
+                                            selectedLabelIds.has(label.labelId)
+                                        ) {
                                             onLabelsChange(
                                                 selectedLabels.filter(
                                                     (item) =>
@@ -129,7 +159,16 @@ export function LauncherFilterPopover({
                                                         label.labelId
                                                 )
                                             );
+                                        } else {
+                                            onLabelsChange([
+                                                ...selectedLabels,
+                                                label
+                                            ]);
                                         }
+                                    }}
+                                    showClear={selectedLabels.length > 0}
+                                    onClear={() => {
+                                        onLabelsChange([]);
                                     }}
                                 />
                             </PopoverContent>
