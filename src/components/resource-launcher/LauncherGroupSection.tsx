@@ -40,6 +40,7 @@ type LauncherGroupSectionProps = {
         pageSize: number;
     };
     defaultOpen?: boolean;
+    onResourceSelect: (resource: LauncherResource) => void;
 };
 
 export function LauncherGroupSection({
@@ -49,7 +50,8 @@ export function LauncherGroupSection({
     config,
     initialResources,
     initialResourcesPagination,
-    defaultOpen = true
+    defaultOpen = true,
+    onResourceSelect
 }: LauncherGroupSectionProps) {
     const t = useTranslations();
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -175,11 +177,13 @@ export function LauncherGroupSection({
                     <LauncherResourceGrid
                         resources={resources}
                         showLabels={config.showLabels}
+                        onResourceSelect={onResourceSelect}
                     />
                 ) : (
                     <LauncherResourceList
                         resources={resources}
                         showLabels={config.showLabels}
+                        onResourceSelect={onResourceSelect}
                     />
                 )}
                 <div

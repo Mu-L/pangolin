@@ -791,6 +791,7 @@ async function mapPublicResources(
     const rows = await db
         .select({
             resourceId: resources.resourceId,
+            niceId: resources.niceId,
             name: resources.name,
             mode: resources.mode,
             fullDomain: resources.fullDomain,
@@ -842,6 +843,7 @@ async function mapPublicResources(
             launcherResourceKey: key,
             resourceType: "public",
             resourceId: row.resourceId,
+            niceId: row.niceId,
             name: row.name,
             ...access,
             iconUrl: null,
@@ -876,6 +878,7 @@ async function mapSiteResources(
     const rows = await db
         .select({
             siteResourceId: siteResources.siteResourceId,
+            niceId: siteResources.niceId,
             name: siteResources.name,
             mode: siteResources.mode,
             destination: siteResources.destination,
@@ -934,6 +937,7 @@ async function mapSiteResources(
             resourceType: "site",
             resourceId: row.siteResourceId,
             siteResourceId: row.siteResourceId,
+            niceId: row.niceId,
             name: row.name,
             ...access,
             iconUrl: null,

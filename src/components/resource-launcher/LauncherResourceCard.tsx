@@ -5,26 +5,21 @@ import type { LauncherResource } from "@server/routers/launcher/types";
 import { LauncherLabelsRow } from "./LauncherLabelsRow";
 import { LauncherResourceAccess } from "./LauncherResourceAccess";
 import { LauncherResourceIcon } from "./LauncherResourceIcon";
-import {
-    getLauncherResourceClickProps,
-    useLauncherResourceAction
-} from "./useLauncherResourceAction";
+import { getLauncherResourceSelectProps } from "./useLauncherResourceAction";
 
 type LauncherResourceCardProps = {
     resource: LauncherResource;
     showLabels: boolean;
+    onSelect: () => void;
 };
 
 export function LauncherResourceCard({
     resource,
-    showLabels
+    showLabels,
+    onSelect
 }: LauncherResourceCardProps) {
     const hasIcon = Boolean(resource.iconUrl);
-    const { handleAction, isClickable } = useLauncherResourceAction({
-        accessUrl: resource.accessUrl,
-        accessCopyValue: resource.accessCopyValue
-    });
-    const clickProps = getLauncherResourceClickProps(handleAction, isClickable);
+    const clickProps = getLauncherResourceSelectProps(onSelect);
 
     return (
         <div

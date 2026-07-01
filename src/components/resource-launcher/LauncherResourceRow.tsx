@@ -5,28 +5,23 @@ import type { LauncherResource } from "@server/routers/launcher/types";
 import { LauncherLabelsRow } from "./LauncherLabelsRow";
 import { LauncherResourceAccess } from "./LauncherResourceAccess";
 import { LauncherResourceIcon } from "./LauncherResourceIcon";
-import {
-    getLauncherResourceClickProps,
-    useLauncherResourceAction
-} from "./useLauncherResourceAction";
+import { getLauncherResourceSelectProps } from "./useLauncherResourceAction";
 
 type LauncherResourceRowProps = {
     resource: LauncherResource;
     showLabels: boolean;
     isLast?: boolean;
+    onSelect: () => void;
 };
 
 export function LauncherResourceRow({
     resource,
     showLabels,
-    isLast = false
+    isLast = false,
+    onSelect
 }: LauncherResourceRowProps) {
     const hasTags = showLabels && resource.labels.length > 0;
-    const { handleAction, isClickable } = useLauncherResourceAction({
-        accessUrl: resource.accessUrl,
-        accessCopyValue: resource.accessCopyValue
-    });
-    const clickProps = getLauncherResourceClickProps(handleAction, isClickable);
+    const clickProps = getLauncherResourceSelectProps(onSelect);
 
     return (
         <div

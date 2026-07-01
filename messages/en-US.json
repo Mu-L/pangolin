@@ -3573,6 +3573,7 @@
     "resourceLauncherShowRecents": "Show Recents",
     "resourceLauncherDeleteView": "Delete View",
     "resourceLauncherViewAsAdmin": "View as Admin",
+    "resourceLauncherResourceDetailsDescription": "View details for this resource.",
     "resourceLauncherUnlabeled": "Unlabeled",
     "resourceLauncherNoSite": "No Site",
     "resourceLauncherNoResourcesInGroup": "No resources in this group",

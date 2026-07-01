@@ -5,6 +5,7 @@ import type { LauncherGroupResources } from "@app/lib/launcherServerData";
 import { launcherQueries } from "@app/lib/queries";
 import type {
     LauncherGroup,
+    LauncherResource,
     LauncherViewConfig
 } from "@server/routers/launcher/types";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -25,6 +26,7 @@ type LauncherGroupListProps = {
     };
     resourcesByGroupKey: Record<string, LauncherGroupResources>;
     onClearFilters?: () => void;
+    onResourceSelect: (resource: LauncherResource) => void;
 };
 
 function hasActiveLauncherFilters(config: LauncherViewConfig): boolean {
@@ -42,7 +44,8 @@ export function LauncherGroupList({
     initialGroups,
     groupsPagination,
     resourcesByGroupKey,
-    onClearFilters
+    onClearFilters,
+    onResourceSelect
 }: LauncherGroupListProps) {
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -137,6 +140,7 @@ export function LauncherGroupList({
                         config={config}
                         initialResources={groupResources?.resources}
                         initialResourcesPagination={groupResources?.pagination}
+                        onResourceSelect={onResourceSelect}
                     />
                 );
             })}

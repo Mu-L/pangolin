@@ -44,26 +44,65 @@ export function useLauncherResourceAction({
 }
 
 export function isLauncherResourceInteractiveTarget(
-    target: EventTarget | null
+    target: EventTarget | null,
+    container?: EventTarget | null
 ): boolean {
     if (!(target instanceof Element)) {
         return false;
     }
 
-    return Boolean(
-        target.closest("a, button, [role='button'], input, textarea, select")
+    const interactive = target.closest(
+        "a, button, [role='button'], input, textarea, select"
     );
+
+    if (!interactive) {
+        return false;
+    }
+
+    if (container instanceof Element && interactive === container) {
+        return false;
+    }
+
+    return true;
 }
 
 function handleLauncherResourceClick(
     event: MouseEvent,
     handleAction: () => void
 ) {
-    if (isLauncherResourceInteractiveTarget(event.target)) {
+    if (
+        isLauncherResourceInteractiveTarget(event.target, event.currentTarget)
+    ) {
         return;
     }
 
     handleAction();
+}
+
+export function getLauncherResourceSelectProps(onSelect: () => void) {
+    return {
+        onClick: (event: MouseEvent) => {
+            if (
+                isLauncherResourceInteractiveTarget(
+                    event.target,
+                    event.currentTarget
+                )
+            ) {
+                return;
+            }
+
+            onSelect();
+        },
+        className: "cursor-pointer",
+        role: "button" as const,
+        tabIndex: 0,
+        onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect();
+            }
+        }
+    };
 }
 
 export function getLauncherResourceClickProps(

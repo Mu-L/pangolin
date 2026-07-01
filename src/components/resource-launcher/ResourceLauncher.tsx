@@ -32,6 +32,7 @@ import { useToast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import type {
     LauncherGroup,
+    LauncherResource,
     LauncherViewConfig,
     LauncherViewRecord
 } from "@server/routers/launcher/types";
@@ -55,6 +56,7 @@ import { LauncherGroupList } from "./LauncherGroupList";
 import { LauncherRefreshButton } from "./LauncherRefreshButton";
 import { LauncherSettingsMenu } from "./LauncherSettingsMenu";
 import { LauncherSortButton } from "./LauncherSortButton";
+import { LauncherResourcePanel } from "./LauncherResourcePanel";
 import { LauncherSaveViewMenu, LauncherViewTabs } from "./LauncherViewTabs";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 
@@ -96,6 +98,8 @@ export default function ResourceLauncher({
 
     const [searchInputResetKey, setSearchInputResetKey] = useState(0);
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+    const [selectedResource, setSelectedResource] =
+        useState<LauncherResource | null>(null);
     const [newViewName, setNewViewName] = useState("");
     const [saveOrgWide, setSaveOrgWide] = useState(false);
 
@@ -491,6 +495,19 @@ export default function ResourceLauncher({
                 groupsPagination={groupsPagination}
                 resourcesByGroupKey={resourcesByGroupKey}
                 onClearFilters={handleClearFilters}
+                onResourceSelect={setSelectedResource}
+            />
+
+            <LauncherResourcePanel
+                open={selectedResource != null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setSelectedResource(null);
+                    }
+                }}
+                resource={selectedResource}
+                orgId={orgId}
+                isAdmin={isAdmin}
             />
 
             <Credenza open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>

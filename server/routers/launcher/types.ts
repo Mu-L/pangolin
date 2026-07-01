@@ -39,6 +39,7 @@ export type LauncherResource = {
     resourceType: "public" | "site";
     resourceId: number;
     siteResourceId?: number;
+    niceId: string;
     name: string;
     accessDisplay: string;
     accessCopyValue: string;
