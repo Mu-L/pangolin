@@ -8,7 +8,7 @@ import {
     CommandItem,
     CommandList
 } from "@app/components/ui/command";
-import { orgQueries } from "@app/lib/queries";
+import { launcherQueries, orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -27,6 +27,7 @@ type LabelsFilterSelectorProps = {
     onToggle: (label: LabelFilterOption) => void;
     onClear?: () => void;
     showClear?: boolean;
+    scope?: "org" | "launcher";
 };
 
 export function LabelsFilterSelector({
@@ -34,19 +35,33 @@ export function LabelsFilterSelector({
     isSelected,
     onToggle,
     onClear,
-    showClear = false
+    showClear = false,
+    scope = "org"
 }: LabelsFilterSelectorProps) {
     const t = useTranslations();
     const [labelSearchQuery, setlabelsSearchQuery] = useState("");
     const [debouncedQuery] = useDebounce(labelSearchQuery, 150);
 
-    const { data: labels = [] } = useQuery(
-        orgQueries.labels({
+    const orgLabelsQuery = useQuery({
+        ...orgQueries.labels({
             orgId,
             query: debouncedQuery,
             perPage: 500
-        })
-    );
+        }),
+        enabled: scope === "org"
+    });
+    const launcherLabelsQuery = useQuery({
+        ...launcherQueries.labels({
+            orgId,
+            query: debouncedQuery,
+            perPage: 500
+        }),
+        enabled: scope === "launcher"
+    });
+    const labels =
+        scope === "launcher"
+            ? (launcherLabelsQuery.data ?? [])
+            : (orgLabelsQuery.data ?? []);
 
     return (
         <Command shouldFilter={false}>

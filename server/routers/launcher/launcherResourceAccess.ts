@@ -39,10 +39,12 @@ import {
 import {
     LAUNCHER_NO_SITE_GROUP_KEY,
     LAUNCHER_UNLABELED_GROUP_KEY,
+    type LauncherFilterListQuery,
     type LauncherGroup,
     type LauncherLabel,
     type LauncherListQuery,
     type LauncherResource,
+    type LauncherSiteInfo,
     parseIdListParam
 } from "./types";
 
@@ -1135,6 +1137,264 @@ export async function listLauncherResourcesForUser(
     const offset = (query.page - 1) * query.pageSize;
     return {
         resources: items.slice(offset, offset + query.pageSize),
+        total
+    };
+}
+
+function buildSiteNameSearchCondition(query: string) {
+    if (!query.trim()) {
+        return undefined;
+    }
+    const pattern = searchPattern(query.toLowerCase());
+    return or(
+        like(sql`LOWER(${sites.name})`, pattern),
+        like(sql`LOWER(${sites.niceId})`, pattern)
+    );
+}
+
+function buildLabelNameSearchCondition(query: string) {
+    if (!query.trim()) {
+        return undefined;
+    }
+    const pattern = searchPattern(query.toLowerCase());
+    return like(sql`LOWER(${labels.name})`, pattern);
+}
+
+async function collectAccessibleSites(
+    orgId: string,
+    accessible: AccessibleIds,
+    siteNameSearch?: ReturnType<typeof buildSiteNameSearchCondition>
+): Promise<Map<number, SiteGroupRow>> {
+    const siteCountMap = new Map<number, SiteGroupRow>();
+
+    if (accessible.resourceIds.length > 0) {
+        const publicConditions = [
+            inArray(resources.resourceId, accessible.resourceIds),
+            eq(resources.orgId, orgId),
+            eq(resources.enabled, true)
+        ];
+        if (siteNameSearch) {
+            publicConditions.push(siteNameSearch);
+        }
+
+        const publicRows = await db
+            .select({
+                siteId: sites.siteId,
+                name: sites.name,
+                type: sites.type,
+                online: sites.online,
+                itemCount: countDistinct(resources.resourceId)
+            })
+            .from(targets)
+            .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+            .innerJoin(sites, eq(targets.siteId, sites.siteId))
+            .where(and(...publicConditions))
+            .groupBy(sites.siteId, sites.name, sites.type, sites.online);
+
+        for (const row of publicRows) {
+            const existing = siteCountMap.get(row.siteId);
+            if (existing) {
+                existing.itemCount += Number(row.itemCount);
+            } else {
+                siteCountMap.set(row.siteId, {
+                    siteId: row.siteId,
+                    name: row.name,
+                    type: row.type,
+                    online: row.online,
+                    itemCount: Number(row.itemCount)
+                });
+            }
+        }
+    }
+
+    if (accessible.siteResourceIds.length > 0) {
+        const siteConditions = [
+            inArray(siteResources.siteResourceId, accessible.siteResourceIds),
+            eq(siteResources.orgId, orgId),
+            eq(siteResources.enabled, true)
+        ];
+        if (siteNameSearch) {
+            siteConditions.push(siteNameSearch);
+        }
+
+        const siteRows = await db
+            .select({
+                siteId: sites.siteId,
+                name: sites.name,
+                type: sites.type,
+                online: sites.online,
+                itemCount: countDistinct(siteResources.siteResourceId)
+            })
+            .from(siteResources)
+            .innerJoin(
+                siteNetworks,
+                eq(siteResources.networkId, siteNetworks.networkId)
+            )
+            .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+            .where(and(...siteConditions))
+            .groupBy(sites.siteId, sites.name, sites.type, sites.online);
+
+        for (const row of siteRows) {
+            const existing = siteCountMap.get(row.siteId);
+            if (existing) {
+                existing.itemCount += Number(row.itemCount);
+            } else {
+                siteCountMap.set(row.siteId, {
+                    siteId: row.siteId,
+                    name: row.name,
+                    type: row.type,
+                    online: row.online,
+                    itemCount: Number(row.itemCount)
+                });
+            }
+        }
+    }
+
+    return siteCountMap;
+}
+
+async function collectAccessibleLabels(
+    orgId: string,
+    accessible: AccessibleIds,
+    labelNameSearch?: ReturnType<typeof buildLabelNameSearchCondition>
+): Promise<Map<number, LauncherLabel>> {
+    const labelMap = new Map<number, LauncherLabel>();
+
+    if (!(await labelsEnabled(orgId))) {
+        return labelMap;
+    }
+
+    if (accessible.resourceIds.length > 0) {
+        const publicConditions = [
+            inArray(resources.resourceId, accessible.resourceIds),
+            eq(resources.orgId, orgId),
+            eq(resources.enabled, true),
+            eq(labels.orgId, orgId)
+        ];
+        if (labelNameSearch) {
+            publicConditions.push(labelNameSearch);
+        }
+
+        const labeledPublic = await db
+            .select({
+                labelId: labels.labelId,
+                name: labels.name,
+                color: labels.color
+            })
+            .from(resourceLabels)
+            .innerJoin(labels, eq(resourceLabels.labelId, labels.labelId))
+            .innerJoin(
+                resources,
+                eq(resourceLabels.resourceId, resources.resourceId)
+            )
+            .where(and(...publicConditions))
+            .groupBy(labels.labelId, labels.name, labels.color);
+
+        for (const row of labeledPublic) {
+            labelMap.set(row.labelId, {
+                labelId: row.labelId,
+                name: row.name,
+                color: row.color
+            });
+        }
+    }
+
+    if (accessible.siteResourceIds.length > 0) {
+        const siteConditions = [
+            inArray(siteResources.siteResourceId, accessible.siteResourceIds),
+            eq(siteResources.orgId, orgId),
+            eq(siteResources.enabled, true),
+            eq(labels.orgId, orgId)
+        ];
+        if (labelNameSearch) {
+            siteConditions.push(labelNameSearch);
+        }
+
+        const labeledSite = await db
+            .select({
+                labelId: labels.labelId,
+                name: labels.name,
+                color: labels.color
+            })
+            .from(siteResourceLabels)
+            .innerJoin(labels, eq(siteResourceLabels.labelId, labels.labelId))
+            .innerJoin(
+                siteResources,
+                eq(
+                    siteResourceLabels.siteResourceId,
+                    siteResources.siteResourceId
+                )
+            )
+            .where(and(...siteConditions))
+            .groupBy(labels.labelId, labels.name, labels.color);
+
+        for (const row of labeledSite) {
+            labelMap.set(row.labelId, {
+                labelId: row.labelId,
+                name: row.name,
+                color: row.color
+            });
+        }
+    }
+
+    return labelMap;
+}
+
+export async function listAccessibleLauncherSitesForUser(
+    orgId: string,
+    userId: string,
+    userRoleIds: number[],
+    query: LauncherFilterListQuery
+): Promise<{ sites: LauncherSiteInfo[]; total: number }> {
+    const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
+    const siteNameSearch = buildSiteNameSearchCondition(query.query);
+    const siteCountMap = await collectAccessibleSites(
+        orgId,
+        accessible,
+        siteNameSearch
+    );
+
+    const sites: LauncherSiteInfo[] = Array.from(siteCountMap.values())
+        .map((row) => ({
+            siteId: row.siteId,
+            name: row.name,
+            type: row.type,
+            online: row.online
+        }))
+        .sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+        );
+
+    const total = sites.length;
+    const offset = (query.page - 1) * query.pageSize;
+    return {
+        sites: sites.slice(offset, offset + query.pageSize),
+        total
+    };
+}
+
+export async function listAccessibleLauncherLabelsForUser(
+    orgId: string,
+    userId: string,
+    userRoleIds: number[],
+    query: LauncherFilterListQuery
+): Promise<{ labels: LauncherLabel[]; total: number }> {
+    const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
+    const labelNameSearch = buildLabelNameSearchCondition(query.query);
+    const labelMap = await collectAccessibleLabels(
+        orgId,
+        accessible,
+        labelNameSearch
+    );
+
+    const labelsList = Array.from(labelMap.values()).sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+    );
+
+    const total = labelsList.length;
+    const offset = (query.page - 1) * query.pageSize;
+    return {
+        labels: labelsList.slice(offset, offset + query.pageSize),
         total
     };
 }

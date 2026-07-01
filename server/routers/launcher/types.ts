@@ -93,6 +93,40 @@ export type ListLauncherViewsResponse = {
     views: LauncherViewRecord[];
 };
 
+export const launcherFilterListQuerySchema = z.strictObject({
+    pageSize: z.coerce
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .catch(500)
+        .default(500),
+    page: z.coerce.number().int().min(1).optional().catch(1).default(1),
+    query: z.string().optional().default("")
+});
+
+export type LauncherFilterListQuery = z.infer<
+    typeof launcherFilterListQuerySchema
+>;
+
+export type ListLauncherSitesResponse = {
+    sites: LauncherSiteInfo[];
+    pagination: {
+        total: number;
+        page: number;
+        pageSize: number;
+    };
+};
+
+export type ListLauncherLabelsResponse = {
+    labels: LauncherLabel[];
+    pagination: {
+        total: number;
+        page: number;
+        pageSize: number;
+    };
+};
+
 export const launcherListQuerySchema = z.strictObject({
     pageSize: z.coerce
         .number()

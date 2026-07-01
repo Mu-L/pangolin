@@ -17,7 +17,7 @@ import {
     PopoverTrigger
 } from "@app/components/ui/popover";
 import { cn } from "@app/lib/cn";
-import { orgQueries } from "@app/lib/queries";
+import { launcherQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { ChevronsUpDown, Funnel } from "lucide-react";
@@ -44,10 +44,35 @@ export function LauncherFilterPopover({
     const [labelsOpen, setLabelsOpen] = useState(false);
 
     const { data: labels = [] } = useQuery(
-        orgQueries.labels({
+        launcherQueries.labels({
             orgId,
             perPage: 500
         })
+    );
+
+    const { data: sites = [] } = useQuery(
+        launcherQueries.sites({
+            orgId,
+            perPage: 500
+        })
+    );
+
+    const resolvedSelectedSites: Selectedsite[] = useMemo(
+        () =>
+            selectedSites.map((selected) => {
+                const found = sites.find(
+                    (site) => site.siteId === selected.siteId
+                );
+                return found
+                    ? {
+                          siteId: found.siteId,
+                          name: found.name,
+                          type: found.type,
+                          online: found.online
+                      }
+                    : selected;
+            }),
+        [sites, selectedSites]
     );
 
     const selectedLabelIds = useMemo(
@@ -98,7 +123,7 @@ export function LauncherFilterPopover({
                                 >
                                     <span className="truncate text-left">
                                         {formatMultiSitesSelectorLabel(
-                                            selectedSites,
+                                            resolvedSelectedSites,
                                             t
                                         )}
                                     </span>
@@ -111,8 +136,9 @@ export function LauncherFilterPopover({
                             >
                                 <MultiSitesSelector
                                     orgId={orgId}
-                                    selectedSites={selectedSites}
+                                    selectedSites={resolvedSelectedSites}
                                     onSelectionChange={onSitesChange}
+                                    scope="launcher"
                                 />
                             </PopoverContent>
                         </Popover>
@@ -145,6 +171,7 @@ export function LauncherFilterPopover({
                             >
                                 <LabelsFilterSelector
                                     orgId={orgId}
+                                    scope="launcher"
                                     isSelected={(label) =>
                                         selectedLabelIds.has(label.labelId)
                                     }

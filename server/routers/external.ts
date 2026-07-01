@@ -469,6 +469,18 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/launcher/sites",
+    verifyOrgAccess,
+    launcher.listLauncherSites
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/labels",
+    verifyOrgAccess,
+    launcher.listLauncherLabels
+);
+
+authenticated.get(
     "/org/:orgId/launcher/views",
     verifyOrgAccess,
     launcher.listLauncherViews
