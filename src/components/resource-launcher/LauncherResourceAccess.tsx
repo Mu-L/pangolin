@@ -27,18 +27,18 @@ export function LauncherResourceAccess({
 
     if (variant === "list") {
         return (
-            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5 max-md:min-w-[12rem] max-md:shrink-0 max-md:flex-none">
                 {canLink ? (
                     <Link
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="min-w-0 truncate text-sm text-muted-foreground hover:underline"
+                        className="min-w-0 truncate text-sm text-muted-foreground hover:underline max-md:overflow-visible max-md:whitespace-nowrap"
                     >
                         {accessDisplay}
                     </Link>
                 ) : (
-                    <span className="min-w-0 truncate text-sm text-muted-foreground">
+                    <span className="min-w-0 truncate text-sm text-muted-foreground max-md:overflow-visible max-md:whitespace-nowrap">
                         {accessDisplay}
                     </span>
                 )}

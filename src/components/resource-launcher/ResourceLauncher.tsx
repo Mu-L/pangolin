@@ -371,36 +371,8 @@ export default function ResourceLauncher({
             />
 
             <div className="flex flex-col gap-3 mb-6">
-                <div className="flex flex-col xl:flex-row xl:items-center gap-3 justify-between">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0 flex-1">
-                        <div className="relative w-full sm:max-w-sm shrink-0">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                            <Input
-                                value={searchInput}
-                                onChange={(event) => {
-                                    const value = event.target.value;
-                                    setSearchInput(value);
-                                    debouncedNavigateSearch(
-                                        activeViewIdRef.current,
-                                        value
-                                    );
-                                }}
-                                placeholder={t(
-                                    "resourceLauncherSearchPlaceholder"
-                                )}
-                                className="pl-8"
-                            />
-                        </div>
-                        <LauncherViewTabs
-                            activeViewId={activeViewId}
-                            savedViews={views.map((view) => ({
-                                viewId: view.viewId,
-                                name: view.name
-                            }))}
-                            onSelectView={selectView}
-                        />
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 justify-end">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                    <div className="flex items-center gap-2 shrink-0 justify-start xl:justify-end order-1 sm:order-2 xl:order-2">
                         <LauncherSaveViewMenu
                             isDefaultView={isDefaultView}
                             isAdmin={isAdmin}
@@ -446,6 +418,34 @@ export default function ResourceLauncher({
                                     deleteViewMutation.mutate(activeViewId);
                                 }
                             }}
+                        />
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0 flex-1 order-2 sm:order-1 xl:order-1">
+                        <div className="relative w-full sm:max-w-sm shrink-0">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                            <Input
+                                value={searchInput}
+                                onChange={(event) => {
+                                    const value = event.target.value;
+                                    setSearchInput(value);
+                                    debouncedNavigateSearch(
+                                        activeViewIdRef.current,
+                                        value
+                                    );
+                                }}
+                                placeholder={t(
+                                    "resourceLauncherSearchPlaceholder"
+                                )}
+                                className="pl-8"
+                            />
+                        </div>
+                        <LauncherViewTabs
+                            activeViewId={activeViewId}
+                            savedViews={views.map((view) => ({
+                                viewId: view.viewId,
+                                name: view.name
+                            }))}
+                            onSelectView={selectView}
                         />
                     </div>
                 </div>

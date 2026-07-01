@@ -29,8 +29,7 @@ export function LauncherResourceCard({
     return (
         <div
             className={cn(
-                "flex min-w-0 flex-col gap-2.5 overflow-hidden rounded-xl border border-border bg-background p-4 transition-colors",
-                isClickable && "hover:bg-accent/40",
+                "flex min-w-0 flex-col gap-2.5 overflow-hidden rounded-xl border border-border bg-background p-4",
                 clickProps.className
             )}
             onClick={clickProps.onClick}

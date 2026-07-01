@@ -36,9 +36,8 @@ export function LauncherResourceRow({
     return (
         <div
             className={cn(
-                "flex items-center gap-2.5 p-4 transition-colors",
+                "flex items-center gap-2.5 p-4 max-md:min-w-max max-md:whitespace-nowrap",
                 isLast ? undefined : "border-b border-border",
-                isClickable && "hover:bg-accent/40",
                 clickProps.className
             )}
             onClick={clickProps.onClick}
@@ -46,15 +45,24 @@ export function LauncherResourceRow({
             role={clickProps.role}
             tabIndex={clickProps.tabIndex}
         >
-            <LauncherResourceIcon
-                iconUrl={resource.iconUrl}
-                name={resource.name}
-                variant="list"
-            />
+            <div
+                className={cn(
+                    "flex shrink-0 items-center gap-2.5",
+                    "max-md:sticky max-md:left-0 max-md:z-10 max-md:min-w-[9rem]",
+                    "max-md:-my-4 max-md:-ml-4 max-md:py-4 max-md:pl-4 max-md:pr-3",
+                    "max-md:bg-card max-md:[mask-image:linear-gradient(to_left,transparent_0%,black_20px)]"
+                )}
+            >
+                <LauncherResourceIcon
+                    iconUrl={resource.iconUrl}
+                    name={resource.name}
+                    variant="list"
+                />
 
-            <span className="shrink-0 text-sm font-semibold text-foreground">
-                {resource.name}
-            </span>
+                <span className="text-sm font-semibold text-foreground">
+                    {resource.name}
+                </span>
+            </div>
 
             <LauncherResourceAccess
                 accessDisplay={resource.accessDisplay}
@@ -64,7 +72,7 @@ export function LauncherResourceRow({
             />
 
             {hasTags ? (
-                <div className="ml-auto flex min-w-0 max-w-md shrink items-center justify-end gap-1">
+                <div className="flex min-w-0 max-w-md shrink items-center justify-end gap-1 max-md:shrink-0 max-md:max-w-none md:ml-auto">
                     {showSiteTags && resource.site ? (
                         <LabelBadge
                             name={resource.site.name}
