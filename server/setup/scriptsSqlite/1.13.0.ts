@@ -271,7 +271,6 @@ export default async function migration() {
                 `ALTER TABLE 'sites' DROP COLUMN 'remoteSubnets';`
             ).run();
 
-<<<<<<< Updated upstream
             // get all of the siteResources and set the aliasAddress to 100.96.128.x starting at .8
             const siteResourcesForAlias = db
                 .prepare(
@@ -279,15 +278,6 @@ export default async function migration() {
                 )
                 .all() as {
                 siteResourceId: number;
-=======
-            // Associate clients with site resources based on their previous site access
-            // Get all client-site associations from the renamed clientSitesAssociationsCache table
-            const clientSiteAssociations = db
-                .prepare(`SELECT clientId, siteId FROM 'clientSitesAssociationsCache'`)
-                .all() as {
-                clientId: number;
-                siteId: number;
->>>>>>> Stashed changes
             }[];
 
             const updateAliasAddress = db.prepare(
@@ -345,7 +335,6 @@ export default async function migration() {
                 `INSERT INTO 'clientSiteResources' ('clientId', 'siteResourceId') VALUES (?, ?)`
             );
 
-<<<<<<< Updated upstream
             // create a clientSiteResourcesAssociationsCache entry for each existing association as well
             const insertClientSiteResourceCache = db.prepare(
                 `INSERT INTO 'clientSiteResourcesAssociationsCache' ('clientId', 'siteResourceId') VALUES (?, ?)`
@@ -356,13 +345,6 @@ export default async function migration() {
                 const siteResources = getSiteResources.all(
                     association.siteId
                 ) as {
-=======
-            // For each client-site association, find all site resources for that site
-            for (const association of clientSiteAssociations) {
-                const siteResources = db
-                    .prepare(`SELECT siteResourceId FROM 'siteResources' WHERE siteId = ?`)
-                    .all(association.siteId) as {
->>>>>>> Stashed changes
                     siteResourceId: number;
                 }[];
 
@@ -370,24 +352,14 @@ export default async function migration() {
                 for (const siteResource of siteResources) {
                     insertClientSiteResource.run(
                         association.clientId,
-<<<<<<< Updated upstream
                         siteResource.siteResourceId
                     );
                     insertClientSiteResourceCache.run(
                         association.clientId,
-=======
->>>>>>> Stashed changes
                         siteResource.siteResourceId
                     );
                 }
             }
-
-            // Get all clients for niceId population (used later)
-            const clients = db
-                .prepare(`SELECT clientId FROM 'clients'`)
-                .all() as {
-                clientId: number;
-            }[];
 
             // Associate existing site resources with their org's admin role
             const siteResourcesWithOrg = db
