@@ -85,21 +85,16 @@ export default function ResourceLauncher({
     const { navigate, isNavigating, searchParams } = useNavigationContext();
     const hasRestoredLastView = useRef(false);
 
-    const [searchInput, setSearchInput] = useState(config.query);
+    const [searchInputResetKey, setSearchInputResetKey] = useState(0);
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
     const [newViewName, setNewViewName] = useState("");
     const [saveOrgWide, setSaveOrgWide] = useState(false);
 
     const configRef = useRef(config);
     configRef.current = config;
-    const searchInputRef = useRef(searchInput);
-    searchInputRef.current = searchInput;
+    const searchInputRef = useRef(config.query);
     const activeViewIdRef = useRef(activeViewId);
     activeViewIdRef.current = activeViewId;
-
-    useEffect(() => {
-        setSearchInput(config.query);
-    }, [config.query]);
 
     useEffect(() => {
         if (hasRestoredLastView.current) {
@@ -307,7 +302,8 @@ export default function ResourceLauncher({
     );
 
     const handleClearFilters = useCallback(() => {
-        setSearchInput("");
+        searchInputRef.current = "";
+        setSearchInputResetKey((key) => key + 1);
         navigateToConfig(activeViewIdRef.current, {
             ...configRef.current,
             query: "",
@@ -376,10 +372,11 @@ export default function ResourceLauncher({
                         <div className="relative w-full sm:max-w-sm shrink-0">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                             <Input
-                                value={searchInput}
+                                key={`${activeViewId}-${searchInputResetKey}`}
+                                defaultValue={config.query}
                                 onChange={(event) => {
-                                    const value = event.target.value;
-                                    setSearchInput(value);
+                                    const value = event.currentTarget.value;
+                                    searchInputRef.current = value;
                                     debouncedNavigateSearch(
                                         activeViewIdRef.current,
                                         value
@@ -389,6 +386,7 @@ export default function ResourceLauncher({
                                     "resourceLauncherSearchPlaceholder"
                                 )}
                                 className="pl-8"
+                                type="search"
                             />
                         </div>
                         <LauncherViewTabs
