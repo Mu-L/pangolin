@@ -14,7 +14,7 @@ import {
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import { db } from "@server/db";
-import { recordPing } from "@server/routers/newt/pingAccumulator";
+import { recordSitePing } from "@server/routers/newt/pingAccumulator";
 import { validateNewtSessionToken } from "@server/auth/sessions/newt";
 import { validateOlmSessionToken } from "@server/auth/sessions/olm";
 import { messageHandlers } from "./messageHandlers";
@@ -424,7 +424,7 @@ const setupConnection = async (
             // pending pings in a single batched UPDATE every ~10s, which
             // prevents connection pool exhaustion under load (especially
             // with cross-region latency to the database).
-            recordPing(newtClient.siteId);
+            recordSitePing(newtClient.siteId);
         });
     }
 
