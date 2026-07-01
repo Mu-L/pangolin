@@ -6,13 +6,11 @@ import { LauncherResourceRow } from "./LauncherResourceRow";
 type LauncherResourceListProps = {
     resources: LauncherResource[];
     showLabels: boolean;
-    showSiteTags: boolean;
 };
 
 export function LauncherResourceList({
     resources,
-    showLabels,
-    showSiteTags
+    showLabels
 }: LauncherResourceListProps) {
     return (
         <div className="w-full max-md:overflow-x-auto max-md:overflow-y-hidden">
@@ -22,7 +20,6 @@ export function LauncherResourceList({
                         key={resource.launcherResourceKey}
                         resource={resource}
                         showLabels={showLabels}
-                        showSiteTags={showSiteTags}
                         isLast={index === resources.length - 1}
                     />
                 ))}

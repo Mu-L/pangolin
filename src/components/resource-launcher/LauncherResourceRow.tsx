@@ -1,6 +1,5 @@
 "use client";
 
-import { LabelBadge } from "@app/components/label-badge";
 import { cn } from "@app/lib/cn";
 import type { LauncherResource } from "@server/routers/launcher/types";
 import { LauncherLabelsRow } from "./LauncherLabelsRow";
@@ -14,19 +13,15 @@ import {
 type LauncherResourceRowProps = {
     resource: LauncherResource;
     showLabels: boolean;
-    showSiteTags: boolean;
     isLast?: boolean;
 };
 
 export function LauncherResourceRow({
     resource,
     showLabels,
-    showSiteTags,
     isLast = false
 }: LauncherResourceRowProps) {
-    const hasTags =
-        (showSiteTags && resource.site) ||
-        (showLabels && resource.labels.length > 0);
+    const hasTags = showLabels && resource.labels.length > 0;
     const { handleAction, isClickable } = useLauncherResourceAction({
         accessUrl: resource.accessUrl,
         accessCopyValue: resource.accessCopyValue
@@ -45,24 +40,15 @@ export function LauncherResourceRow({
             role={clickProps.role}
             tabIndex={clickProps.tabIndex}
         >
-            <div
-                className={cn(
-                    "flex shrink-0 items-center gap-2.5",
-                    "max-md:sticky max-md:left-0 max-md:z-10 max-md:min-w-[9rem]",
-                    "max-md:-my-4 max-md:-ml-4 max-md:py-4 max-md:pl-4 max-md:pr-3",
-                    "max-md:bg-card max-md:[mask-image:linear-gradient(to_left,transparent_0%,black_20px)]"
-                )}
-            >
-                <LauncherResourceIcon
-                    iconUrl={resource.iconUrl}
-                    name={resource.name}
-                    variant="list"
-                />
+            <LauncherResourceIcon
+                iconUrl={resource.iconUrl}
+                name={resource.name}
+                variant="list"
+            />
 
-                <span className="text-sm font-semibold text-foreground">
-                    {resource.name}
-                </span>
-            </div>
+            <span className="shrink-0 text-sm font-semibold text-foreground">
+                {resource.name}
+            </span>
 
             <LauncherResourceAccess
                 accessDisplay={resource.accessDisplay}
@@ -73,21 +59,11 @@ export function LauncherResourceRow({
 
             {hasTags ? (
                 <div className="flex min-w-0 max-w-md shrink items-center justify-end gap-1 max-md:shrink-0 max-md:max-w-none md:ml-auto">
-                    {showSiteTags && resource.site ? (
-                        <LabelBadge
-                            name={resource.site.name}
-                            color="#a1a1aa"
-                            displayOnly
-                            className="shrink-0"
-                        />
-                    ) : null}
-                    {showLabels ? (
-                        <LauncherLabelsRow
-                            labels={resource.labels}
-                            variant="single-row"
-                            className="w-auto shrink-0 justify-end"
-                        />
-                    ) : null}
+                    <LauncherLabelsRow
+                        labels={resource.labels}
+                        variant="single-row"
+                        className="w-auto shrink-0 justify-end"
+                    />
                 </div>
             ) : null}
         </div>

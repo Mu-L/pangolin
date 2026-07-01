@@ -48,7 +48,7 @@ export function LauncherGroupTrigger({
     isOpen
 }: LauncherGroupTriggerProps) {
     return (
-        <CollapsibleTrigger className="sticky top-0 z-20 md:top-16 flex w-full items-center gap-2.5 rounded-md bg-accent px-4 py-2.5 text-left transition-colors cursor-pointer">
+        <CollapsibleTrigger className="flex w-full items-center gap-2.5 rounded-md bg-accent px-4 py-2.5 text-left transition-colors cursor-pointer">
             {group.groupType === "site" || group.groupType === "label" ? (
                 <LauncherGroupStatusDot group={group} />
             ) : null}

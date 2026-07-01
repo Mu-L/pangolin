@@ -180,7 +180,6 @@ export function LauncherGroupSection({
                     <LauncherResourceList
                         resources={resources}
                         showLabels={config.showLabels}
-                        showSiteTags={config.showSiteTags}
                     />
                 )}
                 <div

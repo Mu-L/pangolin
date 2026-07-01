@@ -115,21 +115,6 @@ export function LauncherSettingsMenu({
                                 }
                             />
                         </div>
-                        <div className="flex items-center justify-between gap-3">
-                            <Label
-                                htmlFor="show-site-tags"
-                                className="text-sm font-semibold"
-                            >
-                                {t("resourceLauncherShowSiteTags")}
-                            </Label>
-                            <Switch
-                                id="show-site-tags"
-                                checked={config.showSiteTags}
-                                onCheckedChange={(checked) =>
-                                    onConfigChange({ showSiteTags: checked })
-                                }
-                            />
-                        </div>
                     </div>
 
                     {!isDefaultView ? (

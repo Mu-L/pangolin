@@ -18,7 +18,6 @@ export type LauncherUrlConfigOverrides = Partial<
         | "layout"
         | "order"
         | "showLabels"
-        | "showSiteTags"
         | "siteIds"
         | "labelIds"
         | "query"
@@ -43,7 +42,6 @@ const LAUNCHER_CONFIG_PARAM_KEYS = [
     "layout",
     "order",
     "showLabels",
-    "showSiteTags",
     "siteIds",
     "labelIds"
 ] as const;
@@ -134,14 +132,6 @@ function parseConfigOverrides(
         const parsed = launcherUrlBooleanSchema.safeParse(showLabels);
         if (parsed.success) {
             overrides.showLabels = parsed.data;
-        }
-    }
-
-    const showSiteTags = searchParams.get("showSiteTags");
-    if (showSiteTags !== null) {
-        const parsed = launcherUrlBooleanSchema.safeParse(showSiteTags);
-        if (parsed.success) {
-            overrides.showSiteTags = parsed.data;
         }
     }
 
@@ -261,10 +251,6 @@ export function serializeLauncherUrlState({
 
     if (config.showLabels !== baseConfig.showLabels) {
         params.set("showLabels", config.showLabels ? "1" : "0");
-    }
-
-    if (config.showSiteTags !== baseConfig.showSiteTags) {
-        params.set("showSiteTags", config.showSiteTags ? "1" : "0");
     }
 
     if (!idListsEqual(config.siteIds, baseConfig.siteIds)) {
