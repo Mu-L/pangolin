@@ -53,6 +53,11 @@ import type {
     LauncherListQuery,
     LauncherViewConfig
 } from "@server/routers/launcher/types";
+import type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
+import { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
+
+export type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
+export { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
 
 export type ProductUpdate = {
     link: string | null;
@@ -1174,45 +1179,6 @@ export const domainQueries = {
         })
 };
 
-export type LauncherQueryFilters = {
-    query?: string;
-    groupBy?: LauncherListQuery["groupBy"];
-    groupKey?: string;
-    siteIds?: number[];
-    labelIds?: number[];
-    sort_by?: LauncherListQuery["sort_by"];
-    order?: LauncherListQuery["order"];
-    pageSize?: number;
-};
-
-function launcherSearchParams(filters: LauncherQueryFilters, page: number) {
-    const sp = new URLSearchParams();
-    sp.set("page", String(page));
-    sp.set("pageSize", String(filters.pageSize ?? 20));
-    if (filters.query) {
-        sp.set("query", filters.query);
-    }
-    if (filters.groupBy) {
-        sp.set("groupBy", filters.groupBy);
-    }
-    if (filters.groupKey) {
-        sp.set("groupKey", filters.groupKey);
-    }
-    if (filters.siteIds?.length) {
-        sp.set("siteIds", filters.siteIds.join(","));
-    }
-    if (filters.labelIds?.length) {
-        sp.set("labelIds", filters.labelIds.join(","));
-    }
-    if (filters.sort_by) {
-        sp.set("sort_by", filters.sort_by);
-    }
-    if (filters.order) {
-        sp.set("order", filters.order);
-    }
-    return sp;
-}
-
 export const launcherQueries = {
     views: (orgId: string) =>
         queryOptions({
@@ -1228,7 +1194,7 @@ export const launcherQueries = {
         infiniteQueryOptions({
             queryKey: ["ORG", orgId, "LAUNCHER", "GROUPS", filters] as const,
             queryFn: async ({ pageParam = 1, signal, meta }) => {
-                const sp = launcherSearchParams(filters, pageParam);
+                const sp = buildLauncherSearchParams(filters, pageParam);
                 const res = await meta!.api.get<
                     AxiosResponse<ListLauncherGroupsResponse>
                 >(`/org/${orgId}/launcher/groups?${sp.toString()}`, { signal });
@@ -1249,7 +1215,7 @@ export const launcherQueries = {
         infiniteQueryOptions({
             queryKey: ["ORG", orgId, "LAUNCHER", "RESOURCES", filters] as const,
             queryFn: async ({ pageParam = 1, signal, meta }) => {
-                const sp = launcherSearchParams(filters, pageParam);
+                const sp = buildLauncherSearchParams(filters, pageParam);
                 const res = await meta!.api.get<
                     AxiosResponse<ListLauncherResourcesResponse>
                 >(`/org/${orgId}/launcher/resources?${sp.toString()}`, {

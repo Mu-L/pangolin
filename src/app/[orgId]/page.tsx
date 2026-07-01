@@ -2,8 +2,8 @@ import { Layout } from "@app/components/Layout";
 import ResourceLauncher from "@app/components/resource-launcher/ResourceLauncher";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
+import { fetchLauncherPageData } from "@app/lib/launcherServerData";
 import { verifySession } from "@app/lib/auth/verifySession";
-import { pullEnv } from "@app/lib/pullEnv";
 import UserProvider from "@app/providers/UserProvider";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import { GetOrgOverviewResponse } from "@server/routers/org/getOrgOverview";
@@ -13,7 +13,10 @@ import { cache } from "react";
 
 type OrgPageProps = {
     params: Promise<{ orgId: string }>;
+    searchParams: Promise<Record<string, string>>;
 };
+
+export const dynamic = "force-dynamic";
 
 export default async function OrgPage(props: OrgPageProps) {
     const params = await props.params;
@@ -55,6 +58,15 @@ export default async function OrgPage(props: OrgPageProps) {
 
     const isAdminOrOwner = Boolean(overview?.isAdmin || overview?.isOwner);
 
+    const searchParams = new URLSearchParams(await props.searchParams);
+    const launcherData = overview
+        ? await fetchLauncherPageData(
+              orgId,
+              searchParams,
+              await authCookieHeader()
+          )
+        : null;
+
     return (
         <UserProvider user={user}>
             <Layout
@@ -65,8 +77,18 @@ export default async function OrgPage(props: OrgPageProps) {
                 launcherMode
                 showViewAsAdmin={isAdminOrOwner}
             >
-                {overview ? (
-                    <ResourceLauncher orgId={orgId} isAdmin={isAdminOrOwner} />
+                {overview && launcherData ? (
+                    <ResourceLauncher
+                        orgId={orgId}
+                        isAdmin={isAdminOrOwner}
+                        views={launcherData.views}
+                        activeViewId={launcherData.activeViewId}
+                        config={launcherData.config}
+                        savedConfig={launcherData.savedConfig}
+                        groups={launcherData.groups}
+                        groupsPagination={launcherData.groupsPagination}
+                        resourcesByGroupKey={launcherData.resourcesByGroupKey}
+                    />
                 ) : null}
             </Layout>
         </UserProvider>

@@ -14,30 +14,31 @@ import { CheckboxWithLabel } from "@app/components/ui/checkbox";
 import { Input } from "@app/components/ui/input";
 import { Label } from "@app/components/ui/label";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import {
     readLauncherLastView,
     writeLauncherLastView,
     type LauncherActiveViewId
 } from "@app/lib/launcherLocalStorage";
+import type { LauncherGroupResources } from "@app/lib/launcherServerData";
 import {
     buildLauncherPath,
     getLauncherUrlBaseConfig,
     isLauncherConfigEqual,
-    resolveLauncherStateFromUrl,
+    parseLauncherUrlState,
     serializeLauncherUrlState
 } from "@app/lib/launcherUrlState";
-import { launcherQueries } from "@app/lib/queries";
 import { useToast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import {
-    defaultLauncherViewConfig,
-    type LauncherViewConfig,
-    type LauncherViewRecord
+import type {
+    LauncherGroup,
+    LauncherViewConfig,
+    LauncherViewRecord
 } from "@server/routers/launcher/types";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import type { Selectedsite } from "@app/components/site-selector";
@@ -52,33 +53,39 @@ import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 type ResourceLauncherProps = {
     orgId: string;
     isAdmin: boolean;
+    views: LauncherViewRecord[];
+    activeViewId: LauncherActiveViewId;
+    config: LauncherViewConfig;
+    savedConfig: LauncherViewConfig;
+    groups: LauncherGroup[];
+    groupsPagination: {
+        total: number;
+        page: number;
+        pageSize: number;
+    };
+    resourcesByGroupKey: Record<string, LauncherGroupResources>;
 };
 
 export default function ResourceLauncher({
     orgId,
-    isAdmin
+    isAdmin,
+    views,
+    activeViewId,
+    config,
+    savedConfig,
+    groups,
+    groupsPagination,
+    resourcesByGroupKey
 }: ResourceLauncherProps) {
     const t = useTranslations();
     const { toast } = useToast();
     const { env } = useEnvContext();
-    const queryClient = useQueryClient();
     const api = createApiClient({ env });
     const router = useRouter();
-    const searchParams = useSearchParams();
-
-    const [activeViewId, setActiveViewId] =
-        useState<LauncherActiveViewId>("default");
+    const { navigate, isNavigating, searchParams } = useNavigationContext();
     const hasRestoredLastView = useRef(false);
-    const isApplyingUrlRef = useRef(false);
 
-    const [config, setConfig] = useState<LauncherViewConfig>(
-        defaultLauncherViewConfig
-    );
-    const [savedConfig, setSavedConfig] = useState<LauncherViewConfig>(
-        defaultLauncherViewConfig
-    );
-    const [searchInput, setSearchInput] = useState("");
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchInput, setSearchInput] = useState(config.query);
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
     const [newViewName, setNewViewName] = useState("");
     const [saveOrgWide, setSaveOrgWide] = useState(false);
@@ -90,68 +97,66 @@ export default function ResourceLauncher({
     const activeViewIdRef = useRef(activeViewId);
     activeViewIdRef.current = activeViewId;
 
-    const { data: views = [], isLoading: viewsLoading } = useQuery(
-        launcherQueries.views(orgId)
-    );
+    useEffect(() => {
+        setSearchInput(config.query);
+    }, [config.query]);
 
-    const syncUrl = useCallback(
+    useEffect(() => {
+        if (hasRestoredLastView.current) {
+            return;
+        }
+        hasRestoredLastView.current = true;
+
+        const parsed = parseLauncherUrlState(searchParams);
+        if (parsed.hasAnyLauncherParams) {
+            return;
+        }
+
+        const lastView = readLauncherLastView(orgId);
+        if (lastView === null || lastView === activeViewId) {
+            return;
+        }
+
+        const isValid =
+            lastView === "default" ||
+            views.some((view) => view.viewId === lastView);
+        if (!isValid) {
+            return;
+        }
+
+        const baseConfig = getLauncherUrlBaseConfig(lastView, views);
+        const params = serializeLauncherUrlState({
+            viewId: lastView,
+            config: baseConfig
+        });
+        navigate({ searchParams: params, replace: true });
+    }, [activeViewId, navigate, orgId, searchParams, views]);
+
+    const navigateToConfig = useCallback(
         (viewId: LauncherActiveViewId, nextConfig: LauncherViewConfig) => {
-            if (isApplyingUrlRef.current) {
-                return;
-            }
-
             const params = serializeLauncherUrlState({
                 viewId,
                 config: nextConfig
             });
-            const path = buildLauncherPath(orgId, params);
-            router.replace(path, { scroll: false });
+            navigate({ searchParams: params });
         },
-        [orgId, router]
+        [navigate]
     );
 
-    const debouncedSyncSearch = useDebouncedCallback(
+    const debouncedNavigateSearch = useDebouncedCallback(
         (viewId: LauncherActiveViewId, query: string) => {
-            const nextConfig = { ...configRef.current, query };
-            setSearchQuery(query);
-            syncUrl(viewId, nextConfig);
+            navigateToConfig(viewId, { ...configRef.current, query });
         },
         300
     );
-
-    useEffect(() => {
-        if (viewsLoading) {
-            return;
-        }
-
-        let fallbackViewId: LauncherActiveViewId | null = null;
-        if (!hasRestoredLastView.current) {
-            hasRestoredLastView.current = true;
-            fallbackViewId = readLauncherLastView(orgId);
-        }
-
-        isApplyingUrlRef.current = true;
-        const resolved = resolveLauncherStateFromUrl(
-            new URLSearchParams(searchParams),
-            views,
-            fallbackViewId
-        );
-
-        setActiveViewId(resolved.activeViewId);
-        setConfig(resolved.config);
-        setSavedConfig(resolved.savedConfig);
-        setSearchInput(resolved.config.query);
-        setSearchQuery(resolved.config.query);
-        isApplyingUrlRef.current = false;
-    }, [orgId, searchParams, views, viewsLoading]);
 
     const selectView = useCallback(
         (viewId: LauncherActiveViewId) => {
             writeLauncherLastView(orgId, viewId);
             const baseConfig = getLauncherUrlBaseConfig(viewId, views);
-            syncUrl(viewId, baseConfig);
+            navigateToConfig(viewId, baseConfig);
         },
-        [orgId, syncUrl, views]
+        [navigateToConfig, orgId, views]
     );
 
     const activeSavedView = useMemo(
@@ -186,12 +191,6 @@ export default function ResourceLauncher({
         [config.labelIds]
     );
 
-    const invalidateLauncher = () => {
-        void queryClient.invalidateQueries({
-            queryKey: ["ORG", orgId, "LAUNCHER"]
-        });
-    };
-
     const createViewMutation = useMutation({
         mutationFn: async (payload: {
             name: string;
@@ -202,23 +201,13 @@ export default function ResourceLauncher({
             return res.data.data as LauncherViewRecord;
         },
         onSuccess: (view) => {
-            invalidateLauncher();
             writeLauncherLastView(orgId, view.viewId);
-
-            isApplyingUrlRef.current = true;
-            setActiveViewId(view.viewId);
-            setConfig(view.config);
-            setSavedConfig(view.config);
-            setSearchInput(view.config.query);
-            setSearchQuery(view.config.query);
-            isApplyingUrlRef.current = false;
-
             const params = serializeLauncherUrlState({
                 viewId: view.viewId,
                 config: view.config
             });
-            router.replace(buildLauncherPath(orgId, params), { scroll: false });
-
+            navigate({ searchParams: params, replace: true });
+            router.refresh();
             setSaveDialogOpen(false);
             setNewViewName("");
             toast({
@@ -253,22 +242,12 @@ export default function ResourceLauncher({
             return res.data.data as LauncherViewRecord;
         },
         onSuccess: (view) => {
-            invalidateLauncher();
-
-            isApplyingUrlRef.current = true;
-            setActiveViewId(view.viewId);
-            setConfig(view.config);
-            setSavedConfig(view.config);
-            setSearchInput(view.config.query);
-            setSearchQuery(view.config.query);
-            isApplyingUrlRef.current = false;
-
             const params = serializeLauncherUrlState({
                 viewId: view.viewId,
                 config: view.config
             });
-            router.replace(buildLauncherPath(orgId, params), { scroll: false });
-
+            navigate({ searchParams: params, replace: true });
+            router.refresh();
             toast({
                 title: t("resourceLauncherViewSaved"),
                 description: t("resourceLauncherViewSavedDescription")
@@ -291,8 +270,13 @@ export default function ResourceLauncher({
             await api.delete(`/org/${orgId}/launcher/views/${viewId}`);
         },
         onSuccess: () => {
-            invalidateLauncher();
-            selectView("default");
+            writeLauncherLastView(orgId, "default");
+            const params = serializeLauncherUrlState({
+                viewId: "default",
+                config: getLauncherUrlBaseConfig("default", views)
+            });
+            navigate({ searchParams: params, replace: true });
+            router.refresh();
             toast({
                 title: t("resourceLauncherViewDeleted"),
                 description: t("resourceLauncherViewDeletedDescription")
@@ -317,9 +301,9 @@ export default function ResourceLauncher({
                 ...patch,
                 query: searchInputRef.current
             };
-            syncUrl(activeViewIdRef.current, nextConfig);
+            navigateToConfig(activeViewIdRef.current, nextConfig);
         },
-        [syncUrl]
+        [navigateToConfig]
     );
 
     const handleSaveToCurrent = () => {
@@ -370,7 +354,7 @@ export default function ResourceLauncher({
     };
 
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col" aria-busy={isNavigating}>
             <SettingsSectionTitle
                 title={t("resourceLauncherTitle")}
                 description={t("resourceLauncherDescription")}
@@ -386,7 +370,7 @@ export default function ResourceLauncher({
                                 onChange={(event) => {
                                     const value = event.target.value;
                                     setSearchInput(value);
-                                    debouncedSyncSearch(
+                                    debouncedNavigateSearch(
                                         activeViewIdRef.current,
                                         value
                                     );
@@ -397,16 +381,14 @@ export default function ResourceLauncher({
                                 className="pl-8"
                             />
                         </div>
-                        {!viewsLoading ? (
-                            <LauncherViewTabs
-                                activeViewId={activeViewId}
-                                savedViews={views.map((view) => ({
-                                    viewId: view.viewId,
-                                    name: view.name
-                                }))}
-                                onSelectView={selectView}
-                            />
-                        ) : null}
+                        <LauncherViewTabs
+                            activeViewId={activeViewId}
+                            savedViews={views.map((view) => ({
+                                viewId: view.viewId,
+                                name: view.name
+                            }))}
+                            onSelectView={selectView}
+                        />
                     </div>
                     <div className="flex items-center gap-2 shrink-0 justify-end">
                         <LauncherSaveViewMenu
@@ -462,8 +444,10 @@ export default function ResourceLauncher({
             <LauncherGroupList
                 orgId={orgId}
                 activeViewId={activeViewId}
-                config={{ ...config, query: searchQuery }}
-                searchQuery={searchQuery}
+                config={config}
+                initialGroups={groups}
+                groupsPagination={groupsPagination}
+                resourcesByGroupKey={resourcesByGroupKey}
             />
 
             <Credenza open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>

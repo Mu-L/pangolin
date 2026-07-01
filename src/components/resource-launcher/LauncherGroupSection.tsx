@@ -13,6 +13,7 @@ import {
 import { launcherQueries } from "@app/lib/queries";
 import type {
     LauncherGroup,
+    LauncherResource,
     LauncherViewConfig
 } from "@server/routers/launcher/types";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -28,7 +29,12 @@ type LauncherGroupSectionProps = {
     activeViewId: LauncherActiveViewId;
     group: LauncherGroup;
     config: LauncherViewConfig;
-    searchQuery: string;
+    initialResources?: LauncherResource[];
+    initialResourcesPagination?: {
+        total: number;
+        page: number;
+        pageSize: number;
+    };
     defaultOpen?: boolean;
 };
 
@@ -37,7 +43,8 @@ export function LauncherGroupSection({
     activeViewId,
     group,
     config,
-    searchQuery,
+    initialResources,
+    initialResourcesPagination,
     defaultOpen = true
 }: LauncherGroupSectionProps) {
     const t = useTranslations();
@@ -75,10 +82,12 @@ export function LauncherGroupSection({
         );
     };
 
+    const hasInitialResources = initialResources !== undefined;
+
     const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
         useInfiniteQuery({
             ...launcherQueries.resources(orgId, {
-                query: searchQuery,
+                query: config.query,
                 groupBy: config.groupBy,
                 groupKey: group.groupKey,
                 siteIds: config.siteIds,
@@ -87,14 +96,33 @@ export function LauncherGroupSection({
                 order: config.order,
                 pageSize: 20
             }),
-            enabled: isOpen
+            enabled: isOpen,
+            refetchOnMount: false,
+            ...(hasInitialResources
+                ? {
+                      initialData: {
+                          pages: [
+                              {
+                                  resources: initialResources,
+                                  pagination: initialResourcesPagination ?? {
+                                      total: initialResources.length,
+                                      page: 1,
+                                      pageSize: 20
+                                  }
+                              }
+                          ],
+                          pageParams: [1]
+                      }
+                  }
+                : {})
         });
 
     const resources = data?.pages.flatMap((page) => page.resources) ?? [];
+    const showInitialLoader = isLoading && resources.length === 0;
 
     useEffect(() => {
         const node = loadMoreRef.current;
-        if (!node || !hasNextPage) {
+        if (!node || !hasNextPage || !isOpen) {
             return;
         }
 
@@ -109,7 +137,7 @@ export function LauncherGroupSection({
 
         observer.observe(node);
         return () => observer.disconnect();
-    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+    }, [fetchNextPage, hasNextPage, isFetchingNextPage, isOpen]);
 
     const groupTitle =
         group.groupKey === "unlabeled"
@@ -129,7 +157,7 @@ export function LauncherGroupSection({
             />
 
             <CollapsibleContent className="w-full">
-                {isLoading ? (
+                {showInitialLoader ? (
                     <div className="flex items-center justify-center py-10 text-muted-foreground">
                         <Loader2 className="size-5 animate-spin" />
                     </div>
