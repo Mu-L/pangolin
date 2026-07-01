@@ -27,6 +27,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { sendToClientsBatch } from "#private/routers/ws";
+import { canCompress } from "@server/lib/clientVersionChecks";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().min(1),
@@ -123,17 +124,21 @@ export async function setRemoteExitNodeResources(
         // Notify all newts connected to this remote exit node's exit node
         if (remoteExitNode.exitNodeId) {
             const connectedNewts = await db
-                .select({ newtId: newts.newtId })
+                .select({ newtId: newts.newtId, version: newts.version })
                 .from(newts)
                 .innerJoin(sites, eq(newts.siteId, sites.siteId))
                 .where(eq(sites.exitNodeId, remoteExitNode.exitNodeId));
 
             await sendToClientsBatch(
-                connectedNewts.map(({ newtId }) => ({
+                connectedNewts.map(({ newtId, version }) => ({
                     clientId: newtId,
                     message: {
                         type: "newt/wg/subnets/update",
                         data: { subnets: destinations }
+                    },
+                    options: {
+                        incrementConfigVersion: true,
+                        compress: canCompress(version, "newt")
                     }
                 }))
             );
