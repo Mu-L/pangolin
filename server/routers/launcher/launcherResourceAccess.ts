@@ -1,0 +1,1090 @@
+import { db } from "@server/db";
+import {
+    labels,
+    launcherViews,
+    resourceLabels,
+    resources,
+    rolePolicies,
+    roleResources,
+    roles,
+    roleSiteResources,
+    siteNetworks,
+    siteResourceLabels,
+    siteResources,
+    sites,
+    targets,
+    userOrgRoles,
+    userOrgs,
+    userPolicies,
+    userResources,
+    userSiteResources
+} from "@server/db";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import {
+    and,
+    asc,
+    countDistinct,
+    eq,
+    inArray,
+    like,
+    or,
+    sql
+} from "drizzle-orm";
+import createHttpError from "http-errors";
+import HttpCode from "@server/types/HttpCode";
+import {
+    formatPublicResourceAccess,
+    formatSiteResourceAccess
+} from "./formatLauncherAccess";
+import {
+    LAUNCHER_UNLABELED_GROUP_KEY,
+    type LauncherGroup,
+    type LauncherLabel,
+    type LauncherListQuery,
+    type LauncherResource,
+    parseIdListParam
+} from "./types";
+
+const effectiveResourcePolicyId = sql<
+    number | null
+>`coalesce(${resources.resourcePolicyId}, ${resources.defaultResourcePolicyId})`;
+
+export type AccessibleIds = {
+    resourceIds: number[];
+    siteResourceIds: number[];
+};
+
+export async function verifyLauncherOrgMembership(
+    orgId: string,
+    userId: string
+): Promise<{ userRoleIds: number[] }> {
+    const [userOrg] = await db
+        .select()
+        .from(userOrgs)
+        .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)))
+        .limit(1);
+
+    if (!userOrg) {
+        throw createHttpError(HttpCode.FORBIDDEN, "User not in organization");
+    }
+
+    const userRoleIds = await db
+        .select({ roleId: userOrgRoles.roleId })
+        .from(userOrgRoles)
+        .where(
+            and(eq(userOrgRoles.userId, userId), eq(userOrgRoles.orgId, orgId))
+        )
+        .then((rows) => rows.map((r) => r.roleId));
+
+    return { userRoleIds };
+}
+
+export async function isOrgAdminOrOwner(
+    orgId: string,
+    userId: string,
+    userRoleIds: number[]
+): Promise<boolean> {
+    const [membership] = await db
+        .select({ isOwner: userOrgs.isOwner })
+        .from(userOrgs)
+        .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)))
+        .limit(1);
+
+    if (membership?.isOwner) {
+        return true;
+    }
+
+    if (userRoleIds.length === 0) {
+        return false;
+    }
+
+    const adminRoles = await db
+        .select({ roleId: roles.roleId })
+        .from(roles)
+        .where(
+            and(
+                eq(roles.orgId, orgId),
+                eq(roles.isAdmin, true),
+                inArray(roles.roleId, userRoleIds)
+            )
+        )
+        .limit(1);
+
+    return adminRoles.length > 0;
+}
+
+export async function resolveAccessibleIds(
+    orgId: string,
+    userId: string,
+    userRoleIds: number[]
+): Promise<AccessibleIds> {
+    const [
+        directResources,
+        roleResourceResults,
+        directPolicyResourceResults,
+        rolePolicyResourceResults,
+        directSiteResourceResults,
+        roleSiteResourceResults
+    ] = await Promise.all([
+        db
+            .select({ resourceId: userResources.resourceId })
+            .from(userResources)
+            .innerJoin(
+                resources,
+                eq(userResources.resourceId, resources.resourceId)
+            )
+            .where(
+                and(
+                    eq(userResources.userId, userId),
+                    eq(resources.orgId, orgId)
+                )
+            ),
+        userRoleIds.length > 0
+            ? db
+                  .select({ resourceId: roleResources.resourceId })
+                  .from(roleResources)
+                  .innerJoin(
+                      resources,
+                      eq(roleResources.resourceId, resources.resourceId)
+                  )
+                  .where(
+                      and(
+                          inArray(roleResources.roleId, userRoleIds),
+                          eq(resources.orgId, orgId)
+                      )
+                  )
+            : Promise.resolve([]),
+        db
+            .select({ resourceId: resources.resourceId })
+            .from(resources)
+            .innerJoin(
+                userPolicies,
+                eq(effectiveResourcePolicyId, userPolicies.resourcePolicyId)
+            )
+            .where(
+                and(eq(userPolicies.userId, userId), eq(resources.orgId, orgId))
+            ),
+        userRoleIds.length > 0
+            ? db
+                  .select({ resourceId: resources.resourceId })
+                  .from(resources)
+                  .innerJoin(
+                      rolePolicies,
+                      eq(
+                          effectiveResourcePolicyId,
+                          rolePolicies.resourcePolicyId
+                      )
+                  )
+                  .where(
+                      and(
+                          inArray(rolePolicies.roleId, userRoleIds),
+                          eq(resources.orgId, orgId)
+                      )
+                  )
+            : Promise.resolve([]),
+        db
+            .select({ siteResourceId: userSiteResources.siteResourceId })
+            .from(userSiteResources)
+            .where(eq(userSiteResources.userId, userId)),
+        userRoleIds.length > 0
+            ? db
+                  .select({
+                      siteResourceId: roleSiteResources.siteResourceId
+                  })
+                  .from(roleSiteResources)
+                  .where(inArray(roleSiteResources.roleId, userRoleIds))
+            : Promise.resolve([])
+    ]);
+
+    return {
+        resourceIds: Array.from(
+            new Set([
+                ...directResources.map((r) => r.resourceId),
+                ...roleResourceResults.map((r) => r.resourceId),
+                ...directPolicyResourceResults.map((r) => r.resourceId),
+                ...rolePolicyResourceResults.map((r) => r.resourceId)
+            ])
+        ),
+        siteResourceIds: Array.from(
+            new Set([
+                ...directSiteResourceResults.map((r) => r.siteResourceId),
+                ...roleSiteResourceResults.map((r) => r.siteResourceId)
+            ])
+        )
+    };
+}
+
+function searchPattern(query: string) {
+    return `%${query.trim()}%`;
+}
+
+function buildSearchConditionForPublic(
+    query: string,
+    labelsFeatureEnabled: boolean
+) {
+    if (!query.trim()) {
+        return undefined;
+    }
+    const pattern = searchPattern(query.toLowerCase());
+    const queryList = [
+        like(sql`LOWER(${resources.name})`, pattern),
+        like(sql`LOWER(${resources.fullDomain})`, pattern),
+        like(sql`LOWER(cast(${resources.proxyPort} as text))`, pattern)
+    ];
+
+    if (labelsFeatureEnabled) {
+        queryList.push(
+            inArray(
+                resources.resourceId,
+                db
+                    .select({ id: resourceLabels.resourceId })
+                    .from(resourceLabels)
+                    .innerJoin(
+                        labels,
+                        eq(labels.labelId, resourceLabels.labelId)
+                    )
+                    .where(like(sql`LOWER(${labels.name})`, pattern))
+            )
+        );
+    }
+
+    return or(...queryList);
+}
+
+function buildSearchConditionForSiteResource(
+    query: string,
+    labelsFeatureEnabled: boolean
+) {
+    if (!query.trim()) {
+        return undefined;
+    }
+    const pattern = searchPattern(query.toLowerCase());
+    const queryList = [
+        like(sql`LOWER(${siteResources.name})`, pattern),
+        like(sql`LOWER(${siteResources.destination})`, pattern),
+        like(sql`LOWER(${siteResources.alias})`, pattern),
+        like(sql`LOWER(${siteResources.fullDomain})`, pattern),
+        like(sql`LOWER(${siteResources.aliasAddress})`, pattern)
+    ];
+
+    if (labelsFeatureEnabled) {
+        queryList.push(
+            inArray(
+                siteResources.siteResourceId,
+                db
+                    .select({ id: siteResourceLabels.siteResourceId })
+                    .from(siteResourceLabels)
+                    .innerJoin(
+                        labels,
+                        eq(labels.labelId, siteResourceLabels.labelId)
+                    )
+                    .where(like(sql`LOWER(${labels.name})`, pattern))
+            )
+        );
+    }
+
+    return or(...queryList);
+}
+
+async function labelsEnabled(orgId: string): Promise<boolean> {
+    return isLicensedOrSubscribed(orgId, tierMatrix.labels);
+}
+
+async function fetchLabelsForResources(
+    orgId: string,
+    resourceIds: number[],
+    siteResourceIds: number[]
+): Promise<{
+    byResourceId: Map<number, LauncherLabel[]>;
+    bySiteResourceId: Map<number, LauncherLabel[]>;
+}> {
+    const byResourceId = new Map<number, LauncherLabel[]>();
+    const bySiteResourceId = new Map<number, LauncherLabel[]>();
+
+    if (!(await labelsEnabled(orgId))) {
+        return { byResourceId, bySiteResourceId };
+    }
+
+    const [resourceLabelRows, siteResourceLabelRows] = await Promise.all([
+        resourceIds.length === 0
+            ? Promise.resolve([])
+            : db
+                  .select({
+                      resourceId: resourceLabels.resourceId,
+                      labelId: labels.labelId,
+                      name: labels.name,
+                      color: labels.color
+                  })
+                  .from(resourceLabels)
+                  .innerJoin(labels, eq(resourceLabels.labelId, labels.labelId))
+                  .where(inArray(resourceLabels.resourceId, resourceIds))
+                  .orderBy(asc(resourceLabels.resourceLabelId)),
+        siteResourceIds.length === 0
+            ? Promise.resolve([])
+            : db
+                  .select({
+                      siteResourceId: siteResourceLabels.siteResourceId,
+                      labelId: labels.labelId,
+                      name: labels.name,
+                      color: labels.color
+                  })
+                  .from(siteResourceLabels)
+                  .innerJoin(
+                      labels,
+                      eq(siteResourceLabels.labelId, labels.labelId)
+                  )
+                  .where(
+                      inArray(
+                          siteResourceLabels.siteResourceId,
+                          siteResourceIds
+                      )
+                  )
+                  .orderBy(asc(siteResourceLabels.siteResourceLabelId))
+    ]);
+
+    for (const row of resourceLabelRows) {
+        const list = byResourceId.get(row.resourceId) ?? [];
+        list.push({
+            labelId: row.labelId,
+            name: row.name,
+            color: row.color
+        });
+        byResourceId.set(row.resourceId, list);
+    }
+
+    for (const row of siteResourceLabelRows) {
+        const list = bySiteResourceId.get(row.siteResourceId) ?? [];
+        list.push({
+            labelId: row.labelId,
+            name: row.name,
+            color: row.color
+        });
+        bySiteResourceId.set(row.siteResourceId, list);
+    }
+
+    return { byResourceId, bySiteResourceId };
+}
+
+type SiteGroupRow = {
+    siteId: number;
+    name: string;
+    type: string;
+    online: boolean;
+    itemCount: number;
+};
+
+async function listSiteGroups(
+    orgId: string,
+    accessible: AccessibleIds,
+    query: LauncherListQuery
+): Promise<{ groups: LauncherGroup[]; total: number }> {
+    const siteFilterIds = parseIdListParam(query.siteIds);
+    const labelFilterIds = parseIdListParam(query.labelIds);
+    const labelsFeatureEnabled = await labelsEnabled(orgId);
+    const searchPublic = buildSearchConditionForPublic(
+        query.query,
+        labelsFeatureEnabled
+    );
+    const searchSite = buildSearchConditionForSiteResource(
+        query.query,
+        labelsFeatureEnabled
+    );
+    const siteCountMap = new Map<number, SiteGroupRow>();
+
+    if (accessible.resourceIds.length > 0) {
+        const publicConditions = [
+            inArray(resources.resourceId, accessible.resourceIds),
+            eq(resources.orgId, orgId),
+            eq(resources.enabled, true)
+        ];
+        if (searchPublic) {
+            publicConditions.push(searchPublic);
+        }
+        if (siteFilterIds.length > 0) {
+            publicConditions.push(inArray(targets.siteId, siteFilterIds));
+        }
+
+        let publicQuery = db
+            .select({
+                siteId: sites.siteId,
+                name: sites.name,
+                type: sites.type,
+                online: sites.online,
+                itemCount: countDistinct(resources.resourceId)
+            })
+            .from(targets)
+            .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+            .innerJoin(sites, eq(targets.siteId, sites.siteId));
+
+        if (labelFilterIds.length > 0) {
+            publicQuery = publicQuery.innerJoin(
+                resourceLabels,
+                eq(resourceLabels.resourceId, resources.resourceId)
+            );
+            publicConditions.push(
+                inArray(resourceLabels.labelId, labelFilterIds)
+            );
+        }
+
+        const publicRows = await publicQuery
+            .where(and(...publicConditions))
+            .groupBy(sites.siteId, sites.name, sites.type, sites.online);
+
+        for (const row of publicRows) {
+            const existing = siteCountMap.get(row.siteId);
+            if (existing) {
+                existing.itemCount += Number(row.itemCount);
+            } else {
+                siteCountMap.set(row.siteId, {
+                    siteId: row.siteId,
+                    name: row.name,
+                    type: row.type,
+                    online: row.online,
+                    itemCount: Number(row.itemCount)
+                });
+            }
+        }
+    }
+
+    if (accessible.siteResourceIds.length > 0) {
+        const siteConditions = [
+            inArray(siteResources.siteResourceId, accessible.siteResourceIds),
+            eq(siteResources.orgId, orgId),
+            eq(siteResources.enabled, true)
+        ];
+        if (searchSite) {
+            siteConditions.push(searchSite);
+        }
+        if (siteFilterIds.length > 0) {
+            siteConditions.push(inArray(sites.siteId, siteFilterIds));
+        }
+
+        let siteResourceQuery = db
+            .select({
+                siteId: sites.siteId,
+                name: sites.name,
+                type: sites.type,
+                online: sites.online,
+                itemCount: countDistinct(siteResources.siteResourceId)
+            })
+            .from(siteResources)
+            .innerJoin(
+                siteNetworks,
+                eq(siteResources.networkId, siteNetworks.networkId)
+            )
+            .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId));
+
+        if (labelFilterIds.length > 0) {
+            siteResourceQuery = siteResourceQuery.innerJoin(
+                siteResourceLabels,
+                eq(
+                    siteResourceLabels.siteResourceId,
+                    siteResources.siteResourceId
+                )
+            );
+            siteConditions.push(
+                inArray(siteResourceLabels.labelId, labelFilterIds)
+            );
+        }
+
+        const siteRows = await siteResourceQuery
+            .where(and(...siteConditions))
+            .groupBy(sites.siteId, sites.name, sites.type, sites.online);
+
+        for (const row of siteRows) {
+            const existing = siteCountMap.get(row.siteId);
+            if (existing) {
+                existing.itemCount += Number(row.itemCount);
+            } else {
+                siteCountMap.set(row.siteId, {
+                    siteId: row.siteId,
+                    name: row.name,
+                    type: row.type,
+                    online: row.online,
+                    itemCount: Number(row.itemCount)
+                });
+            }
+        }
+    }
+
+    let groups: LauncherGroup[] = Array.from(siteCountMap.values()).map(
+        (row) => ({
+            groupKey: String(row.siteId),
+            name: row.name,
+            groupType: "site" as const,
+            itemCount: row.itemCount,
+            siteType: row.type,
+            siteOnline: row.online
+        })
+    );
+
+    groups.sort((a, b) => {
+        const cmp = a.name.localeCompare(b.name, undefined, {
+            sensitivity: "base"
+        });
+        return query.order === "desc" ? -cmp : cmp;
+    });
+
+    const total = groups.length;
+    const offset = (query.page - 1) * query.pageSize;
+    return {
+        groups: groups.slice(offset, offset + query.pageSize),
+        total
+    };
+}
+
+async function listLabelGroups(
+    orgId: string,
+    accessible: AccessibleIds,
+    query: LauncherListQuery
+): Promise<{ groups: LauncherGroup[]; total: number }> {
+    const siteFilterIds = parseIdListParam(query.siteIds);
+    const labelFilterIds = parseIdListParam(query.labelIds);
+    const labelCountMap = new Map<
+        number,
+        { labelId: number; name: string; color: string; itemCount: number }
+    >();
+    let unlabeledCount = 0;
+
+    if (!(await labelsEnabled(orgId))) {
+        return { groups: [], total: 0 };
+    }
+
+    const matchesLabelFilters = (labelId: number) =>
+        labelFilterIds.length === 0 || labelFilterIds.includes(labelId);
+
+    if (accessible.resourceIds.length > 0) {
+        const publicConditions = [
+            inArray(resources.resourceId, accessible.resourceIds),
+            eq(resources.orgId, orgId),
+            eq(resources.enabled, true)
+        ];
+        const searchPublic = buildSearchConditionForPublic(query.query, true);
+        if (searchPublic) {
+            publicConditions.push(searchPublic);
+        }
+        if (siteFilterIds.length > 0) {
+            publicConditions.push(inArray(targets.siteId, siteFilterIds));
+        }
+
+        const labeledPublic = await db
+            .select({
+                labelId: labels.labelId,
+                name: labels.name,
+                color: labels.color,
+                itemCount: countDistinct(resources.resourceId)
+            })
+            .from(resourceLabels)
+            .innerJoin(labels, eq(resourceLabels.labelId, labels.labelId))
+            .innerJoin(
+                resources,
+                eq(resourceLabels.resourceId, resources.resourceId)
+            )
+            .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
+            .where(and(...publicConditions, eq(labels.orgId, orgId)))
+            .groupBy(labels.labelId, labels.name, labels.color);
+
+        for (const row of labeledPublic) {
+            if (!matchesLabelFilters(row.labelId)) {
+                continue;
+            }
+            const existing = labelCountMap.get(row.labelId);
+            if (existing) {
+                existing.itemCount += Number(row.itemCount);
+            } else {
+                labelCountMap.set(row.labelId, {
+                    labelId: row.labelId,
+                    name: row.name,
+                    color: row.color,
+                    itemCount: Number(row.itemCount)
+                });
+            }
+        }
+
+        const labeledPublicIds = await db
+            .select({ resourceId: resourceLabels.resourceId })
+            .from(resourceLabels)
+            .innerJoin(
+                resources,
+                eq(resourceLabels.resourceId, resources.resourceId)
+            )
+            .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
+            .where(and(...publicConditions));
+
+        const labeledSet = new Set(labeledPublicIds.map((r) => r.resourceId));
+        unlabeledCount += accessible.resourceIds.filter(
+            (id) => !labeledSet.has(id)
+        ).length;
+    }
+
+    if (accessible.siteResourceIds.length > 0) {
+        const siteConditions = [
+            inArray(siteResources.siteResourceId, accessible.siteResourceIds),
+            eq(siteResources.orgId, orgId),
+            eq(siteResources.enabled, true)
+        ];
+        const searchSite = buildSearchConditionForSiteResource(
+            query.query,
+            true
+        );
+        if (searchSite) {
+            siteConditions.push(searchSite);
+        }
+        if (siteFilterIds.length > 0) {
+            siteConditions.push(inArray(sites.siteId, siteFilterIds));
+        }
+
+        const labeledSite = await db
+            .select({
+                labelId: labels.labelId,
+                name: labels.name,
+                color: labels.color,
+                itemCount: countDistinct(siteResources.siteResourceId)
+            })
+            .from(siteResourceLabels)
+            .innerJoin(labels, eq(siteResourceLabels.labelId, labels.labelId))
+            .innerJoin(
+                siteResources,
+                eq(
+                    siteResourceLabels.siteResourceId,
+                    siteResources.siteResourceId
+                )
+            )
+            .leftJoin(
+                siteNetworks,
+                eq(siteResources.networkId, siteNetworks.networkId)
+            )
+            .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+            .where(and(...siteConditions, eq(labels.orgId, orgId)))
+            .groupBy(labels.labelId, labels.name, labels.color);
+
+        for (const row of labeledSite) {
+            if (!matchesLabelFilters(row.labelId)) {
+                continue;
+            }
+            const existing = labelCountMap.get(row.labelId);
+            if (existing) {
+                existing.itemCount += Number(row.itemCount);
+            } else {
+                labelCountMap.set(row.labelId, {
+                    labelId: row.labelId,
+                    name: row.name,
+                    color: row.color,
+                    itemCount: Number(row.itemCount)
+                });
+            }
+        }
+
+        const labeledSiteIds = await db
+            .select({ siteResourceId: siteResourceLabels.siteResourceId })
+            .from(siteResourceLabels)
+            .innerJoin(
+                siteResources,
+                eq(
+                    siteResourceLabels.siteResourceId,
+                    siteResources.siteResourceId
+                )
+            )
+            .leftJoin(
+                siteNetworks,
+                eq(siteResources.networkId, siteNetworks.networkId)
+            )
+            .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+            .where(and(...siteConditions));
+
+        const labeledSet = new Set(labeledSiteIds.map((r) => r.siteResourceId));
+        unlabeledCount += accessible.siteResourceIds.filter(
+            (id) => !labeledSet.has(id)
+        ).length;
+    }
+
+    let groups: LauncherGroup[] = Array.from(labelCountMap.values()).map(
+        (row) => ({
+            groupKey: String(row.labelId),
+            name: row.name,
+            groupType: "label" as const,
+            itemCount: row.itemCount,
+            labelColor: row.color
+        })
+    );
+
+    if (unlabeledCount > 0 && labelFilterIds.length === 0) {
+        groups.push({
+            groupKey: LAUNCHER_UNLABELED_GROUP_KEY,
+            name: "Unlabeled",
+            groupType: "label",
+            itemCount: unlabeledCount,
+            labelColor: "#a1a1aa"
+        });
+    }
+
+    groups.sort((a, b) => {
+        const cmp = a.name.localeCompare(b.name, undefined, {
+            sensitivity: "base"
+        });
+        return query.order === "desc" ? -cmp : cmp;
+    });
+
+    const total = groups.length;
+    const offset = (query.page - 1) * query.pageSize;
+    return {
+        groups: groups.slice(offset, offset + query.pageSize),
+        total
+    };
+}
+
+export async function listLauncherGroupsForUser(
+    orgId: string,
+    userId: string,
+    query: LauncherListQuery
+): Promise<{ groups: LauncherGroup[]; total: number }> {
+    const { userRoleIds } = await verifyLauncherOrgMembership(orgId, userId);
+    const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
+
+    if (query.groupBy === "label") {
+        return listLabelGroups(orgId, accessible, query);
+    }
+
+    return listSiteGroups(orgId, accessible, query);
+}
+
+async function mapPublicResources(
+    orgId: string,
+    resourceIds: number[],
+    labelMaps: Awaited<ReturnType<typeof fetchLabelsForResources>>,
+    siteIdFilter?: number
+): Promise<LauncherResource[]> {
+    if (resourceIds.length === 0) {
+        return [];
+    }
+
+    const rows = await db
+        .select({
+            resourceId: resources.resourceId,
+            name: resources.name,
+            mode: resources.mode,
+            fullDomain: resources.fullDomain,
+            ssl: resources.ssl,
+            proxyPort: resources.proxyPort,
+            wildcard: resources.wildcard,
+            enabled: resources.enabled,
+            siteId: sites.siteId,
+            siteName: sites.name,
+            siteType: sites.type,
+            siteOnline: sites.online
+        })
+        .from(resources)
+        .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
+        .leftJoin(sites, eq(targets.siteId, sites.siteId))
+        .where(
+            and(
+                inArray(resources.resourceId, resourceIds),
+                eq(resources.orgId, orgId),
+                eq(resources.enabled, true),
+                siteIdFilter != null
+                    ? eq(sites.siteId, siteIdFilter)
+                    : undefined
+            )
+        );
+
+    const seen = new Set<string>();
+    const result: LauncherResource[] = [];
+
+    for (const row of rows) {
+        const key = `public:${row.resourceId}`;
+        if (seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+
+        const access = formatPublicResourceAccess({
+            mode: row.mode,
+            fullDomain: row.fullDomain,
+            ssl: row.ssl,
+            proxyPort: row.proxyPort,
+            wildcard: row.wildcard
+        });
+
+        result.push({
+            launcherResourceKey: key,
+            resourceType: "public",
+            resourceId: row.resourceId,
+            name: row.name,
+            ...access,
+            iconUrl: null,
+            enabled: row.enabled,
+            mode: row.mode,
+            labels: labelMaps.byResourceId.get(row.resourceId) ?? [],
+            site:
+                row.siteId != null
+                    ? {
+                          siteId: row.siteId,
+                          name: row.siteName!,
+                          type: row.siteType!,
+                          online: row.siteOnline ?? undefined
+                      }
+                    : undefined
+        });
+    }
+
+    return result;
+}
+
+async function mapSiteResources(
+    orgId: string,
+    siteResourceIds: number[],
+    labelMaps: Awaited<ReturnType<typeof fetchLabelsForResources>>,
+    siteIdFilter?: number
+): Promise<LauncherResource[]> {
+    if (siteResourceIds.length === 0) {
+        return [];
+    }
+
+    const rows = await db
+        .select({
+            siteResourceId: siteResources.siteResourceId,
+            name: siteResources.name,
+            mode: siteResources.mode,
+            destination: siteResources.destination,
+            destinationPort: siteResources.destinationPort,
+            scheme: siteResources.scheme,
+            ssl: siteResources.ssl,
+            fullDomain: siteResources.fullDomain,
+            alias: siteResources.alias,
+            aliasAddress: siteResources.aliasAddress,
+            enabled: siteResources.enabled,
+            siteId: sites.siteId,
+            siteName: sites.name,
+            siteType: sites.type,
+            siteOnline: sites.online
+        })
+        .from(siteResources)
+        .leftJoin(
+            siteNetworks,
+            eq(siteResources.networkId, siteNetworks.networkId)
+        )
+        .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+        .where(
+            and(
+                inArray(siteResources.siteResourceId, siteResourceIds),
+                eq(siteResources.orgId, orgId),
+                eq(siteResources.enabled, true),
+                siteIdFilter != null
+                    ? eq(sites.siteId, siteIdFilter)
+                    : undefined
+            )
+        );
+
+    const seen = new Set<string>();
+    const result: LauncherResource[] = [];
+
+    for (const row of rows) {
+        const key = `site:${row.siteResourceId}`;
+        if (seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+
+        const access = formatSiteResourceAccess({
+            mode: row.mode,
+            destination: row.destination,
+            destinationPort: row.destinationPort,
+            scheme: row.scheme,
+            ssl: row.ssl,
+            fullDomain: row.fullDomain,
+            alias: row.alias,
+            aliasAddress: row.aliasAddress
+        });
+
+        result.push({
+            launcherResourceKey: key,
+            resourceType: "site",
+            resourceId: row.siteResourceId,
+            siteResourceId: row.siteResourceId,
+            name: row.name,
+            ...access,
+            iconUrl: null,
+            enabled: row.enabled,
+            mode: row.mode,
+            labels: labelMaps.bySiteResourceId.get(row.siteResourceId) ?? [],
+            site:
+                row.siteId != null
+                    ? {
+                          siteId: row.siteId,
+                          name: row.siteName!,
+                          type: row.siteType!,
+                          online: row.siteOnline ?? undefined
+                      }
+                    : undefined
+        });
+    }
+
+    return result;
+}
+
+function filterResourcesByLabel(
+    items: LauncherResource[],
+    groupKey: string
+): LauncherResource[] {
+    if (groupKey === LAUNCHER_UNLABELED_GROUP_KEY) {
+        return items.filter((item) => item.labels.length === 0);
+    }
+    const labelId = Number.parseInt(groupKey, 10);
+    return items.filter((item) =>
+        item.labels.some((label) => label.labelId === labelId)
+    );
+}
+
+function filterResourcesBySearch(
+    items: LauncherResource[],
+    query: string
+): LauncherResource[] {
+    if (!query.trim()) {
+        return items;
+    }
+    const pattern = query.trim().toLowerCase();
+    return items.filter(
+        (item) =>
+            item.name.toLowerCase().includes(pattern) ||
+            item.accessDisplay.toLowerCase().includes(pattern) ||
+            item.accessCopyValue.toLowerCase().includes(pattern) ||
+            item.labels.some((label) =>
+                label.name.toLowerCase().includes(pattern)
+            ) ||
+            item.site?.name.toLowerCase().includes(pattern)
+    );
+}
+
+function sortLauncherResources(
+    items: LauncherResource[],
+    order: "asc" | "desc"
+): LauncherResource[] {
+    return [...items].sort((a, b) => {
+        const cmp = a.name.localeCompare(b.name, undefined, {
+            sensitivity: "base"
+        });
+        return order === "desc" ? -cmp : cmp;
+    });
+}
+
+export async function listLauncherResourcesForUser(
+    orgId: string,
+    userId: string,
+    query: LauncherListQuery & { groupKey: string }
+): Promise<{ resources: LauncherResource[]; total: number }> {
+    const { userRoleIds } = await verifyLauncherOrgMembership(orgId, userId);
+    const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
+
+    const siteFilterIds = parseIdListParam(query.siteIds);
+    const labelFilterIds = parseIdListParam(query.labelIds);
+
+    let filteredResourceIds = accessible.resourceIds;
+    let filteredSiteResourceIds = accessible.siteResourceIds;
+
+    if (siteFilterIds.length > 0 && accessible.resourceIds.length > 0) {
+        const publicOnSites = await db
+            .select({ resourceId: resources.resourceId })
+            .from(targets)
+            .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+            .where(
+                and(
+                    inArray(resources.resourceId, accessible.resourceIds),
+                    inArray(targets.siteId, siteFilterIds)
+                )
+            );
+        filteredResourceIds = publicOnSites.map((r) => r.resourceId);
+    }
+
+    if (siteFilterIds.length > 0 && accessible.siteResourceIds.length > 0) {
+        const privateOnSites = await db
+            .select({ siteResourceId: siteResources.siteResourceId })
+            .from(siteResources)
+            .innerJoin(
+                siteNetworks,
+                eq(siteResources.networkId, siteNetworks.networkId)
+            )
+            .where(
+                and(
+                    inArray(
+                        siteResources.siteResourceId,
+                        accessible.siteResourceIds
+                    ),
+                    inArray(siteNetworks.siteId, siteFilterIds)
+                )
+            );
+        filteredSiteResourceIds = privateOnSites.map((r) => r.siteResourceId);
+    }
+
+    if (labelFilterIds.length > 0) {
+        if (filteredResourceIds.length > 0) {
+            const withLabels = await db
+                .select({ resourceId: resourceLabels.resourceId })
+                .from(resourceLabels)
+                .where(
+                    and(
+                        inArray(resourceLabels.resourceId, filteredResourceIds),
+                        inArray(resourceLabels.labelId, labelFilterIds)
+                    )
+                );
+            filteredResourceIds = withLabels.map((r) => r.resourceId);
+        }
+        if (filteredSiteResourceIds.length > 0) {
+            const withLabels = await db
+                .select({ siteResourceId: siteResourceLabels.siteResourceId })
+                .from(siteResourceLabels)
+                .where(
+                    and(
+                        inArray(
+                            siteResourceLabels.siteResourceId,
+                            filteredSiteResourceIds
+                        ),
+                        inArray(siteResourceLabels.labelId, labelFilterIds)
+                    )
+                );
+            filteredSiteResourceIds = withLabels.map((r) => r.siteResourceId);
+        }
+    }
+
+    const labelMaps = await fetchLabelsForResources(
+        orgId,
+        filteredResourceIds,
+        filteredSiteResourceIds
+    );
+
+    const siteIdFilter =
+        query.groupBy === "site"
+            ? Number.parseInt(query.groupKey, 10)
+            : undefined;
+
+    const [publicItems, siteItems] = await Promise.all([
+        mapPublicResources(
+            orgId,
+            filteredResourceIds,
+            labelMaps,
+            Number.isFinite(siteIdFilter) ? siteIdFilter : undefined
+        ),
+        mapSiteResources(
+            orgId,
+            filteredSiteResourceIds,
+            labelMaps,
+            Number.isFinite(siteIdFilter) ? siteIdFilter : undefined
+        )
+    ]);
+
+    let items = [...publicItems, ...siteItems];
+    items = filterResourcesBySearch(items, query.query);
+
+    if (query.groupBy === "label") {
+        items = filterResourcesByLabel(items, query.groupKey);
+    }
+
+    items = sortLauncherResources(items, query.order);
+
+    const total = items.length;
+    const offset = (query.page - 1) * query.pageSize;
+    return {
+        resources: items.slice(offset, offset + query.pageSize),
+        total
+    };
+}

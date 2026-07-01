@@ -1,5 +1,5 @@
 import { Layout } from "@app/components/Layout";
-import MemberResourcesPortal from "@app/components/MemberResourcesPortal";
+import ResourceLauncher from "@app/components/resource-launcher/ResourceLauncher";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import { verifySession } from "@app/lib/auth/verifySession";
@@ -18,7 +18,6 @@ type OrgPageProps = {
 export default async function OrgPage(props: OrgPageProps) {
     const params = await props.params;
     const orgId = params.orgId;
-    const env = pullEnv();
 
     if (!orgId) {
         redirect(`/`);
@@ -40,12 +39,6 @@ export default async function OrgPage(props: OrgPageProps) {
         overview = res.data.data;
     } catch (e) {}
 
-    // If user is admin or owner, redirect to settings
-    if (overview?.isAdmin || overview?.isOwner) {
-        redirect(`/${orgId}/settings`);
-    }
-
-    // For non-admin users, show the member resources portal
     let orgs: ListUserOrgsResponse["orgs"] = [];
     try {
         const getOrgs = cache(async () =>
@@ -60,10 +53,21 @@ export default async function OrgPage(props: OrgPageProps) {
         }
     } catch (e) {}
 
+    const isAdminOrOwner = Boolean(overview?.isAdmin || overview?.isOwner);
+
     return (
         <UserProvider user={user}>
-            <Layout orgId={orgId} navItems={[]} orgs={orgs}>
-                {overview && <MemberResourcesPortal orgId={orgId} />}
+            <Layout
+                orgId={orgId}
+                orgs={orgs}
+                navItems={[]}
+                showSidebar={false}
+                launcherMode
+                showViewAsAdmin={isAdminOrOwner}
+            >
+                {overview ? (
+                    <ResourceLauncher orgId={orgId} isAdmin={isAdminOrOwner} />
+                ) : null}
             </Layout>
         </UserProvider>
     );

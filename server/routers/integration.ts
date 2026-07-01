@@ -13,6 +13,7 @@ import * as apiKeys from "./apiKeys";
 import * as idp from "./idp";
 import * as logs from "./auditLogs";
 import * as siteResource from "./siteResource";
+import * as launcher from "./launcher";
 import {
     verifyApiKey,
     verifyApiKeyOrgAccess,
@@ -158,6 +159,42 @@ authenticated.get(
     "/org/:orgId/user-resources",
     verifyApiKeyOrgAccess,
     resource.getUserResources
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/groups",
+    verifyApiKeyOrgAccess,
+    launcher.listLauncherGroups
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/resources",
+    verifyApiKeyOrgAccess,
+    launcher.listLauncherResources
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/views",
+    verifyApiKeyOrgAccess,
+    launcher.listLauncherViews
+);
+
+authenticated.post(
+    "/org/:orgId/launcher/views",
+    verifyApiKeyOrgAccess,
+    launcher.createLauncherView
+);
+
+authenticated.put(
+    "/org/:orgId/launcher/views/:viewId",
+    verifyApiKeyOrgAccess,
+    launcher.updateLauncherView
+);
+
+authenticated.delete(
+    "/org/:orgId/launcher/views/:viewId",
+    verifyApiKeyOrgAccess,
+    launcher.deleteLauncherView
 );
 // Site Resource endpoints
 authenticated.put(

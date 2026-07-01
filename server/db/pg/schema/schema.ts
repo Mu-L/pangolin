@@ -218,6 +218,20 @@ export const labels = pgTable("labels", {
         .notNull()
 });
 
+export const launcherViews = pgTable("launcherViews", {
+    viewId: serial("viewId").primaryKey(),
+    orgId: varchar("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    userId: varchar("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
+    name: varchar("name").notNull(),
+    config: text("config").notNull(),
+    createdAt: varchar("createdAt").notNull(),
+    updatedAt: varchar("updatedAt").notNull()
+});
+
 export const siteLabels = pgTable(
     "siteLabels",
     {
@@ -1550,6 +1564,7 @@ export type RoundTripMessageTracker = InferSelectModel<
 export type Network = InferSelectModel<typeof networks>;
 export type StatusHistory = InferSelectModel<typeof statusHistory>;
 export type Label = InferSelectModel<typeof labels>;
+export type LauncherView = InferSelectModel<typeof launcherViews>;
 export type ResourcePolicy = InferSelectModel<typeof resourcePolicies>;
 export type RolePolicy = InferSelectModel<typeof rolePolicies>;
 export type UserPolicy = InferSelectModel<typeof userPolicies>;

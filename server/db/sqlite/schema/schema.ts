@@ -221,6 +221,20 @@ export const labels = sqliteTable("labels", {
         .notNull()
 });
 
+export const launcherViews = sqliteTable("launcherViews", {
+    viewId: integer("viewId").primaryKey({ autoIncrement: true }),
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
+    name: text("name").notNull(),
+    config: text("config").notNull(),
+    createdAt: text("createdAt").notNull(),
+    updatedAt: text("updatedAt").notNull()
+});
+
 export const siteLabels = sqliteTable(
     "siteLabels",
     {
@@ -1549,6 +1563,7 @@ export type RoundTripMessageTracker = InferSelectModel<
 >;
 export type StatusHistory = InferSelectModel<typeof statusHistory>;
 export type Label = InferSelectModel<typeof labels>;
+export type LauncherView = InferSelectModel<typeof launcherViews>;
 export type ResourcePolicy = InferSelectModel<typeof resourcePolicies>;
 export type ResourcePolicyPincode = InferSelectModel<
     typeof resourcePolicyPincode
