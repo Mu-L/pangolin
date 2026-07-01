@@ -306,6 +306,16 @@ export default function ResourceLauncher({
         [navigateToConfig]
     );
 
+    const handleClearFilters = useCallback(() => {
+        setSearchInput("");
+        navigateToConfig(activeViewIdRef.current, {
+            ...configRef.current,
+            query: "",
+            siteIds: [],
+            labelIds: []
+        });
+    }, [navigateToConfig]);
+
     const handleSaveToCurrent = () => {
         if (isDefaultView) {
             return;
@@ -448,6 +458,7 @@ export default function ResourceLauncher({
                 initialGroups={groups}
                 groupsPagination={groupsPagination}
                 resourcesByGroupKey={resourcesByGroupKey}
+                onClearFilters={handleClearFilters}
             />
 
             <Credenza open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>

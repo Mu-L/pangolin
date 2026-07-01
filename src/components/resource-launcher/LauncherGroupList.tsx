@@ -10,6 +10,7 @@ import type {
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
+import { LauncherEmptyState } from "./LauncherEmptyState";
 import { LauncherGroupSection } from "./LauncherGroupSection";
 
 type LauncherGroupListProps = {
@@ -23,7 +24,16 @@ type LauncherGroupListProps = {
         pageSize: number;
     };
     resourcesByGroupKey: Record<string, LauncherGroupResources>;
+    onClearFilters?: () => void;
 };
+
+function hasActiveLauncherFilters(config: LauncherViewConfig): boolean {
+    return (
+        config.query.trim().length > 0 ||
+        config.siteIds.length > 0 ||
+        config.labelIds.length > 0
+    );
+}
 
 export function LauncherGroupList({
     orgId,
@@ -31,7 +41,8 @@ export function LauncherGroupList({
     config,
     initialGroups,
     groupsPagination,
-    resourcesByGroupKey
+    resourcesByGroupKey,
+    onClearFilters
 }: LauncherGroupListProps) {
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,7 +66,7 @@ export function LauncherGroupList({
         ]
     );
 
-    const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
         useInfiniteQuery({
             ...launcherQueries.groups(orgId, groupFilters),
             initialData: {
@@ -90,6 +101,27 @@ export function LauncherGroupList({
         observer.observe(node);
         return () => observer.disconnect();
     }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+    if (groups.length === 0) {
+        if (isFetching) {
+            return (
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                    <Loader2 className="size-6 animate-spin" />
+                </div>
+            );
+        }
+
+        return (
+            <LauncherEmptyState
+                variant={
+                    hasActiveLauncherFilters(config) ? "noResults" : "empty"
+                }
+                layout={config.layout}
+                query={config.query}
+                onClearFilters={onClearFilters}
+            />
+        );
+    }
 
     return (
         <div className="flex flex-col gap-2.5">
