@@ -13,7 +13,8 @@ export async function sendNewtSyncMessage(newt: Newt, site: Site) {
         tcpTargets,
         udpTargets,
         validHealthCheckTargets,
-        browserGatewayTargets
+        browserGatewayTargets,
+        remoteExitNodeSubnets
     } = await buildTargetConfigurationForNewtClient(site.siteId);
 
     let exitNode: ExitNode | undefined;
@@ -41,7 +42,8 @@ export async function sendNewtSyncMessage(newt: Newt, site: Site) {
                 healthCheckTargets: validHealthCheckTargets,
                 peers: peers,
                 clientTargets: targets,
-                browserGatewayTargets: browserGatewayTargets
+                browserGatewayTargets: browserGatewayTargets,
+                remoteExitNodeSubnets: remoteExitNodeSubnets
             }
         },
         {
