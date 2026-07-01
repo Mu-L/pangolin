@@ -68,6 +68,8 @@ export async function Layout({
                         navItems={navItems}
                         showSidebar={showSidebar}
                         showTopBar={showTopBar}
+                        launcherMode={launcherMode}
+                        showViewAsAdmin={showViewAsAdmin}
                     />
                 )}
 
