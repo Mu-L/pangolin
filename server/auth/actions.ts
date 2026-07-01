@@ -21,6 +21,7 @@ export enum ActionsEnum {
     getSite = "getSite",
     listSites = "listSites",
     updateSite = "updateSite",
+    restartSite = "restartSite",
     resetSiteBandwidth = "resetSiteBandwidth",
     reGenerateSecret = "reGenerateSecret",
     createResource = "createResource",

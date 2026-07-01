@@ -257,8 +257,8 @@ authenticated.delete(
 authenticated.post(
     "/site/:siteId/restart",
     verifySiteAccess,
-    verifyUserHasAction(ActionsEnum.updateSite),
-    logActionAudit(ActionsEnum.updateSite),
+    verifyUserHasAction(ActionsEnum.restartSite),
+    logActionAudit(ActionsEnum.restartSite),
     site.restartSite
 );
 

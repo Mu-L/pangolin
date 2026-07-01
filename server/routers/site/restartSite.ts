@@ -9,8 +9,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { sendToClient } from "../ws";
-import { canCompress } from "@server/lib/clientVersionChecks";
+import { sendToClient } from "#dynamic/routers/ws";
 
 const updateSiteParamsSchema = z.strictObject({
     siteId: z.coerce.number().int().positive()
@@ -92,17 +91,12 @@ export async function restartSite(
             );
         }
 
-        await sendToClient(
-            newt.newtId,
-            {
-                type: "newt/wg/restart",
-                data: {}
-            },
-            {
-                incrementConfigVersion: false,
-                compress: canCompress(newt.version, "newt")
-            }
-        );
+        logger.info(`Restarting site ${siteId}...`);
+
+        await sendToClient(newt.newtId, {
+            type: "newt/wg/restart",
+            data: {}
+        });
 
         return response(res, {
             data: null,
