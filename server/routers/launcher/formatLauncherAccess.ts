@@ -1,3 +1,5 @@
+import { formatEndpoint, parseEndpoint } from "@server/lib/ip";
+
 export type SiteResourceDestinationInput = {
     mode: "host" | "cidr" | "http" | "ssh";
     destination: string | null;
@@ -40,6 +42,7 @@ export type PublicResourceAccessInput = {
     ssl: boolean;
     proxyPort: number | null;
     wildcard: boolean;
+    exitNodeEndpoint?: string | null;
 };
 
 export type SiteResourceAccessInput = {
@@ -59,17 +62,47 @@ export type LauncherAccessFields = {
     accessUrl: string | null;
 };
 
-export function formatPublicResourceAccess(
-    resource: PublicResourceAccessInput
+function formatTcpUdpResourceAccess(
+    exitNodeEndpoint: string | null | undefined,
+    proxyPort: number | null
 ): LauncherAccessFields {
-    const browserModes = ["http", "ssh", "rdp", "vnc"];
-    if (!browserModes.includes(resource.mode)) {
-        const port = resource.proxyPort?.toString() ?? "";
+    if (proxyPort == null) {
+        return {
+            accessDisplay: "",
+            accessCopyValue: "",
+            accessUrl: null
+        };
+    }
+
+    if (!exitNodeEndpoint?.trim()) {
+        const port = proxyPort.toString();
         return {
             accessDisplay: port,
             accessCopyValue: port,
             accessUrl: null
         };
+    }
+
+    const parsed = parseEndpoint(exitNodeEndpoint);
+    const host = parsed?.ip ?? exitNodeEndpoint.trim();
+    const access = formatEndpoint(host, proxyPort);
+
+    return {
+        accessDisplay: access,
+        accessCopyValue: access,
+        accessUrl: null
+    };
+}
+
+export function formatPublicResourceAccess(
+    resource: PublicResourceAccessInput
+): LauncherAccessFields {
+    const browserModes = ["http", "ssh", "rdp", "vnc"];
+    if (!browserModes.includes(resource.mode)) {
+        return formatTcpUdpResourceAccess(
+            resource.exitNodeEndpoint,
+            resource.proxyPort
+        );
     }
 
     if (!resource.fullDomain) {

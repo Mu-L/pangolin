@@ -1,5 +1,6 @@
 import { db } from "@server/db";
 import {
+    exitNodes,
     labels,
     launcherViews,
     resourceLabels,
@@ -860,11 +861,13 @@ async function mapPublicResources(
             siteId: sites.siteId,
             siteName: sites.name,
             siteType: sites.type,
-            siteOnline: sites.online
+            siteOnline: sites.online,
+            exitNodeEndpoint: exitNodes.endpoint
         })
         .from(resources)
         .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
         .leftJoin(sites, eq(targets.siteId, sites.siteId))
+        .leftJoin(exitNodes, eq(sites.exitNodeId, exitNodes.exitNodeId))
         .where(
             and(
                 inArray(resources.resourceId, resourceIds),
@@ -891,7 +894,8 @@ async function mapPublicResources(
             fullDomain: row.fullDomain,
             ssl: row.ssl,
             proxyPort: row.proxyPort,
-            wildcard: row.wildcard
+            wildcard: row.wildcard,
+            exitNodeEndpoint: row.exitNodeEndpoint
         });
 
         result.push({
