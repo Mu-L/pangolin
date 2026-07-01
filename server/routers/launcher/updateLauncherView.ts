@@ -8,10 +8,7 @@ import createHttpError from "http-errors";
 import moment from "moment";
 import { fromZodError } from "zod-validation-error";
 import { z } from "zod";
-import {
-    isOrgAdminOrOwner,
-    verifyLauncherOrgMembership
-} from "./launcherResourceAccess";
+import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
 import { launcherViewConfigSchema } from "./types";
 
 const updateLauncherViewBodySchema = z.strictObject({
@@ -26,18 +23,12 @@ export async function updateLauncherView(
     next: NextFunction
 ): Promise<any> {
     try {
-        const orgId = getFirstString(req.params.orgId);
+        const orgId = req.userOrgId;
+        const userId = req.user!.userId;
         const viewId = Number.parseInt(
             getFirstString(req.params.viewId) ?? "",
             10
         );
-        const userId = req.user?.userId;
-
-        if (!userId) {
-            return next(
-                createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
-            );
-        }
 
         if (!orgId || !Number.isFinite(viewId)) {
             return next(
@@ -58,11 +49,6 @@ export async function updateLauncherView(
             );
         }
 
-        const { userRoleIds } = await verifyLauncherOrgMembership(
-            orgId,
-            userId
-        );
-
         const [existing] = await db
             .select()
             .from(launcherViews)
@@ -82,9 +68,12 @@ export async function updateLauncherView(
 
         const isPersonalView = existing.userId === userId;
         const isOrgWideView = existing.userId == null;
-        const isAdmin = await isOrgAdminOrOwner(orgId, userId, userRoleIds);
+        const canManageOrgWide = await checkUserActionPermission(
+            ActionsEnum.createOrgWideLauncherView,
+            req
+        );
 
-        if (!isPersonalView && !(isOrgWideView && isAdmin)) {
+        if (!isPersonalView && !(isOrgWideView && canManageOrgWide)) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,
@@ -93,20 +82,24 @@ export async function updateLauncherView(
             );
         }
 
-        if (parsed.data.orgWide === true && !isAdmin) {
+        if (parsed.data.orgWide === true && !canManageOrgWide) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,
-                    "Only administrators can make views org-wide"
+                    "User does not have permission perform this action"
                 )
             );
         }
 
-        if (parsed.data.orgWide === false && isOrgWideView && !isAdmin) {
+        if (
+            parsed.data.orgWide === false &&
+            isOrgWideView &&
+            !canManageOrgWide
+        ) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,
-                    "Only administrators can change org-wide views"
+                    "User does not have permission perform this action"
                 )
             );
         }

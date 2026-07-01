@@ -1,12 +1,10 @@
 import { db, launcherViews } from "@server/db";
 import { response } from "@server/lib/response";
-import { getFirstString } from "@server/lib/requestParams";
 import HttpCode from "@server/types/HttpCode";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { launcherViewConfigSchema, type LauncherViewRecord } from "./types";
-import { verifyLauncherOrgMembership } from "./launcherResourceAccess";
 
 function mapViewRow(
     row: typeof launcherViews.$inferSelect
@@ -29,22 +27,14 @@ export async function listLauncherViews(
     next: NextFunction
 ): Promise<any> {
     try {
-        const orgId = getFirstString(req.params.orgId);
-        const userId = req.user?.userId;
-
-        if (!userId) {
-            return next(
-                createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
-            );
-        }
+        const orgId = req.userOrgId;
+        const userId = req.user!.userId;
 
         if (!orgId) {
             return next(
                 createHttpError(HttpCode.BAD_REQUEST, "Invalid organization ID")
             );
         }
-
-        await verifyLauncherOrgMembership(orgId, userId);
 
         const rows = await db
             .select()

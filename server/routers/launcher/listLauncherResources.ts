@@ -1,5 +1,4 @@
 import { response } from "@server/lib/response";
-import { getFirstString } from "@server/lib/requestParams";
 import HttpCode from "@server/types/HttpCode";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
@@ -18,14 +17,8 @@ export async function listLauncherResources(
     next: NextFunction
 ): Promise<any> {
     try {
-        const orgId = getFirstString(req.params.orgId);
-        const userId = req.user?.userId;
-
-        if (!userId) {
-            return next(
-                createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
-            );
-        }
+        const orgId = req.userOrgId;
+        const userId = req.user!.userId;
 
         if (!orgId) {
             return next(
@@ -46,6 +39,7 @@ export async function listLauncherResources(
         const { resources, total } = await listLauncherResourcesForUser(
             orgId,
             userId,
+            req.userOrgRoleIds ?? [],
             parsed.data
         );
 

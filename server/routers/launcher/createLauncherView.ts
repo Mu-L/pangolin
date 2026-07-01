@@ -1,17 +1,12 @@
 import { db, launcherViews } from "@server/db";
 import { response } from "@server/lib/response";
-import { getFirstString } from "@server/lib/requestParams";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import moment from "moment";
 import { fromZodError } from "zod-validation-error";
 import { z } from "zod";
-import {
-    isOrgAdminOrOwner,
-    verifyLauncherOrgMembership
-} from "./launcherResourceAccess";
+import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
 import { launcherViewConfigSchema } from "./types";
 
 const createLauncherViewBodySchema = z.strictObject({
@@ -26,14 +21,8 @@ export async function createLauncherView(
     next: NextFunction
 ): Promise<any> {
     try {
-        const orgId = getFirstString(req.params.orgId);
-        const userId = req.user?.userId;
-
-        if (!userId) {
-            return next(
-                createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
-            );
-        }
+        const orgId = req.userOrgId;
+        const userId = req.user!.userId;
 
         if (!orgId) {
             return next(
@@ -51,22 +40,16 @@ export async function createLauncherView(
             );
         }
 
-        const { userRoleIds } = await verifyLauncherOrgMembership(
-            orgId,
-            userId
-        );
-
         if (parsed.data.orgWide) {
-            const canManageOrgWide = await isOrgAdminOrOwner(
-                orgId,
-                userId,
-                userRoleIds
+            const canCreateOrgWide = await checkUserActionPermission(
+                ActionsEnum.createOrgWideLauncherView,
+                req
             );
-            if (!canManageOrgWide) {
+            if (!canCreateOrgWide) {
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
-                        "Only administrators can create org-wide views"
+                        "User does not have permission perform this action"
                     )
                 );
             }

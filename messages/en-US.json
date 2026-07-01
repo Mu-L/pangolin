@@ -1401,6 +1401,7 @@
     "actionApplyBlueprint": "Apply Blueprint",
     "actionListBlueprints": "List Blueprints",
     "actionGetBlueprint": "Get Blueprint",
+    "actionCreateOrgWideLauncherView": "Create Org-Wide Launcher View",
     "setupToken": "Setup Token",
     "setupTokenDescription": "Enter the setup token from the server console.",
     "setupTokenRequired": "Setup token is required",

@@ -5,10 +5,7 @@ import HttpCode from "@server/types/HttpCode";
 import { and, eq } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import {
-    isOrgAdminOrOwner,
-    verifyLauncherOrgMembership
-} from "./launcherResourceAccess";
+import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
 
 export async function deleteLauncherView(
     req: Request,
@@ -16,18 +13,12 @@ export async function deleteLauncherView(
     next: NextFunction
 ): Promise<any> {
     try {
-        const orgId = getFirstString(req.params.orgId);
+        const orgId = req.userOrgId;
+        const userId = req.user!.userId;
         const viewId = Number.parseInt(
             getFirstString(req.params.viewId) ?? "",
             10
         );
-        const userId = req.user?.userId;
-
-        if (!userId) {
-            return next(
-                createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
-            );
-        }
 
         if (!orgId || !Number.isFinite(viewId)) {
             return next(
@@ -37,11 +28,6 @@ export async function deleteLauncherView(
                 )
             );
         }
-
-        const { userRoleIds } = await verifyLauncherOrgMembership(
-            orgId,
-            userId
-        );
 
         const [existing] = await db
             .select()
@@ -62,9 +48,12 @@ export async function deleteLauncherView(
 
         const isPersonalView = existing.userId === userId;
         const isOrgWideView = existing.userId == null;
-        const isAdmin = await isOrgAdminOrOwner(orgId, userId, userRoleIds);
+        const canManageOrgWide = await checkUserActionPermission(
+            ActionsEnum.createOrgWideLauncherView,
+            req
+        );
 
-        if (!isPersonalView && !(isOrgWideView && isAdmin)) {
+        if (!isPersonalView && !(isOrgWideView && canManageOrgWide)) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,

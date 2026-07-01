@@ -15,7 +15,6 @@ import {
     sites,
     targets,
     userOrgRoles,
-    userOrgs,
     userPolicies,
     userResources,
     userSiteResources
@@ -33,8 +32,6 @@ import {
     or,
     sql
 } from "drizzle-orm";
-import createHttpError from "http-errors";
-import HttpCode from "@server/types/HttpCode";
 import {
     formatPublicResourceAccess,
     formatSiteResourceAccess
@@ -57,65 +54,6 @@ export type AccessibleIds = {
     resourceIds: number[];
     siteResourceIds: number[];
 };
-
-export async function verifyLauncherOrgMembership(
-    orgId: string,
-    userId: string
-): Promise<{ userRoleIds: number[] }> {
-    const [userOrg] = await db
-        .select()
-        .from(userOrgs)
-        .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)))
-        .limit(1);
-
-    if (!userOrg) {
-        throw createHttpError(HttpCode.FORBIDDEN, "User not in organization");
-    }
-
-    const userRoleIds = await db
-        .select({ roleId: userOrgRoles.roleId })
-        .from(userOrgRoles)
-        .where(
-            and(eq(userOrgRoles.userId, userId), eq(userOrgRoles.orgId, orgId))
-        )
-        .then((rows) => rows.map((r) => r.roleId));
-
-    return { userRoleIds };
-}
-
-export async function isOrgAdminOrOwner(
-    orgId: string,
-    userId: string,
-    userRoleIds: number[]
-): Promise<boolean> {
-    const [membership] = await db
-        .select({ isOwner: userOrgs.isOwner })
-        .from(userOrgs)
-        .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)))
-        .limit(1);
-
-    if (membership?.isOwner) {
-        return true;
-    }
-
-    if (userRoleIds.length === 0) {
-        return false;
-    }
-
-    const adminRoles = await db
-        .select({ roleId: roles.roleId })
-        .from(roles)
-        .where(
-            and(
-                eq(roles.orgId, orgId),
-                eq(roles.isAdmin, true),
-                inArray(roles.roleId, userRoleIds)
-            )
-        )
-        .limit(1);
-
-    return adminRoles.length > 0;
-}
 
 export async function resolveAccessibleIds(
     orgId: string,
@@ -826,9 +764,9 @@ async function listLabelGroups(
 export async function listLauncherGroupsForUser(
     orgId: string,
     userId: string,
+    userRoleIds: number[],
     query: LauncherListQuery
 ): Promise<{ groups: LauncherGroup[]; total: number }> {
-    const { userRoleIds } = await verifyLauncherOrgMembership(orgId, userId);
     const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
 
     if (query.groupBy === "label") {
@@ -1077,9 +1015,9 @@ function sortLauncherResources(
 export async function listLauncherResourcesForUser(
     orgId: string,
     userId: string,
+    userRoleIds: number[],
     query: LauncherListQuery & { groupKey: string }
 ): Promise<{ resources: LauncherResource[]; total: number }> {
-    const { userRoleIds } = await verifyLauncherOrgMembership(orgId, userId);
     const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
 
     const siteFilterIds = parseIdListParam(query.siteIds);

@@ -1,5 +1,4 @@
 import { response } from "@server/lib/response";
-import { getFirstString } from "@server/lib/requestParams";
 import HttpCode from "@server/types/HttpCode";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
@@ -13,14 +12,8 @@ export async function listLauncherGroups(
     next: NextFunction
 ): Promise<any> {
     try {
-        const orgId = getFirstString(req.params.orgId);
-        const userId = req.user?.userId;
-
-        if (!userId) {
-            return next(
-                createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
-            );
-        }
+        const orgId = req.userOrgId;
+        const userId = req.user!.userId;
 
         if (!orgId) {
             return next(
@@ -41,6 +34,7 @@ export async function listLauncherGroups(
         const { groups, total } = await listLauncherGroupsForUser(
             orgId,
             userId,
+            req.userOrgRoleIds ?? [],
             parsed.data
         );
 
