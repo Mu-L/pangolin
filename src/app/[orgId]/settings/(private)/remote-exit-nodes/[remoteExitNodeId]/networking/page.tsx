@@ -143,9 +143,7 @@ export default function NetworkingPage() {
         setSaving(true);
         try {
             await Promise.all([
-                api.post<
-                    AxiosResponse<SetRemoteExitNodeResourcesResponse>
-                >(
+                api.post<AxiosResponse<SetRemoteExitNodeResourcesResponse>>(
                     `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/resources`,
                     { destinations: subnets.map((s) => s.text) }
                 ),
@@ -158,9 +156,7 @@ export default function NetworkingPage() {
             ]);
             toast({
                 title: t("remoteExitNodeNetworkingSaveSuccessTitle"),
-                description: t(
-                    "remoteExitNodeNetworkingSaveSuccessDescription"
-                )
+                description: t("remoteExitNodeNetworkingSaveSuccessDescription")
             });
         } catch (error) {
             toast({
@@ -184,6 +180,15 @@ export default function NetworkingPage() {
                     </SettingsSectionTitle>
                     <SettingsSectionDescription>
                         {t("remoteExitNodeNetworkingDescription")}
+                        <a
+                            href="https://docs.pangolin.net/placeholder"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                            {t("learnMore")}
+                            <ExternalLink className="size-3.5 shrink-0" />
+                        </a>
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
@@ -221,15 +226,6 @@ export default function NetworkingPage() {
                                                 )
                                             }
                                         )}{" "}
-                                        <a
-                                            href="https://docs.pangolin.net/placeholder"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-primary hover:underline inline-flex items-center gap-1"
-                                        >
-                                            {t("learnMore")}
-                                            <ExternalLink className="size-3.5 shrink-0" />
-                                        </a>
                                     </p>
                                 </div>
                             </SettingsFormCell>
