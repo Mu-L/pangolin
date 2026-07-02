@@ -159,6 +159,7 @@ authenticated.get(
     verifyApiKeyOrgAccess,
     resource.getUserResources
 );
+
 // Site Resource endpoints
 authenticated.put(
     "/org/:orgId/site-resource",

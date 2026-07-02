@@ -17,6 +17,7 @@ import * as idp from "./idp";
 import * as blueprints from "./blueprints";
 import * as apiKeys from "./apiKeys";
 import * as logs from "./auditLogs";
+import * as launcher from "./launcher";
 import * as newt from "./newt";
 import * as olm from "./olm";
 import * as serverInfo from "./serverInfo";
@@ -461,6 +462,54 @@ authenticated.get(
     "/org/:orgId/user-resources",
     verifyOrgAccess,
     resource.getUserResources
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/groups",
+    verifyOrgAccess,
+    launcher.listLauncherGroups
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/resources",
+    verifyOrgAccess,
+    launcher.listLauncherResources
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/sites",
+    verifyOrgAccess,
+    launcher.listLauncherSites
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/labels",
+    verifyOrgAccess,
+    launcher.listLauncherLabels
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/views",
+    verifyOrgAccess,
+    launcher.listLauncherViews
+);
+
+authenticated.post(
+    "/org/:orgId/launcher/views",
+    verifyOrgAccess,
+    launcher.createLauncherView
+);
+
+authenticated.put(
+    "/org/:orgId/launcher/views/:viewId",
+    verifyOrgAccess,
+    launcher.updateLauncherView
+);
+
+authenticated.delete(
+    "/org/:orgId/launcher/views/:viewId",
+    verifyOrgAccess,
+    launcher.deleteLauncherView
 );
 
 authenticated.get(
