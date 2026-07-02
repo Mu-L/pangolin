@@ -5,7 +5,7 @@ import { Newt } from "@server/db";
 import { eq } from "drizzle-orm";
 import logger from "@server/logger";
 import { sendNewtSyncMessage } from "./sync";
-import { recordPing } from "./pingAccumulator";
+import { recordSitePing } from "./pingAccumulator";
 
 /**
  * Handles ping messages from newt clients.
@@ -35,7 +35,7 @@ export const handleNewtPingMessage: MessageHandler = async (context) => {
     // batched UPDATE instead of one query per ping. This prevents
     // connection pool exhaustion under load, especially with
     // cross-region latency to the database.
-    recordPing(newt.siteId);
+    recordSitePing(newt.siteId);
 
     // Check config version and sync if stale.
     const configVersion = await getClientConfigVersion(newt.newtId);
@@ -49,22 +49,20 @@ export const handleNewtPingMessage: MessageHandler = async (context) => {
             `Newt ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
         );
 
-        // TODO: IMPLEMENT THE SYNC ON THE NEWT SIDE AND COMMENT THIS BACK IN
+        const [site] = await db
+            .select()
+            .from(sites)
+            .where(eq(sites.siteId, newt.siteId))
+            .limit(1);
 
-        // const [site] = await db
-        //     .select()
-        //     .from(sites)
-        //     .where(eq(sites.siteId, newt.siteId))
-        //     .limit(1);
+        if (!site) {
+            logger.warn(
+                `Newt ping message: site with ID ${newt.siteId} not found`
+            );
+            return;
+        }
 
-        // if (!site) {
-        //     logger.warn(
-        //         `Newt ping message: site with ID ${newt.siteId} not found`
-        //     );
-        //     return;
-        // }
-
-        // await sendNewtSyncMessage(newt, site);
+        await sendNewtSyncMessage(newt, site);
     }
 
     return {

@@ -8,7 +8,7 @@ import {
     userSiteResources,
     clientSiteResources
 } from "@server/db";
-import { Config, ConfigSchema } from "./types";
+import { Config, ConfigSchema, isTargetsOnlyResource } from "./types";
 import {
     PublicResourcesResults,
     updatePublicResources
@@ -34,6 +34,12 @@ import {
     rebuildClientAssociationsFromSiteResource,
     waitForSiteResourceRebuildIdle
 } from "../rebuildClientAssociations";
+import { build } from "@server/build";
+import HttpCode from "@server/types/HttpCode";
+import createHttpError from "http-errors";
+import next from "next";
+import { LimitId } from "../billing";
+import { usageService } from "../billing/usageService";
 
 type ApplyBlueprintArgs = {
     orgId: string;
@@ -64,6 +70,7 @@ export async function applyBlueprint({
 
         let publicResourcesResults: PublicResourcesResults = [];
         let privateResourcesResults: ClientResourcesResults = [];
+
         await db.transaction(async (trx) => {
             await updateResourcePolicies(orgId, config, trx);
 
@@ -172,7 +179,9 @@ export async function applyBlueprint({
     } catch (err) {
         blueprintSucceeded = false;
         blueprintMessage = `Blueprint applied with errors: ${err}`;
-        logger.error(blueprintMessage);
+        logger.debug(
+            `Org ${orgId} blueprint apply issues: ${blueprintMessage}`
+        );
         error = err;
     }
 

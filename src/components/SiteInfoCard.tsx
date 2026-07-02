@@ -54,7 +54,7 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
             <InfoSectionTitle>{t("publicIpEndpoint")}</InfoSectionTitle>
             <InfoSectionContent>
                 {formatPublicEndpoint(site.endpoint)}&nbsp;
-                <span className="text-lg">
+                <span>
                     {site.countryCode &&
                         countryCodeToFlagEmoji(site.countryCode)}
                 </span>

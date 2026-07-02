@@ -107,6 +107,7 @@ export default function SitesTable({
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteWithResources, setDeleteWithResources] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
+    const [restartingSite, setRestartingSite] = useState<SiteRow | null>(null);
     const [resourcesDialogSite, setResourcesDialogSite] =
         useState<SiteRow | null>(null);
     const [isRefreshing, startTransition] = useTransition();
@@ -157,6 +158,24 @@ export default function SitesTable({
                 });
             }
         });
+    }
+
+    async function restartSite(siteId: number) {
+        try {
+            await api.post(`/site/${siteId}/restart`);
+            toast({
+                title: t("siteRestarted"),
+                description: t("siteRestartedDescription")
+            });
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("siteErrorRestart"),
+                description: formatAxiosError(e, t("siteErrorRestartDescription"))
+            });
+        } finally {
+            setRestartingSite(null);
+        }
     }
 
     function deleteSite(siteId: number, withResources: boolean) {
@@ -526,6 +545,20 @@ export default function SitesTable({
                                         </DropdownMenuItem>
                                     </Link>
                                     <DropdownMenuSeparator />
+                                    {siteRow.type === "newt" && (
+                                        <>
+                                            <DropdownMenuItem
+                                                onClick={() =>
+                                                    setRestartingSite(siteRow)
+                                                }
+                                            >
+                                                <span className="text-orange-500">
+                                                    {t("siteRestartButton")}
+                                                </span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                        </>
+                                    )}
                                     <DropdownMenuItem
                                         onClick={() => {
                                             setSelectedSite(siteRow);
@@ -653,6 +686,28 @@ export default function SitesTable({
                     </CredenzaFooter>
                 </CredenzaContent>
             </Credenza>
+
+            {restartingSite && (
+                <ConfirmDeleteDialog
+                    open={Boolean(restartingSite)}
+                    setOpen={(val) => {
+                        if (!val) setRestartingSite(null);
+                    }}
+                    dialog={
+                        <p>
+                            {t.rich("siteRestartDialogMessage", {
+                                name: restartingSite.name,
+                                b: (chunks) => <b>{chunks}</b>
+                            })}
+                        </p>
+                    }
+                    buttonText={t("siteRestartButton")}
+                    onConfirm={() => restartSite(restartingSite.id)}
+                    string={restartingSite.name}
+                    warningText={t("siteRestartWarning")}
+                    title={t("siteRestartTitle")}
+                />
+            )}
 
             {selectedSite && (
                 <ConfirmDeleteDialog

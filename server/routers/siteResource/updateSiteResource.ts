@@ -19,6 +19,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { isIpInCidr, portRangeStringSchema } from "@server/lib/ip";
 import {
     handleMessagingForUpdatedSiteResource,
+    isOrgRebuildRateLimited,
     rebuildClientAssociationsFromSiteResource,
     waitForSiteResourceRebuildIdle
 } from "@server/lib/rebuildClientAssociations";
@@ -341,6 +342,15 @@ export async function updateSiteResource(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
                     `Organization with ID ${existingSiteResource.orgId} has no subnet or utilitySubnet defined defined`
+                )
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(org.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
         }

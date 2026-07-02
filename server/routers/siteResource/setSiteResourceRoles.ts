@@ -9,7 +9,10 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
-import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import {
+    rebuildClientAssociationsFromSiteResource,
+    isOrgRebuildRateLimited
+} from "@server/lib/rebuildClientAssociations";
 
 const setSiteResourceRolesBodySchema = z
     .object({
@@ -104,6 +107,15 @@ export async function setSiteResourceRoles(
                 createHttpError(
                     HttpCode.INTERNAL_SERVER_ERROR,
                     "Site resource not found"
+                )
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(siteResource.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
         }

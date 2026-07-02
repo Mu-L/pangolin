@@ -23,6 +23,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { removeUserFromOrg } from "@server/lib/userOrg";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { OpenAPITags, registry } from "@server/openApi";
+import { isOrgRebuildRateLimited } from "@server/lib/rebuildClientAssociations";
 
 const paramsSchema = z
     .object({
@@ -87,6 +88,15 @@ export async function unassociateOrgIdp(
         if (!org) {
             return next(
                 createHttpError(HttpCode.NOT_FOUND, "Organization not found")
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(org.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
+                )
             );
         }
 

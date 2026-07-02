@@ -45,10 +45,22 @@ import {
 } from "@server/routers/client/targets";
 import { lockManager } from "#dynamic/lib/lock";
 import { rebuildQueue } from "#dynamic/lib/rebuildQueue";
+import {
+    checkOrgRebuildRateLimit,
+    decrementOrgRebuildCount,
+    incrementOrgRebuildCount,
+    ORG_REBUILD_CONCURRENCY_LIMIT
+} from "#dynamic/lib/orgRebuildCounter";
+
+export { ORG_REBUILD_CONCURRENCY_LIMIT };
 
 // TTL for rebuild-association locks. These functions can fan out into many
 // peer/proxy updates, so give them a generous window.
 const REBUILD_ASSOCIATIONS_LOCK_TTL_MS = 120000;
+
+export async function isOrgRebuildRateLimited(orgId: string): Promise<boolean> {
+    return checkOrgRebuildRateLimit(orgId);
+}
 
 const REBUILD_IDLE_POLL_INTERVAL_MS = 300;
 const REBUILD_IDLE_DEFAULT_TIMEOUT_MS = 130_000; // slightly longer than lock TTL
@@ -271,6 +283,7 @@ export async function getClientSiteResourceAccess(
 export async function rebuildClientAssociationsFromSiteResource(
     siteResource: SiteResource
 ) {
+    await incrementOrgRebuildCount(siteResource.orgId);
     try {
         return await lockManager.withLock(
             `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
@@ -292,6 +305,8 @@ export async function rebuildClientAssociationsFromSiteResource(
             return { mergedAllClients: [] };
         }
         throw err;
+    } finally {
+        await decrementOrgRebuildCount(siteResource.orgId);
     }
 }
 
@@ -1638,8 +1653,9 @@ export async function handleMessagingForUpdatedSiteResource(
 export async function rebuildClientAssociationsFromClient(
     client: Client
 ): Promise<void> {
-    const trx = primaryDb;
+    await incrementOrgRebuildCount(client.orgId);
     try {
+        const trx = primaryDb;
         return await lockManager.withLock(
             `rebuild-client-associations:client:${client.clientId}`,
             () => rebuildClientAssociationsFromClientImpl(client, trx),
@@ -1660,6 +1676,8 @@ export async function rebuildClientAssociationsFromClient(
             return;
         }
         throw err;
+    } finally {
+        await decrementOrgRebuildCount(client.orgId);
     }
 }
 

@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+
 const instanceId = `local-${Math.random().toString(36).slice(2)}-${Date.now()}`;
 
 type LocalLockRecord = {
@@ -15,58 +17,60 @@ export class LockManager {
         }
     }
 
-    private getLocalOwnerToken(): string {
-        return `${instanceId}:`;
-    }
-
     /**
-     * Acquire a distributed lock using Redis SET with NX and PX options
+     * Acquire a local in-process lock using an optimistic Map-based check.
      * @param lockKey - Unique identifier for the lock
      * @param ttlMs - Time to live in milliseconds
-     * @returns Promise<boolean> - true if lock acquired, false otherwise
+     * @returns Promise<string | null> - a token identifying this specific acquisition
+     *          (truthy) on success, or null if the lock could not be acquired.
      */
     async acquireLock(
         lockKey: string,
         ttlMs: number = 30000,
         maxRetries: number = 3,
         retryDelayMs: number = 100
-    ): Promise<boolean> {
+    ): Promise<string | null> {
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             this.clearExpiredLocalLock(lockKey);
 
             const existing = localLocks.get(lockKey);
             if (!existing) {
+                const token = `${instanceId}:${randomUUID()}`;
                 localLocks.set(lockKey, {
-                    owner: this.getLocalOwnerToken(),
+                    owner: token,
                     expiresAt: Date.now() + ttlMs
                 });
-                return true;
+                return token;
             }
 
-            if (existing.owner === this.getLocalOwnerToken()) {
-                existing.expiresAt = Date.now() + ttlMs;
-                localLocks.set(lockKey, existing);
-                return true;
-            }
-
+            // The lock is currently held -- possibly by a different, unrelated
+            // caller in this same process. We intentionally do NOT treat
+            // same-process holders as automatically reentrant here: two
+            // independent logical operations (e.g. two different API requests)
+            // running concurrently in the same process must not both believe
+            // they hold the lock, or their writes under it can interleave
+            // unguarded. Just retry with backoff like any other contended lock.
             if (attempt < maxRetries - 1) {
                 const delay = retryDelayMs * Math.pow(2, attempt);
                 await new Promise((resolve) => setTimeout(resolve, delay));
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
-     * Release a lock using Lua script to ensure atomicity
+     * Release a lock previously acquired via acquireLock/acquireLockWithRetry.
      * @param lockKey - Unique identifier for the lock
+     * @param token - the exact token returned by the acquisition being released.
+     *   Required so a caller whose TTL already expired can't delete a
+     *   different, currently-active holder's lock.
      */
-    async releaseLock(lockKey: string): Promise<void> {
+    async releaseLock(lockKey: string, token: string): Promise<void> {
         this.clearExpiredLocalLock(lockKey);
         const existing = localLocks.get(lockKey);
 
-        if (existing && existing.owner === this.getLocalOwnerToken()) {
+        if (existing && existing.owner === token) {
             localLocks.delete(lockKey);
         }
     }
@@ -100,23 +104,29 @@ export class LockManager {
         const ttl = Math.max(0, existing.expiresAt - Date.now());
         return {
             exists: true,
-            ownedByMe: existing.owner === this.getLocalOwnerToken(),
+            ownedByMe: existing.owner.startsWith(`${instanceId}:`),
             ttl,
             owner: existing.owner.split(":")[0]
         };
     }
 
     /**
-     * Extend the TTL of an existing lock owned by this worker
+     * Extend the TTL of an existing lock, provided the token matches the
+     * acquisition currently holding it.
      * @param lockKey - Unique identifier for the lock
      * @param ttlMs - New TTL in milliseconds
+     * @param token - the token returned by the acquisition being extended
      * @returns Promise<boolean> - true if extended successfully
      */
-    async extendLock(lockKey: string, ttlMs: number): Promise<boolean> {
+    async extendLock(
+        lockKey: string,
+        ttlMs: number,
+        token: string
+    ): Promise<boolean> {
         this.clearExpiredLocalLock(lockKey);
         const existing = localLocks.get(lockKey);
 
-        if (!existing || existing.owner !== this.getLocalOwnerToken()) {
+        if (!existing || existing.owner !== token) {
             return false;
         }
 
@@ -131,14 +141,14 @@ export class LockManager {
      * @param ttlMs - Time to live in milliseconds
      * @param maxRetries - Maximum number of retry attempts
      * @param baseDelayMs - Base delay between retries in milliseconds
-     * @returns Promise<boolean> - true if lock acquired
+     * @returns Promise<string | null> - token if acquired, null otherwise
      */
     async acquireLockWithRetry(
         lockKey: string,
         ttlMs: number = 30000,
         maxRetries: number = 5,
         baseDelayMs: number = 100
-    ): Promise<boolean> {
+    ): Promise<string | null> {
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
             const acquired = await this.acquireLock(
                 lockKey,
@@ -148,7 +158,7 @@ export class LockManager {
             );
 
             if (acquired) {
-                return true;
+                return acquired;
             }
 
             if (attempt < maxRetries) {
@@ -158,7 +168,7 @@ export class LockManager {
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -173,16 +183,16 @@ export class LockManager {
         fn: () => Promise<T>,
         ttlMs: number = 30000
     ): Promise<T> {
-        const acquired = await this.acquireLock(lockKey, ttlMs);
+        const token = await this.acquireLock(lockKey, ttlMs);
 
-        if (!acquired) {
+        if (!token) {
             throw new Error(`Failed to acquire lock: ${lockKey}`);
         }
 
         try {
             return await fn();
         } finally {
-            await this.releaseLock(lockKey);
+            await this.releaseLock(lockKey, token);
         }
     }
 
@@ -204,7 +214,7 @@ export class LockManager {
 
         let locksOwnedByMe = 0;
         for (const value of localLocks.values()) {
-            if (value.owner === this.getLocalOwnerToken()) {
+            if (value.owner.startsWith(`${instanceId}:`)) {
                 locksOwnedByMe++;
             }
         }
