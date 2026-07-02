@@ -4,23 +4,12 @@ import { resolveLauncherStateFromUrl } from "@app/lib/launcherUrlState";
 import { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
 import type {
     LauncherGroup,
-    LauncherResource,
     LauncherViewConfig,
     LauncherViewRecord,
     ListLauncherGroupsResponse,
-    ListLauncherResourcesResponse,
     ListLauncherViewsResponse
 } from "@server/routers/launcher/types";
 import { AxiosResponse } from "axios";
-
-export type LauncherGroupResources = {
-    resources: LauncherResource[];
-    pagination: {
-        total: number;
-        page: number;
-        pageSize: number;
-    };
-};
 
 export type LauncherPageData = {
     views: LauncherViewRecord[];
@@ -33,12 +22,6 @@ export type LauncherPageData = {
         page: number;
         pageSize: number;
     };
-    resourcesByGroupKey: Record<string, LauncherGroupResources>;
-};
-
-const emptyResources: LauncherGroupResources = {
-    resources: [],
-    pagination: { total: 0, page: 1, pageSize: 20 }
 };
 
 export async function fetchLauncherPageData(
@@ -88,41 +71,12 @@ export async function fetchLauncherPageData(
         groupsPagination = groupsRes.data.data.pagination;
     } catch (e) {}
 
-    const resourcesByGroupKey: Record<string, LauncherGroupResources> = {};
-
-    await Promise.all(
-        groups.map(async (group) => {
-            try {
-                const sp = buildLauncherSearchParams(
-                    {
-                        ...groupFilters,
-                        groupKey: group.groupKey
-                    },
-                    1
-                );
-                const res = await internal.get<
-                    AxiosResponse<ListLauncherResourcesResponse>
-                >(
-                    `/org/${orgId}/launcher/resources?${sp.toString()}`,
-                    cookieHeader
-                );
-                resourcesByGroupKey[group.groupKey] = {
-                    resources: res.data.data.resources,
-                    pagination: res.data.data.pagination
-                };
-            } catch (e) {
-                resourcesByGroupKey[group.groupKey] = emptyResources;
-            }
-        })
-    );
-
     return {
         views,
         activeViewId,
         config,
         savedConfig,
         groups,
-        groupsPagination,
-        resourcesByGroupKey
+        groupsPagination
     };
 }

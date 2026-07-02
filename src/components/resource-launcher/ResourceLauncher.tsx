@@ -20,7 +20,6 @@ import {
     writeLauncherLastView,
     type LauncherActiveViewId
 } from "@app/lib/launcherLocalStorage";
-import type { LauncherGroupResources } from "@app/lib/launcherServerData";
 import {
     buildLauncherPath,
     getLauncherUrlBaseConfig,
@@ -73,7 +72,6 @@ type ResourceLauncherProps = {
         page: number;
         pageSize: number;
     };
-    resourcesByGroupKey: Record<string, LauncherGroupResources>;
 };
 
 export default function ResourceLauncher({
@@ -84,8 +82,7 @@ export default function ResourceLauncher({
     config,
     savedConfig,
     groups,
-    groupsPagination,
-    resourcesByGroupKey
+    groupsPagination
 }: ResourceLauncherProps) {
     const t = useTranslations();
     const { toast } = useToast();
@@ -511,7 +508,6 @@ export default function ResourceLauncher({
                 config={config}
                 initialGroups={groups}
                 groupsPagination={groupsPagination}
-                resourcesByGroupKey={resourcesByGroupKey}
                 onClearFilters={handleClearFilters}
             />
 
