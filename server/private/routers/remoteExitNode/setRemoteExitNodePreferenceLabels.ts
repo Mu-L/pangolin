@@ -25,6 +25,7 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
+import { SetRemoteExitNodePreferenceLabelsResponse } from "@server/routers/remoteExitNode";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().min(1),
@@ -36,15 +37,6 @@ const bodySchema = z.strictObject({
 });
 
 export type SetRemoteExitNodePreferenceLabelsBody = z.infer<typeof bodySchema>;
-
-export type SetRemoteExitNodePreferenceLabelsResponse = {
-    labels: {
-        remoteExitNodePreferenceLabelId: number;
-        labelId: number;
-        name: string;
-        color: string;
-    }[];
-};
 
 export async function setRemoteExitNodePreferenceLabels(
     req: Request,

@@ -20,19 +20,12 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
+import { ListRemoteExitNodeResourcesResponse } from "@server/routers/remoteExitNode/types";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().min(1),
     remoteExitNodeId: z.string().min(1)
 });
-
-export type ListRemoteExitNodeResourcesResponse = {
-    resources: {
-        remoteExitNodeResourceId: number;
-        remoteExitNodeId: string;
-        destination: string;
-    }[];
-};
 
 export async function listRemoteExitNodeResources(
     req: Request,

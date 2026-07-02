@@ -27,10 +27,10 @@ import type { TagValue } from "@app/components/multi-select/multi-select-content
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
-import type { ListRemoteExitNodeResourcesResponse } from "@server/private/routers/remoteExitNode/listRemoteExitNodeResources";
-import type { SetRemoteExitNodeResourcesResponse } from "@server/private/routers/remoteExitNode/setRemoteExitNodeResources";
-import type { ListRemoteExitNodePreferenceLabelsResponse } from "@server/private/routers/remoteExitNode/listRemoteExitNodePreferenceLabels";
-import type { SetRemoteExitNodePreferenceLabelsResponse } from "@server/private/routers/remoteExitNode/setRemoteExitNodePreferenceLabels";
+import type { ListRemoteExitNodeResourcesResponse } from "@server/routers/remoteExitNode";
+import type { SetRemoteExitNodeResourcesResponse } from "@server/routers/remoteExitNode";
+import type { ListRemoteExitNodePreferenceLabelsResponse } from "@server/routers/remoteExitNode";
+import type { SetRemoteExitNodePreferenceLabelsResponse } from "@server/routers/remoteExitNode";
 import { useTranslations } from "next-intl";
 import { ExternalLink } from "lucide-react";
 

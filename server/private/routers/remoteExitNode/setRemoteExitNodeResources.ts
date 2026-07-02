@@ -28,6 +28,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { sendToClientsBatch } from "#private/routers/ws";
 import { canCompress } from "@server/lib/clientVersionChecks";
+import { SetRemoteExitNodeResourcesResponse } from "@server/routers/remoteExitNode";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().min(1),
@@ -44,14 +45,6 @@ const bodySchema = z.strictObject({
 });
 
 export type SetRemoteExitNodeResourcesBody = z.infer<typeof bodySchema>;
-
-export type SetRemoteExitNodeResourcesResponse = {
-    resources: {
-        remoteExitNodeResourceId: number;
-        remoteExitNodeId: string;
-        destination: string;
-    }[];
-};
 
 export async function setRemoteExitNodeResources(
     req: Request,
