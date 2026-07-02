@@ -87,7 +87,6 @@ export default async function OrgPage(props: OrgPageProps) {
                         savedConfig={launcherData.savedConfig}
                         groups={launcherData.groups}
                         groupsPagination={launcherData.groupsPagination}
-                        resourcesByGroupKey={launcherData.resourcesByGroupKey}
                     />
                 ) : null}
             </Layout>

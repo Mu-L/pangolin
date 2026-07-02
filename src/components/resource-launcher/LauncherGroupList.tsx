@@ -1,7 +1,6 @@
 "use client";
 
 import type { LauncherActiveViewId } from "@app/lib/launcherLocalStorage";
-import type { LauncherGroupResources } from "@app/lib/launcherServerData";
 import { launcherQueries } from "@app/lib/queries";
 import type {
     LauncherGroup,
@@ -24,7 +23,6 @@ type LauncherGroupListProps = {
         page: number;
         pageSize: number;
     };
-    resourcesByGroupKey: Record<string, LauncherGroupResources>;
     onClearFilters?: () => void;
     onResourceSelect?: (resource: LauncherResource) => void;
 };
@@ -43,7 +41,6 @@ export function LauncherGroupList({
     config,
     initialGroups,
     groupsPagination,
-    resourcesByGroupKey,
     onClearFilters,
     onResourceSelect
 }: LauncherGroupListProps) {
@@ -128,22 +125,16 @@ export function LauncherGroupList({
 
     return (
         <div className="flex flex-col gap-2.5">
-            {groups.map((group) => {
-                const groupResources = resourcesByGroupKey[group.groupKey];
-
-                return (
-                    <LauncherGroupSection
-                        key={group.groupKey}
-                        orgId={orgId}
-                        activeViewId={activeViewId}
-                        group={group}
-                        config={config}
-                        initialResources={groupResources?.resources}
-                        initialResourcesPagination={groupResources?.pagination}
-                        onResourceSelect={onResourceSelect}
-                    />
-                );
-            })}
+            {groups.map((group) => (
+                <LauncherGroupSection
+                    key={group.groupKey}
+                    orgId={orgId}
+                    activeViewId={activeViewId}
+                    group={group}
+                    config={config}
+                    onResourceSelect={onResourceSelect}
+                />
+            ))}
             <div ref={loadMoreRef} className="h-4" />
             {isFetchingNextPage ? (
                 <div className="flex justify-center py-2">
