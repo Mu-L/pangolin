@@ -700,7 +700,7 @@ async function handleMessagesForSiteClients(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     if (!site.exitNodeId) {
-        logger.warn(
+        logger.debug(
             `Exit node ID not on site ${site.siteId} so there is no reason to update clients because it must be offline`
         );
         return;
@@ -714,14 +714,14 @@ async function handleMessagesForSiteClients(
         .limit(1);
 
     if (!exitNode) {
-        logger.warn(
+        logger.debug(
             `Exit node not found for site ${site.siteId} so there is no reason to update clients because it must be offline`
         );
         return;
     }
 
     if (!site.publicKey) {
-        logger.warn(
+        logger.debug(
             `Site publicKey not set for site ${site.siteId} so cannot add peers to clients`
         );
         return;
@@ -735,7 +735,7 @@ async function handleMessagesForSiteClients(
         .where(eq(newts.siteId, siteId))
         .limit(1);
     if (!newt) {
-        logger.warn(
+        logger.debug(
             `Newt not found for site ${siteId} so cannot add peers to clients`
         );
         return;
