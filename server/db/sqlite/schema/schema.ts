@@ -233,6 +233,9 @@ export const launcherViews = sqliteTable("launcherViews", {
     }),
     name: text("name").notNull(),
     config: text("config").notNull(),
+    isDefault: integer("isDefault", { mode: "boolean" })
+        .notNull()
+        .default(false),
     createdAt: text("createdAt").notNull(),
     updatedAt: text("updatedAt").notNull()
 });

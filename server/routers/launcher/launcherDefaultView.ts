@@ -2,16 +2,11 @@ import { db, launcherViews } from "@server/db";
 import { and, eq, isNull } from "drizzle-orm";
 import moment from "moment";
 import {
-    LAUNCHER_DEFAULT_OVERRIDE_VIEW_NAME,
     launcherViewConfigSchema,
     type LauncherDefaultViewOverrides,
     type LauncherViewConfig,
     type LauncherViewRecord
 } from "./types";
-
-export function isLauncherDefaultOverrideViewName(name: string) {
-    return name === LAUNCHER_DEFAULT_OVERRIDE_VIEW_NAME;
-}
 
 export function mapViewRow(
     row: typeof launcherViews.$inferSelect
@@ -24,16 +19,15 @@ export function mapViewRow(
         config: launcherViewConfigSchema.parse(JSON.parse(row.config)),
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
-        isOrgWide: row.userId == null
+        isOrgWide: row.userId == null,
+        isDefault: row.isDefault
     };
 }
 
 export function extractDefaultViewOverrides(
     rows: Array<typeof launcherViews.$inferSelect>
 ): LauncherDefaultViewOverrides {
-    const overrideRows = rows.filter((row) =>
-        isLauncherDefaultOverrideViewName(row.name)
-    );
+    const overrideRows = rows.filter((row) => row.isDefault);
 
     const personalRow = overrideRows.find((row) => row.userId !== null);
     const orgWideRow = overrideRows.find((row) => row.userId === null);
@@ -47,9 +41,7 @@ export function extractDefaultViewOverrides(
 export function listVisibleLauncherViews(
     rows: Array<typeof launcherViews.$inferSelect>
 ): LauncherViewRecord[] {
-    return rows
-        .filter((row) => !isLauncherDefaultOverrideViewName(row.name))
-        .map(mapViewRow);
+    return rows.filter((row) => !row.isDefault).map(mapViewRow);
 }
 
 export async function findDefaultViewOverride(
@@ -63,7 +55,7 @@ export async function findDefaultViewOverride(
         .where(
             and(
                 eq(launcherViews.orgId, orgId),
-                eq(launcherViews.name, LAUNCHER_DEFAULT_OVERRIDE_VIEW_NAME),
+                eq(launcherViews.isDefault, true),
                 orgWide
                     ? isNull(launcherViews.userId)
                     : eq(launcherViews.userId, userId)
@@ -106,7 +98,8 @@ export async function upsertDefaultViewOverride({
         .values({
             orgId,
             userId: orgWide ? null : userId,
-            name: LAUNCHER_DEFAULT_OVERRIDE_VIEW_NAME,
+            name: "",
+            isDefault: true,
             config: JSON.stringify(config),
             createdAt: now,
             updatedAt: now

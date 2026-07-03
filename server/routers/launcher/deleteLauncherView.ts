@@ -6,7 +6,6 @@ import { and, eq } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
-import { isLauncherDefaultOverrideViewName } from "./launcherDefaultView";
 
 export async function deleteLauncherView(
     req: Request,
@@ -47,7 +46,7 @@ export async function deleteLauncherView(
             );
         }
 
-        if (isLauncherDefaultOverrideViewName(existing.name)) {
+        if (existing.isDefault) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,

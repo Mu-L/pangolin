@@ -9,7 +9,6 @@ import moment from "moment";
 import { fromZodError } from "zod-validation-error";
 import { z } from "zod";
 import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
-import { isLauncherDefaultOverrideViewName } from "./launcherDefaultView";
 import { launcherViewConfigSchema } from "./types";
 
 const updateLauncherViewBodySchema = z.strictObject({
@@ -67,7 +66,7 @@ export async function updateLauncherView(
             );
         }
 
-        if (isLauncherDefaultOverrideViewName(existing.name)) {
+        if (existing.isDefault) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
@@ -145,7 +144,8 @@ export async function updateLauncherView(
                 ),
                 createdAt: updated.createdAt,
                 updatedAt: updated.updatedAt,
-                isOrgWide: updated.userId == null
+                isOrgWide: updated.userId == null,
+                isDefault: updated.isDefault
             },
             success: true,
             error: false,

@@ -7,7 +7,6 @@ import moment from "moment";
 import { fromZodError } from "zod-validation-error";
 import { z } from "zod";
 import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
-import { isLauncherDefaultOverrideViewName } from "./launcherDefaultView";
 import { launcherViewConfigSchema } from "./types";
 
 const createLauncherViewBodySchema = z.strictObject({
@@ -37,15 +36,6 @@ export async function createLauncherView(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
                     fromZodError(parsed.error)
-                )
-            );
-        }
-
-        if (isLauncherDefaultOverrideViewName(parsed.data.name)) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "This view name is reserved"
                 )
             );
         }
@@ -89,7 +79,8 @@ export async function createLauncherView(
                 ),
                 createdAt: created.createdAt,
                 updatedAt: created.updatedAt,
-                isOrgWide: created.userId == null
+                isOrgWide: created.userId == null,
+                isDefault: created.isDefault
             },
             success: true,
             error: false,

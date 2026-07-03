@@ -89,6 +89,7 @@ export type LauncherViewRecord = {
     createdAt: string;
     updatedAt: string;
     isOrgWide: boolean;
+    isDefault: boolean;
 };
 
 export type LauncherDefaultViewOverrides = {
@@ -180,8 +181,6 @@ export function parseIdListParam(value: string | undefined): number[] {
 }
 
 export const DEFAULT_LAUNCHER_VIEW_ID = "default" as const;
-
-export const LAUNCHER_DEFAULT_OVERRIDE_VIEW_NAME = "__default__";
 
 export type LauncherViewSelection =
     | { type: "default" }
