@@ -290,7 +290,13 @@ export default function BillingPage() {
                     setHasSubscription(
                         tierSub.subscription.status === "active"
                     );
-                    setIsTrial(tierSub.subscription.expiresAt != null);
+                    // expiresAt is only meaningful while the trial hasn't
+                    // actually run out yet; a stale row with a past
+                    // expiresAt should no longer be treated as a live trial
+                    const expiresAt = tierSub.subscription.expiresAt;
+                    setIsTrial(
+                        expiresAt != null && expiresAt * 1000 > Date.now()
+                    );
                 }
 
                 // Find license subscription
@@ -1057,21 +1063,23 @@ export default function BillingPage() {
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         {/* Current Usage */}
-                        <div className="border rounded-lg p-4">
+                        <div className="border rounded-lg p-4 md:col-span-1">
                             <div className="text-sm text-muted-foreground mb-2">
                                 {t("billingCurrentUsage") || "Current Usage"}
                             </div>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-semibold">
-                                    {getUserCount()}
-                                </span>
-                                <span className="text-lg">
-                                    {t("billingUsers") || "Users"}
-                                </span>
+                            <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-semibold">
+                                        {getUserCount()}
+                                    </span>
+                                    <span className="text-lg">
+                                        {t("billingUsers") || "Users"}
+                                    </span>
+                                </div>
                                 {hasSubscription && getPricePerUser() > 0 && (
-                                    <div className="text-sm text-muted-foreground mt-1">
+                                    <div className="text-sm text-muted-foreground">
                                         x ${getPricePerUser()} / month = $
                                         {getUserCount() * getPricePerUser()} /
                                         month
@@ -1081,7 +1089,7 @@ export default function BillingPage() {
                         </div>
 
                         {/* Maximum Limits */}
-                        <div className="border rounded-lg p-4">
+                        <div className="border rounded-lg p-4 md:col-span-3">
                             <div className="text-sm text-muted-foreground mb-3">
                                 {t("billingMaximumLimits") || "Maximum Limits"}
                             </div>
