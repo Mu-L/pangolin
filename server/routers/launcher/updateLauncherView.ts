@@ -9,6 +9,7 @@ import moment from "moment";
 import { fromZodError } from "zod-validation-error";
 import { z } from "zod";
 import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
+import { isLauncherDefaultOverrideViewName } from "./launcherDefaultView";
 import { launcherViewConfigSchema } from "./types";
 
 const updateLauncherViewBodySchema = z.strictObject({
@@ -63,6 +64,15 @@ export async function updateLauncherView(
         if (!existing) {
             return next(
                 createHttpError(HttpCode.NOT_FOUND, "Launcher view not found")
+            );
+        }
+
+        if (isLauncherDefaultOverrideViewName(existing.name)) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Use the default view save endpoint for this view"
+                )
             );
         }
 

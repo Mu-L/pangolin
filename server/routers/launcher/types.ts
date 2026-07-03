@@ -91,8 +91,28 @@ export type LauncherViewRecord = {
     isOrgWide: boolean;
 };
 
+export type LauncherDefaultViewOverrides = {
+    personal: LauncherViewRecord | null;
+    orgWide: LauncherViewRecord | null;
+};
+
+export function getEffectiveDefaultLauncherConfig(
+    overrides: LauncherDefaultViewOverrides
+): LauncherViewConfig {
+    if (overrides.personal) {
+        return overrides.personal.config;
+    }
+
+    if (overrides.orgWide) {
+        return overrides.orgWide.config;
+    }
+
+    return defaultLauncherViewConfig;
+}
+
 export type ListLauncherViewsResponse = {
     views: LauncherViewRecord[];
+    defaultViewOverrides: LauncherDefaultViewOverrides;
 };
 
 export const launcherFilterListQuerySchema = z.strictObject({
@@ -160,6 +180,8 @@ export function parseIdListParam(value: string | undefined): number[] {
 }
 
 export const DEFAULT_LAUNCHER_VIEW_ID = "default" as const;
+
+export const LAUNCHER_DEFAULT_OVERRIDE_VIEW_NAME = "__default__";
 
 export type LauncherViewSelection =
     | { type: "default" }

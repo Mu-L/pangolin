@@ -24,22 +24,18 @@ import { Settings } from "lucide-react";
 
 type LauncherSettingsMenuProps = {
     config: LauncherViewConfig;
-    isDefaultView: boolean;
     capabilities: LauncherScaleCapabilities;
     isCompactMode: boolean;
     selectedGroupBy: LauncherViewConfig["groupBy"];
     onConfigChange: (patch: Partial<LauncherViewConfig>) => void;
-    onDeleteView: () => void;
 };
 
 export function LauncherSettingsMenu({
     config,
-    isDefaultView,
     capabilities,
     isCompactMode,
     selectedGroupBy,
-    onConfigChange,
-    onDeleteView
+    onConfigChange
 }: LauncherSettingsMenuProps) {
     const t = useTranslations();
 
@@ -157,16 +153,6 @@ export function LauncherSettingsMenu({
                             />
                         </div>
                     </div>
-
-                    {!isDefaultView ? (
-                        <Button
-                            variant="destructive"
-                            className="w-full rounded-xl"
-                            onClick={onDeleteView}
-                        >
-                            {t("resourceLauncherDeleteView")}
-                        </Button>
-                    ) : null}
                 </div>
             </PopoverContent>
         </Popover>

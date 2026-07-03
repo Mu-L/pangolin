@@ -1190,7 +1190,7 @@ export const launcherQueries = {
                 const res = await meta!.api.get<
                     AxiosResponse<ListLauncherViewsResponse>
                 >(`/org/${orgId}/launcher/views`, { signal });
-                return res.data.data.views;
+                return res.data.data;
             }
         }),
     sites: ({

@@ -512,6 +512,18 @@ authenticated.put(
     launcher.updateLauncherView
 );
 
+authenticated.put(
+    "/org/:orgId/launcher/default-view",
+    verifyOrgAccess,
+    launcher.upsertLauncherDefaultView
+);
+
+authenticated.delete(
+    "/org/:orgId/launcher/default-view",
+    verifyOrgAccess,
+    launcher.deleteLauncherDefaultView
+);
+
 authenticated.delete(
     "/org/:orgId/launcher/views/:viewId",
     verifyOrgAccess,

@@ -36,11 +36,13 @@ import {
     shouldShowSearchFirstGate
 } from "@app/lib/launcherScale";
 import { launcherQueries } from "@app/lib/queries";
-import type {
-    LauncherGroup,
-    LauncherScaleInfo,
-    LauncherViewConfig,
-    LauncherViewRecord
+import {
+    getEffectiveDefaultLauncherConfig,
+    type LauncherDefaultViewOverrides,
+    type LauncherGroup,
+    type LauncherScaleInfo,
+    type LauncherViewConfig,
+    type LauncherViewRecord
 } from "@server/routers/launcher/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -67,12 +69,14 @@ import { LauncherRefreshButton } from "./LauncherRefreshButton";
 import { LauncherSettingsMenu } from "./LauncherSettingsMenu";
 import { LauncherSortButton } from "./LauncherSortButton";
 import { LauncherSaveViewMenu, LauncherViewTabs } from "./LauncherViewTabs";
+import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 
 type ResourceLauncherProps = {
     orgId: string;
     isAdmin: boolean;
     views: LauncherViewRecord[];
+    defaultViewOverrides: LauncherDefaultViewOverrides;
     activeViewId: LauncherActiveViewId;
     config: LauncherViewConfig;
     savedConfig: LauncherViewConfig;
@@ -89,6 +93,7 @@ export default function ResourceLauncher({
     orgId,
     isAdmin,
     views,
+    defaultViewOverrides,
     activeViewId,
     config,
     savedConfig,
@@ -107,6 +112,7 @@ export default function ResourceLauncher({
 
     const [searchInputResetKey, setSearchInputResetKey] = useState(0);
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [newViewName, setNewViewName] = useState("");
     const [saveOrgWide, setSaveOrgWide] = useState(false);
 
@@ -173,13 +179,24 @@ export default function ResourceLauncher({
             return;
         }
 
-        const baseConfig = getLauncherUrlBaseConfig(lastView, views);
+        const baseConfig = getLauncherUrlBaseConfig(
+            lastView,
+            views,
+            defaultViewOverrides
+        );
         const params = serializeLauncherUrlState({
             viewId: lastView,
             config: baseConfig
         });
         navigate({ searchParams: params, replace: true });
-    }, [activeViewId, navigate, orgId, searchParams, views]);
+    }, [
+        activeViewId,
+        defaultViewOverrides,
+        navigate,
+        orgId,
+        searchParams,
+        views
+    ]);
 
     const navigateToConfig = useCallback(
         (viewId: LauncherActiveViewId, nextConfig: LauncherViewConfig) => {
@@ -202,10 +219,14 @@ export default function ResourceLauncher({
     const selectView = useCallback(
         (viewId: LauncherActiveViewId) => {
             writeLauncherLastView(orgId, viewId);
-            const baseConfig = getLauncherUrlBaseConfig(viewId, views);
+            const baseConfig = getLauncherUrlBaseConfig(
+                viewId,
+                views,
+                defaultViewOverrides
+            );
             navigateToConfig(viewId, baseConfig);
         },
-        [navigateToConfig, orgId, views]
+        [defaultViewOverrides, navigateToConfig, orgId, views]
     );
 
     const activeSavedView = useMemo(
@@ -219,6 +240,10 @@ export default function ResourceLauncher({
     const isDefaultView = activeViewId === "default";
     const isOrgWideView = Boolean(activeSavedView?.isOrgWide);
     const hasUnsavedChanges = !isLauncherConfigEqual(config, savedConfig);
+    const canResetSystemDefault =
+        isDefaultView &&
+        (Boolean(defaultViewOverrides.personal) ||
+            (isAdmin && Boolean(defaultViewOverrides.orgWide)));
 
     const selectedSites: Selectedsite[] = useMemo(
         () =>
@@ -314,6 +339,87 @@ export default function ResourceLauncher({
         }
     });
 
+    const saveDefaultViewMutation = useMutation({
+        mutationFn: async (payload: {
+            config: LauncherViewConfig;
+            orgWide: boolean;
+        }) => {
+            const res = await api.put(
+                `/org/${orgId}/launcher/default-view`,
+                payload
+            );
+            return res.data.data as LauncherViewRecord;
+        },
+        onSuccess: () => {
+            writeLauncherLastView(orgId, "default");
+            const params = serializeLauncherUrlState({
+                viewId: "default",
+                config
+            });
+            navigate({ searchParams: params, replace: true });
+            router.refresh();
+            toast({
+                title: t("resourceLauncherViewSaved"),
+                description: t("resourceLauncherViewSavedDescription")
+            });
+        },
+        onError: (error) => {
+            toast({
+                variant: "destructive",
+                title: t("resourceLauncherViewSaveFailed"),
+                description: formatAxiosError(
+                    error,
+                    t("resourceLauncherViewSaveFailedDescription")
+                )
+            });
+        }
+    });
+
+    const resetSystemDefaultMutation = useMutation({
+        mutationFn: async () => {
+            const resetAll = isAdmin && Boolean(defaultViewOverrides.orgWide);
+            await api.delete(`/org/${orgId}/launcher/default-view`, {
+                data: resetAll ? { all: true } : { orgWide: false }
+            });
+        },
+        onSuccess: () => {
+            writeLauncherLastView(orgId, "default");
+            const nextOverrides: LauncherDefaultViewOverrides = {
+                personal: null,
+                orgWide:
+                    isAdmin && defaultViewOverrides.orgWide
+                        ? null
+                        : defaultViewOverrides.orgWide
+            };
+            const targetConfig =
+                getEffectiveDefaultLauncherConfig(nextOverrides);
+            searchInputRef.current = targetConfig.query;
+            setSearchInputResetKey((key) => key + 1);
+            const params = serializeLauncherUrlState({
+                viewId: "default",
+                config: targetConfig
+            });
+            navigate({ searchParams: params, replace: true });
+            router.refresh();
+            toast({
+                title: t("resourceLauncherSystemDefaultRestored"),
+                description: t(
+                    "resourceLauncherSystemDefaultRestoredDescription"
+                )
+            });
+        },
+        onError: (error) => {
+            toast({
+                variant: "destructive",
+                title: t("resourceLauncherViewSaveFailed"),
+                description: formatAxiosError(
+                    error,
+                    t("resourceLauncherViewSaveFailedDescription")
+                )
+            });
+        }
+    });
+
     const deleteViewMutation = useMutation({
         mutationFn: async (viewId: number) => {
             await api.delete(`/org/${orgId}/launcher/views/${viewId}`);
@@ -322,7 +428,11 @@ export default function ResourceLauncher({
             writeLauncherLastView(orgId, "default");
             const params = serializeLauncherUrlState({
                 viewId: "default",
-                config: getLauncherUrlBaseConfig("default", views)
+                config: getLauncherUrlBaseConfig(
+                    "default",
+                    views,
+                    defaultViewOverrides
+                )
             });
             navigate({ searchParams: params, replace: true });
             router.refresh();
@@ -372,6 +482,10 @@ export default function ResourceLauncher({
         navigateToConfig(activeViewIdRef.current, savedConfig);
     }, [navigateToConfig, savedConfig]);
 
+    const handleResetSystemDefault = useCallback(() => {
+        resetSystemDefaultMutation.mutate();
+    }, [resetSystemDefaultMutation]);
+
     const refreshData = () => {
         startRefreshTransition(async () => {
             try {
@@ -387,7 +501,14 @@ export default function ResourceLauncher({
     };
 
     const handleSaveToCurrent = () => {
-        if (isDefaultView || (isOrgWideView && !isAdmin)) {
+        if (isDefaultView) {
+            saveDefaultViewMutation.mutate({
+                config,
+                orgWide: false
+            });
+            return;
+        }
+        if (isOrgWideView && !isAdmin) {
             return;
         }
         updateViewMutation.mutate({
@@ -404,6 +525,10 @@ export default function ResourceLauncher({
 
     const handleSaveForEveryone = () => {
         if (isDefaultView) {
+            saveDefaultViewMutation.mutate({
+                config,
+                orgWide: true
+            });
             return;
         }
         updateViewMutation.mutate({
@@ -456,19 +581,8 @@ export default function ResourceLauncher({
         </div>
     );
 
-    const renderToolbarActions = () => (
+    const renderToolbarFilterSort = () => (
         <>
-            <LauncherSaveViewMenu
-                isDefaultView={isDefaultView}
-                isAdmin={isAdmin}
-                isOrgWideView={isOrgWideView}
-                hasUnsavedChanges={hasUnsavedChanges}
-                onSaveToCurrent={handleSaveToCurrent}
-                onSaveAsNew={handleSaveAsNew}
-                onSaveForEveryone={handleSaveForEveryone}
-                onMakePersonal={handleMakePersonal}
-                onResetView={handleResetView}
-            />
             <LauncherFilterPopover
                 orgId={orgId}
                 selectedSites={selectedSites}
@@ -492,18 +606,31 @@ export default function ResourceLauncher({
                     })
                 }
             />
+        </>
+    );
+
+    const renderToolbarActions = () => (
+        <>
+            <LauncherSaveViewMenu
+                isDefaultView={isDefaultView}
+                isAdmin={isAdmin}
+                isOrgWideView={isOrgWideView}
+                hasUnsavedChanges={hasUnsavedChanges}
+                canResetSystemDefault={canResetSystemDefault}
+                onSaveToCurrent={handleSaveToCurrent}
+                onSaveAsNew={handleSaveAsNew}
+                onSaveForEveryone={handleSaveForEveryone}
+                onMakePersonal={handleMakePersonal}
+                onResetView={handleResetView}
+                onResetSystemDefault={handleResetSystemDefault}
+                onDeleteView={() => setDeleteDialogOpen(true)}
+            />
             <LauncherSettingsMenu
                 config={config}
-                isDefaultView={isDefaultView}
                 capabilities={scale.capabilities}
                 isCompactMode={scale.mode === "compact"}
                 selectedGroupBy={effectiveConfig.groupBy}
                 onConfigChange={applyConfigPatch}
-                onDeleteView={() => {
-                    if (!isDefaultView) {
-                        deleteViewMutation.mutate(activeViewId);
-                    }
-                }}
             />
             <LauncherRefreshButton
                 onRefresh={refreshData}
@@ -530,6 +657,9 @@ export default function ResourceLauncher({
             {isDesktop ? (
                 <div className="mb-6 flex w-full min-w-0 items-center gap-3">
                     {renderToolbarSearch("w-64")}
+                    <div className="flex shrink-0 items-center gap-2">
+                        {renderToolbarFilterSort()}
+                    </div>
                     <div className="min-w-0 flex-1 overflow-x-auto">
                         {renderToolbarViews()}
                     </div>
@@ -542,7 +672,12 @@ export default function ResourceLauncher({
                     <div className="flex items-center gap-2 overflow-x-auto">
                         {renderToolbarActions()}
                     </div>
-                    {renderToolbarSearch("w-full")}
+                    <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                            {renderToolbarSearch("w-full")}
+                        </div>
+                        {renderToolbarFilterSort()}
+                    </div>
                     <div className="overflow-x-auto">
                         {renderToolbarViews()}
                     </div>
@@ -566,6 +701,22 @@ export default function ResourceLauncher({
                     activeViewId={activeViewId}
                     config={effectiveConfig}
                     onClearFilters={handleClearFilters}
+                />
+            ) : null}
+
+            {activeSavedView ? (
+                <ConfirmDeleteDialog
+                    open={deleteDialogOpen}
+                    setOpen={setDeleteDialogOpen}
+                    string={activeSavedView.name}
+                    title={t("resourceLauncherDeleteViewTitle")}
+                    buttonText={t("resourceLauncherDeleteViewConfirm")}
+                    dialog={<p>{t("resourceLauncherDeleteViewQuestion")}</p>}
+                    onConfirm={async () => {
+                        await deleteViewMutation.mutateAsync(
+                            activeSavedView.viewId
+                        );
+                    }}
                 />
             ) : null}
 

@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
+import { isLauncherDefaultOverrideViewName } from "./launcherDefaultView";
 
 export async function deleteLauncherView(
     req: Request,
@@ -43,6 +44,15 @@ export async function deleteLauncherView(
         if (!existing) {
             return next(
                 createHttpError(HttpCode.NOT_FOUND, "Launcher view not found")
+            );
+        }
+
+        if (isLauncherDefaultOverrideViewName(existing.name)) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "The default view cannot be deleted from here"
+                )
             );
         }
 

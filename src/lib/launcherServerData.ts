@@ -6,6 +6,7 @@ import { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
 import type {
     LauncherGroup,
     LauncherScaleInfo,
+    LauncherDefaultViewOverrides,
     LauncherViewConfig,
     LauncherViewRecord,
     ListLauncherGroupsResponse,
@@ -16,6 +17,7 @@ import { AxiosResponse } from "axios";
 
 export type LauncherPageData = {
     views: LauncherViewRecord[];
+    defaultViewOverrides: LauncherDefaultViewOverrides;
     activeViewId: LauncherActiveViewId;
     config: LauncherViewConfig;
     savedConfig: LauncherViewConfig;
@@ -36,17 +38,23 @@ export async function fetchLauncherPageData(
     >
 ): Promise<LauncherPageData> {
     let views: LauncherViewRecord[] = [];
+    let defaultViewOverrides: LauncherDefaultViewOverrides = {
+        personal: null,
+        orgWide: null
+    };
     try {
         const viewsRes = await internal.get<
             AxiosResponse<ListLauncherViewsResponse>
         >(`/org/${orgId}/launcher/views`, cookieHeader);
         views = viewsRes.data.data.views;
+        defaultViewOverrides = viewsRes.data.data.defaultViewOverrides;
     } catch (e) {}
 
     const { activeViewId, config, savedConfig } = resolveLauncherStateFromUrl(
         searchParams,
         views,
-        null
+        null,
+        defaultViewOverrides
     );
 
     const scaleFilters = {
@@ -110,6 +118,7 @@ export async function fetchLauncherPageData(
 
     return {
         views,
+        defaultViewOverrides,
         activeViewId,
         config,
         savedConfig,
