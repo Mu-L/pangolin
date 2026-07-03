@@ -45,6 +45,7 @@ import {
 } from "@server/routers/client/targets";
 import { lockManager } from "#dynamic/lib/lock";
 import { rebuildQueue } from "#dynamic/lib/rebuildQueue";
+import { withRetry, isTransientError } from "@server/lib/dbRetry";
 import {
     checkOrgRebuildRateLimit,
     decrementOrgRebuildCount,
@@ -285,10 +286,20 @@ export async function rebuildClientAssociationsFromSiteResource(
 ) {
     await incrementOrgRebuildCount(siteResource.orgId);
     try {
-        return await lockManager.withLock(
-            `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
-            () => rebuildClientAssociationsFromSiteResourceImpl(siteResource),
-            REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+        // The whole locked rebuild is idempotent (it diffs full expected vs.
+        // actual state each time), so on a transient DB error it's safe to
+        // retry the entire thing rather than just the failed query.
+        return await withRetry(
+            () =>
+                lockManager.withLock(
+                    `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
+                    () =>
+                        rebuildClientAssociationsFromSiteResourceImpl(
+                            siteResource
+                        ),
+                    REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+                ),
+            `rebuildClientAssociationsFromSiteResource:${siteResource.siteResourceId}`
         );
     } catch (err: any) {
         if (
@@ -297,6 +308,17 @@ export async function rebuildClientAssociationsFromSiteResource(
         ) {
             logger.warn(
                 `rebuildClientAssociations: could not acquire lock for site resource ${siteResource.siteResourceId}, queuing for deferred processing`
+            );
+            await rebuildQueue.enqueue({
+                type: "site-resource",
+                id: siteResource.siteResourceId
+            });
+            return { mergedAllClients: [] };
+        }
+        if (isTransientError(err)) {
+            logger.warn(
+                `rebuildClientAssociations: transient DB error rebuilding site resource ${siteResource.siteResourceId} persisted after retries, queuing for deferred processing:`,
+                err
             );
             await rebuildQueue.enqueue({
                 type: "site-resource",
@@ -1656,10 +1678,17 @@ export async function rebuildClientAssociationsFromClient(
     await incrementOrgRebuildCount(client.orgId);
     try {
         const trx = primaryDb;
-        return await lockManager.withLock(
-            `rebuild-client-associations:client:${client.clientId}`,
-            () => rebuildClientAssociationsFromClientImpl(client, trx),
-            REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+        // The whole locked rebuild is idempotent (it diffs full expected vs.
+        // actual state each time), so on a transient DB error it's safe to
+        // retry the entire thing rather than just the failed query.
+        return await withRetry(
+            () =>
+                lockManager.withLock(
+                    `rebuild-client-associations:client:${client.clientId}`,
+                    () => rebuildClientAssociationsFromClientImpl(client, trx),
+                    REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+                ),
+            `rebuildClientAssociationsFromClient:${client.clientId}`
         );
     } catch (err: any) {
         if (
@@ -1668,6 +1697,17 @@ export async function rebuildClientAssociationsFromClient(
         ) {
             logger.warn(
                 `rebuildClientAssociations: could not acquire lock for client ${client.clientId}, queuing for deferred processing`
+            );
+            await rebuildQueue.enqueue({
+                type: "client",
+                id: client.clientId
+            });
+            return;
+        }
+        if (isTransientError(err)) {
+            logger.warn(
+                `rebuildClientAssociations: transient DB error rebuilding client ${client.clientId} persisted after retries, queuing for deferred processing:`,
+                err
             );
             await rebuildQueue.enqueue({
                 type: "client",
