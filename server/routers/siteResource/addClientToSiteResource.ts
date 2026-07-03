@@ -8,7 +8,10 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { eq, and } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
-import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import {
+    rebuildClientAssociationsFromSiteResource,
+    isOrgRebuildRateLimited
+} from "@server/lib/rebuildClientAssociations";
 
 const addClientToSiteResourceBodySchema = z
     .object({
@@ -124,6 +127,15 @@ export async function addClientToSiteResource(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
                     "Cannot add clients that are associated with a user"
+                )
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(siteResource.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
         }

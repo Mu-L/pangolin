@@ -23,7 +23,10 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
+import {
+    rebuildClientAssociationsFromClient,
+    isOrgRebuildRateLimited
+} from "@server/lib/rebuildClientAssociations";
 
 const addUserRoleParamsSchema = z.strictObject({
     userId: z.string(),
@@ -124,6 +127,15 @@ export async function addUserRole(
                 createHttpError(
                     HttpCode.NOT_FOUND,
                     "Role not found or does not belong to the specified organization"
+                )
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(role.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
         }

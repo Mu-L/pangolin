@@ -11,6 +11,8 @@ import {
     performDeleteResource,
     runResourceDeleteSideEffects
 } from "@server/lib/deleteResource";
+import { LimitId } from "@server/lib/billing";
+import { usageService } from "@server/lib/billing/usageService";
 
 const deleteResourceSchema = z.strictObject({
     resourceId: z.coerce.number().int().positive()
@@ -64,6 +66,14 @@ export async function deleteResource(
 
         await db.transaction(async (trx) => {
             deleteResult = await performDeleteResource(resourceId, trx);
+            if (deleteResult?.deletedResource?.orgId) {
+                await usageService.add(
+                    deleteResult?.deletedResource?.orgId,
+                    LimitId.PUBLIC_RESOURCES,
+                    -1,
+                    trx
+                );
+            }
         });
 
         if (!deleteResult) {

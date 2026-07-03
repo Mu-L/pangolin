@@ -13,7 +13,7 @@ import { sendToClient } from "#dynamic/routers/ws";
 import { OpenAPITags, registry } from "@server/openApi";
 import { cleanupSiteAssociations } from "@server/lib/rebuildClientAssociations";
 import { usageService } from "@server/lib/billing/usageService";
-import { FeatureId } from "@server/lib/billing";
+import { LimitId } from "@server/lib/billing";
 import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
 import {
     deleteAssociatedResourcesForSite,
@@ -177,7 +177,7 @@ export async function deleteSite(
             }
 
             await trx.delete(sites).where(eq(sites.siteId, siteId));
-            await usageService.add(site.orgId, FeatureId.SITES, -1, trx);
+            await usageService.add(site.orgId, LimitId.SITES, -1, trx);
         });
 
         if (deleteResources) {

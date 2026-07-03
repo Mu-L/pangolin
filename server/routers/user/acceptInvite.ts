@@ -17,10 +17,11 @@ import { fromError } from "zod-validation-error";
 import { checkValidInvite } from "@server/auth/checkValidInvite";
 import { verifySession } from "@server/auth/sessions/verifySession";
 import { usageService } from "@server/lib/billing/usageService";
-import { FeatureId } from "@server/lib/billing";
+import { LimitId } from "@server/lib/billing";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { build } from "@server/build";
 import { assignUserToOrg } from "@server/lib/userOrg";
+import { isOrgRebuildRateLimited } from "@server/lib/rebuildClientAssociations";
 
 const acceptInviteBodySchema = z.strictObject({
     token: z.string(),
@@ -103,7 +104,7 @@ export async function acceptInvite(
         if (build == "saas") {
             const usage = await usageService.getUsage(
                 existingInvite.orgId,
-                FeatureId.USERS
+                LimitId.USERS
             );
             if (!usage) {
                 return next(
@@ -116,7 +117,7 @@ export async function acceptInvite(
             const rejectUsers = await usageService.checkLimitSet(
                 existingInvite.orgId,
 
-                FeatureId.USERS,
+                LimitId.USERS,
                 {
                     ...usage,
                     instantaneousValue: (usage.instantaneousValue || 0) + 1
@@ -143,6 +144,15 @@ export async function acceptInvite(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
                     "Organization does not exist. Please contact an admin."
+                )
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(org.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
         }

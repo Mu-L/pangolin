@@ -21,7 +21,10 @@ import { isValidIP } from "@server/lib/validators";
 import { isIpInCidr } from "@server/lib/ip";
 import { listExitNodes } from "#dynamic/lib/exitNodes";
 import { OpenAPITags, registry } from "@server/openApi";
-import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
+import {
+    rebuildClientAssociationsFromClient,
+    isOrgRebuildRateLimited
+} from "@server/lib/rebuildClientAssociations";
 import { getUniqueClientName } from "@server/db/names";
 
 const paramsSchema = z
@@ -142,6 +145,15 @@ export async function createUserClient(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
                     "IP is not in the CIDR range of the subnet."
+                )
+            );
+        }
+
+        if (await isOrgRebuildRateLimited(orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
         }

@@ -49,6 +49,11 @@ import { and, asc, eq, isNotNull, ne, or } from "drizzle-orm";
 import { tierMatrix } from "../billing/tierMatrix";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { Config, isTargetsOnlyResource, TargetData } from "./types";
+import HttpCode from "@server/types/HttpCode";
+import createHttpError from "http-errors";
+import next from "next";
+import { LimitId } from "../billing";
+import { usageService } from "../billing/usageService";
 
 export type PublicResourcesResults = {
     proxyResource: Resource;
@@ -1003,6 +1008,33 @@ export async function updatePublicResources(
             logger.debug(`Updated resource ${existingResource.resourceId}`);
         } else {
             // create a brand new resource
+
+            if (build === "saas") {
+                const usage = await usageService.getUsage(
+                    orgId,
+                    LimitId.PUBLIC_RESOURCES
+                );
+                if (!usage) {
+                    throw new Error(
+                        `Usage data not found for org ${orgId} and limit ${LimitId.PUBLIC_RESOURCES}`
+                    );
+                }
+                const rejectResource = await usageService.checkLimitSet(
+                    orgId,
+
+                    LimitId.PUBLIC_RESOURCES,
+                    {
+                        ...usage,
+                        instantaneousValue: (usage.instantaneousValue || 0) + 1
+                    } // We need to add one to know if we are violating the limit
+                );
+                if (rejectResource) {
+                    throw new Error(
+                        "Public resource limit exceeded. Please upgrade your plan."
+                    );
+                }
+            }
+
             let domain;
             if (
                 ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
@@ -1291,6 +1323,8 @@ export async function updatePublicResources(
                 }
                 await createTarget(newResource.resourceId, targetData);
             }
+
+            await usageService.add(orgId, LimitId.PUBLIC_RESOURCES, 1, trx);
 
             logger.debug(`Created resource ${newResource.resourceId}`);
         }

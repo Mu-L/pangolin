@@ -12,6 +12,8 @@ import {
     performDeleteSiteResource,
     runSiteResourceDeleteSideEffects
 } from "@server/lib/deleteSiteResource";
+import { LimitId } from "@server/lib/billing";
+import { usageService } from "@server/lib/billing/usageService";
 
 const deleteSiteResourceParamsSchema = z.strictObject({
     siteResourceId: z.coerce.number().int().positive()
@@ -86,6 +88,14 @@ export async function deleteSiteResource(
                 siteResourceId,
                 trx
             );
+            if (removedSiteResource?.orgId) {
+                await usageService.add(
+                    removedSiteResource?.orgId,
+                    LimitId.PRIVATE_RESOURCES,
+                    -1,
+                    trx
+                );
+            }
         });
 
         if (!removedSiteResource) {

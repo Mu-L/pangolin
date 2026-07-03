@@ -2,6 +2,7 @@ import {
     pgTable,
     serial,
     varchar,
+    unique,
     boolean,
     integer,
     bigint,
@@ -19,12 +20,13 @@ import {
     roles,
     users,
     exitNodes,
-    sessions,
-    clients,
     resources,
     siteResources,
     targetHealthCheck,
-    sites
+    sites,
+    clients,
+    sessions,
+    labels
 } from "./schema";
 
 export const certificates = pgTable("certificates", {
@@ -196,6 +198,42 @@ export const remoteExitNodes = pgTable("remoteExitNode", {
         onDelete: "cascade"
     })
 });
+
+export const remoteExitNodeResources = pgTable("remoteExitNodeResources", {
+    remoteExitNodeResourceId: serial("remoteExitNodeResourceId").primaryKey(),
+    remoteExitNodeId: varchar("remoteExitNodeId")
+        .notNull()
+        .references(() => remoteExitNodes.remoteExitNodeId, {
+            onDelete: "cascade"
+        }),
+    destination: varchar("destination").notNull() // a cidr range
+});
+
+export const remoteExitNodePreferenceLabels = pgTable(
+    // this controls what sites are enforced to connect to this node
+    "remoteExitNodePreferenceLabels",
+    {
+        remoteExitNodePreferenceLabelId: serial(
+            "remoteExitNodePreferenceLabelId"
+        ).primaryKey(),
+        remoteExitNodeId: varchar("remoteExitNodeId")
+            .references(() => remoteExitNodes.remoteExitNodeId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [
+        unique("remote_exit_node_preference_label_uniq").on(
+            t.remoteExitNodeId,
+            t.labelId
+        )
+    ]
+);
 
 export const remoteExitNodeSessions = pgTable("remoteExitNodeSession", {
     sessionId: varchar("id").primaryKey(),
