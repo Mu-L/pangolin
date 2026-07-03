@@ -29,8 +29,7 @@ export default async function Page(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const searchParams = await props.searchParams;
-    const getUser = cache(verifySession);
-    const user = await getUser({ skipCheckVerifyEmail: true });
+    const user = await verifySession({ skipCheckVerifyEmail: true });
 
     const isInvite = searchParams?.redirect?.includes("/invite");
     const forceLoginParam = searchParams?.forceLogin;
