@@ -44,6 +44,7 @@ export type LoginFormIDP = {
     idpId: number;
     name: string;
     variant?: string;
+    lastUsed?: boolean;
 };
 
 type LoginFormProps = {
