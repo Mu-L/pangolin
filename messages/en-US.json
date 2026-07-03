@@ -1503,6 +1503,7 @@
     "otpAuthDescription": "Enter the code from your authenticator app or one of your single-use backup codes.",
     "otpAuthSubmit": "Submit Code",
     "idpContinue": "Or continue with",
+    "idpLastUsed": "Last used",
     "otpAuthBack": "Back to Password",
     "navbar": "Navigation Menu",
     "navbarDescription": "Main navigation menu for the application",
