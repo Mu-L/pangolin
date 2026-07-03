@@ -50,6 +50,7 @@ import type {
     ListLauncherGroupsResponse,
     ListLauncherLabelsResponse,
     ListLauncherResourcesResponse,
+    ListLauncherScaleResponse,
     ListLauncherSitesResponse,
     ListLauncherViewsResponse,
     LauncherListQuery,
@@ -1297,6 +1298,20 @@ export const launcherQueries = {
                 const { page, pageSize, total } = lastPage.pagination;
                 const nextPage = page + 1;
                 return page * pageSize < total ? nextPage : undefined;
+            }
+        }),
+    scale: (orgId: string, filters: LauncherQueryFilters) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "LAUNCHER", "SCALE", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = buildLauncherSearchParams(filters, 1);
+                sp.delete("page");
+                sp.delete("pageSize");
+                sp.delete("groupKey");
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherScaleResponse>
+                >(`/org/${orgId}/launcher/scale?${sp.toString()}`, { signal });
+                return res.data.data.scale;
             }
         })
 };

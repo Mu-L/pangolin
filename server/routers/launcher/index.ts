@@ -1,5 +1,6 @@
 export * from "./types";
 export { listLauncherGroups } from "./listLauncherGroups";
+export { listLauncherScale } from "./listLauncherScale";
 export { listLauncherResources } from "./listLauncherResources";
 export { listLauncherSites } from "./listLauncherSites";
 export { listLauncherLabels } from "./listLauncherLabels";

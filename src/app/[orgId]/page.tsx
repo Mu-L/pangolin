@@ -85,6 +85,7 @@ export default async function OrgPage(props: OrgPageProps) {
                         activeViewId={launcherData.activeViewId}
                         config={launcherData.config}
                         savedConfig={launcherData.savedConfig}
+                        scale={launcherData.scale}
                         groups={launcherData.groups}
                         groupsPagination={launcherData.groupsPagination}
                     />

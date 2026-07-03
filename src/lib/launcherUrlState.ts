@@ -113,7 +113,7 @@ function parseConfigOverrides(
     }
 
     const groupBy = searchParams.get("groupBy");
-    if (groupBy === "site" || groupBy === "label") {
+    if (groupBy === "site" || groupBy === "label" || groupBy === "none") {
         overrides.groupBy = groupBy;
     }
 

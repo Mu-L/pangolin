@@ -139,6 +139,10 @@ export function LauncherFilterPopover({
                                     selectedSites={resolvedSelectedSites}
                                     onSelectionChange={onSitesChange}
                                     scope="launcher"
+                                    showClear={selectedSites.length > 0}
+                                    onClear={() => {
+                                        onSitesChange([]);
+                                    }}
                                 />
                             </PopoverContent>
                         </Popover>

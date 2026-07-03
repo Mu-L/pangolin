@@ -471,6 +471,12 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/launcher/scale",
+    verifyOrgAccess,
+    launcher.listLauncherScale
+);
+
+authenticated.get(
     "/org/:orgId/launcher/resources",
     verifyOrgAccess,
     launcher.listLauncherResources

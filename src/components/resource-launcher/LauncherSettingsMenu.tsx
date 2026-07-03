@@ -15,13 +15,19 @@ import {
     SelectValue
 } from "@app/components/ui/select";
 import { Switch } from "@app/components/ui/switch";
-import type { LauncherViewConfig } from "@server/routers/launcher/types";
+import type {
+    LauncherScaleCapabilities,
+    LauncherViewConfig
+} from "@server/routers/launcher/types";
 import { useTranslations } from "next-intl";
 import { Settings } from "lucide-react";
 
 type LauncherSettingsMenuProps = {
     config: LauncherViewConfig;
     isDefaultView: boolean;
+    capabilities: LauncherScaleCapabilities;
+    isCompactMode: boolean;
+    selectedGroupBy: LauncherViewConfig["groupBy"];
     onConfigChange: (patch: Partial<LauncherViewConfig>) => void;
     onDeleteView: () => void;
 };
@@ -29,6 +35,9 @@ type LauncherSettingsMenuProps = {
 export function LauncherSettingsMenu({
     config,
     isDefaultView,
+    capabilities,
+    isCompactMode,
+    selectedGroupBy,
     onConfigChange,
     onDeleteView
 }: LauncherSettingsMenuProps) {
@@ -51,7 +60,7 @@ export function LauncherSettingsMenu({
                             {t("resourceLauncherGroupBy")}
                         </p>
                         <Select
-                            value={config.groupBy}
+                            value={selectedGroupBy}
                             onValueChange={(value) =>
                                 onConfigChange({
                                     groupBy:
@@ -63,14 +72,44 @@ export function LauncherSettingsMenu({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="site">
+                                <SelectItem value="none">
+                                    {t("resourceLauncherGroupByNone")}
+                                </SelectItem>
+                                <SelectItem
+                                    value="site"
+                                    disabled={
+                                        isCompactMode ||
+                                        !capabilities.allowSiteGrouping
+                                    }
+                                >
                                     {t("resourceLauncherGroupBySite")}
                                 </SelectItem>
-                                <SelectItem value="label">
+                                <SelectItem
+                                    value="label"
+                                    disabled={
+                                        isCompactMode ||
+                                        !capabilities.allowLabelGrouping
+                                    }
+                                >
                                     {t("resourceLauncherGroupByLabel")}
                                 </SelectItem>
                             </SelectContent>
                         </Select>
+                        {isCompactMode ? (
+                            <p className="text-xs text-muted-foreground">
+                                {t("resourceLauncherCompactGroupingLocked")}
+                            </p>
+                        ) : null}
+                        {!isCompactMode && !capabilities.allowSiteGrouping ? (
+                            <p className="text-xs text-muted-foreground">
+                                {t("resourceLauncherSiteGroupingDisabled")}
+                            </p>
+                        ) : null}
+                        {!isCompactMode && !capabilities.allowLabelGrouping ? (
+                            <p className="text-xs text-muted-foreground">
+                                {t("resourceLauncherLabelGroupingDisabled")}
+                            </p>
+                        ) : null}
                     </div>
 
                     <div className="space-y-2">

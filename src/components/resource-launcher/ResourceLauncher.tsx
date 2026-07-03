@@ -29,12 +29,20 @@ import {
 } from "@app/lib/launcherUrlState";
 import { useToast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import {
+    getEffectiveLauncherConfig,
+    shouldShowFlatResourceList,
+    shouldShowLauncherGroupList,
+    shouldShowSearchFirstGate
+} from "@app/lib/launcherScale";
+import { launcherQueries } from "@app/lib/queries";
 import type {
     LauncherGroup,
+    LauncherScaleInfo,
     LauncherViewConfig,
     LauncherViewRecord
 } from "@server/routers/launcher/types";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -52,7 +60,9 @@ import type { SelectedLabel } from "@app/components/labels-selector";
 import { useMediaQuery } from "@app/hooks/useMediaQuery";
 import { cn } from "@app/lib/cn";
 import { LauncherFilterPopover } from "./LauncherFilterPopover";
+import { LauncherFlatResourceList } from "./LauncherFlatResourceList";
 import { LauncherGroupList } from "./LauncherGroupList";
+import { LauncherSearchFirstGate } from "./LauncherSearchFirstGate";
 import { LauncherRefreshButton } from "./LauncherRefreshButton";
 import { LauncherSettingsMenu } from "./LauncherSettingsMenu";
 import { LauncherSortButton } from "./LauncherSortButton";
@@ -66,6 +76,7 @@ type ResourceLauncherProps = {
     activeViewId: LauncherActiveViewId;
     config: LauncherViewConfig;
     savedConfig: LauncherViewConfig;
+    scale: LauncherScaleInfo;
     groups: LauncherGroup[];
     groupsPagination: {
         total: number;
@@ -81,6 +92,7 @@ export default function ResourceLauncher({
     activeViewId,
     config,
     savedConfig,
+    scale: initialScale,
     groups,
     groupsPagination
 }: ResourceLauncherProps) {
@@ -99,6 +111,38 @@ export default function ResourceLauncher({
     const [saveOrgWide, setSaveOrgWide] = useState(false);
 
     const isDesktop = useMediaQuery("(min-width: 768px)");
+
+    const scaleFilters = useMemo(
+        () => ({
+            query: config.query,
+            groupBy: config.groupBy,
+            siteIds: config.siteIds,
+            labelIds: config.labelIds,
+            sort_by: config.sortBy,
+            order: config.order
+        }),
+        [
+            config.groupBy,
+            config.labelIds,
+            config.order,
+            config.query,
+            config.siteIds,
+            config.sortBy
+        ]
+    );
+
+    const { data: scale = initialScale } = useQuery({
+        ...launcherQueries.scale(orgId, scaleFilters),
+        initialData: initialScale
+    });
+
+    const showGroupList = shouldShowLauncherGroupList(scale, config);
+    const showSearchFirstGate = shouldShowSearchFirstGate(scale, config);
+    const showFlatResourceList = shouldShowFlatResourceList(scale, config);
+    const effectiveConfig = useMemo(
+        () => getEffectiveLauncherConfig(scale, config),
+        [config, scale]
+    );
 
     const configRef = useRef(config);
     configRef.current = config;
@@ -451,6 +495,9 @@ export default function ResourceLauncher({
             <LauncherSettingsMenu
                 config={config}
                 isDefaultView={isDefaultView}
+                capabilities={scale.capabilities}
+                isCompactMode={scale.mode === "compact"}
+                selectedGroupBy={effectiveConfig.groupBy}
                 onConfigChange={applyConfigPatch}
                 onDeleteView={() => {
                     if (!isDefaultView) {
@@ -502,14 +549,31 @@ export default function ResourceLauncher({
                 </div>
             )}
 
-            <LauncherGroupList
-                orgId={orgId}
-                activeViewId={activeViewId}
-                config={config}
-                initialGroups={groups}
-                groupsPagination={groupsPagination}
-                onClearFilters={handleClearFilters}
-            />
+            {scale.mode === "compact" && !showSearchFirstGate ? (
+                <p className="mb-4 text-sm text-muted-foreground">
+                    {t("resourceLauncherCompactModeHint")}
+                </p>
+            ) : null}
+
+            {showSearchFirstGate ? (
+                <LauncherSearchFirstGate layout={config.layout} />
+            ) : showGroupList ? (
+                <LauncherGroupList
+                    orgId={orgId}
+                    activeViewId={activeViewId}
+                    config={effectiveConfig}
+                    initialGroups={groups}
+                    groupsPagination={groupsPagination}
+                    onClearFilters={handleClearFilters}
+                />
+            ) : showFlatResourceList ? (
+                <LauncherFlatResourceList
+                    orgId={orgId}
+                    activeViewId={activeViewId}
+                    config={effectiveConfig}
+                    onClearFilters={handleClearFilters}
+                />
+            ) : null}
 
             <Credenza open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                 <CredenzaContent>

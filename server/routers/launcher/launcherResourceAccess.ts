@@ -38,6 +38,7 @@ import {
     formatSiteResourceAccess
 } from "./formatLauncherAccess";
 import {
+    LAUNCHER_FLAT_GROUP_KEY,
     LAUNCHER_NO_SITE_GROUP_KEY,
     LAUNCHER_UNLABELED_GROUP_KEY,
     type LauncherFilterListQuery,
@@ -1161,10 +1162,12 @@ export async function listLauncherResourcesForUser(
     let items = [...publicItems, ...siteItems];
     items = filterResourcesBySearch(items, query.query);
 
-    if (query.groupBy === "label") {
-        items = filterResourcesByLabel(items, query.groupKey);
-    } else if (query.groupBy === "site") {
-        items = filterResourcesBySite(items, query.groupKey);
+    if (query.groupKey !== LAUNCHER_FLAT_GROUP_KEY) {
+        if (query.groupBy === "label") {
+            items = filterResourcesByLabel(items, query.groupKey);
+        } else if (query.groupBy === "site") {
+            items = filterResourcesBySite(items, query.groupKey);
+        }
     }
 
     items = sortLauncherResources(items, query.order);
