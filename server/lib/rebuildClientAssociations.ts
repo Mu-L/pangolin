@@ -582,10 +582,17 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
                 ? mergedAllClientIds
                 : [];
 
+            // Note: we deliberately do NOT exclude clients covered by another
+            // site resource here (unlike clientSitesToRemove below). Doing so
+            // previously caused a permanent gap: if resource A saw resource B's
+            // cache row and skipped adding (assuming B would maintain it), and
+            // B's own rebuild made the same assumption about A, the site-level
+            // row could end up never inserted by anyone even though both
+            // resources' client associations were otherwise correct.
+            // onConflictDoNothing makes a redundant insert harmless, so there's
+            // no correctness reason to skip here.
             const clientSitesToAdd = expectedClientIdsForSite.filter(
-                (clientId) =>
-                    !existingClientSiteIds.includes(clientId) &&
-                    !otherResourceClientIds.has(clientId) // dont add if already connected via another site resource
+                (clientId) => !existingClientSiteIds.includes(clientId)
             );
 
             const clientSitesToInsert = clientSitesToAdd.map((clientId) => ({
