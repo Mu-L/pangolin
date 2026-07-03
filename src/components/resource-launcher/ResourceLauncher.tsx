@@ -549,12 +549,6 @@ export default function ResourceLauncher({
                 </div>
             )}
 
-            {scale.mode === "compact" && !showSearchFirstGate ? (
-                <p className="mb-4 text-sm text-muted-foreground">
-                    {t("resourceLauncherCompactModeHint")}
-                </p>
-            ) : null}
-
             {showSearchFirstGate ? (
                 <LauncherSearchFirstGate layout={config.layout} />
             ) : showGroupList ? (

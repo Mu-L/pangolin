@@ -3613,7 +3613,7 @@
     "resourceLauncherSiteGroupingDisabled": "Site grouping is unavailable at this scale. Filter by site to group a smaller set.",
     "resourceLauncherLabelGroupingDisabled": "Label grouping is unavailable at this scale.",
     "resourceLauncherCompactModeHint": "Showing a simplified list for faster browsing. Use search or filters to narrow results.",
-    "resourceLauncherCompactGroupingLocked": "Grouping is set to None in compact mode.",
+    "resourceLauncherCompactGroupingHint": "Apply site or label filters to enable grouping in compact mode.",
     "resourceLauncherCopiedToClipboard": "Copied to clipboard",
     "resourceLauncherCopiedAccessDescription": "Resource access has been copied to your clipboard.",
     "resourceLauncherViewNamePlaceholder": "View name",

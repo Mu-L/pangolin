@@ -78,8 +78,9 @@ export function LauncherSettingsMenu({
                                 <SelectItem
                                     value="site"
                                     disabled={
-                                        isCompactMode ||
-                                        !capabilities.allowSiteGrouping
+                                        !capabilities.allowSiteGrouping ||
+                                        (isCompactMode &&
+                                            config.siteIds.length === 0)
                                     }
                                 >
                                     {t("resourceLauncherGroupBySite")}
@@ -87,8 +88,9 @@ export function LauncherSettingsMenu({
                                 <SelectItem
                                     value="label"
                                     disabled={
-                                        isCompactMode ||
-                                        !capabilities.allowLabelGrouping
+                                        !capabilities.allowLabelGrouping ||
+                                        (isCompactMode &&
+                                            config.labelIds.length === 0)
                                     }
                                 >
                                     {t("resourceLauncherGroupByLabel")}
@@ -97,7 +99,7 @@ export function LauncherSettingsMenu({
                         </Select>
                         {isCompactMode ? (
                             <p className="text-xs text-muted-foreground">
-                                {t("resourceLauncherCompactGroupingLocked")}
+                                {t("resourceLauncherCompactGroupingHint")}
                             </p>
                         ) : null}
                         {!isCompactMode && !capabilities.allowSiteGrouping ? (

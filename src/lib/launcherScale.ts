@@ -15,11 +15,27 @@ export function getEffectiveGroupBy(
     scale: LauncherScaleInfo,
     config: LauncherViewConfig
 ): LauncherViewConfig["groupBy"] {
-    if (scale.mode === "compact") {
-        return "none";
+    if (scale.mode !== "compact") {
+        return config.groupBy;
     }
 
-    return config.groupBy;
+    if (
+        config.groupBy === "site" &&
+        config.siteIds.length > 0 &&
+        scale.capabilities.allowSiteGrouping
+    ) {
+        return "site";
+    }
+
+    if (
+        config.groupBy === "label" &&
+        config.labelIds.length > 0 &&
+        scale.capabilities.allowLabelGrouping
+    ) {
+        return "label";
+    }
+
+    return "none";
 }
 
 export function getEffectiveLauncherConfig(
@@ -49,9 +65,12 @@ export function shouldFetchLauncherGroups(
     }
 
     return (
-        scale.capabilities.allowSiteGrouping &&
-        groupBy === "site" &&
-        config.siteIds.length > 0
+        (scale.capabilities.allowSiteGrouping &&
+            groupBy === "site" &&
+            config.siteIds.length > 0) ||
+        (scale.capabilities.allowLabelGrouping &&
+            groupBy === "label" &&
+            config.labelIds.length > 0)
     );
 }
 

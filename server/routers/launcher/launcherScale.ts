@@ -76,6 +76,7 @@ async function getLauncherScaleForUserUncached(
             : "compact";
 
     const siteFilterIds = parseIdListParam(query.siteIds);
+    const labelFilterIds = parseIdListParam(query.labelIds);
 
     const allowSiteGrouping =
         siteGroupCount <= LAUNCHER_FULL_MAX_SITE_GROUPS ||
@@ -83,7 +84,9 @@ async function getLauncherScaleForUserUncached(
             siteFilterIds.length <= LAUNCHER_FILTERED_SITE_GROUPING_MAX);
 
     const allowLabelGrouping =
-        labelGroupCount <= LAUNCHER_FULL_MAX_LABEL_GROUPS;
+        labelGroupCount <= LAUNCHER_FULL_MAX_LABEL_GROUPS ||
+        (labelFilterIds.length > 0 &&
+            labelFilterIds.length <= LAUNCHER_FILTERED_SITE_GROUPING_MAX);
 
     const requireSearchOrFilter =
         mode === "compact" && resourceCount > LAUNCHER_FULL_MAX_RESOURCES;
