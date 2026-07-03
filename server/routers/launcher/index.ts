@@ -10,3 +10,4 @@ export { updateLauncherView } from "./updateLauncherView";
 export { deleteLauncherView } from "./deleteLauncherView";
 export { upsertLauncherDefaultView } from "./upsertLauncherDefaultView";
 export { deleteLauncherDefaultView } from "./deleteLauncherDefaultView";
+export { invalidateLauncherCache } from "./invalidateLauncherCache";

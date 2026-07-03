@@ -44,7 +44,7 @@ import {
     type LauncherViewConfig,
     type LauncherViewRecord
 } from "@server/routers/launcher/types";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -105,6 +105,7 @@ export default function ResourceLauncher({
     const { toast } = useToast();
     const { env } = useEnvContext();
     const api = createApiClient({ env });
+    const queryClient = useQueryClient();
     const router = useRouter();
     const { navigate, isNavigating, searchParams } = useNavigationContext();
     const [isRefreshing, startRefreshTransition] = useTransition();
@@ -489,6 +490,10 @@ export default function ResourceLauncher({
     const refreshData = () => {
         startRefreshTransition(async () => {
             try {
+                await api.post(`/org/${orgId}/launcher/invalidate-cache`);
+                await queryClient.invalidateQueries({
+                    queryKey: ["ORG", orgId, "LAUNCHER"]
+                });
                 router.refresh();
             } catch {
                 toast({

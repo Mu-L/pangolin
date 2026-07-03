@@ -501,6 +501,12 @@ authenticated.get(
 );
 
 authenticated.post(
+    "/org/:orgId/launcher/invalidate-cache",
+    verifyOrgAccess,
+    launcher.invalidateLauncherCache
+);
+
+authenticated.post(
     "/org/:orgId/launcher/views",
     verifyOrgAccess,
     launcher.createLauncherView
