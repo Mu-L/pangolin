@@ -616,8 +616,8 @@ export async function listResources(
                         and(
                             inArray(resources.mode, browserGatewayModes),
                             or(
-                                eq(effectiveSso, true),
-                                eq(effectiveWhitelist, true),
+                                effectiveSso,
+                                effectiveWhitelist,
                                 not(isNull(effectiveHeaderAuthId)),
                                 not(isNull(effectivePincodeId)),
                                 not(isNull(effectivePasswordId))
@@ -629,8 +629,8 @@ export async function listResources(
                     conditions.push(
                         and(
                             inArray(resources.mode, browserGatewayModes),
-                            not(eq(effectiveSso, true)),
-                            not(eq(effectiveWhitelist, true)),
+                            not(effectiveSso),
+                            not(effectiveWhitelist),
                             isNull(effectiveHeaderAuthId),
                             isNull(effectivePincodeId),
                             isNull(effectivePasswordId)
