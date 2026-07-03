@@ -43,6 +43,6 @@ export const handleNewtDisconnectingMessage: MessageHandler = async (
             );
         });
     } catch (error) {
-        logger.error("Error handling disconnecting message", { error });
+        logger.error("Error handling site disconnecting message", error);
     }
 };
