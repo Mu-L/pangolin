@@ -3587,6 +3587,7 @@
     "resourceLauncherSaveForEveryoneDescription": "Share this view with all organization members. When unchecked, the view is only visible to you.",
     "resourceLauncherMakePersonal": "Make Personal",
     "resourceLauncherFilter": "Filter",
+    "resourceLauncherFilterWithCount": "Filter, {count} applied",
     "resourceLauncherSort": "Sort",
     "resourceLauncherSortAscending": "Sort ascending",
     "resourceLauncherSortDescending": "Sort descending",
