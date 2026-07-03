@@ -27,6 +27,8 @@ import UserProfileCard from "@app/components/UserProfileCard";
 import SecurityKeyAuthButton from "@app/components/SecurityKeyAuthButton";
 import { Separator } from "@app/components/ui/separator";
 import OrgSignInLink from "@app/components/OrgSignInLink";
+import type { LoginFormIDP } from "./LoginForm";
+import IdpLoginButtons from "./IdpLoginButtons";
 
 const identifierSchema = z.object({
     identifier: z.string().min(1, "Username or email is required")
@@ -53,6 +55,7 @@ type SmartLoginFormProps = {
     forceLogin?: boolean;
     defaultUser?: string;
     orgSignIn?: OrgSignInConfig;
+    lastUsedIdp?: (LoginFormIDP & { orgId?: string }) | null;
 };
 
 type ViewState =
@@ -89,7 +92,8 @@ export default function SmartLoginForm({
     redirect,
     forceLogin,
     defaultUser,
-    orgSignIn
+    orgSignIn,
+    lastUsedIdp
 }: SmartLoginFormProps) {
     const router = useRouter();
     const { env } = useEnvContext();
@@ -294,6 +298,15 @@ export default function SmartLoginForm({
                                 </span>
                             </div>
                         </div>
+
+                        {lastUsedIdp && (
+                            <IdpLoginButtons
+                                idps={[lastUsedIdp]}
+                                orgId={lastUsedIdp.orgId}
+                                redirect={redirect}
+                            />
+                        )}
+
                         <OrgSignInLink
                             href={orgSignIn.href}
                             linkText={orgSignIn.linkText}
