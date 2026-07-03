@@ -582,10 +582,17 @@ async function rebuildClientAssociationsFromSiteResourceImpl(
                 ? mergedAllClientIds
                 : [];
 
+            // Note: we deliberately do NOT exclude clients covered by another
+            // site resource here (unlike clientSitesToRemove below). Doing so
+            // previously caused a permanent gap: if resource A saw resource B's
+            // cache row and skipped adding (assuming B would maintain it), and
+            // B's own rebuild made the same assumption about A, the site-level
+            // row could end up never inserted by anyone even though both
+            // resources' client associations were otherwise correct.
+            // onConflictDoNothing makes a redundant insert harmless, so there's
+            // no correctness reason to skip here.
             const clientSitesToAdd = expectedClientIdsForSite.filter(
-                (clientId) =>
-                    !existingClientSiteIds.includes(clientId) &&
-                    !otherResourceClientIds.has(clientId) // dont add if already connected via another site resource
+                (clientId) => !existingClientSiteIds.includes(clientId)
             );
 
             const clientSitesToInsert = clientSitesToAdd.map((clientId) => ({
@@ -700,7 +707,7 @@ async function handleMessagesForSiteClients(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     if (!site.exitNodeId) {
-        logger.warn(
+        logger.debug(
             `Exit node ID not on site ${site.siteId} so there is no reason to update clients because it must be offline`
         );
         return;
@@ -714,14 +721,14 @@ async function handleMessagesForSiteClients(
         .limit(1);
 
     if (!exitNode) {
-        logger.warn(
+        logger.debug(
             `Exit node not found for site ${site.siteId} so there is no reason to update clients because it must be offline`
         );
         return;
     }
 
     if (!site.publicKey) {
-        logger.warn(
+        logger.debug(
             `Site publicKey not set for site ${site.siteId} so cannot add peers to clients`
         );
         return;
@@ -735,7 +742,7 @@ async function handleMessagesForSiteClients(
         .where(eq(newts.siteId, siteId))
         .limit(1);
     if (!newt) {
-        logger.warn(
+        logger.debug(
             `Newt not found for site ${siteId} so cannot add peers to clients`
         );
         return;
