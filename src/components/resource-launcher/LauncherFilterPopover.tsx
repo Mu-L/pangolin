@@ -47,14 +47,14 @@ export function LauncherFilterPopover({
     const { data: labels = [] } = useQuery(
         launcherQueries.labels({
             orgId,
-            perPage: 500
+            perPage: 20
         })
     );
 
     const { data: sites = [] } = useQuery(
         launcherQueries.sites({
             orgId,
-            perPage: 500
+            perPage: 20
         })
     );
 
@@ -195,6 +195,7 @@ export function LauncherFilterPopover({
                                 <LabelsFilterSelector
                                     orgId={orgId}
                                     scope="launcher"
+                                    selectedLabels={resolvedSelectedLabels}
                                     isSelected={(label) =>
                                         selectedLabelIds.has(label.labelId)
                                     }

@@ -122,8 +122,8 @@ export const launcherFilterListQuerySchema = z.strictObject({
         .int()
         .positive()
         .optional()
-        .catch(500)
-        .default(500),
+        .catch(20)
+        .default(20),
     page: z.coerce.number().int().min(1).optional().catch(1).default(1),
     query: z.string().optional().default("")
 });

@@ -64,7 +64,7 @@ export function MultiSitesSelector({
         ...launcherQueries.sites({
             orgId,
             query: debouncedQuery,
-            perPage: 500
+            perPage: 20
         }),
         enabled: scope === "launcher"
     });

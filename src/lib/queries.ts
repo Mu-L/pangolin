@@ -1196,7 +1196,7 @@ export const launcherQueries = {
     sites: ({
         orgId,
         query,
-        perPage = 500
+        perPage = 20
     }: {
         orgId: string;
         query?: string;
@@ -1228,7 +1228,7 @@ export const launcherQueries = {
     labels: ({
         orgId,
         query,
-        perPage = 500
+        perPage = 20
     }: {
         orgId: string;
         query?: string;
