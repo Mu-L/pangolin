@@ -290,7 +290,13 @@ export default function BillingPage() {
                     setHasSubscription(
                         tierSub.subscription.status === "active"
                     );
-                    setIsTrial(tierSub.subscription.expiresAt != null);
+                    // expiresAt is only meaningful while the trial hasn't
+                    // actually run out yet; a stale row with a past
+                    // expiresAt should no longer be treated as a live trial
+                    const expiresAt = tierSub.subscription.expiresAt;
+                    setIsTrial(
+                        expiresAt != null && expiresAt * 1000 > Date.now()
+                    );
                 }
 
                 // Find license subscription
