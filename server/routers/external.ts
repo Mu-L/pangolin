@@ -328,6 +328,14 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/site-resource/:siteResourceId",
+    verifyOrgAccess,
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.getSiteResource),
+    siteResource.getSiteResource
+);
+
+authenticated.get(
     "/site-resource/:siteResourceId",
     verifySiteResourceAccess,
     verifyUserHasAction(ActionsEnum.getSiteResource),

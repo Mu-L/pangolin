@@ -40,6 +40,7 @@ import {
     getEffectiveDefaultLauncherConfig,
     type LauncherDefaultViewOverrides,
     type LauncherGroup,
+    type LauncherResource,
     type LauncherScaleInfo,
     type LauncherViewConfig,
     type LauncherViewRecord
@@ -66,6 +67,7 @@ import { LauncherFlatResourceList } from "./LauncherFlatResourceList";
 import { LauncherGroupList } from "./LauncherGroupList";
 import { LauncherSearchFirstGate } from "./LauncherSearchFirstGate";
 import { LauncherRefreshButton } from "./LauncherRefreshButton";
+import { LauncherResourcePanel } from "./LauncherResourcePanel";
 import { LauncherSettingsMenu } from "./LauncherSettingsMenu";
 import { LauncherSortButton } from "./LauncherSortButton";
 import { LauncherSaveViewMenu, LauncherViewTabs } from "./LauncherViewTabs";
@@ -116,6 +118,9 @@ export default function ResourceLauncher({
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [newViewName, setNewViewName] = useState("");
     const [saveOrgWide, setSaveOrgWide] = useState(false);
+    const [selectedResource, setSelectedResource] =
+        useState<LauncherResource | null>(null);
+    const [panelOpen, setPanelOpen] = useState(false);
 
     const isDesktop = useMediaQuery("(min-width: 768px)");
 
@@ -563,6 +568,18 @@ export default function ResourceLauncher({
         });
     };
 
+    const handleResourceSelect = useCallback((resource: LauncherResource) => {
+        setSelectedResource(resource);
+        setPanelOpen(true);
+    }, []);
+
+    const handlePanelOpenChange = useCallback((open: boolean) => {
+        setPanelOpen(open);
+        if (!open) {
+            setSelectedResource(null);
+        }
+    }, []);
+
     const savedViewTabs = views.map((view) => ({
         viewId: view.viewId,
         name: view.name
@@ -699,6 +716,7 @@ export default function ResourceLauncher({
                     initialGroups={groups}
                     groupsPagination={groupsPagination}
                     onClearFilters={handleClearFilters}
+                    onResourceSelect={handleResourceSelect}
                 />
             ) : showFlatResourceList ? (
                 <LauncherFlatResourceList
@@ -706,8 +724,17 @@ export default function ResourceLauncher({
                     activeViewId={activeViewId}
                     config={effectiveConfig}
                     onClearFilters={handleClearFilters}
+                    onResourceSelect={handleResourceSelect}
                 />
             ) : null}
+
+            <LauncherResourcePanel
+                open={panelOpen}
+                onOpenChange={handlePanelOpenChange}
+                resource={selectedResource}
+                orgId={orgId}
+                isAdmin={isAdmin}
+            />
 
             {activeSavedView ? (
                 <ConfirmDeleteDialog
