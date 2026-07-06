@@ -232,6 +232,7 @@ export const launcherViews = pgTable("launcherViews", {
     }),
     name: varchar("name").notNull(),
     config: text("config").notNull(),
+    isDefault: boolean("isDefault").notNull().default(false),
     createdAt: varchar("createdAt").notNull(),
     updatedAt: varchar("updatedAt").notNull()
 });

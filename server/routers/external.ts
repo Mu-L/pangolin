@@ -328,6 +328,14 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/site-resource/:siteResourceId",
+    verifyOrgAccess,
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.getSiteResource),
+    siteResource.getSiteResource
+);
+
+authenticated.get(
     "/site-resource/:siteResourceId",
     verifySiteResourceAccess,
     verifyUserHasAction(ActionsEnum.getSiteResource),
@@ -471,6 +479,12 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/launcher/scale",
+    verifyOrgAccess,
+    launcher.listLauncherScale
+);
+
+authenticated.get(
     "/org/:orgId/launcher/resources",
     verifyOrgAccess,
     launcher.listLauncherResources
@@ -495,6 +509,12 @@ authenticated.get(
 );
 
 authenticated.post(
+    "/org/:orgId/launcher/invalidate-cache",
+    verifyOrgAccess,
+    launcher.invalidateLauncherCache
+);
+
+authenticated.post(
     "/org/:orgId/launcher/views",
     verifyOrgAccess,
     launcher.createLauncherView
@@ -504,6 +524,18 @@ authenticated.put(
     "/org/:orgId/launcher/views/:viewId",
     verifyOrgAccess,
     launcher.updateLauncherView
+);
+
+authenticated.put(
+    "/org/:orgId/launcher/default-view",
+    verifyOrgAccess,
+    launcher.upsertLauncherDefaultView
+);
+
+authenticated.delete(
+    "/org/:orgId/launcher/default-view",
+    verifyOrgAccess,
+    launcher.deleteLauncherDefaultView
 );
 
 authenticated.delete(

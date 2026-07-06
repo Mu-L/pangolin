@@ -50,11 +50,16 @@ import type {
     ListLauncherGroupsResponse,
     ListLauncherLabelsResponse,
     ListLauncherResourcesResponse,
+    ListLauncherScaleResponse,
     ListLauncherSitesResponse,
     ListLauncherViewsResponse,
     LauncherListQuery,
+    LauncherResource,
     LauncherViewConfig
 } from "@server/routers/launcher/types";
+import type { GetResourceResponse } from "@server/routers/resource/getResource";
+import type { GetResourceAuthInfoResponse } from "@server/routers/resource/getResourceAuthInfo";
+import type { GetSiteResourceResponse } from "@server/routers/siteResource/getSiteResource";
 import type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
 import { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
 
@@ -1189,13 +1194,13 @@ export const launcherQueries = {
                 const res = await meta!.api.get<
                     AxiosResponse<ListLauncherViewsResponse>
                 >(`/org/${orgId}/launcher/views`, { signal });
-                return res.data.data.views;
+                return res.data.data;
             }
         }),
     sites: ({
         orgId,
         query,
-        perPage = 500
+        perPage = 20
     }: {
         orgId: string;
         query?: string;
@@ -1227,7 +1232,7 @@ export const launcherQueries = {
     labels: ({
         orgId,
         query,
-        perPage = 500
+        perPage = 20
     }: {
         orgId: string;
         query?: string;
@@ -1297,6 +1302,63 @@ export const launcherQueries = {
                 const { page, pageSize, total } = lastPage.pagination;
                 const nextPage = page + 1;
                 return page * pageSize < total ? nextPage : undefined;
+            }
+        }),
+    scale: (orgId: string, filters: LauncherQueryFilters) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "LAUNCHER", "SCALE", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = buildLauncherSearchParams(filters, 1);
+                sp.delete("page");
+                sp.delete("pageSize");
+                sp.delete("groupKey");
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherScaleResponse>
+                >(`/org/${orgId}/launcher/scale?${sp.toString()}`, { signal });
+                return res.data.data.scale;
+            }
+        }),
+    resourceDetail: (orgId: string, resource: LauncherResource | null) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "LAUNCHER",
+                "RESOURCE_DETAIL",
+                resource?.launcherResourceKey ?? null
+            ] as const,
+            enabled: resource != null,
+            queryFn: async ({ signal, meta }) => {
+                if (!resource) {
+                    throw new Error("Resource is required");
+                }
+
+                if (resource.resourceType === "public") {
+                    const res = await meta!.api.get<
+                        AxiosResponse<GetResourceResponse>
+                    >(`/org/${orgId}/resource/${resource.niceId}`, { signal });
+                    const resourceData = res.data.data;
+                    const authRes = await meta!.api.get<
+                        AxiosResponse<GetResourceAuthInfoResponse>
+                    >(`/resource/${resourceData.resourceGuid}/auth`, {
+                        signal
+                    });
+                    return {
+                        resourceType: "public" as const,
+                        data: resourceData,
+                        authInfo: authRes.data.data
+                    };
+                }
+
+                const siteResourceId =
+                    resource.siteResourceId ?? resource.resourceId;
+                const res = await meta!.api.get<
+                    AxiosResponse<GetSiteResourceResponse>
+                >(`/org/${orgId}/site-resource/${siteResourceId}`, { signal });
+                return {
+                    resourceType: "site" as const,
+                    data: res.data.data
+                };
             }
         })
 };

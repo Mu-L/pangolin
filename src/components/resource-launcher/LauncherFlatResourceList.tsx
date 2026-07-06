@@ -1,55 +1,41 @@
 "use client";
 
 import type { LauncherActiveViewId } from "@app/lib/launcherLocalStorage";
+import { hasActiveLauncherFilters } from "@app/lib/launcherScale";
 import { launcherQueries } from "@app/lib/queries";
 import type {
-    LauncherGroup,
     LauncherResource,
     LauncherViewConfig
 } from "@server/routers/launcher/types";
+import { LAUNCHER_FLAT_GROUP_KEY } from "@server/routers/launcher/types";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { LauncherEmptyState } from "./LauncherEmptyState";
-import { LauncherGroupSection } from "./LauncherGroupSection";
+import { LauncherResourceGrid } from "./LauncherResourceGrid";
+import { LauncherResourceList } from "./LauncherResourceList";
 
-type LauncherGroupListProps = {
+type LauncherFlatResourceListProps = {
     orgId: string;
     activeViewId: LauncherActiveViewId;
     config: LauncherViewConfig;
-    initialGroups: LauncherGroup[];
-    groupsPagination: {
-        total: number;
-        page: number;
-        pageSize: number;
-    };
     onClearFilters?: () => void;
     onResourceSelect?: (resource: LauncherResource) => void;
 };
 
-function hasActiveLauncherFilters(config: LauncherViewConfig): boolean {
-    return (
-        config.query.trim().length > 0 ||
-        config.siteIds.length > 0 ||
-        config.labelIds.length > 0
-    );
-}
-
-export function LauncherGroupList({
+export function LauncherFlatResourceList({
     orgId,
-    activeViewId,
     config,
-    initialGroups,
-    groupsPagination,
     onClearFilters,
     onResourceSelect
-}: LauncherGroupListProps) {
+}: LauncherFlatResourceListProps) {
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-    const groupFilters = useMemo(
+    const resourceFilters = useMemo(
         () => ({
             query: config.query,
             groupBy: config.groupBy,
+            groupKey: LAUNCHER_FLAT_GROUP_KEY,
             siteIds: config.siteIds,
             labelIds: config.labelIds,
             sort_by: config.sortBy,
@@ -68,24 +54,10 @@ export function LauncherGroupList({
 
     const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
         useInfiniteQuery({
-            ...launcherQueries.groups(orgId, groupFilters),
-            ...(initialGroups.length > 0
-                ? {
-                      initialData: {
-                          pages: [
-                              {
-                                  groups: initialGroups,
-                                  pagination: groupsPagination
-                              }
-                          ],
-                          pageParams: [1]
-                      },
-                      refetchOnMount: false as const
-                  }
-                : {})
+            ...launcherQueries.resources(orgId, resourceFilters)
         });
 
-    const groups = data?.pages.flatMap((page) => page.groups) ?? [];
+    const resources = data?.pages.flatMap((page) => page.resources) ?? [];
 
     useEffect(() => {
         const node = loadMoreRef.current;
@@ -106,7 +78,7 @@ export function LauncherGroupList({
         return () => observer.disconnect();
     }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-    if (groups.length === 0) {
+    if (resources.length === 0) {
         if (isFetching) {
             return (
                 <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -129,16 +101,19 @@ export function LauncherGroupList({
 
     return (
         <div className="flex flex-col gap-2.5">
-            {groups.map((group) => (
-                <LauncherGroupSection
-                    key={group.groupKey}
-                    orgId={orgId}
-                    activeViewId={activeViewId}
-                    group={group}
-                    config={config}
+            {config.layout === "grid" ? (
+                <LauncherResourceGrid
+                    resources={resources}
+                    showLabels={config.showLabels}
                     onResourceSelect={onResourceSelect}
                 />
-            ))}
+            ) : (
+                <LauncherResourceList
+                    resources={resources}
+                    showLabels={config.showLabels}
+                    onResourceSelect={onResourceSelect}
+                />
+            )}
             <div ref={loadMoreRef} className="h-4" />
             {isFetchingNextPage ? (
                 <div className="flex justify-center py-2">

@@ -1,21 +1,21 @@
-import { db, launcherViews } from "@server/db";
 import { response } from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import moment from "moment";
 import { fromZodError } from "zod-validation-error";
 import { z } from "zod";
 import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
-import { launcherViewConfigSchema } from "./types";
+import {
+    deleteAllDefaultViewOverrides,
+    deleteDefaultViewOverride
+} from "./launcherDefaultView";
 
-const createLauncherViewBodySchema = z.strictObject({
-    name: z.string().min(1).max(128),
-    config: launcherViewConfigSchema,
-    orgWide: z.boolean().optional().default(false)
+const deleteLauncherDefaultViewBodySchema = z.strictObject({
+    orgWide: z.boolean().optional().default(false),
+    all: z.boolean().optional().default(false)
 });
 
-export async function createLauncherView(
+export async function deleteLauncherDefaultView(
     req: Request,
     res: Response,
     next: NextFunction
@@ -30,7 +30,7 @@ export async function createLauncherView(
             );
         }
 
-        const parsed = createLauncherViewBodySchema.safeParse(req.body);
+        const parsed = deleteLauncherDefaultViewBodySchema.safeParse(req.body);
         if (!parsed.success) {
             return next(
                 createHttpError(
@@ -40,12 +40,12 @@ export async function createLauncherView(
             );
         }
 
-        if (parsed.data.orgWide) {
-            const canCreateOrgWide = await checkUserActionPermission(
+        if (parsed.data.all) {
+            const canManageOrgWide = await checkUserActionPermission(
                 ActionsEnum.createOrgWideLauncherView,
                 req
             );
-            if (!canCreateOrgWide) {
+            if (!canManageOrgWide) {
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
@@ -53,45 +53,47 @@ export async function createLauncherView(
                     )
                 );
             }
+
+            await deleteAllDefaultViewOverrides(orgId, userId);
+        } else if (parsed.data.orgWide) {
+            const canManageOrgWide = await checkUserActionPermission(
+                ActionsEnum.createOrgWideLauncherView,
+                req
+            );
+            if (!canManageOrgWide) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "User does not have permission perform this action"
+                    )
+                );
+            }
+
+            await deleteDefaultViewOverride({
+                orgId,
+                userId,
+                orgWide: true
+            });
+        } else {
+            await deleteDefaultViewOverride({
+                orgId,
+                userId,
+                orgWide: false
+            });
         }
 
-        const now = moment().toISOString();
-        const [created] = await db
-            .insert(launcherViews)
-            .values({
-                orgId,
-                userId: parsed.data.orgWide ? null : userId,
-                name: parsed.data.name,
-                config: JSON.stringify(parsed.data.config),
-                createdAt: now,
-                updatedAt: now
-            })
-            .returning();
-
         return response(res, {
-            data: {
-                viewId: created.viewId,
-                orgId: created.orgId,
-                userId: created.userId,
-                name: created.name,
-                config: launcherViewConfigSchema.parse(
-                    JSON.parse(created.config)
-                ),
-                createdAt: created.createdAt,
-                updatedAt: created.updatedAt,
-                isOrgWide: created.userId == null,
-                isDefault: created.isDefault
-            },
+            data: null,
             success: true,
             error: false,
-            message: "Launcher view created successfully",
-            status: HttpCode.CREATED
+            message: "Launcher default view reset successfully",
+            status: HttpCode.OK
         });
     } catch (error) {
         if (createHttpError.isHttpError(error)) {
             return next(error);
         }
-        console.error("Error creating launcher view:", error);
+        console.error("Error resetting launcher default view:", error);
         return next(
             createHttpError(
                 HttpCode.INTERNAL_SERVER_ERROR,
