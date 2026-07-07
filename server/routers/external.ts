@@ -54,6 +54,7 @@ import { build } from "@server/build";
 import { createStore } from "#dynamic/lib/rateLimitStore";
 import { logActionAudit } from "#dynamic/middlewares";
 import { checkRoundTripMessage } from "./ws";
+import * as labels from "@server/routers/labels";
 
 // Root routes
 export const unauthenticated = Router();
@@ -1334,6 +1335,48 @@ authenticated.get(
 );
 
 authenticated.get("/ws/round-trip-message/:messageId", checkRoundTripMessage);
+
+authenticated.get(
+    "/org/:orgId/labels",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listOrgLabels),
+    labels.listOrgLabels
+);
+
+authenticated.post(
+    "/org/:orgId/labels",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.createOrgLabel),
+    labels.createOrgLabel
+);
+
+authenticated.patch(
+    "/org/:orgId/label/:labelId",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateOrgLabel),
+    labels.updateOrgLabel
+);
+
+authenticated.delete(
+    "/org/:orgId/label/:labelId",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteOrgLabel),
+    labels.deleteOrgLabel
+);
+
+authenticated.put(
+    "/org/:orgId/label/:labelId/attach",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.attachLabelToItem),
+    labels.attachLabelToItem
+);
+
+authenticated.put(
+    "/org/:orgId/label/:labelId/detach",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.detachLabelFromItem),
+    labels.detachLabelFromItem
+);
 
 // Auth routes
 export const authRouter = Router();
