@@ -359,10 +359,12 @@ export default function SitesTable({
                 cell: ({ row }) => {
                     const originalRow = row.original;
 
-                    let updateAvailable =
+                    let updateAvailable = Boolean(
                         latestNewtVersion &&
                         originalRow.newtVersion &&
-                        semver.lt(originalRow.newtVersion, latestNewtVersion);
+                        semver.valid(originalRow.newtVersion) &&
+                        semver.lt(originalRow.newtVersion, latestNewtVersion)
+                    );
 
                     if (originalRow.type === "newt") {
                         return (
