@@ -157,7 +157,8 @@ const updateSiteResourceSchema = z
                 return true;
             }
             return (
-                data.destination !== undefined && data.destination.trim() !== ""
+                data.destination !== undefined &&
+                data.destination?.trim() !== ""
             );
         },
         {
@@ -616,10 +617,7 @@ export async function updateSiteResource(
                     await trx
                         .delete(roleSiteResources)
                         .where(
-                            eq(
-                                roleSiteResources.siteResourceId,
-                                siteResourceId
-                            )
+                            eq(roleSiteResources.siteResourceId, siteResourceId)
                         );
                 }
 

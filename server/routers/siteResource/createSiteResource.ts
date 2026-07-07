@@ -161,7 +161,8 @@ const createSiteResourceSchema = z
                 return true;
             }
             return (
-                data.destination !== undefined && data.destination.trim() !== ""
+                data.destination !== undefined &&
+                data.destination?.trim() !== ""
             );
         },
         {
