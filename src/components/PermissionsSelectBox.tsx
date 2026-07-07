@@ -111,6 +111,20 @@ function getActionsCategories(root: boolean) {
             [t("actionUpdateResourceRule")]: "updateResourceRule"
         },
 
+        "Resource Policy": {
+            [t("actionGetResourcePolicy")]: "getResourcePolicy",
+            [t("actionUpdateResourcePolicy")]: "updateResourcePolicy",
+            [t("actionSetResourcePolicyUsers")]: "setResourcePolicyUsers",
+            [t("actionSetResourcePolicyRoles")]: "setResourcePolicyRoles",
+            [t("actionSetResourcePolicyPassword")]: "setResourcePolicyPassword",
+            [t("actionSetResourcePolicyPincode")]: "setResourcePolicyPincode",
+            [t("actionSetResourcePolicyHeaderAuth")]:
+                "setResourcePolicyHeaderAuth",
+            [t("actionSetResourcePolicyWhitelist")]:
+                "setResourcePolicyWhitelist",
+            [t("actionSetResourcePolicyRules")]: "setResourcePolicyRules"
+        },
+
         Client: {
             [t("actionCreateClient")]: "createClient",
             [t("actionDeleteClient")]: "deleteClient",
