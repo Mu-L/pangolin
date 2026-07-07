@@ -54,7 +54,7 @@ const updateSiteResourceSchema = z
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).nullish(),
         destinationPort: z.int().positive().nullish(),
-        destination: z.string().min(1).optional(),
+        destination: z.string().min(1).nullish(),
         enabled: z.boolean().optional(),
         alias: z
             .string()

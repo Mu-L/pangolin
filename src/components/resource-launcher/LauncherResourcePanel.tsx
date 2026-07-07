@@ -7,6 +7,7 @@ import {
     InfoSections,
     InfoSectionTitle
 } from "@app/components/InfoSection";
+import { SiteResourceInfoSections } from "@app/components/SiteResourceInfoBox";
 import {
     SettingsSection,
     SettingsSectionBody,
@@ -26,14 +27,10 @@ import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Button } from "@app/components/ui/button";
 import {
     derivePublicAuthState,
-    formatPortRestrictionDisplay,
     formatPublicResourceType
 } from "@app/lib/launcherResourceDetails";
 import { getLauncherResourceAdminHref } from "@app/lib/launcherResourceAdminHref";
-import {
-    formatSiteResourceDestinationDisplay,
-    isSafeUrlForLink
-} from "@app/lib/launcherResourceAccess";
+import { isSafeUrlForLink } from "@app/lib/launcherResourceAccess";
 import { launcherQueries } from "@app/lib/queries";
 import type { LauncherResource } from "@server/routers/launcher/types";
 import type { GetResourceAuthInfoResponse } from "@server/routers/resource/getResourceAuthInfo";
@@ -322,25 +319,6 @@ function PrivateResourceDetails({
     resource: GetSiteResourceResponse;
 }) {
     const t = useTranslations();
-    const modeLabel: Record<GetSiteResourceResponse["mode"], string> = {
-        host: t("editInternalResourceDialogModeHost"),
-        cidr: t("editInternalResourceDialogModeCidr"),
-        http: t("editInternalResourceDialogModeHttp"),
-        ssh: t("editInternalResourceDialogModeSsh")
-    };
-    const destination = formatSiteResourceDestinationDisplay({
-        mode: resource.mode,
-        destination: resource.destination,
-        destinationPort: resource.destinationPort,
-        scheme: resource.scheme
-    });
-    const portRestrictions = formatPortRestrictionDisplay(resource);
-    const showAlias = resource.mode !== "cidr" && resource.mode !== "http";
-    const showDestination = !(
-        resource.mode === "ssh" && resource.authDaemonMode === "native"
-    );
-    const infoSectionCount =
-        2 + (showDestination ? 1 : 0) + (showAlias ? 1 : 0) + 1;
 
     return (
         <div className="space-y-4">
@@ -375,89 +353,16 @@ function PrivateResourceDetails({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    <InfoSections cols={infoSectionCount} layout="panel">
-                        <InfoSection>
-                            <InfoSectionTitle>{t("type")}</InfoSectionTitle>
-                            <InfoSectionContent>
-                                {modeLabel[resource.mode]}
-                            </InfoSectionContent>
-                        </InfoSection>
-                        <InfoSection>
-                            <InfoSectionTitle>{t("access")}</InfoSectionTitle>
-                            <InfoSectionContent>
-                                <AccessMethodContent
-                                    accessDisplay={
-                                        launcherResource.accessDisplay
-                                    }
-                                    accessCopyValue={
-                                        launcherResource.accessCopyValue
-                                    }
-                                    accessUrl={launcherResource.accessUrl}
-                                />
-                            </InfoSectionContent>
-                        </InfoSection>
-                        {showDestination ? (
-                            <InfoSection>
-                                <InfoSectionTitle>
-                                    {t("editInternalResourceDialogDestination")}
-                                </InfoSectionTitle>
-                                <InfoSectionContent>
-                                    {destination || "-"}
-                                </InfoSectionContent>
-                            </InfoSection>
-                        ) : null}
-                        {showAlias ? (
-                            <InfoSection>
-                                <InfoSectionTitle>
-                                    {t("editInternalResourceDialogAlias")}
-                                </InfoSectionTitle>
-                                <InfoSectionContent>
-                                    {resource.alias?.trim()
-                                        ? resource.alias
-                                        : "-"}
-                                </InfoSectionContent>
-                            </InfoSection>
-                        ) : null}
-                        <InfoSection>
-                            <InfoSectionTitle>
-                                {t("portRestrictions")}
-                            </InfoSectionTitle>
-                            <InfoSectionContent>
-                                {!portRestrictions.hasNonDefaultPorts ? (
-                                    <span>
-                                        {t(
-                                            "resourceLauncherNoPortRestrictions"
-                                        )}
-                                    </span>
-                                ) : (
-                                    <div className="space-y-1">
-                                        {portRestrictions.tcp.state !==
-                                        "all" ? (
-                                            <div>
-                                                {t("resourceLauncherTcp")}:{" "}
-                                                {portRestrictions.tcp.state ===
-                                                "blocked"
-                                                    ? t("blocked")
-                                                    : portRestrictions.tcp
-                                                          .ports}
-                                            </div>
-                                        ) : null}
-                                        {portRestrictions.udp.state !==
-                                        "all" ? (
-                                            <div>
-                                                {t("resourceLauncherUdp")}:{" "}
-                                                {portRestrictions.udp.state ===
-                                                "blocked"
-                                                    ? t("blocked")
-                                                    : portRestrictions.udp
-                                                          .ports}
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                )}
-                            </InfoSectionContent>
-                        </InfoSection>
-                    </InfoSections>
+                    <SiteResourceInfoSections
+                        siteResource={resource}
+                        access={{
+                            accessDisplay: launcherResource.accessDisplay,
+                            accessCopyValue: launcherResource.accessCopyValue,
+                            accessUrl: launcherResource.accessUrl
+                        }}
+                        variant="panel"
+                        accessClassName="text-base"
+                    />
                 </SettingsSectionBody>
             </SettingsSection>
         </div>

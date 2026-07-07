@@ -2,8 +2,6 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
-import CreatePrivateResourceDialog from "@app/components/CreatePrivateResourceDialog";
-import EditPrivateResourceDialog from "@app/components/EditPrivateResourceDialog";
 import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
 import {
     ResourceSitesStatusCell,
@@ -34,12 +32,14 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
 import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import { formatSiteResourceDestinationDisplay } from "@app/lib/formatSiteResourceAccess";
+import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHref";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
+    ArrowRight,
     ArrowUp10Icon,
     ArrowUpDown,
     ChevronsUpDownIcon,
@@ -47,6 +47,7 @@ import {
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
@@ -78,6 +79,7 @@ export type InternalResourceRow = {
     alias: string | null;
     aliasAddress: string | null;
     niceId: string;
+    enabled: boolean;
     tcpPortRangeString: string | null;
     udpPortRangeString: string | null;
     disableIcmp: boolean;
@@ -140,13 +142,10 @@ export default function PrivateResourcesTable({
     const api = createApiClient({ env });
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const [selectedInternalResource, setSelectedInternalResource] =
         useState<InternalResourceRow | null>();
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [editingResource, setEditingResource] =
-        useState<InternalResourceRow | null>();
-    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
     const [isRefreshing, startRefreshTransition] = useTransition();
 
@@ -450,6 +449,17 @@ export default function PrivateResourcesTable({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                    <Link
+                                        className="block w-full"
+                                        href={getPrivateResourceSettingsHref(
+                                            resourceRow.orgId,
+                                            resourceRow.niceId
+                                        )}
+                                    >
+                                        <DropdownMenuItem>
+                                            {t("viewSettings")}
+                                        </DropdownMenuItem>
+                                    </Link>
                                     <DropdownMenuItem
                                         onClick={() => {
                                             setSelectedInternalResource(
@@ -464,15 +474,17 @@ export default function PrivateResourcesTable({
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button
-                                variant={"outline"}
-                                onClick={() => {
-                                    setEditingResource(resourceRow);
-                                    setIsEditDialogOpen(true);
-                                }}
+                            <Link
+                                href={getPrivateResourceSettingsHref(
+                                    resourceRow.orgId,
+                                    resourceRow.niceId
+                                )}
                             >
-                                {t("edit")}
-                            </Button>
+                                <Button variant={"outline"}>
+                                    {t("edit")}
+                                    <ArrowRight className="ml-2 w-4 h-4" />
+                                </Button>
+                            </Link>
                         </div>
                     );
                 }
@@ -580,8 +592,15 @@ export default function PrivateResourcesTable({
                 tableId="internal-resources"
                 searchPlaceholder={t("resourcesSearch")}
                 searchQuery={searchParams.get("query")?.toString()}
-                onAdd={() => setIsCreateDialogOpen(true)}
+                onAdd={() =>
+                    startNavigation(() =>
+                        router.push(
+                            `/${orgId}/settings/resources/private/create`
+                        )
+                    )
+                }
                 addButtonText={t("resourceAdd")}
+                isNavigatingToAddPage={isNavigatingToAddPage}
                 onSearch={handleSearchChange}
                 onRefresh={refreshData}
                 onPaginationChange={handlePaginationChange}
@@ -596,34 +615,6 @@ export default function PrivateResourcesTable({
                 }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
-            />
-
-            {editingResource && (
-                <EditPrivateResourceDialog
-                    open={isEditDialogOpen}
-                    setOpen={setIsEditDialogOpen}
-                    resource={editingResource}
-                    orgId={orgId}
-                    onSuccess={() => {
-                        // Delay refresh to allow modal to close smoothly
-                        setTimeout(() => {
-                            router.refresh();
-                            setEditingResource(null);
-                        }, 150);
-                    }}
-                />
-            )}
-
-            <CreatePrivateResourceDialog
-                open={isCreateDialogOpen}
-                setOpen={setIsCreateDialogOpen}
-                orgId={orgId}
-                onSuccess={() => {
-                    // Delay refresh to allow modal to close smoothly
-                    setTimeout(() => {
-                        router.refresh();
-                    }, 150);
-                }}
             />
         </>
     );
