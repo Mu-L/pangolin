@@ -150,7 +150,6 @@ export default function PrivateResourcesTable({
     const [isRefreshing, startRefreshTransition] = useTransition();
 
     const { isPaidUser } = usePaidStatus();
-    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     // useEffect(() => {
     //     const interval = setInterval(() => {
@@ -488,11 +487,8 @@ export default function PrivateResourcesTable({
                         </div>
                     );
                 }
-            }
-        ];
-
-        if (isLabelFeatureEnabled) {
-            cols.splice(cols.length - 1, 0, {
+            },
+            {
                 id: "labels",
                 accessorKey: "labels",
                 header: () => (
@@ -512,11 +508,11 @@ export default function PrivateResourcesTable({
                         orgId={orgId}
                     />
                 )
-            });
-        }
+            }
+        ];
 
         return cols;
-    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
+    }, [orgId, t, searchParams]);
 
     function handleFilterChange(
         column: string,

@@ -151,7 +151,6 @@ export default function PublicResourcesTable({
         useState<ResourceRow | null>();
 
     const { isPaidUser } = usePaidStatus();
-    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
@@ -604,11 +603,8 @@ export default function PublicResourcesTable({
                         </div>
                     );
                 }
-            }
-        ];
-
-        if (isLabelFeatureEnabled) {
-            cols.splice(cols.length - 1, 0, {
+            },
+            {
                 id: "labels",
                 accessorKey: "labels",
                 header: () => (
@@ -625,11 +621,11 @@ export default function PublicResourcesTable({
                 cell: ({ row }: { row: { original: ResourceRow } }) => (
                     <ResourceLabelCell resource={row.original} orgId={orgId} />
                 )
-            });
-        }
+            }
+        ];
 
         return cols;
-    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
+    }, [orgId, t, searchParams]);
 
     function handleFilterChange(
         column: string,

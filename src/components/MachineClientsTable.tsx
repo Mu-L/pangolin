@@ -103,7 +103,6 @@ export default function MachineClientsTable({
     const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const { isPaidUser } = usePaidStatus();
-    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
     const data = useQuery(productUpdatesQueries.latestVersion(true));
 
     const latestPlatformVersions = data.data?.data;
@@ -434,11 +433,8 @@ export default function MachineClientsTable({
                 accessorKey: "subnet",
                 friendlyName: t("address"),
                 header: () => <span className="px-3">{t("address")}</span>
-            }
-        ];
-
-        if (isLabelFeatureEnabled) {
-            baseColumns.push({
+            },
+            {
                 id: "labels",
                 accessorKey: "labels",
                 header: () => (
@@ -458,8 +454,8 @@ export default function MachineClientsTable({
                         orgId={orgId}
                     />
                 )
-            });
-        }
+            }
+        ];
 
         // Only include actions column if there are rows without userIds
         if (hasRowsWithoutUserId) {
@@ -541,7 +537,7 @@ export default function MachineClientsTable({
         }
 
         return baseColumns;
-    }, [hasRowsWithoutUserId, isLabelFeatureEnabled, orgId, t, searchParams]);
+    }, [hasRowsWithoutUserId, orgId, t, searchParams]);
 
     function handleFilterChange(
         column: string,

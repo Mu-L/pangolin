@@ -321,10 +321,7 @@ function combineOrConditions(
     return or(...parts);
 }
 
-function buildSearchConditionForPublic(
-    query: string,
-    labelsFeatureEnabled: boolean
-) {
+function buildSearchConditionForPublic(query: string) {
     if (!query.trim()) {
         return undefined;
     }
@@ -342,32 +339,21 @@ function buildSearchConditionForPublic(
                 .leftJoin(sites, eq(targets.siteId, sites.siteId))
                 .leftJoin(exitNodes, eq(sites.exitNodeId, exitNodes.exitNodeId))
                 .where(like(sql`LOWER(${exitNodes.endpoint})`, pattern))
+        ),
+        inArray(
+            resources.resourceId,
+            db
+                .select({ id: resourceLabels.resourceId })
+                .from(resourceLabels)
+                .innerJoin(labels, eq(labels.labelId, resourceLabels.labelId))
+                .where(like(sql`LOWER(${labels.name})`, pattern))
         )
     ];
-
-    if (labelsFeatureEnabled) {
-        queryList.push(
-            inArray(
-                resources.resourceId,
-                db
-                    .select({ id: resourceLabels.resourceId })
-                    .from(resourceLabels)
-                    .innerJoin(
-                        labels,
-                        eq(labels.labelId, resourceLabels.labelId)
-                    )
-                    .where(like(sql`LOWER(${labels.name})`, pattern))
-            )
-        );
-    }
 
     return or(...queryList);
 }
 
-function buildSearchConditionForSiteResource(
-    query: string,
-    labelsFeatureEnabled: boolean
-) {
+function buildSearchConditionForSiteResource(query: string) {
     if (!query.trim()) {
         return undefined;
     }
@@ -382,24 +368,19 @@ function buildSearchConditionForSiteResource(
         like(sql`LOWER(${siteResources.scheme})`, pattern),
         like(sql`LOWER(${siteResources.alias})`, pattern),
         like(sql`LOWER(${siteResources.fullDomain})`, pattern),
-        like(sql`LOWER(${siteResources.aliasAddress})`, pattern)
+        like(sql`LOWER(${siteResources.aliasAddress})`, pattern),
+        inArray(
+            siteResources.siteResourceId,
+            db
+                .select({ id: siteResourceLabels.siteResourceId })
+                .from(siteResourceLabels)
+                .innerJoin(
+                    labels,
+                    eq(labels.labelId, siteResourceLabels.labelId)
+                )
+                .where(like(sql`LOWER(${labels.name})`, pattern))
+        )
     ];
-
-    if (labelsFeatureEnabled) {
-        queryList.push(
-            inArray(
-                siteResources.siteResourceId,
-                db
-                    .select({ id: siteResourceLabels.siteResourceId })
-                    .from(siteResourceLabels)
-                    .innerJoin(
-                        labels,
-                        eq(labels.labelId, siteResourceLabels.labelId)
-                    )
-                    .where(like(sql`LOWER(${labels.name})`, pattern))
-            )
-        );
-    }
 
     return or(...queryList);
 }
@@ -407,15 +388,14 @@ function buildSearchConditionForSiteResource(
 async function filterPublicResourceIdsByTextSearch(
     orgId: string,
     resourceIds: number[],
-    query: string,
-    labelsFeatureEnabled: boolean
+    query: string
 ): Promise<number[]> {
     if (!query.trim() || resourceIds.length === 0) {
         return resourceIds;
     }
 
     const textMatch = combineOrConditions(
-        buildSearchConditionForPublic(query, labelsFeatureEnabled),
+        buildSearchConditionForPublic(query),
         buildSiteNameSearchCondition(query)
     );
     if (!textMatch) {
@@ -442,15 +422,14 @@ async function filterPublicResourceIdsByTextSearch(
 async function filterSiteResourceIdsByTextSearch(
     orgId: string,
     siteResourceIds: number[],
-    query: string,
-    labelsFeatureEnabled: boolean
+    query: string
 ): Promise<number[]> {
     if (!query.trim() || siteResourceIds.length === 0) {
         return siteResourceIds;
     }
 
     const textMatch = combineOrConditions(
-        buildSearchConditionForSiteResource(query, labelsFeatureEnabled),
+        buildSearchConditionForSiteResource(query),
         buildSiteNameSearchCondition(query)
     );
     if (!textMatch) {
@@ -477,10 +456,6 @@ async function filterSiteResourceIdsByTextSearch(
     return rows.map((row) => row.siteResourceId);
 }
 
-async function labelsEnabled(orgId: string): Promise<boolean> {
-    return isLicensedOrSubscribed(orgId, tierMatrix.labels);
-}
-
 async function fetchLabelsForResources(
     orgId: string,
     resourceIds: number[],
@@ -491,10 +466,6 @@ async function fetchLabelsForResources(
 }> {
     const byResourceId = new Map<number, LauncherLabel[]>();
     const bySiteResourceId = new Map<number, LauncherLabel[]>();
-
-    if (!(await labelsEnabled(orgId))) {
-        return { byResourceId, bySiteResourceId };
-    }
 
     const [resourceLabelRows, siteResourceLabelRows] = await Promise.all([
         resourceIds.length === 0
@@ -571,15 +542,8 @@ async function listSiteGroups(
 ): Promise<{ groups: LauncherGroup[]; total: number }> {
     const siteFilterIds = parseIdListParam(query.siteIds);
     const labelFilterIds = parseIdListParam(query.labelIds);
-    const labelsFeatureEnabled = await labelsEnabled(orgId);
-    const searchPublic = buildSearchConditionForPublic(
-        query.query,
-        labelsFeatureEnabled
-    );
-    const searchSite = buildSearchConditionForSiteResource(
-        query.query,
-        labelsFeatureEnabled
-    );
+    const searchPublic = buildSearchConditionForPublic(query.query);
+    const searchSite = buildSearchConditionForSiteResource(query.query);
     const siteCountMap = new Map<number, SiteGroupRow>();
 
     if (accessible.resourceIds.length > 0) {
@@ -822,10 +786,6 @@ async function listLabelGroups(
     >();
     let unlabeledCount = 0;
 
-    if (!(await labelsEnabled(orgId))) {
-        return { groups: [], total: 0 };
-    }
-
     const matchesLabelFilters = (labelId: number) =>
         labelFilterIds.length === 0 || labelFilterIds.includes(labelId);
 
@@ -835,7 +795,7 @@ async function listLabelGroups(
             eq(resources.orgId, orgId),
             eq(resources.enabled, true)
         ];
-        const searchPublic = buildSearchConditionForPublic(query.query, true);
+        const searchPublic = buildSearchConditionForPublic(query.query);
         if (searchPublic) {
             publicConditions.push(searchPublic);
         }
@@ -899,10 +859,7 @@ async function listLabelGroups(
             eq(siteResources.orgId, orgId),
             eq(siteResources.enabled, true)
         ];
-        const searchSite = buildSearchConditionForSiteResource(
-            query.query,
-            true
-        );
+        const searchSite = buildSearchConditionForSiteResource(query.query);
         if (searchSite) {
             siteConditions.push(searchSite);
         }
@@ -1349,23 +1306,19 @@ async function listLauncherResourcesForUserUncached(
         }
     }
 
-    const labelsFeatureEnabled = await labelsEnabled(orgId);
-
     if (query.query.trim()) {
         if (filteredResourceIds.length > 0) {
             filteredResourceIds = await filterPublicResourceIdsByTextSearch(
                 orgId,
                 filteredResourceIds,
-                query.query,
-                labelsFeatureEnabled
+                query.query
             );
         }
         if (filteredSiteResourceIds.length > 0) {
             filteredSiteResourceIds = await filterSiteResourceIdsByTextSearch(
                 orgId,
                 filteredSiteResourceIds,
-                query.query,
-                labelsFeatureEnabled
+                query.query
             );
         }
     }
@@ -1564,10 +1517,6 @@ async function collectAccessibleLabels(
     labelNameSearch?: ReturnType<typeof buildLabelNameSearchCondition>
 ): Promise<Map<number, LauncherLabel>> {
     const labelMap = new Map<number, LauncherLabel>();
-
-    if (!(await labelsEnabled(orgId))) {
-        return labelMap;
-    }
 
     if (accessible.resourceIds.length > 0) {
         const publicConditions = [

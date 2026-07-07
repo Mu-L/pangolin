@@ -53,7 +53,6 @@ import {
 
 import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { LabelsTableCell } from "./LabelsTableCell";
 import { useQuery } from "@tanstack/react-query";
@@ -114,7 +113,6 @@ export default function SitesTable({
     const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const { isPaidUser } = usePaidStatus();
-    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
@@ -171,7 +169,10 @@ export default function SitesTable({
             toast({
                 variant: "destructive",
                 title: t("siteErrorRestart"),
-                description: formatAxiosError(e, t("siteErrorRestartDescription"))
+                description: formatAxiosError(
+                    e,
+                    t("siteErrorRestartDescription")
+                )
             });
         } finally {
             setRestartingSite(null);
@@ -598,11 +599,8 @@ export default function SitesTable({
                         </div>
                     );
                 }
-            }
-        ];
-
-        if (isLabelFeatureEnabled) {
-            cols.splice(cols.length - 1, 0, {
+            },
+            {
                 accessorKey: "labels",
                 header: () => (
                     <LabelColumnFilterButton
@@ -618,11 +616,11 @@ export default function SitesTable({
                 cell: ({ row }: { row: { original: SiteRow } }) => (
                     <SiteLabelCell site={row.original} orgId={orgId} />
                 )
-            });
-        }
+            }
+        ];
 
         return cols;
-    }, [isLabelFeatureEnabled, orgId, t, searchParams, latestNewtVersion]);
+    }, [orgId, t, searchParams, latestNewtVersion]);
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
