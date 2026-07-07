@@ -1,5 +1,6 @@
 "use client";
 
+import CertificateStatus from "@app/components/CertificateStatus";
 import CopyToClipboard from "@app/components/CopyToClipboard";
 import {
     InfoSection,
@@ -17,14 +18,17 @@ import {
     type LauncherAccessFields
 } from "@app/lib/launcherResourceAccess";
 import type { PrivateResourceMode } from "@app/lib/privateResourceForm";
+import { build } from "@server/build";
 import { useTranslations } from "next-intl";
 
 type SiteResourceInfoInput = {
+    orgId: string;
     mode: PrivateResourceMode;
     destination: string | null;
     destinationPort: number | null;
     scheme: "http" | "https" | null;
     ssl: boolean;
+    domainId?: string | null;
     fullDomain?: string | null;
     alias?: string | null;
     aliasAddress?: string | null;
@@ -108,9 +112,20 @@ export function SiteResourceInfoSections({
     const showDestination = !(
         siteResource.mode === "ssh" && siteResource.authDaemonMode === "native"
     );
+    const showCertificate = !!(
+        siteResource.mode === "http" &&
+        siteResource.ssl &&
+        siteResource.domainId &&
+        siteResource.fullDomain &&
+        build != "oss"
+    );
 
     const numSections =
-        2 + (showDestination ? 1 : 0) + (showAlias ? 1 : 0) + (isPanel ? 1 : 0);
+        2 +
+        (showDestination ? 1 : 0) +
+        (showAlias ? 1 : 0) +
+        (showCertificate ? 1 : 0) +
+        (isPanel ? 1 : 0);
 
     const sections = (
         <InfoSections cols={numSections} layout={isPanel ? "panel" : "default"}>
@@ -151,6 +166,26 @@ export function SiteResourceInfoSections({
                     </InfoSectionTitle>
                     <InfoSectionContent>
                         {siteResource.alias?.trim() ? siteResource.alias : "-"}
+                    </InfoSectionContent>
+                </InfoSection>
+            ) : null}
+
+            {showCertificate ? (
+                <InfoSection>
+                    <InfoSectionTitle>
+                        {t("certificateStatus", {
+                            defaultValue: "Certificate"
+                        })}
+                    </InfoSectionTitle>
+                    <InfoSectionContent>
+                        <CertificateStatus
+                            orgId={siteResource.orgId}
+                            domainId={siteResource.domainId!}
+                            fullDomain={siteResource.fullDomain!}
+                            autoFetch={true}
+                            showLabel={false}
+                            polling={true}
+                        />
                     </InfoSectionContent>
                 </InfoSection>
             ) : null}

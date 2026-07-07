@@ -1,6 +1,5 @@
 "use client";
 
-import CertificateStatus from "@app/components/CertificateStatus";
 import DomainPicker from "@app/components/DomainPicker";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import {
@@ -27,7 +26,6 @@ import {
     SelectValue
 } from "@app/components/ui/select";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { build } from "@server/build";
 import { useTranslations } from "next-intl";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
@@ -38,8 +36,6 @@ type PrivateResourceHttpFieldsProps = {
     watch: UseFormWatch<any>;
     disabled?: boolean;
     siteResourceId?: number;
-    resourceDomainId?: string | null;
-    resourceFullDomain?: string | null;
     labelPrefix?: "create" | "edit";
     hideDomainPicker?: boolean;
     hidePaidFeaturesAlert?: boolean;
@@ -52,8 +48,6 @@ export function PrivateResourceHttpFields({
     watch,
     disabled = false,
     siteResourceId,
-    resourceDomainId,
-    resourceFullDomain,
     labelPrefix = "edit",
     hideDomainPicker = false,
     hidePaidFeaturesAlert = false
@@ -91,7 +85,6 @@ export function PrivateResourceHttpFields({
     const httpConfigSubdomain = watch("httpConfigSubdomain");
     const httpConfigDomainId = watch("httpConfigDomainId");
     const httpConfigFullDomain = watch("httpConfigFullDomain");
-    const ssl = watch("ssl");
 
     return (
         <SettingsFormGrid>
@@ -274,29 +267,6 @@ export function PrivateResourceHttpFields({
                             )}
                         />
                     </SettingsFormCell>
-                    {siteResourceId &&
-                        resourceDomainId &&
-                        httpConfigFullDomain &&
-                        httpConfigDomainId === resourceDomainId &&
-                        httpConfigFullDomain === resourceFullDomain &&
-                        build != "oss" &&
-                        ssl && (
-                            <SettingsFormCell span="half">
-                                <div className="flex items-center gap-2 pt-1">
-                                    <span className="text-sm font-medium">
-                                        {t("certificateStatus")}:
-                                    </span>
-                                    <CertificateStatus
-                                        orgId={orgId}
-                                        domainId={resourceDomainId}
-                                        fullDomain={httpConfigFullDomain}
-                                        autoFetch={true}
-                                        showLabel={false}
-                                        polling={true}
-                                    />
-                                </div>
-                            </SettingsFormCell>
-                        )}
                 </>
             )}
 

@@ -400,6 +400,8 @@ export function createCreateFormSchema(t: TranslateFn) {
                 .nullable(),
             authDaemonPort: z.number().int().positive().optional().nullable(),
             pamMode: z.enum(["passthrough", "push"]).optional().nullable(),
+            tcpPortRangeString: createPortRangeStringSchema(t),
+            udpPortRangeString: createPortRangeStringSchema(t),
             disableIcmp: z.boolean().optional()
         })
         .superRefine((data, ctx) => {

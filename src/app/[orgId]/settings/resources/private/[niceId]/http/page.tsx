@@ -122,12 +122,6 @@ export default function PrivateResourceHttpPage() {
                                             watch={asAnyWatch(form.watch)}
                                             disabled={httpSectionDisabled}
                                             siteResourceId={siteResource.id}
-                                            resourceDomainId={
-                                                siteResource.domainId
-                                            }
-                                            resourceFullDomain={
-                                                siteResource.fullDomain
-                                            }
                                         />
                                     </SettingsFormCell>
                                 </SettingsFormGrid>

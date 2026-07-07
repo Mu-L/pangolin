@@ -3585,6 +3585,7 @@
     "memberPortalResourceDisabled": "Resource Disabled",
     "memberPortalShowingResources": "Showing {start}-{end} of {total} resources",
     "resourceLauncherTitle": "Resource Launcher",
+    "resourceSidebarLauncherTitle": "Launcher",
     "resourceLauncherDescription": "View all available resources and launch them from one central hub",
     "resourceLauncherSearchPlaceholder": "Search your resources...",
     "resourceLauncherDefaultView": "Default",

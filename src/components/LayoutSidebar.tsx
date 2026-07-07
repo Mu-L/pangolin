@@ -195,7 +195,7 @@ export function LayoutSidebar({
                                                 sideOffset={8}
                                             >
                                                 <p>
-                                                    {t("resourceLauncherTitle")}
+                                                    {t("resourceSidebarLauncherTitle")}
                                                 </p>
                                             </TooltipContent>
                                         </Tooltip>
@@ -211,7 +211,7 @@ export function LayoutSidebar({
                                             <SquareMousePointer className="h-4 w-4" />
                                         </span>
                                         <span className="flex-1">
-                                            {t("resourceLauncherTitle")}
+                                            {t("resourceSidebarLauncherTitle")}
                                         </span>
                                     </Link>
                                 )}

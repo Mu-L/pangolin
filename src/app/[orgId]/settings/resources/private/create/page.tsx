@@ -53,6 +53,7 @@ import { z } from "zod";
 import { PrivateResourceSitesField } from "../PrivateResourceSitesField";
 import { PrivateResourceHttpFields } from "../PrivateResourceHttpFields";
 import { PrivateResourceSshFields } from "../PrivateResourceSshFields";
+import { PrivateResourcePortRanges } from "../PrivateResourcePortRanges";
 import {
     PrivateResourceAliasField,
     PrivateResourceCidrDestinationField,
@@ -105,6 +106,8 @@ export default function CreatePrivateResourcePage() {
             standardDaemonLocation: "site",
             authDaemonPort: null,
             pamMode: "passthrough",
+            tcpPortRangeString: "*",
+            udpPortRangeString: "*",
             disableIcmp: false
         }
     });
@@ -426,6 +429,16 @@ export default function CreatePrivateResourcePage() {
                                                 hideAlias
                                             />
                                         </SettingsFormCell>
+                                        <SettingsFormCell span="full">
+                                            <PrivateResourcePortRanges
+                                                control={asAnyControl(
+                                                    form.control
+                                                )}
+                                                setValue={asAnySetValue(
+                                                    form.setValue
+                                                )}
+                                            />
+                                        </SettingsFormCell>
                                     </SettingsFormGrid>
                                 </SettingsSectionForm>
                             </SettingsSectionBody>
@@ -464,6 +477,16 @@ export default function CreatePrivateResourcePage() {
                                                     form.control
                                                 )}
                                                 labelPrefix="create"
+                                            />
+                                        </SettingsFormCell>
+                                        <SettingsFormCell span="full">
+                                            <PrivateResourcePortRanges
+                                                control={asAnyControl(
+                                                    form.control
+                                                )}
+                                                setValue={asAnySetValue(
+                                                    form.setValue
+                                                )}
                                             />
                                         </SettingsFormCell>
                                     </SettingsFormGrid>

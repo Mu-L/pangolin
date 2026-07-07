@@ -155,7 +155,7 @@ export function LayoutMobileMenu({
                                                                     </span>
                                                                     <span className="flex-1">
                                                                         {t(
-                                                                            "resourceLauncherTitle"
+                                                                            "resourceSidebarLauncherTitle"
                                                                         )}
                                                                     </span>
                                                                 </Link>
