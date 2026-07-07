@@ -84,6 +84,7 @@ export default async function ClientResourcesPage(
                 aliasAddress: siteResource.aliasAddress || null,
                 siteNiceIds: siteResource.siteNiceIds,
                 niceId: siteResource.niceId,
+                enabled: siteResource.enabled,
                 tcpPortRangeString: siteResource.tcpPortRangeString || null,
                 udpPortRangeString: siteResource.udpPortRangeString || null,
                 disableIcmp: siteResource.disableIcmp || false,

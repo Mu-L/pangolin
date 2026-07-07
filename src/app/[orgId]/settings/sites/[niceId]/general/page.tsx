@@ -253,85 +253,87 @@ export default function GeneralPage() {
                                 <PaidFeaturesAlert
                                     tiers={tierMatrix.newtAutoUpdate}
                                 />
-                                {site && site.type === "newt" && (
-                                    <FormField
-                                        control={form.control}
-                                        name="autoUpdateEnabled"
-                                        render={({ field }) => {
-                                            const isOverriding = form.watch(
-                                                "autoUpdateOverrideOrg"
-                                            );
-                                            return (
-                                                <FormItem>
-                                                    <FormControl>
-                                                        <div className="">
-                                                            <SwitchInput
-                                                                id="auto-update-enabled"
-                                                                label={t(
-                                                                    "siteAutoUpdateLabel"
-                                                                )}
-                                                                checked={
-                                                                    field.value
-                                                                }
-                                                                onCheckedChange={(
-                                                                    checked
-                                                                ) => {
-                                                                    field.onChange(
+                                {site &&
+                                    site.type === "newt" &&
+                                    !env.flags.disableEnterpriseFeatures && (
+                                        <FormField
+                                            control={form.control}
+                                            name="autoUpdateEnabled"
+                                            render={({ field }) => {
+                                                const isOverriding = form.watch(
+                                                    "autoUpdateOverrideOrg"
+                                                );
+                                                return (
+                                                    <FormItem>
+                                                        <FormControl>
+                                                            <div className="">
+                                                                <SwitchInput
+                                                                    id="auto-update-enabled"
+                                                                    label={t(
+                                                                        "siteAutoUpdateLabel"
+                                                                    )}
+                                                                    checked={
+                                                                        field.value
+                                                                    }
+                                                                    onCheckedChange={(
                                                                         checked
-                                                                    );
-                                                                    form.setValue(
-                                                                        "autoUpdateOverrideOrg",
-                                                                        true
-                                                                    );
-                                                                }}
-                                                                disabled={
-                                                                    !hasAutoUpdateFeature
-                                                                }
-                                                            />
-                                                            {isOverriding && (
-                                                                <ButtonUI
-                                                                    type="button"
-                                                                    variant="link"
-                                                                    size="sm"
-                                                                    className="text-sm text-muted-foreground px-0"
-                                                                    onClick={() => {
+                                                                    ) => {
+                                                                        field.onChange(
+                                                                            checked
+                                                                        );
                                                                         form.setValue(
                                                                             "autoUpdateOverrideOrg",
-                                                                            false
-                                                                        );
-                                                                        form.setValue(
-                                                                            "autoUpdateEnabled",
-                                                                            orgAutoUpdate
+                                                                            true
                                                                         );
                                                                     }}
-                                                                >
-                                                                    {t(
-                                                                        "siteAutoUpdateResetToOrg"
-                                                                    )}
-                                                                </ButtonUI>
-                                                            )}
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormDescription>
-                                                        {t(
-                                                            "siteAutoUpdateDescription"
-                                                        )}{" "}
-                                                        <a
-                                                            href="https://docs.pangolin.net/manage/sites/auto-update"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-primary hover:underline inline-flex items-center gap-1"
-                                                        >
-                                                            {t("learnMore")}
-                                                            <ExternalLink className="size-3.5 shrink-0" />
-                                                        </a>
-                                                    </FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            );
-                                        }}
-                                    />
-                                )}
+                                                                    disabled={
+                                                                        !hasAutoUpdateFeature
+                                                                    }
+                                                                />
+                                                                {isOverriding && (
+                                                                    <ButtonUI
+                                                                        type="button"
+                                                                        variant="link"
+                                                                        size="sm"
+                                                                        className="text-sm text-muted-foreground px-0"
+                                                                        onClick={() => {
+                                                                            form.setValue(
+                                                                                "autoUpdateOverrideOrg",
+                                                                                false
+                                                                            );
+                                                                            form.setValue(
+                                                                                "autoUpdateEnabled",
+                                                                                orgAutoUpdate
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        {t(
+                                                                            "siteAutoUpdateResetToOrg"
+                                                                        )}
+                                                                    </ButtonUI>
+                                                                )}
+                                                            </div>
+                                                        </FormControl>
+                                                        <FormDescription>
+                                                            {t(
+                                                                "siteAutoUpdateDescription"
+                                                            )}{" "}
+                                                            <a
+                                                                href="https://docs.pangolin.net/manage/sites/auto-update"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-primary hover:underline inline-flex items-center gap-1"
+                                                            >
+                                                                {t("learnMore")}
+                                                                <ExternalLink className="size-3.5 shrink-0" />
+                                                            </a>
+                                                        </FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                );
+                                            }}
+                                        />
+                                    )}
                             </form>
                         </Form>
                     </SettingsSectionForm>

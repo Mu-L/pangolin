@@ -5,6 +5,7 @@ import {
     db,
     ExitNode,
     networks,
+    remoteExitNodeResources,
     resources,
     Site,
     siteNetworks,
@@ -51,13 +52,13 @@ export async function buildClientConfigurationForNewtClient(
             clientsRes
                 .filter((client) => {
                     if (!client.clients.pubKey) {
-                        logger.warn(
+                        logger.debug(
                             `Client ${client.clients.clientId} has no public key, skipping`
                         );
                         return false;
                     }
                     if (!client.clients.subnet) {
-                        logger.warn(
+                        logger.debug(
                             `Client ${client.clients.clientId} has no subnet, skipping`
                         );
                         return false;
@@ -223,7 +224,8 @@ export async function buildClientConfigurationForNewtClient(
 
 export async function buildTargetConfigurationForNewtClient(
     siteId: number,
-    version?: string | null
+    version?: string | null,
+    remoteExitNodeId?: string
 ) {
     // Get all enabled targets with their resource mode information
     const allTargets = await db
@@ -379,10 +381,24 @@ export async function buildTargetConfigurationForNewtClient(
         };
     });
 
+    let remoteExitNodeSubnets: string[] = [];
+    if (remoteExitNodeId) {
+        const remoteNodeResources = await db
+            .select()
+            .from(remoteExitNodeResources)
+            .where(
+                eq(remoteExitNodeResources.remoteExitNodeId, remoteExitNodeId)
+            );
+
+        // filter through these and provide the subnets
+        remoteExitNodeSubnets = remoteNodeResources.map((r) => r.destination);
+    }
+
     return {
         validHealthCheckTargets,
         tcpTargets,
         udpTargets,
-        browserGatewayTargets
+        browserGatewayTargets,
+        remoteExitNodeSubnets
     };
 }

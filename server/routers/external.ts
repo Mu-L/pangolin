@@ -17,6 +17,7 @@ import * as idp from "./idp";
 import * as blueprints from "./blueprints";
 import * as apiKeys from "./apiKeys";
 import * as logs from "./auditLogs";
+import * as launcher from "./launcher";
 import * as newt from "./newt";
 import * as olm from "./olm";
 import * as serverInfo from "./serverInfo";
@@ -53,6 +54,7 @@ import { build } from "@server/build";
 import { createStore } from "#dynamic/lib/rateLimitStore";
 import { logActionAudit } from "#dynamic/middlewares";
 import { checkRoundTripMessage } from "./ws";
+import * as labels from "@server/routers/labels";
 
 // Root routes
 export const unauthenticated = Router();
@@ -254,6 +256,14 @@ authenticated.delete(
     site.deleteSite
 );
 
+authenticated.post(
+    "/site/:siteId/restart",
+    verifySiteAccess,
+    verifyUserHasAction(ActionsEnum.restartSite),
+    logActionAudit(ActionsEnum.restartSite),
+    site.restartSite
+);
+
 // TODO: BREAK OUT THESE ACTIONS SO THEY ARE NOT ALL "getSite"
 authenticated.get(
     "/site/:siteId/docker/status",
@@ -316,6 +326,14 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listSiteResources),
     siteResource.listAllSiteResourcesByOrg
+);
+
+authenticated.get(
+    "/org/:orgId/site-resource/:siteResourceId",
+    verifyOrgAccess,
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.getSiteResource),
+    siteResource.getSiteResource
 );
 
 authenticated.get(
@@ -453,6 +471,78 @@ authenticated.get(
     "/org/:orgId/user-resources",
     verifyOrgAccess,
     resource.getUserResources
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/groups",
+    verifyOrgAccess,
+    launcher.listLauncherGroups
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/scale",
+    verifyOrgAccess,
+    launcher.listLauncherScale
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/resources",
+    verifyOrgAccess,
+    launcher.listLauncherResources
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/sites",
+    verifyOrgAccess,
+    launcher.listLauncherSites
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/labels",
+    verifyOrgAccess,
+    launcher.listLauncherLabels
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/views",
+    verifyOrgAccess,
+    launcher.listLauncherViews
+);
+
+authenticated.post(
+    "/org/:orgId/launcher/invalidate-cache",
+    verifyOrgAccess,
+    launcher.invalidateLauncherCache
+);
+
+authenticated.post(
+    "/org/:orgId/launcher/views",
+    verifyOrgAccess,
+    launcher.createLauncherView
+);
+
+authenticated.put(
+    "/org/:orgId/launcher/views/:viewId",
+    verifyOrgAccess,
+    launcher.updateLauncherView
+);
+
+authenticated.put(
+    "/org/:orgId/launcher/default-view",
+    verifyOrgAccess,
+    launcher.upsertLauncherDefaultView
+);
+
+authenticated.delete(
+    "/org/:orgId/launcher/default-view",
+    verifyOrgAccess,
+    launcher.deleteLauncherDefaultView
+);
+
+authenticated.delete(
+    "/org/:orgId/launcher/views/:viewId",
+    verifyOrgAccess,
+    launcher.deleteLauncherView
 );
 
 authenticated.get(
@@ -910,19 +1000,6 @@ unauthenticated.post(
 );
 unauthenticated.get("/my-device", verifySessionMiddleware, user.myDevice);
 
-authenticated.get("/users", verifyUserIsServerAdmin, user.adminListUsers);
-authenticated.get("/user/:userId", verifyUserIsServerAdmin, user.adminGetUser);
-authenticated.post(
-    "/user/:userId/generate-password-reset-code",
-    verifyUserIsServerAdmin,
-    user.adminGeneratePasswordResetCode
-);
-authenticated.delete(
-    "/user/:userId",
-    verifyUserIsServerAdmin,
-    user.adminRemoveUser
-);
-
 authenticated.put(
     "/org/:orgId/user",
     verifyOrgAccess,
@@ -944,12 +1021,6 @@ authenticated.post(
 
 authenticated.get("/org/:orgId/user/:userId", verifyOrgAccess, user.getOrgUser);
 authenticated.get("/org/:orgId/user/:userId/check", org.checkOrgUserAccess);
-
-authenticated.post(
-    "/user/:userId/2fa",
-    verifyUserIsServerAdmin,
-    user.updateUser2FA
-);
 
 authenticated.get(
     "/org/:orgId/users",
@@ -1033,85 +1104,112 @@ authenticated.post(
     olm.recoverOlmWithFingerprint
 );
 
-authenticated.put(
-    "/idp/oidc",
-    verifyUserIsServerAdmin,
-    // verifyUserHasAction(ActionsEnum.createIdp),
-    idp.createOidcIdp
-);
+if (build !== "saas") {
+    authenticated.put(
+        "/idp/oidc",
+        verifyUserIsServerAdmin,
+        // verifyUserHasAction(ActionsEnum.createIdp),
+        idp.createOidcIdp
+    );
 
-authenticated.post(
-    "/idp/:idpId/oidc",
-    verifyUserIsServerAdmin,
-    idp.updateOidcIdp
-);
+    authenticated.post(
+        "/idp/:idpId/oidc",
+        verifyUserIsServerAdmin,
+        idp.updateOidcIdp
+    );
 
-authenticated.delete("/idp/:idpId", verifyUserIsServerAdmin, idp.deleteIdp);
+    authenticated.delete("/idp/:idpId", verifyUserIsServerAdmin, idp.deleteIdp);
 
-authenticated.get("/idp/:idpId", verifyUserIsServerAdmin, idp.getIdp);
+    authenticated.get("/idp/:idpId", verifyUserIsServerAdmin, idp.getIdp);
 
-authenticated.put(
-    "/idp/:idpId/org/:orgId",
-    verifyUserIsServerAdmin,
-    idp.createIdpOrgPolicy
-);
+    authenticated.put(
+        "/idp/:idpId/org/:orgId",
+        verifyUserIsServerAdmin,
+        idp.createIdpOrgPolicy
+    );
 
-authenticated.post(
-    "/idp/:idpId/org/:orgId",
-    verifyUserIsServerAdmin,
-    idp.updateIdpOrgPolicy
-);
+    authenticated.post(
+        "/idp/:idpId/org/:orgId",
+        verifyUserIsServerAdmin,
+        idp.updateIdpOrgPolicy
+    );
 
-authenticated.delete(
-    "/idp/:idpId/org/:orgId",
-    verifyUserIsServerAdmin,
-    idp.deleteIdpOrgPolicy
-);
+    authenticated.delete(
+        "/idp/:idpId/org/:orgId",
+        verifyUserIsServerAdmin,
+        idp.deleteIdpOrgPolicy
+    );
 
-authenticated.get(
-    "/idp/:idpId/org",
-    verifyUserIsServerAdmin,
-    idp.listIdpOrgPolicies
-);
+    authenticated.get(
+        "/idp/:idpId/org",
+        verifyUserIsServerAdmin,
+        idp.listIdpOrgPolicies
+    );
+
+    authenticated.get(
+        `/api-key/:apiKeyId`,
+        verifyUserIsServerAdmin,
+        apiKeys.getApiKey
+    );
+
+    authenticated.put(
+        `/api-key`,
+        verifyUserIsServerAdmin,
+        apiKeys.createRootApiKey
+    );
+
+    authenticated.delete(
+        `/api-key/:apiKeyId`,
+        verifyUserIsServerAdmin,
+        apiKeys.deleteApiKey
+    );
+
+    authenticated.get(
+        `/api-keys`,
+        verifyUserIsServerAdmin,
+        apiKeys.listRootApiKeys
+    );
+
+    authenticated.get(
+        `/api-key/:apiKeyId/actions`,
+        verifyUserIsServerAdmin,
+        apiKeys.listApiKeyActions
+    );
+
+    authenticated.post(
+        `/api-key/:apiKeyId/actions`,
+        verifyUserIsServerAdmin,
+        apiKeys.setApiKeyActions
+    );
+
+    authenticated.get("/users", verifyUserIsServerAdmin, user.adminListUsers);
+
+    authenticated.get(
+        "/user/:userId",
+        verifyUserIsServerAdmin,
+        user.adminGetUser
+    );
+
+    authenticated.post(
+        "/user/:userId/generate-password-reset-code",
+        verifyUserIsServerAdmin,
+        user.adminGeneratePasswordResetCode
+    );
+
+    authenticated.delete(
+        "/user/:userId",
+        verifyUserIsServerAdmin,
+        user.adminRemoveUser
+    );
+
+    authenticated.post(
+        "/user/:userId/2fa",
+        verifyUserIsServerAdmin,
+        user.updateUser2FA
+    );
+}
 
 authenticated.get("/idp", idp.listIdps); // anyone can see this; it's just a list of idp names and ids
-authenticated.get("/idp/:idpId", verifyUserIsServerAdmin, idp.getIdp);
-
-authenticated.get(
-    `/api-key/:apiKeyId`,
-    verifyUserIsServerAdmin,
-    apiKeys.getApiKey
-);
-
-authenticated.put(
-    `/api-key`,
-    verifyUserIsServerAdmin,
-    apiKeys.createRootApiKey
-);
-
-authenticated.delete(
-    `/api-key/:apiKeyId`,
-    verifyUserIsServerAdmin,
-    apiKeys.deleteApiKey
-);
-
-authenticated.get(
-    `/api-keys`,
-    verifyUserIsServerAdmin,
-    apiKeys.listRootApiKeys
-);
-
-authenticated.get(
-    `/api-key/:apiKeyId/actions`,
-    verifyUserIsServerAdmin,
-    apiKeys.listApiKeyActions
-);
-
-authenticated.post(
-    `/api-key/:apiKeyId/actions`,
-    verifyUserIsServerAdmin,
-    apiKeys.setApiKeyActions
-);
 
 authenticated.get(
     `/org/:orgId/api-keys`,
@@ -1237,6 +1335,48 @@ authenticated.get(
 );
 
 authenticated.get("/ws/round-trip-message/:messageId", checkRoundTripMessage);
+
+authenticated.get(
+    "/org/:orgId/labels",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listOrgLabels),
+    labels.listOrgLabels
+);
+
+authenticated.post(
+    "/org/:orgId/labels",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.createOrgLabel),
+    labels.createOrgLabel
+);
+
+authenticated.patch(
+    "/org/:orgId/label/:labelId",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateOrgLabel),
+    labels.updateOrgLabel
+);
+
+authenticated.delete(
+    "/org/:orgId/label/:labelId",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteOrgLabel),
+    labels.deleteOrgLabel
+);
+
+authenticated.put(
+    "/org/:orgId/label/:labelId/attach",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.attachLabelToItem),
+    labels.attachLabelToItem
+);
+
+authenticated.put(
+    "/org/:orgId/label/:labelId/detach",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.detachLabelFromItem),
+    labels.detachLabelFromItem
+);
 
 // Auth routes
 export const authRouter = Router();

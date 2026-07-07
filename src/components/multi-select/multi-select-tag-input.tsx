@@ -17,11 +17,13 @@ export interface MultiSelectInputProps<
 > extends MultiSelectTagsProps<T> {
     buttonText?: string;
     lockedIds?: Set<string>;
+    onPopoverOpenChange?: (open: boolean) => void;
 }
 
 export function MultiSelectTagInput<T extends TagValue>({
     buttonText,
     lockedIds,
+    onPopoverOpenChange,
     ...props
 }: MultiSelectInputProps<T>) {
     const selectedValues = new Set(props.value.map((v) => v.id));
@@ -33,6 +35,7 @@ export function MultiSelectTagInput<T extends TagValue>({
                     // clear input when popover is closed
                     props.onSearch("");
                 }
+                onPopoverOpenChange?.(open);
             }}
         >
             <PopoverTrigger asChild>
@@ -66,7 +69,17 @@ export function MultiSelectTagInput<T extends TagValue>({
                                     )}
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <span>{option.text}</span>
+                                    {option.color && (
+                                        <span
+                                            className="size-2 rounded-full flex-none ml-1"
+                                            style={{
+                                                backgroundColor: option.color
+                                            }}
+                                        />
+                                    )}
+                                    <span className="max-w-40 text-ellipsis overflow-hidden">
+                                        {option.text}
+                                    </span>
                                     {isLocked ? (
                                         <span className="p-0.5 flex-none">
                                             <LockIcon className="size-3" />

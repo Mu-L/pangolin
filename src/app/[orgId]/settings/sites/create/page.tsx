@@ -23,7 +23,7 @@ import {
 } from "@app/components/ui/form";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { z } from "zod";
-import { createElement, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@app/components/ui/input";
@@ -37,15 +37,6 @@ import {
     InfoSections,
     InfoSectionTitle
 } from "@app/components/InfoSection";
-import {
-    FaApple,
-    FaCubes,
-    FaDocker,
-    FaFreebsd,
-    FaWindows
-} from "react-icons/fa";
-import { SiNixos, SiKubernetes } from "react-icons/si";
-import { Checkbox, CheckboxWithLabel } from "@app/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { generateKeypair } from "../[niceId]/wireguardConfig";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -570,7 +561,7 @@ export default function Page() {
                                                             </Button>
                                                         </SettingsFormCell>
                                                         {showAdvancedSettings && (
-                                                            <SettingsFormCell span="quarter">
+                                                            <SettingsFormCell span="half">
                                                                 <FormField
                                                                     control={
                                                                         form.control

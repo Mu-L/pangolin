@@ -21,6 +21,8 @@ interface LayoutProps {
     showHeader?: boolean;
     showTopBar?: boolean;
     defaultSidebarCollapsed?: boolean;
+    launcherMode?: boolean;
+    showViewAsAdmin?: boolean;
 }
 
 export async function Layout({
@@ -32,7 +34,9 @@ export async function Layout({
     showSidebar = true,
     showHeader = true,
     showTopBar = true,
-    defaultSidebarCollapsed = false
+    defaultSidebarCollapsed = false,
+    launcherMode = false,
+    showViewAsAdmin = false
 }: LayoutProps) {
     const allCookies = await cookies();
     const sidebarStateCookie = allCookies.get("pangolin-sidebar-state")?.value;
@@ -75,11 +79,21 @@ export async function Layout({
                             navItems={navItems}
                             showSidebar={showSidebar}
                             showTopBar={showTopBar}
+                            launcherMode={launcherMode}
+                            showViewAsAdmin={showViewAsAdmin}
                         />
                     )}
 
                     {/* Desktop header */}
-                    {showHeader && <LayoutHeader showTopBar={showTopBar} />}
+                    {showHeader && (
+                        <LayoutHeader
+                            showTopBar={showTopBar}
+                            launcherMode={launcherMode}
+                            orgId={orgId}
+                            orgs={orgs}
+                            showViewAsAdmin={showViewAsAdmin}
+                        />
+                    )}
 
                     {/* Main content */}
                     <main className="flex-1 overflow-y-auto p-3 md:p-6 w-full">

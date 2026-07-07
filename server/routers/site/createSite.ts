@@ -19,7 +19,7 @@ import { getNextAvailableClientSubnet, isIpInCidr } from "@server/lib/ip";
 import { verifyExitNodeOrgAccess } from "#dynamic/lib/exitNodes";
 import { build } from "@server/build";
 import { usageService } from "@server/lib/billing/usageService";
-import { FeatureId } from "@server/lib/billing";
+import { LimitId } from "@server/lib/billing";
 import { generateId } from "@server/auth/sessions/app";
 
 const createSiteParamsSchema = z.strictObject({
@@ -160,7 +160,7 @@ export async function createSite(
         }
 
         if (build == "saas") {
-            const usage = await usageService.getUsage(orgId, FeatureId.SITES);
+            const usage = await usageService.getUsage(orgId, LimitId.SITES);
             if (!usage) {
                 return next(
                     createHttpError(
@@ -172,7 +172,7 @@ export async function createSite(
             const rejectSites = await usageService.checkLimitSet(
                 orgId,
 
-                FeatureId.SITES,
+                LimitId.SITES,
                 {
                     ...usage,
                     instantaneousValue: (usage.instantaneousValue || 0) + 1
@@ -268,7 +268,11 @@ export async function createSite(
 
         let newSite: Site | undefined;
         try {
-            if (subnet && exitNodeId) {
+            if (type === "wireguard" && subnet && exitNodeId) {
+                // Only wireguard sites actually persist the provided subnet/exitNodeId.
+                // Newt sites have their subnet/exit node chosen (under a lock) when the
+                // newt connects, so validating them here is both unnecessary and racy,
+                // since pickSiteDefaults does not lock the subnet it suggests.
                 //make sure the subnet is in the range of the exit node if provided
                 const [exitNode] = await db
                     .select()
@@ -519,7 +523,7 @@ export async function createSite(
                     });
                 }
 
-                await usageService.add(orgId, FeatureId.SITES, 1, trx);
+                await usageService.add(orgId, LimitId.SITES, 1, trx);
             });
         } finally {
             await releaseSubnetLock?.();

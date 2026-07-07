@@ -228,7 +228,7 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
-            UPDATE 'siteResources' SET 'destination2' = 'destination';
+            UPDATE 'siteResources' SET "destination2" = "destination";
                 `
             ).run();
             db.prepare(
@@ -349,10 +349,10 @@ export default async function migration() {
             db.prepare(
                 `
             UPDATE 'targets'
-            SET 'mode' = (
-                SELECT 'mode' FROM 'resources'
-                WHERE 'resources'.'resourceId' = 'targets'.'resourceId'
-            );
+            SET "mode" = COALESCE((
+                SELECT "mode" FROM 'resources'
+                WHERE "resources"."resourceId" = "targets"."resourceId"
+            ), 'http');
                 `
             ).run();
             db.prepare(
@@ -680,25 +680,6 @@ export default async function migration() {
                     deleteResourceRules.run(resource.resourceId);
                     deleteResourceWhitelist.run(resource.resourceId);
                 }
-                // remove not null/default from sso, applyRules, and emailWhitelistEnabled in preparation for resource policies
-                db.prepare(`ALTER TABLE 'resources' DROP COLUMN 'sso';`).run();
-                db.prepare(
-                    `ALTER TABLE 'resources' ADD COLUMN 'sso' integer;`
-                ).run();
-
-                db.prepare(
-                    `ALTER TABLE 'resources' DROP COLUMN 'applyRules';`
-                ).run();
-                db.prepare(
-                    `ALTER TABLE 'resources' ADD COLUMN 'applyRules' integer;`
-                ).run();
-
-                db.prepare(
-                    `ALTER TABLE 'resources' DROP COLUMN 'emailWhitelistEnabled';`
-                ).run();
-                db.prepare(
-                    `ALTER TABLE 'resources' ADD COLUMN 'emailWhitelistEnabled' integer;`
-                ).run();
             });
 
             migrateInlinePolicies();
@@ -706,6 +687,29 @@ export default async function migration() {
                 `Migrated inline resource policies for ${existingResources.length} resource(s)`
             );
         }
+
+        // add one more transaction
+        db.transaction(() => {
+            // remove not null/default from sso, applyRules, and emailWhitelistEnabled in preparation for resource policies
+            db.prepare(`ALTER TABLE 'resources' DROP COLUMN 'sso';`).run();
+            db.prepare(
+                `ALTER TABLE 'resources' ADD COLUMN 'sso' integer;`
+            ).run();
+
+            db.prepare(
+                `ALTER TABLE 'resources' DROP COLUMN 'applyRules';`
+            ).run();
+            db.prepare(
+                `ALTER TABLE 'resources' ADD COLUMN 'applyRules' integer;`
+            ).run();
+
+            db.prepare(
+                `ALTER TABLE 'resources' DROP COLUMN 'emailWhitelistEnabled';`
+            ).run();
+            db.prepare(
+                `ALTER TABLE 'resources' ADD COLUMN 'emailWhitelistEnabled' integer;`
+            ).run();
+        })();
 
         console.log("Migrated database");
     } catch (e) {

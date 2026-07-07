@@ -2,8 +2,6 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
-import CreatePrivateResourceDialog from "@app/components/CreatePrivateResourceDialog";
-import EditPrivateResourceDialog from "@app/components/EditPrivateResourceDialog";
 import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
 import {
     ResourceSitesStatusCell,
@@ -34,12 +32,14 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
 import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import { formatSiteResourceDestinationDisplay } from "@app/lib/formatSiteResourceAccess";
+import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHref";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
+    ArrowRight,
     ArrowUp10Icon,
     ArrowUpDown,
     ChevronsUpDownIcon,
@@ -47,6 +47,7 @@ import {
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
@@ -78,6 +79,7 @@ export type InternalResourceRow = {
     alias: string | null;
     aliasAddress: string | null;
     niceId: string;
+    enabled: boolean;
     tcpPortRangeString: string | null;
     udpPortRangeString: string | null;
     disableIcmp: boolean;
@@ -138,6 +140,7 @@ export default function PrivateResourcesTable({
     const api = createApiClient({ env });
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const [selectedInternalResource, setSelectedInternalResource] =
         useState<InternalResourceRow | null>(null);
@@ -149,7 +152,6 @@ export default function PrivateResourcesTable({
     const [isRefreshing, startRefreshTransition] = useTransition();
 
     const { isPaidUser } = usePaidStatus();
-    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     // useEffect(() => {
     //     const interval = setInterval(() => {
@@ -184,11 +186,11 @@ export default function PrivateResourcesTable({
                 });
             });
         } catch (e) {
-            console.error(t("resourceErrorDelete"), e);
+            console.error(t("resourceErrorDelte"), e);
             toast({
                 variant: "destructive",
                 title: t("resourceErrorDelte"),
-                description: formatAxiosError(e, t("v"))
+                description: formatAxiosError(e, t("resourceErrorDelte"))
             });
         }
     };
@@ -428,6 +430,27 @@ export default function PrivateResourcesTable({
                 }
             },
             {
+                id: "labels",
+                accessorKey: "labels",
+                header: () => (
+                    <LabelColumnFilterButton
+                        orgId={orgId}
+                        selectedValues={searchParams.getAll("labels")}
+                        onSelectedValuesChange={(value) =>
+                            handleFilterChange("labels", value)
+                        }
+                        label={t("labels")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }: { row: { original: InternalResourceRow } }) => (
+                    <ClientResourceLabelCell
+                        resource={row.original}
+                        orgId={orgId}
+                    />
+                )
+            },
+            {
                 id: "actions",
                 enableHiding: false,
                 header: () => <span className="p-3"></span>,
@@ -448,6 +471,17 @@ export default function PrivateResourcesTable({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                    <Link
+                                        className="block w-full"
+                                        href={getPrivateResourceSettingsHref(
+                                            resourceRow.orgId,
+                                            resourceRow.niceId
+                                        )}
+                                    >
+                                        <DropdownMenuItem>
+                                            {t("viewSettings")}
+                                        </DropdownMenuItem>
+                                    </Link>
                                     <DropdownMenuItem
                                         onClick={() => {
                                             setSelectedInternalResource(
@@ -462,47 +496,25 @@ export default function PrivateResourcesTable({
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button
-                                variant={"outline"}
-                                onClick={() => {
-                                    setEditingResource(resourceRow);
-                                    setIsEditDialogOpen(true);
-                                }}
+                            <Link
+                                href={getPrivateResourceSettingsHref(
+                                    resourceRow.orgId,
+                                    resourceRow.niceId
+                                )}
                             >
-                                {t("edit")}
-                            </Button>
+                                <Button variant={"outline"}>
+                                    {t("edit")}
+                                    <ArrowRight className="ml-2 w-4 h-4" />
+                                </Button>
+                            </Link>
                         </div>
                     );
                 }
             }
         ];
 
-        if (isLabelFeatureEnabled) {
-            cols.splice(cols.length - 1, 0, {
-                id: "labels",
-                accessorKey: "labels",
-                header: () => (
-                    <LabelColumnFilterButton
-                        orgId={orgId}
-                        selectedValues={searchParams.getAll("labels")}
-                        onSelectedValuesChange={(value) =>
-                            handleFilterChange("labels", value)
-                        }
-                        label={t("labels")}
-                        className="p-3"
-                    />
-                ),
-                cell: ({ row }: { row: { original: InternalResourceRow } }) => (
-                    <ClientResourceLabelCell
-                        resource={row.original}
-                        orgId={orgId}
-                    />
-                )
-            });
-        }
-
         return cols;
-    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
+    }, [orgId, t, searchParams]);
 
     function handleFilterChange(
         column: string,
@@ -578,8 +590,15 @@ export default function PrivateResourcesTable({
                 tableId="internal-resources"
                 searchPlaceholder={t("resourcesSearch")}
                 searchQuery={searchParams.get("query")?.toString()}
-                onAdd={() => setIsCreateDialogOpen(true)}
+                onAdd={() =>
+                    startNavigation(() =>
+                        router.push(
+                            `/${orgId}/settings/resources/private/create`
+                        )
+                    )
+                }
                 addButtonText={t("resourceAdd")}
+                isNavigatingToAddPage={isNavigatingToAddPage}
                 onSearch={handleSearchChange}
                 onRefresh={refreshData}
                 onPaginationChange={handlePaginationChange}
@@ -594,34 +613,6 @@ export default function PrivateResourcesTable({
                 }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
-            />
-
-            {editingResource && (
-                <EditPrivateResourceDialog
-                    open={isEditDialogOpen}
-                    setOpen={setIsEditDialogOpen}
-                    resource={editingResource}
-                    orgId={orgId}
-                    onSuccess={() => {
-                        // Delay refresh to allow modal to close smoothly
-                        setTimeout(() => {
-                            router.refresh();
-                            setEditingResource(null);
-                        }, 150);
-                    }}
-                />
-            )}
-
-            <CreatePrivateResourceDialog
-                open={isCreateDialogOpen}
-                setOpen={setIsCreateDialogOpen}
-                orgId={orgId}
-                onSuccess={() => {
-                    // Delay refresh to allow modal to close smoothly
-                    setTimeout(() => {
-                        router.refresh();
-                    }, 150);
-                }}
             />
         </>
     );

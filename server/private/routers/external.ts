@@ -31,7 +31,6 @@ import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 import * as alertRule from "#private/routers/alertRule";
 import * as healthChecks from "#private/routers/healthChecks";
-import * as labels from "#private/routers/labels";
 import * as client from "@server/routers/client";
 import * as resource from "#private/routers/resource";
 import * as policy from "#private/routers/policy";
@@ -329,6 +328,44 @@ authenticated.delete(
     remoteExitNode.deleteRemoteExitNode
 );
 
+authenticated.get(
+    "/org/:orgId/remote-exit-node/:remoteExitNodeId/resources",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyRemoteExitNodeAccess,
+    verifyUserHasAction(ActionsEnum.getRemoteExitNode),
+    remoteExitNode.listRemoteExitNodeResources
+);
+
+authenticated.post(
+    "/org/:orgId/remote-exit-node/:remoteExitNodeId/resources",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyRemoteExitNodeAccess,
+    verifyUserHasAction(ActionsEnum.updateRemoteExitNode),
+    logActionAudit(ActionsEnum.updateRemoteExitNode),
+    remoteExitNode.setRemoteExitNodeResources
+);
+
+authenticated.get(
+    "/org/:orgId/remote-exit-node/:remoteExitNodeId/preference-labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyRemoteExitNodeAccess,
+    verifyUserHasAction(ActionsEnum.getRemoteExitNode),
+    remoteExitNode.listRemoteExitNodePreferenceLabels
+);
+
+authenticated.post(
+    "/org/:orgId/remote-exit-node/:remoteExitNodeId/preference-labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyRemoteExitNodeAccess,
+    verifyUserHasAction(ActionsEnum.updateRemoteExitNode),
+    logActionAudit(ActionsEnum.updateRemoteExitNode),
+    remoteExitNode.setRemoteExitNodePreferenceLabels
+);
+
 authenticated.put(
     "/org/:orgId/login-page",
     verifyValidLicense,
@@ -495,29 +532,31 @@ authRouter.post(
     auth.transferSession
 );
 
-authenticated.post(
-    "/license/activate",
-    verifyUserIsServerAdmin,
-    license.activateLicense
-);
+if (build !== "saas") {
+    authenticated.post(
+        "/license/activate",
+        verifyUserIsServerAdmin,
+        license.activateLicense
+    );
 
-authenticated.get(
-    "/license/keys",
-    verifyUserIsServerAdmin,
-    license.listLicenseKeys
-);
+    authenticated.get(
+        "/license/keys",
+        verifyUserIsServerAdmin,
+        license.listLicenseKeys
+    );
 
-authenticated.delete(
-    "/license/:licenseKey",
-    verifyUserIsServerAdmin,
-    license.deleteLicenseKey
-);
+    authenticated.delete(
+        "/license/:licenseKey",
+        verifyUserIsServerAdmin,
+        license.deleteLicenseKey
+    );
 
-authenticated.post(
-    "/license/recheck",
-    verifyUserIsServerAdmin,
-    license.recheckStatus
-);
+    authenticated.post(
+        "/license/recheck",
+        verifyUserIsServerAdmin,
+        license.recheckStatus
+    );
+}
 
 authenticated.get(
     "/org/:orgId/logs/action",
@@ -612,7 +651,7 @@ authenticated.post(
     verifyValidSubscription(tierMatrix.advancedPrivateResources),
     verifyOrgAccess,
     verifyLimits,
-    verifyUserHasAction(ActionsEnum.signSshKey),
+    // verifyUserHasAction(ActionsEnum.signSshKey), // this check happens inside of the function now
     // logActionAudit(ActionsEnum.signSshKey), // it is handled inside of the function below so we can include more metadata
     ssh.signSshKey
 );
@@ -771,59 +810,6 @@ authenticated.get(
 );
 
 authenticated.get(
-    "/org/:orgId/labels",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyValidSubscription(tierMatrix.labels),
-    verifyUserHasAction(ActionsEnum.listOrgLabels),
-    labels.listOrgLabels
-);
-
-authenticated.post(
-    "/org/:orgId/labels",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyValidSubscription(tierMatrix.labels),
-    verifyUserHasAction(ActionsEnum.createOrgLabel),
-    labels.createOrgLabel
-);
-
-authenticated.patch(
-    "/org/:orgId/label/:labelId",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyValidSubscription(tierMatrix.labels),
-    verifyUserHasAction(ActionsEnum.updateOrgLabel),
-    labels.updateOrgLabel
-);
-
-authenticated.delete(
-    "/org/:orgId/label/:labelId",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.deleteOrgLabel),
-    labels.deleteOrgLabel
-);
-
-authenticated.put(
-    "/org/:orgId/label/:labelId/attach",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyValidSubscription(tierMatrix.labels),
-    verifyUserHasAction(ActionsEnum.attachLabelToItem),
-    labels.attachLabelToItem
-);
-
-authenticated.put(
-    "/org/:orgId/label/:labelId/detach",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyValidSubscription(tierMatrix.labels),
-    verifyUserHasAction(ActionsEnum.detachLabelFromItem),
-    labels.detachLabelFromItem
-);
-
-authenticated.get(
     "/org/:orgId/health-checks",
     verifyValidLicense,
     verifyOrgAccess,
@@ -877,4 +863,10 @@ authenticated.post(
     "/client/:clientId/rebuild-associations-cache",
     verifyClientAccess,
     client.rebuildClientAssociationsCacheRoute
+);
+
+authenticated.post(
+    "/org/:orgId/logs/access/attempt",
+    verifyOrgAccess,
+    logs.logAccessAuditAttempt
 );

@@ -17,7 +17,6 @@ import {
     verifyApiKey,
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction,
-    verifyApiKeyCanSetUserOrgRoles,
     verifyApiKeySiteAccess,
     verifyApiKeyResourceAccess,
     verifyApiKeyTargetAccess,
@@ -160,6 +159,7 @@ authenticated.get(
     verifyApiKeyOrgAccess,
     resource.getUserResources
 );
+
 // Site Resource endpoints
 authenticated.put(
     "/org/:orgId/site-resource",
@@ -895,12 +895,6 @@ authenticated.delete(
     user.removeUserOrg
 );
 
-// authenticated.put(
-//     "/newt",
-//     verifyApiKeyHasAction(ActionsEnum.createNewt),
-//     newt.createNewt
-// );
-
 authenticated.get(
     `/org/:orgId/api-keys`,
     verifyApiKeyIsRoot,
@@ -972,6 +966,13 @@ authenticated.get(
     verifyApiKeyIsRoot,
     verifyApiKeyHasAction(ActionsEnum.getIdp),
     idp.getIdp
+);
+
+authenticated.delete(
+    "/idp/:idpId",
+    verifyApiKeyIsRoot,
+    verifyApiKeyHasAction(ActionsEnum.deleteIdp),
+    idp.deleteIdp
 );
 
 authenticated.put(
