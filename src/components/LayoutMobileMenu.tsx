@@ -3,14 +3,6 @@
 import type { SidebarNavSection } from "@app/app/navigation";
 import { CommandPaletteTrigger } from "@app/components/command-palette/CommandPaletteTrigger";
 import { OrgSelector } from "@app/components/OrgSelector";
-import { cn } from "@app/lib/cn";
-import { ListUserOrgsResponse } from "@server/routers/org";
-import { Button } from "@app/components/ui/button";
-import { Menu, Server, Settings, SquareMousePointer } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useUserContext } from "@app/hooks/useUserContext";
-import { useTranslations } from "next-intl";
 import ProfileIcon from "@app/components/ProfileIcon";
 import { SidebarNav } from "@app/components/SidebarNav";
 import ThemeSwitcher from "@app/components/ThemeSwitcher";
@@ -25,7 +17,7 @@ import {
 import { useUserContext } from "@app/hooks/useUserContext";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import { Menu, Server } from "lucide-react";
+import { Menu, Server, Settings, SquareMousePointer } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
