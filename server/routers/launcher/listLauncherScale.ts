@@ -1,15 +1,12 @@
-import { db, launcherViews } from "@server/db";
 import { response } from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq, isNull, or } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import {
-    extractDefaultViewOverrides,
-    listVisibleLauncherViews
-} from "./launcherDefaultView";
+import { fromZodError } from "zod-validation-error";
+import { getLauncherScaleForUser } from "./launcherScale";
+import { launcherScaleQuerySchema } from "./types";
 
-export async function listLauncherViews(
+export async function listLauncherScale(
     req: Request,
     res: Response,
     next: NextFunction
@@ -24,34 +21,35 @@ export async function listLauncherViews(
             );
         }
 
-        const rows = await db
-            .select()
-            .from(launcherViews)
-            .where(
-                and(
-                    eq(launcherViews.orgId, orgId),
-                    or(
-                        eq(launcherViews.userId, userId),
-                        isNull(launcherViews.userId)
-                    )
+        const parsed = launcherScaleQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromZodError(parsed.error)
                 )
             );
+        }
+
+        const scale = await getLauncherScaleForUser(
+            orgId,
+            userId,
+            req.userOrgRoleIds ?? [],
+            parsed.data
+        );
 
         return response(res, {
-            data: {
-                views: listVisibleLauncherViews(rows),
-                defaultViewOverrides: extractDefaultViewOverrides(rows)
-            },
+            data: { scale },
             success: true,
             error: false,
-            message: "Launcher views retrieved successfully",
+            message: "Launcher scale retrieved successfully",
             status: HttpCode.OK
         });
     } catch (error) {
         if (createHttpError.isHttpError(error)) {
             return next(error);
         }
-        console.error("Error listing launcher views:", error);
+        console.error("Error listing launcher scale:", error);
         return next(
             createHttpError(
                 HttpCode.INTERNAL_SERVER_ERROR,

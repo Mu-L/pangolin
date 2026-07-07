@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { db } from "@server/db";
 import {
     exitNodes,
@@ -31,13 +32,15 @@ import {
     isNull,
     like,
     or,
-    sql
+    sql,
+    type SQL
 } from "drizzle-orm";
 import {
     formatPublicResourceAccess,
     formatSiteResourceAccess
 } from "./formatLauncherAccess";
 import {
+    LAUNCHER_FLAT_GROUP_KEY,
     LAUNCHER_NO_SITE_GROUP_KEY,
     LAUNCHER_UNLABELED_GROUP_KEY,
     type LauncherFilterListQuery,
@@ -59,6 +62,68 @@ export type AccessibleIds = {
 };
 
 const LAUNCHER_ACCESSIBLE_IDS_TTL_SEC = 60;
+const LAUNCHER_RESOURCES_RESULT_TTL_SEC = 60;
+const LAUNCHER_GROUPS_RESULT_TTL_SEC = 60;
+
+type LauncherResourcesCacheEntry = {
+    items: LauncherResource[];
+    total: number;
+};
+
+type LauncherGroupsCacheEntry = {
+    groups: LauncherGroup[];
+    total: number;
+};
+
+function launcherListQueryHash(
+    userRoleIds: number[],
+    query: LauncherListQuery,
+    extra?: Record<string, string>
+) {
+    const payload = JSON.stringify({
+        roles: [...userRoleIds].sort((a, b) => a - b),
+        query: query.query,
+        groupBy: query.groupBy,
+        siteIds: query.siteIds ?? "",
+        labelIds: query.labelIds ?? "",
+        sort_by: query.sort_by,
+        order: query.order,
+        ...extra
+    });
+    return createHash("sha256").update(payload).digest("hex").slice(0, 16);
+}
+
+function launcherResourcesQueryHash(
+    userRoleIds: number[],
+    query: LauncherListQuery & { groupKey: string }
+) {
+    return launcherListQueryHash(userRoleIds, query, {
+        groupKey: query.groupKey
+    });
+}
+
+function launcherGroupsQueryHash(
+    userRoleIds: number[],
+    query: LauncherListQuery
+) {
+    return launcherListQueryHash(userRoleIds, query);
+}
+
+function launcherResourcesCacheKey(
+    orgId: string,
+    userId: string,
+    queryHash: string
+) {
+    return `launcher:results:${orgId}:${userId}:${queryHash}`;
+}
+
+function launcherGroupsCacheKey(
+    orgId: string,
+    userId: string,
+    queryHash: string
+) {
+    return `launcher:groups:${orgId}:${userId}:${queryHash}`;
+}
 
 function launcherAccessibleIdsCacheKey(
     orgId: string,
@@ -194,6 +259,21 @@ function searchPattern(query: string) {
     return `%${query.trim()}%`;
 }
 
+function combineOrConditions(
+    ...conditions: (SQL | undefined)[]
+): SQL | undefined {
+    const parts = conditions.filter(
+        (condition): condition is SQL => !!condition
+    );
+    if (parts.length === 0) {
+        return undefined;
+    }
+    if (parts.length === 1) {
+        return parts[0];
+    }
+    return or(...parts);
+}
+
 function buildSearchConditionForPublic(
     query: string,
     labelsFeatureEnabled: boolean
@@ -205,7 +285,17 @@ function buildSearchConditionForPublic(
     const queryList = [
         like(sql`LOWER(${resources.name})`, pattern),
         like(sql`LOWER(${resources.fullDomain})`, pattern),
-        like(sql`LOWER(cast(${resources.proxyPort} as text))`, pattern)
+        like(sql`LOWER(cast(${resources.proxyPort} as text))`, pattern),
+        inArray(
+            resources.resourceId,
+            db
+                .select({ id: resources.resourceId })
+                .from(resources)
+                .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
+                .leftJoin(sites, eq(targets.siteId, sites.siteId))
+                .leftJoin(exitNodes, eq(sites.exitNodeId, exitNodes.exitNodeId))
+                .where(like(sql`LOWER(${exitNodes.endpoint})`, pattern))
+        )
     ];
 
     if (labelsFeatureEnabled) {
@@ -238,6 +328,11 @@ function buildSearchConditionForSiteResource(
     const queryList = [
         like(sql`LOWER(${siteResources.name})`, pattern),
         like(sql`LOWER(${siteResources.destination})`, pattern),
+        like(
+            sql`LOWER(cast(${siteResources.destinationPort} as text))`,
+            pattern
+        ),
+        like(sql`LOWER(${siteResources.scheme})`, pattern),
         like(sql`LOWER(${siteResources.alias})`, pattern),
         like(sql`LOWER(${siteResources.fullDomain})`, pattern),
         like(sql`LOWER(${siteResources.aliasAddress})`, pattern)
@@ -260,6 +355,79 @@ function buildSearchConditionForSiteResource(
     }
 
     return or(...queryList);
+}
+
+async function filterPublicResourceIdsByTextSearch(
+    orgId: string,
+    resourceIds: number[],
+    query: string,
+    labelsFeatureEnabled: boolean
+): Promise<number[]> {
+    if (!query.trim() || resourceIds.length === 0) {
+        return resourceIds;
+    }
+
+    const textMatch = combineOrConditions(
+        buildSearchConditionForPublic(query, labelsFeatureEnabled),
+        buildSiteNameSearchCondition(query)
+    );
+    if (!textMatch) {
+        return resourceIds;
+    }
+
+    const rows = await db
+        .selectDistinct({ resourceId: resources.resourceId })
+        .from(resources)
+        .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
+        .leftJoin(sites, eq(targets.siteId, sites.siteId))
+        .where(
+            and(
+                inArray(resources.resourceId, resourceIds),
+                eq(resources.orgId, orgId),
+                eq(resources.enabled, true),
+                textMatch
+            )
+        );
+
+    return rows.map((row) => row.resourceId);
+}
+
+async function filterSiteResourceIdsByTextSearch(
+    orgId: string,
+    siteResourceIds: number[],
+    query: string,
+    labelsFeatureEnabled: boolean
+): Promise<number[]> {
+    if (!query.trim() || siteResourceIds.length === 0) {
+        return siteResourceIds;
+    }
+
+    const textMatch = combineOrConditions(
+        buildSearchConditionForSiteResource(query, labelsFeatureEnabled),
+        buildSiteNameSearchCondition(query)
+    );
+    if (!textMatch) {
+        return siteResourceIds;
+    }
+
+    const rows = await db
+        .selectDistinct({ siteResourceId: siteResources.siteResourceId })
+        .from(siteResources)
+        .leftJoin(
+            siteNetworks,
+            eq(siteResources.networkId, siteNetworks.networkId)
+        )
+        .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+        .where(
+            and(
+                inArray(siteResources.siteResourceId, siteResourceIds),
+                eq(siteResources.orgId, orgId),
+                eq(siteResources.enabled, true),
+                textMatch
+            )
+        );
+
+    return rows.map((row) => row.siteResourceId);
 }
 
 async function labelsEnabled(orgId: string): Promise<boolean> {
@@ -588,9 +756,8 @@ async function listSiteGroups(
     });
 
     const total = groups.length;
-    const offset = (query.page - 1) * query.pageSize;
     return {
-        groups: groups.slice(offset, offset + query.pageSize),
+        groups,
         total
     };
 }
@@ -788,11 +955,25 @@ async function listLabelGroups(
     });
 
     const total = groups.length;
-    const offset = (query.page - 1) * query.pageSize;
     return {
-        groups: groups.slice(offset, offset + query.pageSize),
+        groups,
         total
     };
+}
+
+async function listLauncherGroupsForUserUncached(
+    orgId: string,
+    userId: string,
+    userRoleIds: number[],
+    query: LauncherListQuery
+): Promise<LauncherGroupsCacheEntry> {
+    const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
+
+    if (query.groupBy === "label") {
+        return listLabelGroups(orgId, accessible, query);
+    }
+
+    return listSiteGroups(orgId, accessible, query);
 }
 
 export async function listLauncherGroupsForUser(
@@ -801,13 +982,26 @@ export async function listLauncherGroupsForUser(
     userRoleIds: number[],
     query: LauncherListQuery
 ): Promise<{ groups: LauncherGroup[]; total: number }> {
-    const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
+    const queryHash = launcherGroupsQueryHash(userRoleIds, query);
+    const cacheKey = launcherGroupsCacheKey(orgId, userId, queryHash);
+    const cached = await cache.get<LauncherGroupsCacheEntry>(cacheKey);
 
-    if (query.groupBy === "label") {
-        return listLabelGroups(orgId, accessible, query);
+    let result = cached;
+    if (!result) {
+        result = await listLauncherGroupsForUserUncached(
+            orgId,
+            userId,
+            userRoleIds,
+            query
+        );
+        await cache.set(cacheKey, result, LAUNCHER_GROUPS_RESULT_TTL_SEC);
     }
 
-    return listSiteGroups(orgId, accessible, query);
+    const offset = (query.page - 1) * query.pageSize;
+    return {
+        groups: result.groups.slice(offset, offset + query.pageSize),
+        total: result.total
+    };
 }
 
 async function mapPublicResources(
@@ -1018,26 +1212,6 @@ function filterResourcesByLabel(
     );
 }
 
-function filterResourcesBySearch(
-    items: LauncherResource[],
-    query: string
-): LauncherResource[] {
-    if (!query.trim()) {
-        return items;
-    }
-    const pattern = query.trim().toLowerCase();
-    return items.filter(
-        (item) =>
-            item.name.toLowerCase().includes(pattern) ||
-            item.accessDisplay.toLowerCase().includes(pattern) ||
-            item.accessCopyValue.toLowerCase().includes(pattern) ||
-            item.labels.some((label) =>
-                label.name.toLowerCase().includes(pattern)
-            ) ||
-            item.site?.name.toLowerCase().includes(pattern)
-    );
-}
-
 function sortLauncherResources(
     items: LauncherResource[],
     order: "asc" | "desc"
@@ -1050,12 +1224,12 @@ function sortLauncherResources(
     });
 }
 
-export async function listLauncherResourcesForUser(
+async function listLauncherResourcesForUserUncached(
     orgId: string,
     userId: string,
     userRoleIds: number[],
     query: LauncherListQuery & { groupKey: string }
-): Promise<{ resources: LauncherResource[]; total: number }> {
+): Promise<LauncherResourcesCacheEntry> {
     const accessible = await resolveAccessibleIds(orgId, userId, userRoleIds);
 
     const siteFilterIds = parseIdListParam(query.siteIds);
@@ -1128,6 +1302,27 @@ export async function listLauncherResourcesForUser(
         }
     }
 
+    const labelsFeatureEnabled = await labelsEnabled(orgId);
+
+    if (query.query.trim()) {
+        if (filteredResourceIds.length > 0) {
+            filteredResourceIds = await filterPublicResourceIdsByTextSearch(
+                orgId,
+                filteredResourceIds,
+                query.query,
+                labelsFeatureEnabled
+            );
+        }
+        if (filteredSiteResourceIds.length > 0) {
+            filteredSiteResourceIds = await filterSiteResourceIdsByTextSearch(
+                orgId,
+                filteredSiteResourceIds,
+                query.query,
+                labelsFeatureEnabled
+            );
+        }
+    }
+
     const labelMaps = await fetchLabelsForResources(
         orgId,
         filteredResourceIds,
@@ -1159,21 +1354,48 @@ export async function listLauncherResourcesForUser(
     ]);
 
     let items = [...publicItems, ...siteItems];
-    items = filterResourcesBySearch(items, query.query);
 
-    if (query.groupBy === "label") {
-        items = filterResourcesByLabel(items, query.groupKey);
-    } else if (query.groupBy === "site") {
-        items = filterResourcesBySite(items, query.groupKey);
+    if (query.groupKey !== LAUNCHER_FLAT_GROUP_KEY) {
+        if (query.groupBy === "label") {
+            items = filterResourcesByLabel(items, query.groupKey);
+        } else if (query.groupBy === "site") {
+            items = filterResourcesBySite(items, query.groupKey);
+        }
     }
 
     items = sortLauncherResources(items, query.order);
 
-    const total = items.length;
+    return {
+        items,
+        total: items.length
+    };
+}
+
+export async function listLauncherResourcesForUser(
+    orgId: string,
+    userId: string,
+    userRoleIds: number[],
+    query: LauncherListQuery & { groupKey: string }
+): Promise<{ resources: LauncherResource[]; total: number }> {
+    const queryHash = launcherResourcesQueryHash(userRoleIds, query);
+    const cacheKey = launcherResourcesCacheKey(orgId, userId, queryHash);
+    const cached = await cache.get<LauncherResourcesCacheEntry>(cacheKey);
+
+    let result = cached;
+    if (!result) {
+        result = await listLauncherResourcesForUserUncached(
+            orgId,
+            userId,
+            userRoleIds,
+            query
+        );
+        await cache.set(cacheKey, result, LAUNCHER_RESOURCES_RESULT_TTL_SEC);
+    }
+
     const offset = (query.page - 1) * query.pageSize;
     return {
-        resources: items.slice(offset, offset + query.pageSize),
-        total
+        resources: result.items.slice(offset, offset + query.pageSize),
+        total: result.total
     };
 }
 

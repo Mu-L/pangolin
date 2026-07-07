@@ -1,15 +1,32 @@
-import { db, launcherViews } from "@server/db";
+import { regionalCache as cache } from "#dynamic/lib/cache";
 import { response } from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq, isNull, or } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import {
-    extractDefaultViewOverrides,
-    listVisibleLauncherViews
-} from "./launcherDefaultView";
 
-export async function listLauncherViews(
+async function invalidateLauncherCacheForUser(
+    orgId: string,
+    userId: string
+): Promise<void> {
+    const prefixes = [
+        `launcherAccessibleIds:${orgId}:${userId}:`,
+        `launcher:groups:${orgId}:${userId}:`,
+        `launcher:results:${orgId}:${userId}:`,
+        `launcher:scale:counts:${orgId}:${userId}:`
+    ];
+
+    const keys = (
+        await Promise.all(
+            prefixes.map((prefix) => cache.keysWithPrefix(prefix))
+        )
+    ).flat();
+
+    if (keys.length > 0) {
+        await cache.del(keys);
+    }
+}
+
+export async function invalidateLauncherCache(
     req: Request,
     res: Response,
     next: NextFunction
@@ -24,34 +41,20 @@ export async function listLauncherViews(
             );
         }
 
-        const rows = await db
-            .select()
-            .from(launcherViews)
-            .where(
-                and(
-                    eq(launcherViews.orgId, orgId),
-                    or(
-                        eq(launcherViews.userId, userId),
-                        isNull(launcherViews.userId)
-                    )
-                )
-            );
+        await invalidateLauncherCacheForUser(orgId, userId);
 
         return response(res, {
-            data: {
-                views: listVisibleLauncherViews(rows),
-                defaultViewOverrides: extractDefaultViewOverrides(rows)
-            },
+            data: null,
             success: true,
             error: false,
-            message: "Launcher views retrieved successfully",
+            message: "Launcher cache invalidated successfully",
             status: HttpCode.OK
         });
     } catch (error) {
         if (createHttpError.isHttpError(error)) {
             return next(error);
         }
-        console.error("Error listing launcher views:", error);
+        console.error("Error invalidating launcher cache:", error);
         return next(
             createHttpError(
                 HttpCode.INTERNAL_SERVER_ERROR,

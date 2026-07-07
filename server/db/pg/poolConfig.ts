@@ -18,7 +18,17 @@ export function createPoolConfig(
         keepAliveInitialDelayMillis: 10000, // send first keepalive after 10s of idle
         // Allow connections to be released and recreated more aggressively
         // to avoid stale connections building up
-        allowExitOnIdle: false
+        allowExitOnIdle: false,
+        // Disable JIT compilation for this connection. Our hot-path queries
+        // (e.g. resource-by-domain lookups) join many tables but only ever
+        // return a handful of rows. When planner row estimates drift (e.g.
+        // due to autovacuum lag under write-heavy load), Postgres decides
+        // these plans are expensive enough to JIT-compile, which can add
+        // multiple seconds of pure compilation overhead per query and
+        // saturate the connection pool. JIT never pays off for these
+        // short-lived OLTP queries, so it's disabled outright rather than
+        // relying on statistics staying fresh.
+        options: "-c jit=off"
     };
 }
 
