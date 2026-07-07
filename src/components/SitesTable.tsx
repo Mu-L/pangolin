@@ -499,6 +499,23 @@ export default function SitesTable({
                 }
             },
             {
+                accessorKey: "labels",
+                header: () => (
+                    <LabelColumnFilterButton
+                        orgId={orgId}
+                        selectedValues={searchParams.getAll("labels")}
+                        onSelectedValuesChange={(value) =>
+                            handleFilterChange("labels", value)
+                        }
+                        label={t("labels")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }: { row: { original: SiteRow } }) => (
+                    <SiteLabelCell site={row.original} orgId={orgId} />
+                )
+            },
+            {
                 id: "actions",
                 enableHiding: false,
                 header: () => <span className="p-3"></span>,
@@ -599,23 +616,6 @@ export default function SitesTable({
                         </div>
                     );
                 }
-            },
-            {
-                accessorKey: "labels",
-                header: () => (
-                    <LabelColumnFilterButton
-                        orgId={orgId}
-                        selectedValues={searchParams.getAll("labels")}
-                        onSelectedValuesChange={(value) =>
-                            handleFilterChange("labels", value)
-                        }
-                        label={t("labels")}
-                        className="p-3"
-                    />
-                ),
-                cell: ({ row }: { row: { original: SiteRow } }) => (
-                    <SiteLabelCell site={row.original} orgId={orgId} />
-                )
             }
         ];
 

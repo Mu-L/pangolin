@@ -552,6 +552,24 @@ export default function PublicResourcesTable({
                 )
             },
             {
+                id: "labels",
+                accessorKey: "labels",
+                header: () => (
+                    <LabelColumnFilterButton
+                        orgId={orgId}
+                        selectedValues={searchParams.getAll("labels")}
+                        onSelectedValuesChange={(value) =>
+                            handleFilterChange("labels", value)
+                        }
+                        label={t("labels")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }: { row: { original: ResourceRow } }) => (
+                    <ResourceLabelCell resource={row.original} orgId={orgId} />
+                )
+            },
+            {
                 id: "actions",
                 enableHiding: false,
                 header: () => <span className="p-3"></span>,
@@ -603,24 +621,6 @@ export default function PublicResourcesTable({
                         </div>
                     );
                 }
-            },
-            {
-                id: "labels",
-                accessorKey: "labels",
-                header: () => (
-                    <LabelColumnFilterButton
-                        orgId={orgId}
-                        selectedValues={searchParams.getAll("labels")}
-                        onSelectedValuesChange={(value) =>
-                            handleFilterChange("labels", value)
-                        }
-                        label={t("labels")}
-                        className="p-3"
-                    />
-                ),
-                cell: ({ row }: { row: { original: ResourceRow } }) => (
-                    <ResourceLabelCell resource={row.original} orgId={orgId} />
-                )
             }
         ];
 
