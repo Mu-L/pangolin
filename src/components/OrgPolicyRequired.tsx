@@ -12,7 +12,8 @@ import { Shield, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { api } from "@app/lib/api";
+import { createApiClient } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 
 type OrgPolicyRequiredProps = {
     orgId: string;
@@ -39,6 +40,8 @@ export default function OrgPolicyRequired({
 }: OrgPolicyRequiredProps) {
     const t = useTranslations();
     const router = useRouter();
+
+    const api = createApiClient(useEnvContext());
 
     const sessionExpired =
         policies?.maxSessionLength &&
