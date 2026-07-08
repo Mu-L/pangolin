@@ -10,6 +10,7 @@ import logger from "@server/logger";
 import stoi from "@server/lib/stoi";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import { getCountryCodeForIp } from "@server/lib/geoip";
 
 const getSiteSchema = z.strictObject({
     siteId: z
@@ -47,6 +48,7 @@ type SiteQueryRow = NonNullable<Awaited<ReturnType<typeof query>>>;
 export type GetSiteResponse = SiteQueryRow["sites"] & {
     newtId: string | null;
     newtVersion: string | null;
+    countryCode: string | null;
 };
 
 registry.registerPath({
@@ -67,7 +69,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -95,7 +97,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -134,7 +136,10 @@ export async function getSite(
         const data: GetSiteResponse = {
             ...site.sites,
             newtId: site.newt ? site.newt.newtId : null,
-            newtVersion: site.newt?.version ?? null
+            newtVersion: site.newt?.version ?? null,
+            countryCode: site.sites.endpoint
+                ? ((await getCountryCodeForIp(site.sites.endpoint)) ?? null)
+                : null
         };
 
         return response<GetSiteResponse>(res, {

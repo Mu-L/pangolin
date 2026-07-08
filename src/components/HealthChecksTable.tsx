@@ -109,7 +109,6 @@ export default function HealthChecksTable({
     const [siteFilterOpen, setSiteFilterOpen] = useState(false);
     const [resourceFilterOpen, setResourceFilterOpen] = useState(false);
 
-    const pageSize = pagination.pageSize;
     const query = searchParams.get("query") ?? undefined;
 
     const siteIdQ = searchParams.get("siteId");
@@ -164,12 +163,12 @@ export default function HealthChecksTable({
         });
     }
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            router.refresh();
-        }, 30_000);
-        return () => clearInterval(interval);
-    }, [router]);
+    // useEffect(() => {
+    //     const interval = setInterval(() => {
+    //         router.refresh();
+    //     }, 30_000);
+    //     return () => clearInterval(interval);
+    // }, [router]);
 
     const handlePaginationChange = (newState: PaginationState) => {
         searchParams.set("page", (newState.pageIndex + 1).toString());
@@ -407,7 +406,7 @@ export default function HealthChecksTable({
                 }
                 return (
                     <Link
-                        href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}
+                        href={`/${orgId}/settings/resources/public/${r.resourceNiceId}`}
                     >
                         <Button variant="outline" size="sm">
                             {r.resourceName}
@@ -586,7 +585,9 @@ export default function HealthChecksTable({
                     <Switch
                         checked={r.hcEnabled}
                         disabled={
-                            !isPaid || togglingId === r.targetHealthCheckId || !!r.resourceId
+                            !isPaid ||
+                            togglingId === r.targetHealthCheckId ||
+                            !!r.resourceId
                         }
                         onCheckedChange={(v) => handleToggleEnabled(r, v)}
                     />
@@ -626,7 +627,7 @@ export default function HealthChecksTable({
                         </DropdownMenu>
                         {r.resourceId && r.resourceName && r.resourceNiceId ? (
                             <Link
-                                href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}
+                                href={`/${orgId}/settings/resources/public/${r.resourceNiceId}`}
                             >
                                 <Button variant="outline" disabled={!isPaid}>
                                     {t("edit")}

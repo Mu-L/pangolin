@@ -49,7 +49,7 @@ export type CreateOlmResponse = {
 // content: {
 // "application/json": {
 // schema: z.object({
-// data: z.unknown().nullable(),
+// data: z.record(z.string(), z.any()).nullable(),
 // success: z.boolean(),
 // error: z.boolean(),
 // message: z.string(),
@@ -104,7 +104,7 @@ export async function createUserOlm(
             dateCreated: moment().toISOString()
         });
 
-        calculateUserClientsForOrgs(userId, primaryDb).catch((e) => {
+        calculateUserClientsForOrgs(userId).catch((e) => {
             console.error(
                 "Error calculating user clients after creating olm:",
                 e

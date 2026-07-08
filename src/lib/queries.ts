@@ -1,20 +1,34 @@
 import { build } from "@server/build";
+import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
-import type { ListClientsResponse } from "@server/routers/client";
 import type {
-    ListDomainsResponse,
-    GetDNSRecordsResponse
+    QueryAccessAuditLogResponse,
+    QueryActionAuditLogResponse,
+    QueryConnectionAuditLogResponse,
+    QueryRequestAuditLogResponse
+} from "@server/routers/auditLogs/types";
+import type {
+    ListClientsResponse,
+    ListUserDevicesResponse
+} from "@server/routers/client";
+import type {
+    GetDNSRecordsResponse,
+    ListDomainsResponse
 } from "@server/routers/domain";
 import type { GetDomainResponse } from "@server/routers/domain/getDomain";
 import type {
     GetResourceWhitelistResponse,
+    GetResourcePoliciesResponse,
     ListResourceNamesResponse,
-    ListResourcesResponse
+    ListResourcesResponse,
+    ListResourceRolesResponse,
+    ListResourceRulesResponse,
+    ListResourceUsersResponse
 } from "@server/routers/resource";
-import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
+    ListAllSiteResourcesByOrgResponse,
     ListSiteResourceClientsResponse,
     ListSiteResourceRolesResponse,
     ListSiteResourceUsersResponse
@@ -28,11 +42,33 @@ import {
     queryOptions
 } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
-import z from "zod";
+import z, { meta } from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
+import type { ListOrgLabelsResponse } from "@server/routers/labels/types";
 import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
 import { StatusHistoryResponse } from "@server/lib/statusHistory";
+import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
+import type { GetResourcePolicyResponse } from "@server/routers/policy";
+import type {
+    ListLauncherGroupsResponse,
+    ListLauncherLabelsResponse,
+    ListLauncherResourcesResponse,
+    ListLauncherScaleResponse,
+    ListLauncherSitesResponse,
+    ListLauncherViewsResponse,
+    LauncherListQuery,
+    LauncherResource,
+    LauncherViewConfig
+} from "@server/routers/launcher/types";
+import type { GetResourceResponse } from "@server/routers/resource/getResource";
+import type { GetResourceAuthInfoResponse } from "@server/routers/resource/getResourceAuthInfo";
+import type { GetSiteResourceResponse } from "@server/routers/siteResource/getSiteResource";
+import type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
+import { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
+
+export type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
+export { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
 
 export type ProductUpdate = {
     link: string | null;
@@ -47,6 +83,34 @@ export type ProductUpdate = {
 
 export type LatestVersionResponse = {
     pangolin: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    newt: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    cli: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    "panglin-node": {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    windows: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    android: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    mac: {
+        latestVersion: string;
+        releaseNotes: string;
+    };
+    ios: {
         latestVersion: string;
         releaseNotes: string;
     };
@@ -123,6 +187,38 @@ export const orgQueries = {
                 >(`/org/${orgId}/clients?${sp.toString()}`, { signal });
 
                 return res.data.data.clients;
+            }
+        }),
+    userDevices: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "USER_DEVICES",
+                { query, perPage }
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: perPage.toString()
+                });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListUserDevicesResponse>
+                >(`/org/${orgId}/user-devices?${sp.toString()}`, { signal });
+
+                return res.data.data.devices;
             }
         }),
     users: ({
@@ -208,6 +304,33 @@ export const orgQueries = {
             }
         }),
 
+    labels: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "LABELS", { query, perPage }] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: perPage.toString()
+                });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListOrgLabelsResponse>
+                >(`/org/${orgId}/labels?${sp.toString()}`, { signal });
+                return res.data.data.labels;
+            }
+        }),
+
     domains: ({ orgId }: { orgId: string }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "DOMAINS"] as const,
@@ -242,7 +365,7 @@ export const orgQueries = {
             }
         }),
 
-    resources: ({
+    proxyResources: ({
         orgId,
         query,
         perPage = 10_000
@@ -252,7 +375,12 @@ export const orgQueries = {
         perPage?: number;
     }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "RESOURCES", { query, perPage }] as const,
+            queryKey: [
+                "ORG",
+                orgId,
+                "PROXY_RESOURCES",
+                { query, perPage }
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
                     pageSize: perPage.toString()
@@ -267,6 +395,39 @@ export const orgQueries = {
                 >(`/org/${orgId}/resources?${sp.toString()}`, { signal });
 
                 return res.data.data.resources;
+            }
+        }),
+
+    privateResources: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "PRIVATE_RESOURCES",
+                { query, perPage }
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: perPage.toString()
+                });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAllSiteResourcesByOrgResponse>
+                >(`/org/${orgId}/site-resources?${sp.toString()}`, { signal });
+
+                return res.data.data.siteResources;
             }
         }),
 
@@ -540,6 +701,40 @@ export const orgQueries = {
                 );
                 return res.data.data;
             }
+        }),
+
+    policies: ({ orgId, query }: { orgId: string; query?: string }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "RESOURCES_POLICIES", query] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: "10"
+                });
+
+                if (query) {
+                    sp.set("query", query);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListResourcePoliciesResponse>
+                >(`/org/${orgId}/resource-policies?${sp.toString()}`, {
+                    signal
+                });
+
+                return res.data.data.policies;
+            }
+        }),
+
+    resourcePolicy: ({ resourcePolicyId }: { resourcePolicyId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCE_POLICY", resourcePolicyId] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetResourcePolicyResponse>
+                >(`/resource-policy/${resourcePolicyId}`, { signal });
+
+                return res.data.data;
+            }
         })
 };
 
@@ -561,7 +756,111 @@ export const logAnalyticsFiltersSchema = z.object({
     resourceId: z.coerce.number().optional().catch(undefined)
 });
 
-export type LogAnalyticsFilters = z.TypeOf<typeof logAnalyticsFiltersSchema>;
+export type LogAnalyticsFilters = z.output<typeof logAnalyticsFiltersSchema>;
+
+export const httpLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    resourceId: z.coerce.number().optional().catch(undefined),
+    action: z.string().optional().catch(undefined),
+    host: z.string().optional().catch(undefined),
+    location: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined),
+    method: z.string().optional().catch(undefined),
+    reason: z.string().optional().catch(undefined),
+    path: z.string().optional().catch(undefined)
+});
+
+export type HttpLogFilters = z.output<typeof httpLogsFiltersSchema>;
+
+export const accessLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    resourceId: z.coerce.number().optional().catch(undefined),
+    action: z.string().optional().catch(undefined),
+    location: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined),
+    type: z.string().optional().catch(undefined)
+});
+
+export type AccessLogFilters = z.output<typeof accessLogsFiltersSchema>;
+
+export const actionLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    action: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined)
+});
+
+export type ActionLogFilters = z.output<typeof actionLogsFiltersSchema>;
+
+export const connectionLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    protocol: z.string().optional().catch(undefined),
+    destAddr: z.string().optional().catch(undefined),
+    clientId: z.coerce.number().optional().catch(undefined),
+    siteResourceId: z.coerce.number().optional().catch(undefined),
+    userId: z.string().optional().catch(undefined)
+});
+
+export type ConnectionLogFilters = z.output<typeof connectionLogsFiltersSchema>;
 
 export const logQueries = {
     requestAnalytics: ({
@@ -572,12 +871,136 @@ export const logQueries = {
         filters: LogAnalyticsFilters;
     }) =>
         queryOptions({
-            queryKey: ["REQUEST_LOG_ANALYTICS", orgId, filters] as const,
+            queryKey: ["REQUEST_LOGS", orgId, "ANALYTICS", filters] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryRequestAnalyticsResponse>
                 >(`/org/${orgId}/logs/analytics`, {
                     params: filters,
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    requests: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: HttpLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["REQUEST_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryRequestAuditLogResponse>
+                >(`/org/${orgId}/logs/request`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    access: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: AccessLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["ACCESS_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAccessAuditLogResponse>
+                >(`/org/${orgId}/logs/access`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    action: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: ActionLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["ACTION_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryActionAuditLogResponse>
+                >(`/org/${orgId}/logs/action`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    connection: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: ConnectionLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["CONNECTION_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryConnectionAuditLogResponse>
+                >(`/org/${orgId}/logs/connection`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
                     signal
                 });
                 return res.data.data;
@@ -597,7 +1020,7 @@ export const resourceQueries = {
             queryKey: ["RESOURCES", resourceId, "USERS"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<ListSiteResourceUsersResponse>
+                    AxiosResponse<ListResourceUsersResponse>
                 >(`/resource/${resourceId}/users`, { signal });
                 return res.data.data.users;
             }
@@ -607,10 +1030,21 @@ export const resourceQueries = {
             queryKey: ["RESOURCES", resourceId, "ROLES"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<ListSiteResourceRolesResponse>
+                    AxiosResponse<ListResourceRolesResponse>
                 >(`/resource/${resourceId}/roles`, { signal });
 
                 return res.data.data.roles;
+            }
+        }),
+    resourceRules: ({ resourceId }: { resourceId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCES", resourceId, "RULES"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListResourceRulesResponse>
+                >(`/resource/${resourceId}/rules`, { signal });
+
+                return res.data.data.rules;
             }
         }),
     siteResourceUsers: ({ siteResourceId }: { siteResourceId: number }) =>
@@ -665,6 +1099,17 @@ export const resourceQueries = {
                 >(`/resource/${resourceId}/whitelist`, { signal });
 
                 return res.data.data.whitelist;
+            }
+        }),
+    policies: ({ resourceId }: { resourceId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCES", resourceId, "POLICIES"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetResourcePoliciesResponse>
+                >(`/resource/${resourceId}/policies`, { signal });
+
+                return res.data.data;
             }
         }),
     listNamesPerOrg: (orgId: string) =>
@@ -812,5 +1257,182 @@ export const domainQueries = {
                 return res.data.data;
             },
             refetchInterval: durationToMs(10, "seconds")
+        })
+};
+
+export const launcherQueries = {
+    views: (orgId: string) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "LAUNCHER", "VIEWS"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherViewsResponse>
+                >(`/org/${orgId}/launcher/views`, { signal });
+                return res.data.data;
+            }
+        }),
+    sites: ({
+        orgId,
+        query,
+        perPage = 20
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "LAUNCHER",
+                "SITES",
+                { query, perPage }
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: perPage.toString()
+                });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherSitesResponse>
+                >(`/org/${orgId}/launcher/sites?${sp.toString()}`, { signal });
+                return res.data.data.sites;
+            }
+        }),
+    labels: ({
+        orgId,
+        query,
+        perPage = 20
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "LAUNCHER",
+                "LABELS",
+                { query, perPage }
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: perPage.toString()
+                });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherLabelsResponse>
+                >(`/org/${orgId}/launcher/labels?${sp.toString()}`, {
+                    signal
+                });
+                return res.data.data.labels;
+            }
+        }),
+    groups: (orgId: string, filters: LauncherQueryFilters) =>
+        infiniteQueryOptions({
+            queryKey: ["ORG", orgId, "LAUNCHER", "GROUPS", filters] as const,
+            queryFn: async ({ pageParam = 1, signal, meta }) => {
+                const sp = buildLauncherSearchParams(filters, pageParam);
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherGroupsResponse>
+                >(`/org/${orgId}/launcher/groups?${sp.toString()}`, { signal });
+                return res.data.data;
+            },
+            initialPageParam: 1,
+            placeholderData: keepPreviousData,
+            getNextPageParam: (lastPage) => {
+                const { page, pageSize, total } = lastPage.pagination;
+                const nextPage = page + 1;
+                return page * pageSize < total ? nextPage : undefined;
+            }
+        }),
+    resources: (
+        orgId: string,
+        filters: LauncherQueryFilters & { groupKey: string }
+    ) =>
+        infiniteQueryOptions({
+            queryKey: ["ORG", orgId, "LAUNCHER", "RESOURCES", filters] as const,
+            queryFn: async ({ pageParam = 1, signal, meta }) => {
+                const sp = buildLauncherSearchParams(filters, pageParam);
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherResourcesResponse>
+                >(`/org/${orgId}/launcher/resources?${sp.toString()}`, {
+                    signal
+                });
+                return res.data.data;
+            },
+            initialPageParam: 1,
+            placeholderData: keepPreviousData,
+            getNextPageParam: (lastPage) => {
+                const { page, pageSize, total } = lastPage.pagination;
+                const nextPage = page + 1;
+                return page * pageSize < total ? nextPage : undefined;
+            }
+        }),
+    scale: (orgId: string, filters: LauncherQueryFilters) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "LAUNCHER", "SCALE", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = buildLauncherSearchParams(filters, 1);
+                sp.delete("page");
+                sp.delete("pageSize");
+                sp.delete("groupKey");
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherScaleResponse>
+                >(`/org/${orgId}/launcher/scale?${sp.toString()}`, { signal });
+                return res.data.data.scale;
+            }
+        }),
+    resourceDetail: (orgId: string, resource: LauncherResource | null) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "LAUNCHER",
+                "RESOURCE_DETAIL",
+                resource?.launcherResourceKey ?? null
+            ] as const,
+            enabled: resource != null,
+            queryFn: async ({ signal, meta }) => {
+                if (!resource) {
+                    throw new Error("Resource is required");
+                }
+
+                if (resource.resourceType === "public") {
+                    const res = await meta!.api.get<
+                        AxiosResponse<GetResourceResponse>
+                    >(`/org/${orgId}/resource/${resource.niceId}`, { signal });
+                    const resourceData = res.data.data;
+                    const authRes = await meta!.api.get<
+                        AxiosResponse<GetResourceAuthInfoResponse>
+                    >(`/resource/${resourceData.resourceGuid}/auth`, {
+                        signal
+                    });
+                    return {
+                        resourceType: "public" as const,
+                        data: resourceData,
+                        authInfo: authRes.data.data
+                    };
+                }
+
+                const siteResourceId =
+                    resource.siteResourceId ?? resource.resourceId;
+                const res = await meta!.api.get<
+                    AxiosResponse<GetSiteResourceResponse>
+                >(`/org/${orgId}/site-resource/${siteResourceId}`, { signal });
+                return {
+                    resourceType: "site" as const,
+                    data: res.data.data
+                };
+            }
         })
 };

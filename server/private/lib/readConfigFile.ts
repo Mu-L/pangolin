@@ -73,6 +73,25 @@ export const privateConfigSchema = z
                     .object({
                         rejectUnauthorized: z.boolean().optional().default(true)
                     })
+                    .optional(),
+                regional_redis: z
+                    .object({
+                        host: z.string(),
+                        port: portSchema,
+                        password: z
+                            .string()
+                            .optional()
+                            .transform(getEnvOrYaml("REGIONAL_REDIS_PASSWORD")),
+                        db: z.int().nonnegative().optional().default(0),
+                        tls: z
+                            .object({
+                                rejectUnauthorized: z
+                                    .boolean()
+                                    .optional()
+                                    .default(true)
+                            })
+                            .optional()
+                    })
                     .optional()
             })
             .optional(),
@@ -90,7 +109,11 @@ export const privateConfigSchema = z
                 enable_redis: z.boolean().optional().default(false),
                 use_pangolin_dns: z.boolean().optional().default(false),
                 use_org_only_idp: z.boolean().optional(),
-                enable_acme_cert_sync: z.boolean().optional().default(true)
+                enable_acme_cert_sync: z.boolean().optional().default(true),
+                disable_private_http_placeholder: z
+                    .boolean()
+                    .optional()
+                    .default(false)
             })
             .optional()
             .prefault({}),

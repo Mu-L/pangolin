@@ -3,7 +3,9 @@ import { z } from "zod";
 import {
     db,
     resourceHeaderAuth,
-    resourceHeaderAuthExtendedCompatibility
+    resourceHeaderAuthExtendedCompatibility,
+    resourcePolicyHeaderAuth,
+    resources
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import HttpCode from "@server/types/HttpCode";
@@ -46,7 +48,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -89,36 +91,72 @@ export async function setResourceHeaderAuth(
         const { resourceId } = parsedParams.data;
         const { user, password, extendedCompatibility } = parsedBody.data;
 
+        const [resource] = await db
+            .select()
+            .from(resources)
+            .where(eq(resources.resourceId, resourceId))
+            .limit(1);
+
+        if (!resource) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Resource not found")
+            );
+        }
+
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
+
+        const headerAuthHash =
+            user && password && extendedCompatibility !== null
+                ? await hashPassword(
+                      Buffer.from(`${user}:${password}`).toString("base64")
+                  )
+                : null;
+
         await db.transaction(async (trx) => {
-            await trx
-                .delete(resourceHeaderAuth)
-                .where(eq(resourceHeaderAuth.resourceId, resourceId));
-            await trx
-                .delete(resourceHeaderAuthExtendedCompatibility)
-                .where(
-                    eq(
-                        resourceHeaderAuthExtendedCompatibility.resourceId,
-                        resourceId
-                    )
-                );
+            if (isInlinePolicy) {
+                const policyId = resource.defaultResourcePolicyId!;
+                await trx
+                    .delete(resourcePolicyHeaderAuth)
+                    .where(
+                        eq(resourcePolicyHeaderAuth.resourcePolicyId, policyId)
+                    );
 
-            if (user && password && extendedCompatibility !== null) {
-                const headerAuthHash = await hashPassword(
-                    Buffer.from(`${user}:${password}`).toString("base64")
-                );
+                if (headerAuthHash !== null && extendedCompatibility !== null) {
+                    await trx.insert(resourcePolicyHeaderAuth).values({
+                        resourcePolicyId: policyId,
+                        headerAuthHash,
+                        extendedCompatibility: extendedCompatibility!
+                    });
+                }
+            } else {
+                await trx
+                    .delete(resourceHeaderAuth)
+                    .where(eq(resourceHeaderAuth.resourceId, resourceId));
+                await trx
+                    .delete(resourceHeaderAuthExtendedCompatibility)
+                    .where(
+                        eq(
+                            resourceHeaderAuthExtendedCompatibility.resourceId,
+                            resourceId
+                        )
+                    );
 
-                await Promise.all([
-                    trx
-                        .insert(resourceHeaderAuth)
-                        .values({ resourceId, headerAuthHash }),
-                    trx
-                        .insert(resourceHeaderAuthExtendedCompatibility)
-                        .values({
-                            resourceId,
-                            extendedCompatibilityIsActivated:
-                                extendedCompatibility
-                        })
-                ]);
+                if (headerAuthHash !== null && extendedCompatibility !== null) {
+                    await Promise.all([
+                        trx
+                            .insert(resourceHeaderAuth)
+                            .values({ resourceId, headerAuthHash }),
+                        trx
+                            .insert(resourceHeaderAuthExtendedCompatibility)
+                            .values({
+                                resourceId,
+                                extendedCompatibilityIsActivated:
+                                    extendedCompatibility
+                            })
+                    ]);
+                }
             }
         });
 

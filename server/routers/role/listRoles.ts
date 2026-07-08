@@ -15,7 +15,7 @@ const listRolesParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const listRolesSchema = z.object({
+const listRolesSchema = z.strictObject({
     pageSize: z.coerce
         .number<string>() // for prettier formatting
         .int()
@@ -104,7 +104,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),

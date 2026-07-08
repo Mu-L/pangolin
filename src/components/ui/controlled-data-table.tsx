@@ -305,6 +305,7 @@ export function ControlledDataTable<TData, TValue>({
                                         onSearch(e.currentTarget.value)
                                     }
                                     className="w-full pl-8"
+                                    type="search"
                                 />
                                 <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                             </div>
@@ -350,10 +351,6 @@ export function ControlledDataTable<TData, TValue>({
                                                     dataTableFilterDropdownContentClassName
                                                 }
                                             >
-                                                <DropdownMenuLabel>
-                                                    {filter.label}
-                                                </DropdownMenuLabel>
-                                                <DropdownMenuSeparator />
                                                 {filter.options.map(
                                                     (option) => {
                                                         const isChecked =
@@ -483,13 +480,6 @@ export function ControlledDataTable<TData, TValue>({
                                                                     align="end"
                                                                     className="w-48"
                                                                 >
-                                                                    <DropdownMenuLabel>
-                                                                        {t(
-                                                                            "toggleColumns"
-                                                                        ) ||
-                                                                            "Toggle columns"}
-                                                                    </DropdownMenuLabel>
-                                                                    <DropdownMenuSeparator />
                                                                     {table
                                                                         .getAllColumns()
                                                                         .filter(

@@ -1,17 +1,21 @@
 import {
     db,
     exitNodes,
+    labels,
     newts,
     orgs,
     remoteExitNodes,
     roleSites,
+    siteLabels,
     siteNetworks,
     siteResources,
-    targets,
     sites,
-    userSites
+    targets,
+    userSites,
+    type Label
 } from "@server/db";
-import cache from "#dynamic/lib/cache";
+import { regionalCache as cache } from "#dynamic/lib/cache";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -20,106 +24,15 @@ import type { PaginatedResponse } from "@server/types/Pagination";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import semver from "semver";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-// Stale-while-revalidate: keeps the last successfully fetched version so that
-// a transient network failure / timeout does not flip every site back to
-// newtUpdateAvailable: false.
-let staleNewtVersion: string | null = null;
-
-async function getLatestNewtVersion(): Promise<string | null> {
-    try {
-        const cachedVersion = await cache.get<string>(
-            "cache:latestNewtVersion"
-        );
-        if (cachedVersion) {
-            return cachedVersion;
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
-
-        const response = await fetch(
-            "https://api.github.com/repos/fosrl/newt/tags",
-            {
-                signal: controller.signal
-            }
-        );
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            logger.warn(
-                `Failed to fetch latest Newt version from GitHub: ${response.status} ${response.statusText}`
-            );
-            return staleNewtVersion;
-        }
-
-        let tags = await response.json();
-        if (!Array.isArray(tags) || tags.length === 0) {
-            logger.warn("No tags found for Newt repository");
-            return staleNewtVersion;
-        }
-
-        // Remove release-candidates, then sort descending by semver so that
-        // duplicate tags (e.g. "1.10.3" and "v1.10.3") and any ordering quirks
-        // from the GitHub API do not cause an older tag to be selected.
-        tags = tags.filter((tag: any) => !tag.name.includes("rc"));
-        tags.sort((a: any, b: any) => {
-            const va = semver.coerce(a.name);
-            const vb = semver.coerce(b.name);
-            if (!va && !vb) return 0;
-            if (!va) return 1;
-            if (!vb) return -1;
-            return semver.rcompare(va, vb);
-        });
-
-        // Deduplicate: keep only the first (highest) entry per normalised version
-        const seen = new Set<string>();
-        tags = tags.filter((tag: any) => {
-            const normalised = semver.coerce(tag.name)?.version;
-            if (!normalised || seen.has(normalised)) return false;
-            seen.add(normalised);
-            return true;
-        });
-
-        if (tags.length === 0) {
-            logger.warn("No valid semver tags found for Newt repository");
-            return staleNewtVersion;
-        }
-
-        const latestVersion = tags[0].name;
-
-        staleNewtVersion = latestVersion;
-        await cache.set("cache:latestNewtVersion", latestVersion, 3600);
-
-        return latestVersion;
-    } catch (error: any) {
-        if (error.name === "AbortError") {
-            logger.warn(
-                "Request to fetch latest Newt version timed out (1.5s)"
-            );
-        } else if (error.cause?.code === "UND_ERR_CONNECT_TIMEOUT") {
-            logger.warn(
-                "Connection timeout while fetching latest Newt version"
-            );
-        } else {
-            logger.warn(
-                "Error fetching latest Newt version:",
-                error.message || error
-            );
-        }
-        return staleNewtVersion;
-    }
-}
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 
 const listSitesParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const listSitesSchema = z.object({
+const listSitesSchema = z.strictObject({
     pageSize: z.coerce
         .number<string>() // for prettier formatting
         .int()
@@ -135,7 +48,7 @@ const listSitesSchema = z.object({
     page: z.coerce
         .number<string>() // for prettier formatting
         .int()
-        .min(0)
+        .positive()
         .optional()
         .catch(1)
         .default(1)
@@ -182,12 +95,32 @@ const listSitesSchema = z.object({
             type: "string",
             enum: ["pending", "approved"],
             description: "Filter by site status"
+        }),
+    labels: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            if (Array.isArray(val)) {
+                return val;
+            }
+            // the array is returned as this
+            if (typeof val === "string") {
+                return val.split(",");
+            }
+            return undefined;
+        }, z.array(z.string()))
+        .optional()
+        .catch([])
+        .openapi({
+            type: "array",
+            description: "Filter by site labels"
         })
 });
 
 function querySitesBase() {
     return db
-        .select({
+        .selectDistinct({
             siteId: sites.siteId,
             niceId: sites.niceId,
             name: sites.name,
@@ -233,6 +166,7 @@ type SiteRowBase = Awaited<ReturnType<typeof querySitesBase>>[0];
 type SiteWithUpdateAvailable = Omit<SiteRowBase, "online"> & {
     online?: SiteRowBase["online"]; // undefined for local sites
     newtUpdateAvailable?: boolean;
+    labels?: Array<Pick<Label, "color" | "labelId" | "name">>;
 };
 
 export type ListSitesResponse = PaginatedResponse<{
@@ -254,7 +188,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -281,7 +215,6 @@ export async function listSites(
                 )
             );
         }
-
         const parsedParams = listSitesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
@@ -302,66 +235,100 @@ export async function listSites(
             );
         }
 
-        let accessibleSites;
+        const {
+            pageSize,
+            page,
+            query,
+            sort_by,
+            order,
+            online,
+            status,
+            labels: labelFilter
+        } = parsedQuery.data;
+
+        const conditions = [eq(sites.orgId, orgId)];
+
         if (req.user) {
-            accessibleSites = await db
-                .select({
-                    siteId: sql<number>`COALESCE(${userSites.siteId}, ${roleSites.siteId})`
-                })
-                .from(userSites)
-                .fullJoin(roleSites, eq(userSites.siteId, roleSites.siteId))
-                .where(
-                    or(
-                        eq(userSites.userId, req.user!.userId),
-                        inArray(roleSites.roleId, req.userOrgRoleIds!)
+            const userAccessConditions = [
+                inArray(
+                    sites.siteId,
+                    db
+                        .select({ siteId: userSites.siteId })
+                        .from(userSites)
+                        .where(eq(userSites.userId, req.user.userId))
+                )
+            ];
+
+            const roleIds = req.userOrgRoleIds ?? [];
+            if (roleIds.length > 0) {
+                userAccessConditions.push(
+                    inArray(
+                        sites.siteId,
+                        db
+                            .select({ siteId: roleSites.siteId })
+                            .from(roleSites)
+                            .where(inArray(roleSites.roleId, roleIds))
                     )
                 );
-        } else {
-            accessibleSites = await db
-                .select({ siteId: sites.siteId })
-                .from(sites)
-                .where(eq(sites.orgId, orgId));
-        }
+            }
 
-        const { pageSize, page, query, sort_by, order, online, status } =
-            parsedQuery.data;
-
-        const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
-
-        const conditions = [
-            and(
-                inArray(sites.siteId, accessibleSiteIds),
-                eq(sites.orgId, orgId)
-            )
-        ];
-        if (query) {
             conditions.push(
-                or(
-                    like(
-                        sql`LOWER(${sites.name})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${sites.niceId})`,
-                        "%" + query.toLowerCase() + "%"
-                    )
-                )
+                userAccessConditions.length === 1
+                    ? userAccessConditions[0]
+                    : or(...userAccessConditions)!
             );
         }
+
         if (typeof online !== "undefined") {
             conditions.push(eq(sites.online, online));
         }
         if (typeof status !== "undefined") {
             conditions.push(eq(sites.status, status));
         }
+
+        if (labelFilter && labelFilter.length > 0) {
+            conditions.push(
+                inArray(
+                    sites.siteId,
+                    db
+                        .select({ id: siteLabels.siteId })
+                        .from(siteLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, siteLabels.labelId)
+                        )
+                        .where(inArray(labels.name, labelFilter))
+                )
+            );
+        }
+
+        if (query) {
+            const q = "%" + query.toLowerCase() + "%";
+            const queryList = [
+                like(sql`LOWER(${sites.name})`, q),
+                like(sql`LOWER(${sites.niceId})`, q),
+                inArray(
+                    sites.siteId,
+                    db
+                        .select({ id: siteLabels.siteId })
+                        .from(siteLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, siteLabels.labelId)
+                        )
+                        .where(like(sql`LOWER(${labels.name})`, q))
+                )
+            ];
+
+            conditions.push(or(...queryList)!);
+        }
+
         const baseQuery = querySitesBase().where(and(...conditions));
 
-        // we need to add `as` so that drizzle filters the result as a subquery
-        const countQuery = db.$count(
-            querySitesBase()
-                .where(and(...conditions))
-                .as("filtered_sites")
-        );
+        const countQuery = db
+            .select({ count: sql<number>`count(*)` })
+            .from(sites)
+            .where(and(...conditions));
 
         const siteListQuery = baseQuery
             .limit(pageSize)
@@ -374,50 +341,52 @@ export async function listSites(
                     : asc(sites.name)
             );
 
-        const [totalCount, rows] = await Promise.all([
+        const [countRows, rows] = await Promise.all([
             countQuery,
             siteListQuery
         ]);
 
-        // Get latest version asynchronously without blocking the response
-        const latestNewtVersionPromise = getLatestNewtVersion();
+        const totalCount = Number(countRows[0]?.count ?? 0);
+
+        const siteIds = rows.map((site) => site.siteId);
+
+        let labelsForSites: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            siteId: number;
+        }> = [];
+
+        labelsForSites =
+            siteIds.length === 0
+                ? []
+                : await db
+                      .select({
+                          labelId: labels.labelId,
+                          name: labels.name,
+                          color: labels.color,
+                          siteId: siteLabels.siteId
+                      })
+                      .from(labels)
+                      .innerJoin(
+                          siteLabels,
+                          eq(siteLabels.labelId, labels.labelId)
+                      )
+                      .where(inArray(siteLabels.siteId, siteIds))
+                      .orderBy(asc(siteLabels.siteLabelId));
 
         const sitesWithUpdates: SiteWithUpdateAvailable[] = rows.map((site) => {
             const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
             // Initially set to false, will be updated if version check succeeds
             siteWithUpdate.newtUpdateAvailable = false;
-            return siteWithUpdate;
-        });
 
-        // Try to get the latest version, but don't block if it fails
-        try {
-            const latestNewtVersion = await latestNewtVersionPromise;
-
-            if (latestNewtVersion) {
-                sitesWithUpdates.forEach((site) => {
-                    if (
-                        site.type === "newt" &&
-                        site.newtVersion &&
-                        latestNewtVersion
-                    ) {
-                        try {
-                            site.newtUpdateAvailable = semver.lt(
-                                site.newtVersion,
-                                latestNewtVersion
-                            );
-                        } catch (error) {
-                            site.newtUpdateAvailable = false;
-                        }
-                    }
-                });
-            }
-        } catch (error) {
-            // Log the error but don't let it block the response
-            logger.warn(
-                "Failed to check for Newt updates, continuing without update info:",
-                error
+            // associate labels
+            const labelsForSite = labelsForSites.filter(
+                (label) => label.siteId === site.siteId
             );
-        }
+
+            return { ...siteWithUpdate, labels: labelsForSite };
+        });
 
         const sitesPayload = sitesWithUpdates.map((site) =>
             site.type === "local" ? { ...site, online: undefined } : site

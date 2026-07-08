@@ -37,7 +37,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -99,7 +99,7 @@ export async function applyJSONBlueprint(
                 source: "API"
             });
         } catch (error) {
-            logger.error(`Failed to update database from config: ${error}`);
+            logger.debug(`Failed to update database from config: ${error}`);
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,

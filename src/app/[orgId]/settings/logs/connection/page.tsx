@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@app/components/ui/button";
-import { ColumnFilter } from "@app/components/ColumnFilter";
+import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 import { DateTimeValue } from "@app/components/DateTimePicker";
 import { LogDataTable } from "@app/components/LogDataTable";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
@@ -11,24 +11,19 @@ import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
+import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHref";
+import { logQueries } from "@app/lib/queries";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { QueryConnectionAuditLogResponse } from "@server/routers/auditLogs/types";
+import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import axios from "axios";
 import { ArrowUpRight, Laptop, User } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-
-function formatBytes(bytes: number | null): string {
-    if (bytes === null || bytes === undefined) return "-";
-    if (bytes === 0) return "0 B";
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    const value = bytes / Math.pow(1024, i);
-    return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
+import { useMemo, useState, useTransition } from "react";
 
 function formatDuration(startedAt: number, endedAt: number | null): string {
     if (endedAt === null || endedAt === undefined) return "Active";
@@ -54,24 +49,8 @@ export default function ConnectionLogsPage() {
 
     const { isPaidUser } = usePaidStatus();
 
-    const [rows, setRows] = useState<any[]>([]);
-    const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, startTransition] = useTransition();
-    const [filterAttributes, setFilterAttributes] = useState<{
-        protocols: string[];
-        destAddrs: string[];
-        clients: { id: number; name: string }[];
-        resources: { id: number; name: string | null }[];
-        users: { id: string; email: string | null }[];
-    }>({
-        protocols: [],
-        destAddrs: [],
-        clients: [],
-        resources: [],
-        users: []
-    });
 
-    // Filter states - unified object for all filters
     const [filters, setFilters] = useState<{
         protocol?: string;
         destAddr?: string;
@@ -86,43 +65,24 @@ export default function ConnectionLogsPage() {
         userId: searchParams.get("userId") || undefined
     });
 
-    // Pagination state
-    const [totalCount, setTotalCount] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(0);
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Initialize page size from storage or default
     const [pageSize, setPageSize] = useStoredPageSize(
         "connection-audit-logs",
         20
     );
 
-    // Set default date range to last 7 days
     const getDefaultDateRange = () => {
-        // if the time is in the url params, use that instead
         const startParam = searchParams.get("start");
         const endParam = searchParams.get("end");
         if (startParam && endParam) {
             return {
-                startDate: {
-                    date: new Date(startParam)
-                },
-                endDate: {
-                    date: new Date(endParam)
-                }
+                startDate: { date: new Date(startParam) },
+                endDate: { date: new Date(endParam) }
             };
         }
-
-        const now = new Date();
-        const lastWeek = getSevenDaysAgo();
-
         return {
-            startDate: {
-                date: lastWeek
-            },
-            endDate: {
-                date: now
-            }
+            startDate: { date: getSevenDaysAgo() },
+            endDate: { date: new Date() }
         };
     };
 
@@ -131,78 +91,98 @@ export default function ConnectionLogsPage() {
         endDate: DateTimeValue;
     }>(getDefaultDateRange());
 
-    // Trigger search with default values on component mount
-    useEffect(() => {
-        if (build === "oss") {
-            return;
+    const queryFilters = useMemo(() => {
+        let timeStart: string | undefined;
+        let timeEnd: string | undefined;
+
+        if (dateRange.startDate?.date) {
+            const dt = new Date(dateRange.startDate.date);
+            if (dateRange.startDate.time) {
+                const [h, m, s] = dateRange.startDate.time
+                    .split(":")
+                    .map(Number);
+                dt.setHours(h, m, s || 0);
+            }
+            timeStart = dt.toISOString();
         }
-        const defaultRange = getDefaultDateRange();
-        queryDateTime(
-            defaultRange.startDate,
-            defaultRange.endDate,
-            0,
-            pageSize
-        );
-    }, [orgId]); // Re-run if orgId changes
+
+        if (dateRange.endDate?.date) {
+            const dt = new Date(dateRange.endDate.date);
+            if (dateRange.endDate.time) {
+                const [h, m, s] = dateRange.endDate.time.split(":").map(Number);
+                dt.setHours(h, m, s || 0);
+            } else {
+                const now = new Date();
+                dt.setHours(
+                    now.getHours(),
+                    now.getMinutes(),
+                    now.getSeconds(),
+                    now.getMilliseconds()
+                );
+            }
+            timeEnd = dt.toISOString();
+        }
+
+        return {
+            timeStart,
+            timeEnd,
+            page: currentPage,
+            pageSize,
+            ...filters,
+            clientId: filters.clientId ? Number(filters.clientId) : undefined,
+            siteResourceId: filters.siteResourceId
+                ? Number(filters.siteResourceId)
+                : undefined
+        };
+    }, [dateRange, currentPage, pageSize, filters]);
+
+    const { data, isFetching, isLoading, refetch } = useQuery({
+        ...logQueries.connection({
+            orgId: orgId as string,
+            filters: queryFilters
+        }),
+        enabled: isPaidUser(tierMatrix.connectionLogs) && build !== "oss"
+    });
+
+    const rows = isLoading ? generateSampleConnectionLogs() : (data?.log ?? []);
+    const totalCount = data?.pagination?.total ?? 0;
+    const filterAttributes = data?.filterAttributes ?? {
+        protocols: [],
+        destAddrs: [],
+        clients: [],
+        resources: [],
+        users: []
+    };
 
     const handleDateRangeChange = (
         startDate: DateTimeValue,
         endDate: DateTimeValue
     ) => {
         setDateRange({ startDate, endDate });
-        setCurrentPage(0); // Reset to first page when filtering
-        // put the search params in the url for the time
+        setCurrentPage(0);
         updateUrlParamsForAllFilters({
             start: startDate.date?.toISOString() || "",
             end: endDate.date?.toISOString() || ""
         });
-
-        queryDateTime(startDate, endDate, 0, pageSize);
     };
 
-    // Handle page changes
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage);
-        queryDateTime(
-            dateRange.startDate,
-            dateRange.endDate,
-            newPage,
-            pageSize
-        );
     };
 
-    // Handle page size changes
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
-        setCurrentPage(0); // Reset to first page when changing page size
-        queryDateTime(dateRange.startDate, dateRange.endDate, 0, newPageSize);
+        setCurrentPage(0);
     };
 
-    // Handle filter changes generically
     const handleFilterChange = (
         filterType: keyof typeof filters,
         value: string | undefined
     ) => {
-        // Create new filters object with updated value
-        const newFilters = {
-            ...filters,
-            [filterType]: value
-        };
-
+        const newFilters = { ...filters, [filterType]: value };
         setFilters(newFilters);
-        setCurrentPage(0); // Reset to first page when filtering
-
-        // Update URL params
+        setCurrentPage(0);
         updateUrlParamsForAllFilters(newFilters);
-
-        // Trigger new query with updated filters (pass directly to avoid async state issues)
-        queryDateTime(
-            dateRange.startDate,
-            dateRange.endDate,
-            0,
-            pageSize,
-            newFilters
-        );
     };
 
     const updateUrlParamsForAllFilters = (
@@ -224,113 +204,8 @@ export default function ConnectionLogsPage() {
         router.replace(`?${params.toString()}`, { scroll: false });
     };
 
-    const queryDateTime = async (
-        startDate: DateTimeValue,
-        endDate: DateTimeValue,
-        page: number = currentPage,
-        size: number = pageSize,
-        filtersParam?: typeof filters
-    ) => {
-        console.log("Date range changed:", { startDate, endDate, page, size });
-        if (!isPaidUser(tierMatrix.connectionLogs)) {
-            console.log(
-                "Access denied: subscription inactive or license locked"
-            );
-            return;
-        }
-        setIsLoading(true);
-
-        try {
-            // Use the provided filters or fall back to current state
-            const activeFilters = filtersParam || filters;
-
-            // Convert the date/time values to API parameters
-            const params: any = {
-                limit: size,
-                offset: page * size,
-                ...activeFilters
-            };
-
-            if (startDate?.date) {
-                const startDateTime = new Date(startDate.date);
-                if (startDate.time) {
-                    const [hours, minutes, seconds] = startDate.time
-                        .split(":")
-                        .map(Number);
-                    startDateTime.setHours(hours, minutes, seconds || 0);
-                }
-                params.timeStart = startDateTime.toISOString();
-            }
-
-            if (endDate?.date) {
-                const endDateTime = new Date(endDate.date);
-                if (endDate.time) {
-                    const [hours, minutes, seconds] = endDate.time
-                        .split(":")
-                        .map(Number);
-                    endDateTime.setHours(hours, minutes, seconds || 0);
-                } else {
-                    // If no time is specified, set to NOW
-                    const now = new Date();
-                    endDateTime.setHours(
-                        now.getHours(),
-                        now.getMinutes(),
-                        now.getSeconds(),
-                        now.getMilliseconds()
-                    );
-                }
-                params.timeEnd = endDateTime.toISOString();
-            }
-
-            const res = await api.get(`/org/${orgId}/logs/connection`, {
-                params
-            });
-            if (res.status === 200) {
-                setRows(res.data.data.log || []);
-                setTotalCount(res.data.data.pagination?.total || 0);
-                setFilterAttributes(res.data.data.filterAttributes);
-                console.log("Fetched connection logs:", res.data);
-            }
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("Failed to filter logs"),
-                variant: "destructive"
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const refreshData = async () => {
-        console.log("Data refreshed");
-        setIsRefreshing(true);
-        try {
-            const endDate = searchParams.get("end")
-                ? dateRange.endDate
-                : { date: new Date() };
-            setDateRange((current) => ({ ...current, endDate }));
-            // Refresh data with current date range and pagination
-            await queryDateTime(
-                dateRange.startDate,
-                endDate,
-                currentPage,
-                pageSize
-            );
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("refreshError"),
-                variant: "destructive"
-            });
-        } finally {
-            setIsRefreshing(false);
-        }
-    };
-
     const exportData = async () => {
         try {
-            // Prepare query params for export
             const params: any = {
                 timeStart: dateRange.startDate?.date
                     ? new Date(dateRange.startDate.date).toISOString()
@@ -349,7 +224,6 @@ export default function ConnectionLogsPage() {
                 }
             );
 
-            // Create a URL for the blob and trigger a download
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement("a");
             link.href = url;
@@ -367,7 +241,6 @@ export default function ConnectionLogsPage() {
                 const data = error.response.data;
 
                 if (data instanceof Blob && data.type === "application/json") {
-                    // Parse the Blob as JSON
                     const text = await data.text();
                     const errorData = JSON.parse(text);
                     apiErrorMessage = errorData.message;
@@ -384,9 +257,7 @@ export default function ConnectionLogsPage() {
     const columns: ColumnDef<any>[] = [
         {
             accessorKey: "startedAt",
-            header: ({ column }) => {
-                return t("timestamp");
-            },
+            header: () => <span className="px-2">{t("timestamp")}</span>,
             cell: ({ row }) => {
                 return (
                     <div className="whitespace-nowrap">
@@ -399,23 +270,23 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "protocol",
-            header: ({ column }) => {
+            header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("protocol")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.protocols.map(
                                 (protocol) => ({
                                     label: protocol.toUpperCase(),
                                     value: protocol
                                 })
                             )}
+                            label={t("protocol")}
                             selectedValue={filters.protocol}
                             onValueChange={(value) =>
                                 handleFilterChange("protocol", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -430,21 +301,21 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "resourceName",
-            header: ({ column }) => {
+            header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("resource")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.resources.map((res) => ({
                                 value: res.id.toString(),
                                 label: res.name || "Unnamed Resource"
                             }))}
+                            label={t("resource")}
                             selectedValue={filters.siteResourceId}
                             onValueChange={(value) =>
                                 handleFilterChange("siteResourceId", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -453,7 +324,10 @@ export default function ConnectionLogsPage() {
                 if (row.original.resourceName && row.original.resourceNiceId) {
                     return (
                         <Link
-                            href={`/${row.original.orgId}/settings/resources/client/?query=${row.original.resourceNiceId}`}
+                            href={getPrivateResourceSettingsHref(
+                                row.original.orgId,
+                                row.original.resourceNiceId
+                            )}
                         >
                             <Button variant="outline" size="sm">
                                 {row.original.resourceName}
@@ -471,21 +345,21 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "clientName",
-            header: ({ column }) => {
+            header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("client")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.clients.map((c) => ({
                                 value: c.id.toString(),
                                 label: c.name
                             }))}
+                            label={t("client")}
                             selectedValue={filters.clientId}
                             onValueChange={(value) =>
                                 handleFilterChange("clientId", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -514,21 +388,21 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "userEmail",
-            header: ({ column }) => {
+            header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("user")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.users.map((u) => ({
                                 value: u.id,
                                 label: u.email || u.id
                             }))}
+                            label={t("user")}
                             selectedValue={filters.userId}
                             onValueChange={(value) =>
                                 handleFilterChange("userId", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -547,9 +421,7 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "sourceAddr",
-            header: ({ column }) => {
-                return t("sourceAddress");
-            },
+            header: () => <span className="px-2">{t("sourceAddress")}</span>,
             cell: ({ row }) => {
                 return (
                     <span className="whitespace-nowrap font-mono text-xs">
@@ -560,21 +432,21 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "destAddr",
-            header: ({ column }) => {
+            header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("destinationAddress")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.destAddrs.map((addr) => ({
                                 value: addr,
                                 label: addr
                             }))}
+                            label={t("destinationAddress")}
                             selectedValue={filters.destAddr}
                             onValueChange={(value) =>
                                 handleFilterChange("destAddr", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -589,9 +461,7 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "duration",
-            header: ({ column }) => {
-                return t("duration");
-            },
+            header: () => <span className="px-2">{t("duration")}</span>,
             cell: ({ row }) => {
                 return (
                     <span className="whitespace-nowrap">
@@ -610,9 +480,6 @@ export default function ConnectionLogsPage() {
             <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                     <div className="space-y-2">
-                        {/*<div className="flex items-center gap-1 font-semibold text-sm mb-1">
-                            Connection Details
-                        </div>*/}
                         <div>
                             <strong>Session ID:</strong>{" "}
                             <span className="font-mono">
@@ -637,18 +504,6 @@ export default function ConnectionLogsPage() {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        {/*<div className="flex items-center gap-1 font-semibold text-sm mb-1">
-                            Resource & Site
-                        </div>*/}
-                        {/*<div>
-                            <strong>Resource:</strong>{" "}
-                            {row.resourceName ?? "-"}
-                            {row.resourceNiceId && (
-                                <span className="text-muted-foreground ml-1">
-                                    ({row.resourceNiceId})
-                                </span>
-                            )}
-                        </div>*/}
                         <div>
                             <strong>Client Endpoint:</strong>{" "}
                             <span className="font-mono">
@@ -684,30 +539,8 @@ export default function ConnectionLogsPage() {
                             <strong>Duration:</strong>{" "}
                             {formatDuration(row.startedAt, row.endedAt)}
                         </div>
-                        {/*<div>
-                            <strong>Resource ID:</strong>{" "}
-                            {row.siteResourceId ?? "-"}
-                        </div>*/}
                     </div>
-                    <div className="space-y-2">
-                        {/*<div className="flex items-center gap-1 font-semibold text-sm mb-1">
-                            Client & Transfer
-                        </div>*/}
-                        {/*<div>
-                            <strong>Bytes Sent (TX):</strong>{" "}
-                            {formatBytes(row.bytesTx)}
-                        </div>*/}
-                        {/*<div>
-                            <strong>Bytes Received (RX):</strong>{" "}
-                            {formatBytes(row.bytesRx)}
-                        </div>*/}
-                        {/*<div>
-                            <strong>Total Transfer:</strong>{" "}
-                            {formatBytes(
-                                (row.bytesTx ?? 0) + (row.bytesRx ?? 0)
-                            )}
-                        </div>*/}
-                    </div>
+                    <div className="space-y-2" />
                 </div>
             </div>
         );
@@ -728,8 +561,8 @@ export default function ConnectionLogsPage() {
                 title={t("connectionLogs")}
                 searchPlaceholder={t("searchLogs")}
                 searchColumn="protocol"
-                onRefresh={refreshData}
-                isRefreshing={isRefreshing}
+                onRefresh={() => refetch()}
+                isRefreshing={isFetching}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}
                 onDateRangeChange={handleDateRangeChange}
@@ -741,14 +574,12 @@ export default function ConnectionLogsPage() {
                     id: "startedAt",
                     desc: true
                 }}
-                // Server-side pagination props
                 totalCount={totalCount}
                 currentPage={currentPage}
                 pageSize={pageSize}
                 onPageChange={handlePageChange}
                 onPageSizeChange={handlePageSizeChange}
                 isLoading={isLoading}
-                // Row expansion props
                 expandable={true}
                 renderExpandedRow={renderExpandedRow}
                 disabled={
@@ -757,4 +588,51 @@ export default function ConnectionLogsPage() {
             />
         </>
     );
+}
+
+function generateSampleConnectionLogs(): QueryConnectionAuditLogResponse["log"] {
+    const protocols = ["tcp", "udp", "icmp"];
+    const destAddrs = [
+        "10.0.0.1:22",
+        "10.0.0.2:80",
+        "10.0.0.3:443",
+        "192.168.1.10:3306"
+    ];
+
+    const now = Math.floor(Date.now() / 1000);
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60;
+
+    return Array.from({ length: 10 }, (_, i) => {
+        const startedAt = Math.floor(
+            sevenDaysAgo + Math.random() * (now - sevenDaysAgo)
+        );
+        const active = Math.random() > 0.3;
+
+        return {
+            sessionId: `session-${i}`,
+            siteResourceId: (i % 3) + 1,
+            orgId: "sample-org",
+            siteId: 1,
+            clientId: (i % 4) + 1,
+            clientEndpoint: `10.0.0.${i + 1}:51820`,
+            userId: i % 2 === 0 ? `user-${i}` : null,
+            sourceAddr: `192.168.1.${i + 1}:${40000 + i}`,
+            destAddr: destAddrs[Math.floor(Math.random() * destAddrs.length)],
+            protocol: protocols[Math.floor(Math.random() * protocols.length)],
+            startedAt,
+            endedAt: active
+                ? null
+                : startedAt + Math.floor(Math.random() * 3600),
+            bytesTx: active ? null : Math.floor(Math.random() * 1024 * 1024),
+            bytesRx: active ? null : Math.floor(Math.random() * 1024 * 1024),
+            resourceName: `Resource ${(i % 3) + 1}`,
+            resourceNiceId: `resource-${(i % 3) + 1}`,
+            siteName: "Sample Site",
+            siteNiceId: "sample-site",
+            clientName: `Client ${(i % 4) + 1}`,
+            clientNiceId: `client-${(i % 4) + 1}`,
+            clientType: i % 2 === 0 ? "user" : "machine",
+            userEmail: i % 2 === 0 ? `user${i}@example.com` : null
+        };
+    });
 }

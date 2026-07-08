@@ -14,7 +14,7 @@ const listTargetsParamsSchema = z.strictObject({
     resourceId: z.coerce.number().int().positive()
 });
 
-const listTargetsSchema = z.object({
+const listTargetsSchema = z.strictObject({
     limit: z
         .string()
         .optional()
@@ -34,6 +34,7 @@ function queryTargets(resourceId: number) {
         .select({
             targetId: targets.targetId,
             ip: targets.ip,
+            mode: targets.mode,
             method: targets.method,
             port: targets.port,
             enabled: targets.enabled,
@@ -102,7 +103,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),

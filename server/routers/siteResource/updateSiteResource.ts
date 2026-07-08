@@ -1,8 +1,6 @@
 import {
     clientSiteResources,
-    clientSiteResourcesAssociationsCache,
     db,
-    newts,
     orgs,
     roles,
     roleSiteResources,
@@ -10,8 +8,6 @@ import {
     SiteResource,
     siteResources,
     sites,
-    networks,
-    Transaction,
     userSiteResources
 } from "@server/db";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
@@ -20,15 +16,13 @@ import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import response from "@server/lib/response";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
-import { updatePeerData, updateTargets } from "@server/routers/client/targets";
+import { isIpInCidr, portRangeStringSchema } from "@server/lib/ip";
 import {
-    generateAliasConfig,
-    generateRemoteSubnets,
-    generateSubnetProxyTargetV2,
-    isIpInCidr,
-    portRangeStringSchema
-} from "@server/lib/ip";
-import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+    handleMessagingForUpdatedSiteResource,
+    isOrgRebuildRateLimited,
+    rebuildClientAssociationsFromSiteResource,
+    waitForSiteResourceRebuildIdle
+} from "@server/lib/rebuildClientAssociations";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import { NextFunction, Request, Response } from "express";
@@ -56,12 +50,11 @@ const updateSiteResourceSchema = z
             )
             .optional(),
         // mode: z.enum(["host", "cidr", "port"]).optional(),
-        mode: z.enum(["host", "cidr", "http"]).optional(),
+        mode: z.enum(["host", "cidr", "http", "ssh"]).optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).nullish(),
-        // proxyPort: z.int().positive().nullish(),
         destinationPort: z.int().positive().nullish(),
-        destination: z.string().min(1).optional(),
+        destination: z.string().min(1).nullish(),
         enabled: z.boolean().optional(),
         alias: z
             .string()
@@ -75,21 +68,25 @@ const updateSiteResourceSchema = z
                     "Fully qualified domain name with optional wildcards, e.g., example.internal, *.example.internal, or host-0?.example.internal",
                 example: "service.example.internal"
             }),
-        userIds: z.array(z.string()),
-        roleIds: z.array(z.int()),
-        clientIds: z.array(z.int()),
+        userIds: z.array(z.string()).optional(),
+        roleIds: z.array(z.int()).optional(),
+        clientIds: z.array(z.int()).optional(),
         tcpPortRangeString: portRangeStringSchema,
         udpPortRangeString: portRangeStringSchema,
         disableIcmp: z.boolean().optional(),
         authDaemonPort: z.int().positive().nullish(),
-        authDaemonMode: z.enum(["site", "remote"]).optional(),
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
+        pamMode: z.enum(["passthrough", "push"]).optional(),
         domainId: z.string().optional(),
         subdomain: z.string().optional()
     })
     .strict()
     .refine(
         (data) => {
-            if (data.mode === "host" && data.destination) {
+            if (
+                (data.mode === "host" || data.mode == "ssh") &&
+                data.destination
+            ) {
                 const isValidIP = z
                     // .union([z.ipv4(), z.ipv6()])
                     .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
@@ -130,15 +127,23 @@ const updateSiteResourceSchema = z
     )
     .refine(
         (data) => {
-            if (data.mode !== "http") return true;
-            return (
-                data.scheme !== undefined &&
-                data.scheme !== null &&
-                data.destinationPort !== undefined &&
-                data.destinationPort !== null &&
-                data.destinationPort >= 1 &&
-                data.destinationPort <= 65535
-            );
+            if (data.mode === "http") {
+                return (
+                    data.scheme !== undefined &&
+                    data.scheme !== null &&
+                    data.destinationPort !== undefined &&
+                    data.destinationPort !== null &&
+                    data.destinationPort >= 1 &&
+                    data.destinationPort <= 65535
+                );
+            } else if (data.mode === "ssh") {
+                // destinationPort is optional for native mode; allow null/undefined
+                return (
+                    data.destinationPort == null ||
+                    (data.destinationPort >= 1 && data.destinationPort <= 65535)
+                );
+            }
+            return true;
         },
         {
             message:
@@ -147,6 +152,26 @@ const updateSiteResourceSchema = z
     )
     .refine(
         (data) => {
+            // destination is only optional for ssh mode with native authDaemonMode
+            if (data.mode === "ssh" && data.authDaemonMode === "native") {
+                return true;
+            }
+            return (
+                data.destination !== undefined &&
+                data.destination?.trim() !== ""
+            );
+        },
+        {
+            message:
+                "Destination is required unless mode is ssh with authDaemonMode native"
+        }
+    )
+    .refine(
+        (data) => {
+            // if neither is provided, the existing site associations are left unchanged
+            if (data.siteIds === undefined && data.siteId === undefined) {
+                return true;
+            }
             return (
                 (data.siteIds !== undefined && data.siteIds.length > 0) ||
                 data.siteId !== undefined
@@ -154,6 +179,25 @@ const updateSiteResourceSchema = z
         },
         {
             message: "At least one of siteIds or siteId must be provided"
+        }
+    )
+    .refine(
+        (data) => {
+            if (data.mode !== "ssh") return true;
+            const isSingleSiteMode =
+                data.authDaemonMode === "native" ||
+                (data.pamMode === "push" && data.authDaemonMode === "site") ||
+                (data.pamMode === "push" && data.authDaemonMode === undefined);
+            if (!isSingleSiteMode) return true;
+            const effectiveSiteIds = [
+                ...(data.siteIds ?? []),
+                ...(data.siteId !== undefined ? [data.siteId] : [])
+            ];
+            const uniqueSiteIds = new Set(effectiveSiteIds);
+            return uniqueSiteIds.size <= 1;
+        },
+        {
+            message: "Only one site is allowed for this SSH daemon mode"
         }
     );
 
@@ -181,7 +225,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -224,7 +268,7 @@ export async function updateSiteResource(
         const { siteResourceId } = parsedParams.data;
         const {
             name,
-            siteIds: siteIdsInput = [], // because it can change
+            siteIds: siteIdsInput,
             siteId,
             niceId,
             mode,
@@ -242,14 +286,20 @@ export async function updateSiteResource(
             disableIcmp,
             authDaemonPort,
             authDaemonMode,
+            pamMode,
             domainId,
             subdomain
         } = parsedBody.data;
 
         // Backward compatibility: merge deprecated siteId into siteIds array
-        const siteIds = [...siteIdsInput];
-        if (siteId !== undefined && !siteIds.includes(siteId)) {
-            siteIds.push(siteId);
+        const siteIdsProvided =
+            siteIdsInput !== undefined || siteId !== undefined;
+        let siteIds: number[] | undefined;
+        if (siteIdsProvided) {
+            siteIds = [...(siteIdsInput ?? [])];
+            if (siteId !== undefined && !siteIds.includes(siteId)) {
+                siteIds.push(siteId);
+            }
         }
 
         // Check if site resource exists
@@ -268,7 +318,7 @@ export async function updateSiteResource(
         if (mode == "http") {
             const hasHttpFeature = await isLicensedOrSubscribed(
                 existingSiteResource.orgId,
-                tierMatrix[TierFeature.HTTPPrivateResources]
+                tierMatrix[TierFeature.AdvancedPrivateResources]
             );
             if (!hasHttpFeature) {
                 return next(
@@ -282,7 +332,7 @@ export async function updateSiteResource(
 
         const isLicensedSshPam = await isLicensedOrSubscribed(
             existingSiteResource.orgId,
-            tierMatrix.sshPam
+            tierMatrix.advancedPrivateResources
         );
 
         const [org] = await db
@@ -306,21 +356,32 @@ export async function updateSiteResource(
             );
         }
 
-        // Verify the site exists and belongs to the org
-        const sitesToAssign = await db
-            .select()
-            .from(sites)
-            .where(
-                and(
-                    inArray(sites.siteId, siteIds),
-                    eq(sites.orgId, existingSiteResource.orgId)
+        if (await isOrgRebuildRateLimited(org.orgId)) {
+            return next(
+                createHttpError(
+                    HttpCode.TOO_MANY_REQUESTS,
+                    "Too many concurrent rebuild operations for this organization. Please retry after a moment."
                 )
             );
+        }
 
-        if (sitesToAssign.length !== siteIds.length) {
-            return next(
-                createHttpError(HttpCode.NOT_FOUND, "Some site not found")
-            );
+        // Verify the site exists and belongs to the org
+        if (siteIds !== undefined) {
+            const sitesToAssign = await db
+                .select()
+                .from(sites)
+                .where(
+                    and(
+                        inArray(sites.siteId, siteIds),
+                        eq(sites.orgId, existingSiteResource.orgId)
+                    )
+                );
+
+            if (sitesToAssign.length !== siteIds.length) {
+                return next(
+                    createHttpError(HttpCode.NOT_FOUND, "Some site not found")
+                );
+            }
         }
 
         // Only check if destination is an IP address
@@ -340,8 +401,7 @@ export async function updateSiteResource(
             );
         }
 
-        let sitesChanged = false;
-        const existingSiteIds = existingSiteResource.networkId
+        const existingSiteNetworks = existingSiteResource.networkId
             ? await db
                   .select()
                   .from(siteNetworks)
@@ -349,16 +409,7 @@ export async function updateSiteResource(
                       eq(siteNetworks.networkId, existingSiteResource.networkId)
                   )
             : [];
-
-        const existingSiteIdSet = new Set(existingSiteIds.map((s) => s.siteId));
-        const newSiteIdSet = new Set(siteIds);
-
-        if (
-            existingSiteIdSet.size !== newSiteIdSet.size ||
-            ![...existingSiteIdSet].every((id) => newSiteIdSet.has(id))
-        ) {
-            sitesChanged = true;
-        }
+        const existingSiteIds = existingSiteNetworks.map((sn) => sn.siteId);
 
         let fullDomain: string | null = null;
         let finalSubdomain: string | null = null;
@@ -424,83 +475,67 @@ export async function updateSiteResource(
         }
 
         let updatedSiteResource: SiteResource | undefined;
+        // defaults to the existing sites; only overwritten below if siteIds/siteId was provided
+        let updatedSiteIds: number[] = [...existingSiteIds];
         await db.transaction(async (trx) => {
-            // if the site is changed we need to delete and recreate the resource to avoid complications with the rebuild function otherwise we can just update in place
-            if (sitesChanged) {
-                // delete the existing site resource
-                await trx
-                    .delete(siteResources)
-                    .where(
-                        and(eq(siteResources.siteResourceId, siteResourceId))
-                    );
+            // Update the site resource
+            const sshPamSet =
+                isLicensedSshPam &&
+                (authDaemonPort !== undefined ||
+                    authDaemonMode !== undefined ||
+                    pamMode !== undefined)
+                    ? {
+                          ...(authDaemonPort !== undefined && {
+                              authDaemonPort
+                          }),
+                          ...(authDaemonMode !== undefined && {
+                              authDaemonMode
+                          }),
+                          ...(pamMode !== undefined && {
+                              pamMode
+                          })
+                      }
+                    : {};
+            let tcpPortRangeStringAdjusted = tcpPortRangeString;
+            if (mode === "http") {
+                tcpPortRangeStringAdjusted = "443,80";
+            } else if (mode === "ssh") {
+                tcpPortRangeStringAdjusted = destinationPort
+                    ? destinationPort.toString()
+                    : "22";
+            }
 
-                await rebuildClientAssociationsFromSiteResource(
-                    existingSiteResource,
-                    trx
-                );
+            [updatedSiteResource] = await trx
+                .update(siteResources)
+                .set({
+                    name: name,
+                    niceId: niceId,
+                    mode: mode,
+                    scheme,
+                    ssl,
+                    destination: destination,
+                    destinationPort: destinationPort,
+                    enabled: enabled,
+                    alias: alias ? alias.trim() : null,
+                    tcpPortRangeString: tcpPortRangeStringAdjusted,
+                    udpPortRangeString:
+                        mode == "http" || mode == "ssh"
+                            ? ""
+                            : udpPortRangeString,
+                    disableIcmp:
+                        disableIcmp ||
+                        (mode == "http" || mode == "ssh" ? true : false),
+                    domainId,
+                    subdomain: finalSubdomain,
+                    fullDomain,
+                    ...sshPamSet
+                })
+                .where(and(eq(siteResources.siteResourceId, siteResourceId)))
+                .returning();
 
-                // create the new site resource from the removed one - the ID should stay the same
-                const [insertedSiteResource] = await trx
-                    .insert(siteResources)
-                    .values({
-                        ...existingSiteResource
-                    })
-                    .returning();
+            //////////////////// update the associations ////////////////////
 
-                const sshPamSet =
-                    isLicensedSshPam &&
-                    (authDaemonPort !== undefined ||
-                        authDaemonMode !== undefined)
-                        ? {
-                              ...(authDaemonPort !== undefined && {
-                                  authDaemonPort
-                              }),
-                              ...(authDaemonMode !== undefined && {
-                                  authDaemonMode
-                              })
-                          }
-                        : {};
-                [updatedSiteResource] = await trx
-                    .update(siteResources)
-                    .set({
-                        name,
-                        niceId,
-                        mode,
-                        scheme,
-                        ssl,
-                        destination,
-                        destinationPort,
-                        enabled,
-                        alias: alias ? alias.trim() : null,
-                        tcpPortRangeString:
-                            mode == "http" ? "443,80" : tcpPortRangeString,
-                        udpPortRangeString:
-                            mode == "http" ? "" : udpPortRangeString,
-                        disableIcmp:
-                            disableIcmp || (mode == "http" ? true : false), // default to true for http resources, otherwise false
-                        domainId,
-                        subdomain: finalSubdomain,
-                        fullDomain,
-                        ...sshPamSet
-                    })
-                    .where(
-                        and(
-                            eq(
-                                siteResources.siteResourceId,
-                                insertedSiteResource.siteResourceId
-                            )
-                        )
-                    )
-                    .returning();
-
-                if (!updatedSiteResource) {
-                    throw new Error(
-                        "Failed to create updated site resource after site change"
-                    );
-                }
-
-                //////////////////// update the associations ////////////////////
-
+            if (siteIds !== undefined) {
                 // delete the site - site resources associations
                 await trx
                     .delete(siteNetworks)
@@ -511,123 +546,17 @@ export async function updateSiteResource(
                         )
                     );
 
+                updatedSiteIds = [];
                 for (const siteId of siteIds) {
                     await trx.insert(siteNetworks).values({
                         siteId: siteId,
                         networkId: updatedSiteResource.networkId!
                     });
+                    updatedSiteIds.push(siteId);
                 }
+            }
 
-                const [adminRole] = await trx
-                    .select()
-                    .from(roles)
-                    .where(
-                        and(
-                            eq(roles.isAdmin, true),
-                            eq(roles.orgId, updatedSiteResource.orgId)
-                        )
-                    )
-                    .limit(1);
-
-                if (!adminRole) {
-                    return next(
-                        createHttpError(
-                            HttpCode.NOT_FOUND,
-                            `Admin role not found`
-                        )
-                    );
-                }
-
-                await trx.insert(roleSiteResources).values({
-                    roleId: adminRole.roleId,
-                    siteResourceId: updatedSiteResource.siteResourceId
-                });
-
-                if (roleIds.length > 0) {
-                    await trx.insert(roleSiteResources).values(
-                        roleIds.map((roleId) => ({
-                            roleId,
-                            siteResourceId: updatedSiteResource!.siteResourceId
-                        }))
-                    );
-                }
-
-                if (userIds.length > 0) {
-                    await trx.insert(userSiteResources).values(
-                        userIds.map((userId) => ({
-                            userId,
-                            siteResourceId: updatedSiteResource!.siteResourceId
-                        }))
-                    );
-                }
-
-                if (clientIds.length > 0) {
-                    await trx.insert(clientSiteResources).values(
-                        clientIds.map((clientId) => ({
-                            clientId,
-                            siteResourceId: updatedSiteResource!.siteResourceId
-                        }))
-                    );
-                }
-            } else {
-                // Update the site resource
-                const sshPamSet =
-                    isLicensedSshPam &&
-                    (authDaemonPort !== undefined ||
-                        authDaemonMode !== undefined)
-                        ? {
-                              ...(authDaemonPort !== undefined && {
-                                  authDaemonPort
-                              }),
-                              ...(authDaemonMode !== undefined && {
-                                  authDaemonMode
-                              })
-                          }
-                        : {};
-                [updatedSiteResource] = await trx
-                    .update(siteResources)
-                    .set({
-                        name: name,
-                        niceId: niceId,
-                        mode: mode,
-                        scheme,
-                        ssl,
-                        destination: destination,
-                        destinationPort: destinationPort,
-                        enabled: enabled,
-                        alias: alias ? alias.trim() : null,
-                        tcpPortRangeString: tcpPortRangeString,
-                        udpPortRangeString: udpPortRangeString,
-                        disableIcmp: disableIcmp,
-                        domainId,
-                        subdomain: finalSubdomain,
-                        fullDomain,
-                        ...sshPamSet
-                    })
-                    .where(
-                        and(eq(siteResources.siteResourceId, siteResourceId))
-                    )
-                    .returning();
-
-                //////////////////// update the associations ////////////////////
-
-                // delete the site - site resources associations
-                await trx
-                    .delete(siteNetworks)
-                    .where(
-                        eq(
-                            siteNetworks.networkId,
-                            updatedSiteResource.networkId!
-                        )
-                    );
-
-                for (const siteId of siteIds) {
-                    await trx.insert(siteNetworks).values({
-                        siteId: siteId,
-                        networkId: updatedSiteResource.networkId!
-                    });
-                }
-
+            if (clientIds !== undefined) {
                 await trx
                     .delete(clientSiteResources)
                     .where(
@@ -642,7 +571,9 @@ export async function updateSiteResource(
                         }))
                     );
                 }
+            }
 
+            if (userIds !== undefined) {
                 await trx
                     .delete(userSiteResources)
                     .where(
@@ -657,7 +588,9 @@ export async function updateSiteResource(
                         }))
                     );
                 }
+            }
 
+            if (roleIds !== undefined) {
                 // Get all admin role IDs for this org to exclude from deletion
                 const adminRoles = await trx
                     .select()
@@ -696,42 +629,36 @@ export async function updateSiteResource(
                         }))
                     );
                 }
-
-                logger.info(`Updated site resource ${siteResourceId}`);
             }
+
+            logger.info(`Updated site resource ${siteResourceId}`);
         });
 
-        // Background: wait for removal messages to propagate, then rebuild
-        // associations for the re-created resource. Own transaction ensures
-        // execution on the primary against fully committed state.
-        (async () => {
-            await db.transaction(async (trx) => {
-                if (!updatedSiteResource) {
-                    throw new Error("No updated resource found after update");
-                }
-                if (sitesChanged) {
-                    await new Promise((resolve) => setTimeout(resolve, 750));
-                    await rebuildClientAssociationsFromSiteResource(
-                        updatedSiteResource,
-                        trx
-                    );
-                }
-                await handleMessagingForUpdatedSiteResource(
+        if (!updatedSiteResource) {
+            throw new Error("No updated resource found after update");
+        }
+
+        const finalUpdatedSiteResource = updatedSiteResource;
+
+        rebuildClientAssociationsFromSiteResource(finalUpdatedSiteResource)
+            .then(() =>
+                waitForSiteResourceRebuildIdle(
+                    finalUpdatedSiteResource.siteResourceId
+                )
+            )
+            .then(() =>
+                handleMessagingForUpdatedSiteResource(
                     existingSiteResource,
-                    updatedSiteResource,
-                    siteIds.map((siteId) => ({
-                        siteId,
-                        orgId: existingSiteResource.orgId
-                    })),
-                    trx
+                    finalUpdatedSiteResource,
+                    existingSiteIds,
+                    updatedSiteIds
+                )
+            )
+            .catch((e) => {
+                logger.error(
+                    `Failed to rebuild and handle messaging for site resource ${siteResourceId}. Error: ${e}`
                 );
             });
-        })().catch((err) => {
-            logger.error(
-                `Error rebuilding client associations for site resource ${updatedSiteResource?.siteResourceId}:`,
-                err
-            );
-        });
 
         return response(res, {
             data: updatedSiteResource,
@@ -748,178 +675,5 @@ export async function updateSiteResource(
                 "Failed to update site resource"
             )
         );
-    }
-}
-
-export async function handleMessagingForUpdatedSiteResource(
-    existingSiteResource: SiteResource | undefined,
-    updatedSiteResource: SiteResource,
-    sites: { siteId: number; orgId: string }[],
-    trx: Transaction
-) {
-    logger.debug(
-        "handleMessagingForUpdatedSiteResource: existingSiteResource is: ",
-        existingSiteResource
-    );
-    logger.debug(
-        "handleMessagingForUpdatedSiteResource: updatedSiteResource is: ",
-        updatedSiteResource
-    );
-
-    const { mergedAllClients } =
-        await rebuildClientAssociationsFromSiteResource(
-            existingSiteResource || updatedSiteResource, // we want to rebuild based on the existing resource then we will apply the change to the destination below
-            trx
-        );
-
-    // after everything is rebuilt above we still need to update the targets and remote subnets if the destination changed
-    const destinationChanged =
-        existingSiteResource &&
-        existingSiteResource.destination !== updatedSiteResource.destination;
-    const destinationPortChanged =
-        existingSiteResource &&
-        existingSiteResource.destinationPort !==
-            updatedSiteResource.destinationPort;
-    const aliasChanged =
-        existingSiteResource &&
-        existingSiteResource.alias !== updatedSiteResource.alias;
-    const fullDomainChanged =
-        existingSiteResource &&
-        existingSiteResource.fullDomain !== updatedSiteResource.fullDomain;
-    const sslChanged =
-        existingSiteResource &&
-        existingSiteResource.ssl !== updatedSiteResource.ssl;
-    const portRangesChanged =
-        existingSiteResource &&
-        (existingSiteResource.tcpPortRangeString !==
-            updatedSiteResource.tcpPortRangeString ||
-            existingSiteResource.udpPortRangeString !==
-                updatedSiteResource.udpPortRangeString ||
-            existingSiteResource.disableIcmp !==
-                updatedSiteResource.disableIcmp);
-
-    // if the existingSiteResource is undefined (new resource) we don't need to do anything here, the rebuild above handled it all
-
-    if (
-        destinationChanged ||
-        aliasChanged ||
-        fullDomainChanged ||
-        sslChanged ||
-        portRangesChanged ||
-        destinationPortChanged
-    ) {
-        for (const site of sites) {
-            const [newt] = await trx
-                .select()
-                .from(newts)
-                .where(eq(newts.siteId, site.siteId))
-                .limit(1);
-
-            if (!newt) {
-                throw new Error(
-                    "Newt not found for site during site resource update"
-                );
-            }
-
-            // Only update targets on newt if these items change
-            if (
-                destinationChanged ||
-                sslChanged || // we need to push a new cert if the ssl changed
-                portRangesChanged ||
-                fullDomainChanged || // if the domain changes we need to update the certs and stuff
-                destinationPortChanged
-            ) {
-                const oldTargets = await generateSubnetProxyTargetV2(
-                    existingSiteResource,
-                    mergedAllClients
-                );
-                const newTargets = await generateSubnetProxyTargetV2(
-                    updatedSiteResource,
-                    mergedAllClients
-                );
-
-                await updateTargets(
-                    newt.newtId,
-                    {
-                        oldTargets: oldTargets ? oldTargets : [],
-                        newTargets: newTargets ? newTargets : []
-                    },
-                    newt.version
-                );
-            }
-
-            const olmJobs: Promise<void>[] = [];
-            for (const client of mergedAllClients) {
-                // does this client have access to another resource on this site that has the same destination still? if so we dont want to remove it from their olm yet
-                // todo: optimize this query if needed
-                const oldDestinationStillInUseSites = await trx
-                    .select()
-                    .from(siteResources)
-                    .innerJoin(
-                        clientSiteResourcesAssociationsCache,
-                        eq(
-                            clientSiteResourcesAssociationsCache.siteResourceId,
-                            siteResources.siteResourceId
-                        )
-                    )
-                    .innerJoin(
-                        siteNetworks,
-                        eq(siteNetworks.networkId, siteResources.networkId)
-                    )
-                    .where(
-                        and(
-                            eq(
-                                clientSiteResourcesAssociationsCache.clientId,
-                                client.clientId
-                            ),
-                            eq(siteNetworks.siteId, site.siteId),
-                            eq(
-                                siteResources.destination,
-                                existingSiteResource.destination
-                            ),
-                            ne(
-                                siteResources.siteResourceId,
-                                existingSiteResource.siteResourceId
-                            )
-                        )
-                    );
-
-                const oldDestinationStillInUseByASite =
-                    oldDestinationStillInUseSites.length > 0;
-
-                // we also need to update the remote subnets on the olms for each client that has access to this site
-                olmJobs.push(
-                    updatePeerData(
-                        client.clientId,
-                        site.siteId,
-                        destinationChanged
-                            ? {
-                                  oldRemoteSubnets:
-                                      !oldDestinationStillInUseByASite
-                                          ? generateRemoteSubnets([
-                                                existingSiteResource
-                                            ])
-                                          : [],
-                                  newRemoteSubnets: generateRemoteSubnets([
-                                      updatedSiteResource
-                                  ])
-                              }
-                            : undefined,
-                        aliasChanged || fullDomainChanged // the full domain is sent down as an alias
-                            ? {
-                                  oldAliases: generateAliasConfig([
-                                      existingSiteResource
-                                  ]),
-                                  newAliases: generateAliasConfig([
-                                      updatedSiteResource
-                                  ])
-                              }
-                            : undefined
-                    )
-                );
-            }
-
-            await Promise.all(olmJobs);
-        }
     }
 }

@@ -122,7 +122,7 @@ export default function ExitNodesTable({
         },
         {
             accessorKey: "online",
-            friendlyName: t("online"),
+            friendlyName: t("status"),
             header: ({ column }) => {
                 return (
                     <Button
@@ -131,7 +131,7 @@ export default function ExitNodesTable({
                             column.toggleSorting(column.getIsSorted() === "asc")
                         }
                     >
-                        {t("online")}
+                        {t("status")}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 );

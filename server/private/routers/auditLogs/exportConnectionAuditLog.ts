@@ -44,7 +44,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -72,7 +72,9 @@ export async function exportConnectionAuditLogs(
             );
         }
 
-        const parsedParams = queryConnectionAuditLogsParams.safeParse(req.params);
+        const parsedParams = queryConnectionAuditLogsParams.safeParse(
+            req.params
+        );
         if (!parsedParams.success) {
             return next(
                 createHttpError(

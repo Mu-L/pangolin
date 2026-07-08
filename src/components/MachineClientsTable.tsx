@@ -2,7 +2,7 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
-import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -10,29 +10,39 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { PaginationState } from "@tanstack/react-table";
 import {
-    ArrowRight,
-    ArrowUpDown,
-    MoreHorizontal,
-    CircleSlash,
     ArrowDown01Icon,
+    ArrowRight,
     ArrowUp10Icon,
-    ChevronsUpDownIcon
+    ChevronsUpDownIcon,
+    CircleSlash,
+    MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { Badge } from "./ui/badge";
-import type { PaginationState } from "@tanstack/react-table";
-import { ControlledDataTable } from "./ui/controlled-data-table";
-import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { startTransition, useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
-import z from "zod";
-import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { ColumnFilterButton } from "./ColumnFilterButton";
+import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
+import { LabelsTableCell } from "./LabelsTableCell";
+import { Badge } from "./ui/badge";
+import { ControlledDataTable } from "./ui/controlled-data-table";
+import {
+    productUpdatesQueries,
+    type LatestVersionResponse
+} from "@app/lib/queries";
+import { useQuery } from "@tanstack/react-query";
+import semver from "semver";
+import { InfoPopup } from "./ui/info-popup";
 
 export type ClientRow = {
     id: number;
@@ -53,6 +63,11 @@ export type ClientRow = {
     archived?: boolean;
     blocked?: boolean;
     approvalState: "approved" | "pending" | "denied";
+    labels?: Array<{
+        labelId: number;
+        name: string;
+        color: string;
+    }>;
 };
 
 type ClientTableProps = {
@@ -84,17 +99,23 @@ export default function MachineClientsTable({
     );
 
     const api = createApiClient(useEnvContext());
-    const [isRefreshing, startTransition] = useTransition();
+    const [isRefreshing, startRefreshTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
+
+    const { isPaidUser } = usePaidStatus();
+    const data = useQuery(productUpdatesQueries.latestVersion(true));
+
+    const latestPlatformVersions = data.data?.data;
 
     const defaultMachineColumnVisibility = {
         subnet: false,
         userId: false,
-        niceId: false
+        niceId: false,
+        labels: true
     };
 
     const refreshData = () => {
-        startTransition(() => {
+        startRefreshTransition(() => {
             try {
                 router.refresh();
             } catch (error) {
@@ -254,7 +275,7 @@ export default function MachineClientsTable({
             },
             {
                 accessorKey: "online",
-                friendlyName: t("online"),
+                friendlyName: t("status"),
                 header: () => {
                     return (
                         <ColumnFilterButton
@@ -276,7 +297,7 @@ export default function MachineClientsTable({
                             }
                             searchPlaceholder={t("searchPlaceholder")}
                             emptyMessage={t("emptySearchOptions")}
-                            label={t("online")}
+                            label={t("status")}
                             className="p-3"
                         />
                     );
@@ -359,6 +380,40 @@ export default function MachineClientsTable({
                 cell: ({ row }) => {
                     const originalRow = row.original;
 
+                    const agentVersionMap: Record<string, string> = {
+                        "Pangolin Windows": "windows",
+                        "Pangolin Android": "android",
+                        "Pangolin iOS": "ios",
+                        "Pangolin iPadOS": "ios",
+                        "Pangolin macOS": "mac",
+                        "Pangolin CLI": "cli",
+                        "Olm CLI": "olm"
+                    };
+
+                    let updateAvailable = false;
+
+                    if (
+                        originalRow.olmVersion &&
+                        originalRow.agent &&
+                        latestPlatformVersions
+                    ) {
+                        const agent = agentVersionMap[
+                            originalRow.agent
+                        ] as keyof LatestVersionResponse;
+
+                        if (agent in latestPlatformVersions) {
+                            const agentVersion = latestPlatformVersions[agent];
+
+                            updateAvailable = Boolean(
+                                semver.valid(originalRow.olmVersion) &&
+                                semver.lt(
+                                    originalRow.olmVersion,
+                                    agentVersion.latestVersion
+                                )
+                            );
+                        }
+                    }
+
                     return (
                         <div className="flex items-center space-x-1">
                             {originalRow.agent && originalRow.olmVersion ? (
@@ -370,9 +425,9 @@ export default function MachineClientsTable({
                             ) : (
                                 "-"
                             )}
-                            {/*originalRow.olmUpdateAvailable && (
-                                <InfoPopup info={t("olmUpdateAvailableInfo")} />
-                            )*/}
+                            {updateAvailable && (
+                                <InfoPopup info={t("updateAvailableInfo")} />
+                            )}
                         </div>
                     );
                 }
@@ -381,6 +436,27 @@ export default function MachineClientsTable({
                 accessorKey: "subnet",
                 friendlyName: t("address"),
                 header: () => <span className="px-3">{t("address")}</span>
+            },
+            {
+                id: "labels",
+                accessorKey: "labels",
+                header: () => (
+                    <LabelColumnFilterButton
+                        orgId={orgId}
+                        selectedValues={searchParams.getAll("labels")}
+                        onSelectedValuesChange={(value) =>
+                            handleFilterChange("labels", value)
+                        }
+                        label={t("labels")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }: { row: { original: ClientRow } }) => (
+                    <MachineClientLabelCell
+                        client={row.original}
+                        orgId={orgId}
+                    />
+                )
             }
         ];
 
@@ -464,12 +540,7 @@ export default function MachineClientsTable({
         }
 
         return baseColumns;
-    }, [hasRowsWithoutUserId, t, getSortDirection, toggleSort]);
-
-    const booleanSearchFilterSchema = z
-        .enum(["true", "false"])
-        .optional()
-        .catch(undefined);
+    }, [hasRowsWithoutUserId, orgId, t, searchParams]);
 
     function handleFilterChange(
         column: string,
@@ -541,6 +612,7 @@ export default function MachineClientsTable({
                 rows={machineClients}
                 tableId="machine-clients"
                 searchPlaceholder={t("machinesSearch")}
+                searchQuery={searchParams.get("query")?.toString()}
                 onAdd={() =>
                     startNavigation(() =>
                         router.push(`/${orgId}/settings/clients/machine/create`)
@@ -558,36 +630,33 @@ export default function MachineClientsTable({
                 columnVisibility={defaultMachineColumnVisibility}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
-                filters={[
-                    {
-                        id: "status",
-                        label: t("status") || "Status",
-                        multiSelect: true,
-                        displayMode: "calculated",
-                        options: [
-                            {
-                                id: "active",
-                                label: t("active") || "Active",
-                                value: "active"
-                            },
-                            {
-                                id: "archived",
-                                label: t("archived") || "Archived",
-                                value: "archived"
-                            },
-                            {
-                                id: "blocked",
-                                label: t("blocked") || "Blocked",
-                                value: "blocked"
-                            }
-                        ],
-                        onValueChange(selectedValues: string[]) {
-                            handleFilterChange("status", selectedValues);
-                        },
-                        values: searchParams.getAll("status")
-                    }
-                ]}
             />
         </>
+    );
+}
+
+type MachineClientLabelCellProps = {
+    client: ClientRow;
+    orgId: string;
+};
+
+function MachineClientLabelCell({
+    client,
+    orgId
+}: MachineClientLabelCellProps) {
+    const { localLabels, refresh, toggleLabel } = useOptimisticLabels({
+        serverLabels: client.labels,
+        orgId,
+        entityId: client.id,
+        entityIdField: "clientId"
+    });
+
+    return (
+        <LabelsTableCell
+            orgId={orgId}
+            selectedLabels={localLabels}
+            onToggleLabel={toggleLabel}
+            onClosePopover={() => startTransition(refresh)}
+        />
     );
 }

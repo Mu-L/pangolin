@@ -1,15 +1,20 @@
 import {
+    clientLabels,
     clients,
     clientSitesAssociationsCache,
     currentFingerprint,
     db,
+    labels,
     olms,
     orgs,
     roleClients,
     sites,
     userClients,
-    users
+    users,
+    type Label
 } from "@server/db";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -36,7 +41,7 @@ const listClientsParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const listClientsSchema = z.object({
+const listClientsSchema = z.strictObject({
     pageSize: z.coerce
         .number<string>() // for prettier formatting
         .int()
@@ -113,7 +118,27 @@ const listClientsSchema = z.object({
                 description:
                     "Filter by client status. Can be a comma-separated list of values. Defaults to 'active'."
             })
-    )
+    ),
+    labels: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            if (Array.isArray(val)) {
+                return val;
+            }
+            // the array is returned as this
+            if (typeof val === "string") {
+                return val.split(",");
+            }
+            return undefined;
+        }, z.array(z.string()))
+        .optional()
+        .catch([])
+        .openapi({
+            type: "array",
+            description: "Filter by client labels"
+        })
 });
 
 function queryClientsBase() {
@@ -169,6 +194,7 @@ type ClientWithSites = Awaited<ReturnType<typeof queryClientsBase>>[0] & {
         siteNiceId: string | null;
     }>;
     olmUpdateAvailable?: boolean;
+    labels?: Array<Pick<Label, "labelId" | "name" | "color">>;
 };
 
 type OlmWithUpdateAvailable = ClientWithSites;
@@ -192,7 +218,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
@@ -219,8 +245,16 @@ export async function listClients(
                 )
             );
         }
-        const { page, pageSize, online, query, status, sort_by, order } =
-            parsedQuery.data;
+        const {
+            page,
+            pageSize,
+            online,
+            query,
+            status,
+            sort_by,
+            order,
+            labels: labelFilter
+        } = parsedQuery.data;
 
         const parsedParams = listClientsParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -302,19 +336,41 @@ export async function listClients(
             conditions.push(or(...filterAggregates));
         }
 
-        if (query) {
+        if (labelFilter && labelFilter.length > 0) {
             conditions.push(
-                or(
-                    like(
-                        sql`LOWER(${clients.name})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${clients.niceId})`,
-                        "%" + query.toLowerCase() + "%"
-                    )
+                inArray(
+                    clients.clientId,
+                    db
+                        .select({ id: clientLabels.clientId })
+                        .from(clientLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, clientLabels.labelId)
+                        )
+                        .where(inArray(labels.name, labelFilter))
                 )
             );
+        }
+
+        if (query) {
+            const q = "%" + query.toLowerCase() + "%";
+            const queryList = [
+                like(sql`LOWER(${clients.name})`, q),
+                like(sql`LOWER(${clients.niceId})`, q),
+                inArray(
+                    clients.clientId,
+                    db
+                        .select({ id: clientLabels.clientId })
+                        .from(clientLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, clientLabels.labelId)
+                        )
+                        .where(like(sql`LOWER(${labels.name})`, q))
+                )
+            ];
+
+            conditions.push(or(...queryList));
         }
 
         const baseQuery = queryClientsBase().where(and(...conditions));
@@ -340,6 +396,30 @@ export async function listClients(
         // Get associated sites for all clients
         const clientIds = clientsList.map((client) => client.clientId);
         const siteAssociations = await getSiteAssociations(clientIds);
+
+        let labelsForClients: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            clientId: number;
+        }> = [];
+
+        if (clientIds.length > 0) {
+            labelsForClients = await db
+                .select({
+                    labelId: labels.labelId,
+                    name: labels.name,
+                    color: labels.color,
+                    clientId: clientLabels.clientId
+                })
+                .from(labels)
+                .innerJoin(
+                    clientLabels,
+                    eq(clientLabels.labelId, labels.labelId)
+                )
+                .where(inArray(clientLabels.clientId, clientIds))
+                .orderBy(asc(clientLabels.clientLabelId));
+        }
 
         // Group site associations by client ID
         const sitesByClient = siteAssociations.reduce(
@@ -368,7 +448,10 @@ export async function listClients(
         const clientsWithSites = clientsList.map((client) => {
             return {
                 ...client,
-                sites: sitesByClient[client.clientId] || []
+                sites: sitesByClient[client.clientId] || [],
+                labels: labelsForClients.filter(
+                    (l) => l.clientId === client.clientId
+                )
             };
         });
 

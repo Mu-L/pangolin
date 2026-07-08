@@ -14,7 +14,7 @@ const listOrgsParamsSchema = z.object({
     userId: z.string()
 });
 
-const listOrgsSchema = z.object({
+const listOrgsSchema = z.strictObject({
     limit: z
         .string()
         .optional()
@@ -43,7 +43,7 @@ const listOrgsSchema = z.object({
 // content: {
 // "application/json": {
 // schema: z.object({
-// data: z.unknown().nullable(),
+// data: z.record(z.string(), z.any()).nullable(),
 // success: z.boolean(),
 // error: z.boolean(),
 // message: z.string(),

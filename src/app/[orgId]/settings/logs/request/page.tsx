@@ -9,14 +9,18 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { useTranslations } from "next-intl";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
+import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHref";
+import { logQueries } from "@app/lib/queries";
 import { ColumnDef } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { ArrowUpRight, Key, Lock, Unlock, User } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
-import { build } from "@server/build";
+import type { QueryRequestAuditLogResponse } from "@server/routers/auditLogs/types";
+import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 
 export default function GeneralPage() {
     const router = useRouter();
@@ -25,36 +29,11 @@ export default function GeneralPage() {
     const { orgId } = useParams();
     const searchParams = useSearchParams();
 
-    const [rows, setRows] = useState<any[]>([]);
-    const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, startTransition] = useTransition();
 
-    // Pagination state
-    const [totalCount, setTotalCount] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(0);
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Initialize page size from storage or default
     const [pageSize, setPageSize] = useStoredPageSize("request-audit-logs", 20);
 
-    const [filterAttributes, setFilterAttributes] = useState<{
-        actors: string[];
-        resources: {
-            id: number;
-            name: string | null;
-        }[];
-        locations: string[];
-        hosts: string[];
-        paths: string[];
-    }>({
-        actors: [],
-        resources: [],
-        locations: [],
-        hosts: [],
-        paths: []
-    });
-
-    // Filter states - unified object for all filters
     const [filters, setFilters] = useState<{
         action?: string;
         resourceId?: string;
@@ -75,32 +54,18 @@ export default function GeneralPage() {
         path: searchParams.get("path") || undefined
     });
 
-    // Set default date range to last 24 hours
     const getDefaultDateRange = () => {
-        // if the time is in the url params, use that instead
         const startParam = searchParams.get("start");
         const endParam = searchParams.get("end");
         if (startParam && endParam) {
             return {
-                startDate: {
-                    date: new Date(startParam)
-                },
-                endDate: {
-                    date: new Date(endParam)
-                }
+                startDate: { date: new Date(startParam) },
+                endDate: { date: new Date(endParam) }
             };
         }
-
-        const now = new Date();
-        const lastWeek = getSevenDaysAgo();
-
         return {
-            startDate: {
-                date: lastWeek
-            },
-            endDate: {
-                date: now
-            }
+            startDate: { date: getSevenDaysAgo() },
+            endDate: { date: new Date() }
         };
     };
 
@@ -109,80 +74,96 @@ export default function GeneralPage() {
         endDate: DateTimeValue;
     }>(getDefaultDateRange());
 
-    // Trigger search with default values on component mount
-    useEffect(() => {
-        if (build === "oss") {
-            return;
+    const queryFilters = useMemo(() => {
+        let timeStart: string | undefined;
+        let timeEnd: string | undefined;
+
+        if (dateRange.startDate?.date) {
+            const dt = new Date(dateRange.startDate.date);
+            if (dateRange.startDate.time) {
+                const [h, m, s] = dateRange.startDate.time
+                    .split(":")
+                    .map(Number);
+                dt.setHours(h, m, s || 0);
+            }
+            timeStart = dt.toISOString();
         }
-        const defaultRange = getDefaultDateRange();
-        queryDateTime(
-            defaultRange.startDate,
-            defaultRange.endDate,
-            0,
-            pageSize
-        );
-    }, [orgId]); // Re-run if orgId changes
+
+        if (dateRange.endDate?.date) {
+            const dt = new Date(dateRange.endDate.date);
+            if (dateRange.endDate.time) {
+                const [h, m, s] = dateRange.endDate.time.split(":").map(Number);
+                dt.setHours(h, m, s || 0);
+            } else {
+                const now = new Date();
+                dt.setHours(
+                    now.getHours(),
+                    now.getMinutes(),
+                    now.getSeconds(),
+                    now.getMilliseconds()
+                );
+            }
+            timeEnd = dt.toISOString();
+        }
+
+        return {
+            timeStart,
+            timeEnd,
+            page: currentPage,
+            pageSize,
+            ...filters,
+            resourceId: filters.resourceId
+                ? Number(filters.resourceId)
+                : undefined
+        };
+    }, [dateRange, currentPage, pageSize, filters]);
+
+    const { data, isFetching, isLoading, refetch } = useQuery({
+        ...logQueries.requests({
+            orgId: orgId as string,
+            filters: queryFilters
+        })
+    });
+
+    const rows = isLoading ? generateSampleRequestLogs() : (data?.log ?? []);
+    const totalCount = data?.pagination?.total ?? 0;
+    const filterAttributes = data?.filterAttributes ?? {
+        actors: [],
+        resources: [],
+        locations: [],
+        hosts: [],
+        paths: []
+    };
 
     const handleDateRangeChange = (
         startDate: DateTimeValue,
         endDate: DateTimeValue
     ) => {
         setDateRange({ startDate, endDate });
-        setCurrentPage(0); // Reset to first page when filtering
-        // put the search params in the url for the time
+        setCurrentPage(0);
         updateUrlParamsForAllFilters({
             start: startDate.date?.toISOString() || "",
             end: endDate.date?.toISOString() || ""
         });
-
-        queryDateTime(startDate, endDate, 0, pageSize);
     };
 
-    // Handle page changes
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage);
-        queryDateTime(
-            dateRange.startDate,
-            dateRange.endDate,
-            newPage,
-            pageSize
-        );
     };
 
-    // Handle page size changes
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
-        setCurrentPage(0); // Reset to first page when changing page size
-        queryDateTime(dateRange.startDate, dateRange.endDate, 0, newPageSize);
+        setCurrentPage(0);
     };
 
-    // Handle filter changes generically
     const handleFilterChange = (
         filterType: keyof typeof filters,
         value: string | undefined
     ) => {
-        console.log(`${filterType} filter changed:`, value);
-
-        // Create new filters object with updated value
-        const newFilters = {
-            ...filters,
-            [filterType]: value
-        };
-
+        const newFilters = { ...filters, [filterType]: value };
         setFilters(newFilters);
-        setCurrentPage(0); // Reset to first page when filtering
-
-        // Update URL params
+        setCurrentPage(0);
         updateUrlParamsForAllFilters(newFilters);
-
-        // Trigger new query with updated filters (pass directly to avoid async state issues)
-        queryDateTime(
-            dateRange.startDate,
-            dateRange.endDate,
-            0,
-            pageSize,
-            newFilters
-        );
     };
 
     const updateUrlParamsForAllFilters = (
@@ -202,105 +183,6 @@ export default function GeneralPage() {
             }
         });
         router.replace(`?${params.toString()}`, { scroll: false });
-    };
-
-    const queryDateTime = async (
-        startDate: DateTimeValue,
-        endDate: DateTimeValue,
-        page: number = currentPage,
-        size: number = pageSize,
-        filtersParam?: {
-            action?: string;
-            type?: string;
-        }
-    ) => {
-        console.log("Date range changed:", { startDate, endDate, page, size });
-        setIsLoading(true);
-
-        try {
-            // Use the provided filters or fall back to current state
-            const activeFilters = filtersParam || filters;
-
-            // Convert the date/time values to API parameters
-            const params: any = {
-                limit: size,
-                offset: page * size,
-                ...activeFilters
-            };
-
-            if (startDate?.date) {
-                const startDateTime = new Date(startDate.date);
-                if (startDate.time) {
-                    const [hours, minutes, seconds] = startDate.time
-                        .split(":")
-                        .map(Number);
-                    startDateTime.setHours(hours, minutes, seconds || 0);
-                }
-                params.timeStart = startDateTime.toISOString();
-            }
-
-            if (endDate?.date) {
-                const endDateTime = new Date(endDate.date);
-                if (endDate.time) {
-                    const [hours, minutes, seconds] = endDate.time
-                        .split(":")
-                        .map(Number);
-                    endDateTime.setHours(hours, minutes, seconds || 0);
-                } else {
-                    // If no time is specified, set to NOW
-                    const now = new Date();
-                    endDateTime.setHours(
-                        now.getHours(),
-                        now.getMinutes(),
-                        now.getSeconds(),
-                        now.getMilliseconds()
-                    );
-                }
-                params.timeEnd = endDateTime.toISOString();
-            }
-
-            const res = await api.get(`/org/${orgId}/logs/request`, { params });
-            if (res.status === 200) {
-                setRows(res.data.data.log || []);
-                setTotalCount(res.data.data.pagination?.total || 0);
-                setFilterAttributes(res.data.data.filterAttributes);
-                console.log("Fetched logs:", res.data);
-            }
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("Failed to filter logs"),
-                variant: "destructive"
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const refreshData = async () => {
-        console.log("Data refreshed");
-        setIsRefreshing(true);
-        try {
-            const endDate = searchParams.get("end")
-                ? dateRange.endDate
-                : { date: new Date() };
-            setDateRange((current) => ({ ...current, endDate }));
-            // Refresh data with current date range and pagination
-            await queryDateTime(
-                dateRange.startDate,
-                endDate,
-                currentPage,
-                pageSize
-            );
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("refreshError"),
-                variant: "destructive"
-            });
-        } finally {
-            setIsRefreshing(false);
-        }
     };
 
     const exportData = async () => {
@@ -402,9 +284,9 @@ export default function GeneralPage() {
     const columns: ColumnDef<any>[] = [
         {
             accessorKey: "timestamp",
-            header: ({ column }) => {
-                return t("timestamp");
-            },
+            header: ({ column }) => (
+                <span className="px-2">{t("timestamp")}</span>
+            ),
             cell: ({ row }) => {
                 return (
                     <div className="whitespace-nowrap">
@@ -417,22 +299,21 @@ export default function GeneralPage() {
         },
         {
             accessorKey: "action",
-            header: ({ column }) => {
+            header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("action")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={[
                                 { value: "true", label: "Allowed" },
                                 { value: "false", label: "Denied" }
                             ]}
+                            label={t("action")}
                             selectedValue={filters.action}
                             onValueChange={(value) =>
                                 handleFilterChange("action", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -447,17 +328,14 @@ export default function GeneralPage() {
         },
         {
             accessorKey: "ip",
-            header: ({ column }) => {
-                return t("ip");
-            }
+            header: ({ column }) => <span className="px-2">{t("ip")}</span>
         },
         {
             accessorKey: "location",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("location")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.locations.map(
                                 (location) => ({
                                     value: location,
@@ -469,8 +347,9 @@ export default function GeneralPage() {
                                 handleFilterChange("location", value)
                             }
                             // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("location")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -495,9 +374,8 @@ export default function GeneralPage() {
             accessorKey: "resourceName",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("resource")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.resources.map((res) => ({
                                 value: res.id.toString(),
                                 label: res.name || "Unnamed Resource"
@@ -506,9 +384,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("resourceId", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("resource")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -518,8 +396,11 @@ export default function GeneralPage() {
                     <Link
                         href={
                             row.original.reason == 108 // for now the client will only have reason 108 so we know where to go
-                                ? `/${row.original.orgId}/settings/resources/client?query=${row.original.resourceNiceId}`
-                                : `/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`
+                                ? getPrivateResourceSettingsHref(
+                                      row.original.orgId,
+                                      row.original.resourceNiceId
+                                  )
+                                : `/${row.original.orgId}/settings/resources/public/${row.original.resourceNiceId}`
                         }
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -535,9 +416,8 @@ export default function GeneralPage() {
             accessorKey: "host",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("host")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.hosts.map((host) => ({
                                 value: host,
                                 label: host
@@ -546,9 +426,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("host", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("host")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -570,9 +450,8 @@ export default function GeneralPage() {
             accessorKey: "path",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("path")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.paths.map((path) => ({
                                 value: path,
                                 label: path
@@ -581,9 +460,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("path", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("path")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -600,9 +479,8 @@ export default function GeneralPage() {
             accessorKey: "method",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("method")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={[
                                 { value: "GET", label: "GET" },
                                 { value: "POST", label: "POST" },
@@ -616,9 +494,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("method", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("method")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -628,9 +506,8 @@ export default function GeneralPage() {
             accessorKey: "reason",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("reason")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={[
                                 { value: "100", label: t("allowedByRule") },
                                 { value: "101", label: t("allowedNoAuth") },
@@ -655,9 +532,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("reason", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("reason")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -674,9 +551,8 @@ export default function GeneralPage() {
             accessorKey: "actor",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("actor")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.actors.map((actor) => ({
                                 value: actor,
                                 label: actor
@@ -685,9 +561,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("actor", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("actor")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -785,8 +661,8 @@ export default function GeneralPage() {
                 title={t("requestLogs")}
                 searchPlaceholder={t("searchLogs")}
                 searchColumn="host"
-                onRefresh={refreshData}
-                isRefreshing={isRefreshing}
+                onRefresh={() => refetch()}
+                isRefreshing={isFetching}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}
                 onDateRangeChange={handleDateRangeChange}
@@ -798,7 +674,6 @@ export default function GeneralPage() {
                     id: "timestamp",
                     desc: true
                 }}
-                // Server-side pagination props
                 totalCount={totalCount}
                 currentPage={currentPage}
                 onPageChange={handlePageChange}
@@ -811,4 +686,64 @@ export default function GeneralPage() {
             />
         </>
     );
+}
+
+function generateSampleRequestLogs(): QueryRequestAuditLogResponse["log"] {
+    const methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
+    const paths = [
+        "/api/v1/users",
+        "/dashboard",
+        "/settings",
+        "/health",
+        "/metrics"
+    ];
+    const hosts = ["app.example.com", "api.example.com", "admin.example.com"];
+    const locations = ["US", "DE", "GB", "FR", "JP", "CA", "AU"];
+    const allowedReasons = [100, 101, 102, 103, 104, 105, 106, 107, 108];
+    const deniedReasons = [201, 202, 203, 204, 205, 299];
+    const actors = [
+        "alice@example.com",
+        "bob@example.com",
+        "carol@example.com",
+        null
+    ];
+
+    const now = Math.floor(Date.now() / 1000);
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60;
+
+    return Array.from({ length: 10 }, (_, i) => {
+        const action = Math.random() > 0.3;
+        const reason = action
+            ? allowedReasons[Math.floor(Math.random() * allowedReasons.length)]
+            : deniedReasons[Math.floor(Math.random() * deniedReasons.length)];
+        const actor = actors[Math.floor(Math.random() * actors.length)];
+
+        return {
+            timestamp: Math.floor(
+                sevenDaysAgo + Math.random() * (now - sevenDaysAgo)
+            ),
+            action,
+            reason,
+            orgId: "sample-org",
+            actorType: actor ? "user" : null,
+            actor,
+            actorId: actor ? `user-${i}` : null,
+            resourceId: Math.floor(Math.random() * 5) + 1,
+            siteResourceId: null,
+            resourceNiceId: `resource-${(i % 3) + 1}`,
+            resourceName: `Resource ${(i % 3) + 1}`,
+            ip: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+            location: locations[Math.floor(Math.random() * locations.length)],
+            userAgent: "Mozilla/5.0",
+            metadata: null,
+            headers: null,
+            query: null,
+            originalRequestURL: null,
+            scheme: "https",
+            host: hosts[Math.floor(Math.random() * hosts.length)],
+            path: paths[Math.floor(Math.random() * paths.length)],
+            method: methods[Math.floor(Math.random() * methods.length)],
+            tls: true
+        };
+    });
 }
