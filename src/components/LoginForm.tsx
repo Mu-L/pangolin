@@ -137,6 +137,7 @@ export default function LoginForm({
         const { email, password } = form.getValues();
         const { code } = mfaForm.getValues();
 
+        setLastUsedIdpId(null);
         setLoading(true);
         setError(null);
 
