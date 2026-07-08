@@ -895,12 +895,6 @@ authenticated.delete(
     user.removeUserOrg
 );
 
-// authenticated.put(
-//     "/newt",
-//     verifyApiKeyHasAction(ActionsEnum.createNewt),
-//     newt.createNewt
-// );
-
 authenticated.get(
     `/org/:orgId/api-keys`,
     verifyApiKeyIsRoot,

@@ -587,7 +587,9 @@ export default function ResourceLauncher({
 
     const renderToolbarSearch = (searchClassName: string) => (
         <div className={cn("relative shrink-0", searchClassName)}>
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <span className="pointer-events-none absolute inset-y-0 left-2 flex items-center">
+                <Search className="size-4 text-muted-foreground" />
+            </span>
             <Input
                 key={`${activeViewId}-${searchInputResetKey}`}
                 defaultValue={config.query}

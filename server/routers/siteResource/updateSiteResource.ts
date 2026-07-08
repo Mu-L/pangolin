@@ -54,7 +54,7 @@ const updateSiteResourceSchema = z
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).nullish(),
         destinationPort: z.int().positive().nullish(),
-        destination: z.string().min(1).optional(),
+        destination: z.string().min(1).nullish(),
         enabled: z.boolean().optional(),
         alias: z
             .string()
@@ -157,7 +157,8 @@ const updateSiteResourceSchema = z
                 return true;
             }
             return (
-                data.destination !== undefined && data.destination.trim() !== ""
+                data.destination !== undefined &&
+                data.destination?.trim() !== ""
             );
         },
         {
@@ -616,10 +617,7 @@ export async function updateSiteResource(
                     await trx
                         .delete(roleSiteResources)
                         .where(
-                            eq(
-                                roleSiteResources.siteResourceId,
-                                siteResourceId
-                            )
+                            eq(roleSiteResources.siteResourceId, siteResourceId)
                         );
                 }
 
