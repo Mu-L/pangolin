@@ -119,15 +119,13 @@ type ClientResourcesTableProps = {
     orgId: string;
     pagination: PaginationState;
     rowCount: number;
-    initialFilterSite?: Selectedsite | null;
 };
 
 export default function PrivateResourcesTable({
     internalResources,
     orgId,
     pagination,
-    rowCount,
-    initialFilterSite = null
+    rowCount
 }: ClientResourcesTableProps) {
     const router = useRouter();
     const {
@@ -145,7 +143,11 @@ export default function PrivateResourcesTable({
     const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const [selectedInternalResource, setSelectedInternalResource] =
+        useState<InternalResourceRow | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editingResource, setEditingResource] =
         useState<InternalResourceRow | null>();
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
     const [isRefreshing, startRefreshTransition] = useTransition();
 

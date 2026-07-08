@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
-import { SearchIcon } from "lucide-react";
+import { LoaderIcon, SearchIcon } from "lucide-react";
 
 import {
     Dialog,
@@ -41,6 +41,7 @@ function CommandDialog({
     description?: string;
     className?: string;
     showCloseButton?: boolean;
+    commandProps?: React.ComponentProps<typeof Command>;
 }) {
     return (
         <Dialog {...props}>
@@ -48,8 +49,16 @@ function CommandDialog({
                 <DialogTitle>{title}</DialogTitle>
                 <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
-            <DialogContent className={cn("overflow-hidden p-0", className)}>
-                <Command className="[&_[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+            <DialogContent
+                className={cn(
+                    "overflow-hidden p-0 place-items-start",
+                    className
+                )}
+            >
+                <Command
+                    {...props.commandProps}
+                    className="transition duration-150 mt-0 [&_[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
+                >
                     {children}
                 </Command>
             </DialogContent>
@@ -59,14 +68,21 @@ function CommandDialog({
 
 function CommandInput({
     className,
+    isLoading,
     ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+    isLoading?: boolean;
+}) {
     return (
         <div
             data-slot="command-input-wrapper"
             className="flex h-9 items-center gap-2 border-b px-3"
         >
-            <SearchIcon className="size-4 shrink-0 opacity-50" />
+            {isLoading ? (
+                <LoaderIcon className="animate-spin size-4 shrink-0 opacity-50" />
+            ) : (
+                <SearchIcon className="size-4 shrink-0 opacity-50" />
+            )}
             <CommandPrimitive.Input
                 data-slot="command-input"
                 className={cn(
@@ -158,10 +174,11 @@ function CommandShortcut({
     ...props
 }: React.ComponentProps<"span">) {
     return (
-        <span
+        <kbd
             data-slot="command-shortcut"
             className={cn(
                 "text-muted-foreground ml-auto text-xs tracking-widest",
+                "px-1 py-0.5 rounded-sm border-border bg-muted border",
                 className
             )}
             {...props}
