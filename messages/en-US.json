@@ -2543,6 +2543,7 @@
     "noRemoteExitNodesAvailableDescription": "No nodes are available for this organization. Create a node first to use local sites.",
     "exitNode": "Exit Node",
     "country": "Country",
+    "countryIsNot": "Country Is Not",
     "rulesMatchCountry": "Currently based on source IP",
     "region": "Region",
     "selectRegion": "Select region",
