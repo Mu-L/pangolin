@@ -11,7 +11,20 @@ import {
     DialogHeader,
     DialogTitle
 } from "@/components/ui/dialog";
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle
+} from "@/components/ui/sheet";
+import { useMediaQuery } from "@app/hooks/useMediaQuery";
 import { cn } from "@app/lib/cn";
+
+const desktop = "(min-width: 768px)";
+
+const commandSurfaceClassName =
+    "transition duration-150 mt-0 [&_[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5";
 
 function Command({
     className,
@@ -35,6 +48,7 @@ function CommandDialog({
     children,
     className,
     showCloseButton = true,
+    commandProps,
     ...props
 }: React.ComponentProps<typeof Dialog> & {
     title?: string;
@@ -43,6 +57,35 @@ function CommandDialog({
     showCloseButton?: boolean;
     commandProps?: React.ComponentProps<typeof Command>;
 }) {
+    const isDesktop = useMediaQuery(desktop);
+
+    const command = (
+        <Command {...commandProps} className={commandSurfaceClassName}>
+            {children}
+        </Command>
+    );
+
+    if (!isDesktop) {
+        return (
+            <Sheet open={props.open} onOpenChange={props.onOpenChange}>
+                <SheetContent
+                    side="top"
+                    className={cn(
+                        "flex max-h-[85dvh] w-full flex-col gap-0 overflow-hidden rounded-none border-x-0 p-0 pt-[env(safe-area-inset-top,0px)]",
+                        className
+                    )}
+                    onOpenAutoFocus={(event) => event.preventDefault()}
+                >
+                    <SheetHeader className="sr-only">
+                        <SheetTitle>{title}</SheetTitle>
+                        <SheetDescription>{description}</SheetDescription>
+                    </SheetHeader>
+                    {command}
+                </SheetContent>
+            </Sheet>
+        );
+    }
+
     return (
         <Dialog {...props}>
             <DialogHeader className="sr-only">
@@ -51,16 +94,11 @@ function CommandDialog({
             </DialogHeader>
             <DialogContent
                 className={cn(
-                    "overflow-hidden p-0 place-items-start",
+                    "overflow-hidden p-0 place-items-start md:top-[clamp(1.5rem,12vh,200px)] md:max-h-[calc(100dvh-clamp(1.5rem,12vh,200px)-1.5rem)] md:translate-y-0",
                     className
                 )}
             >
-                <Command
-                    {...props.commandProps}
-                    className="transition duration-150 mt-0 [&_[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
-                >
-                    {children}
-                </Command>
+                {command}
             </DialogContent>
         </Dialog>
     );
@@ -69,9 +107,11 @@ function CommandDialog({
 function CommandInput({
     className,
     isLoading,
+    trailing,
     ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input> & {
     isLoading?: boolean;
+    trailing?: React.ReactNode;
 }) {
     return (
         <div
@@ -86,11 +126,12 @@ function CommandInput({
             <CommandPrimitive.Input
                 data-slot="command-input"
                 className={cn(
-                    "placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+                    "placeholder:text-muted-foreground flex h-10 min-w-0 flex-1 rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
                     className
                 )}
                 {...props}
             />
+            {trailing ? <div className="shrink-0">{trailing}</div> : null}
         </div>
     );
 }

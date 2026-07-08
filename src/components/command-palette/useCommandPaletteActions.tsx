@@ -7,6 +7,7 @@ import {
     BellRing,
     Building2,
     Globe,
+    GlobeLock,
     KeyRound,
     MonitorUp,
     Plus,
@@ -85,6 +86,12 @@ export function useCommandPaletteActions(
                 label: t("commandPaletteCreateProxyResource"),
                 icon: <Globe className="size-4" />,
                 href: `/${orgId}/settings/resources/proxy/create`
+            });
+            actions.push({
+                id: "create-private-resource",
+                label: t("commandPaletteCreatePrivateResource"),
+                icon: <GlobeLock className="size-4" />,
+                href: `/${orgId}/settings/resources/private/create`
             });
             actions.push({
                 id: "create-machine-client",

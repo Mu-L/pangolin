@@ -130,7 +130,7 @@ export function useCommandPaletteSearch({
         return privateResourcesQuery.data.map((resource) => ({
             id: `site-resource-${resource.siteResourceId}`,
             name: resource.name,
-            href: `/${orgId}/settings/resources/private?query=${resource.name}`
+            href: `/${orgId}/settings/resources/private/${resource.niceId}`
         }));
     }, [orgId, privateResourcesQuery.data]);
 

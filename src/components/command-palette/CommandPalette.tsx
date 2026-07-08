@@ -13,7 +13,9 @@ import {
     CommandList,
     CommandSeparator
 } from "@app/components/ui/command";
+import { Button } from "@app/components/ui/button";
 import { cn } from "@app/lib/cn";
+import { useMediaQuery } from "@app/hooks/useMediaQuery";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import {
     ChevronRightIcon,
@@ -22,7 +24,8 @@ import {
     LaptopIcon,
     PlugIcon,
     ServerIcon,
-    UserIcon
+    UserIcon,
+    X
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -34,6 +37,7 @@ import React, {
     useMemo,
     useState
 } from "react";
+import { useCanUseCommandPalette } from "./useCanUseCommandPalette";
 import { useCommandPaletteActions } from "./useCommandPaletteActions";
 import { useCommandPaletteNavigation } from "./useCommandPaletteNavigation";
 import { useCommandPaletteSearch } from "./useCommandPaletteSearch";
@@ -57,6 +61,7 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
     const router = useRouter();
     const { open, setOpen } = useCommandPalette();
     const [search, setSearch] = useState("");
+    const isDesktop = useMediaQuery("(min-width: 768px)");
 
     const isActionMode = search.startsWith(">");
 
@@ -134,6 +139,20 @@ export function CommandPalette({ orgId, orgs, navItems }: CommandPaletteProps) {
                 value={search}
                 onValueChange={setSearch}
                 isLoading={!isActionMode && shouldSearch && isLoading}
+                trailing={
+                    !isDesktop ? (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 shrink-0"
+                            aria-label={t("close")}
+                            onClick={() => handleOpenChange(false)}
+                        >
+                            <X className="size-4" />
+                        </Button>
+                    ) : undefined
+                }
             />
             <CommandList className="max-h-118 min-h-0  h-(--cmdk-list-height) scroll-pb-4 scroll-pt-2 transition-[height] duration-250 ease-in-out">
                 <CommandEmpty>{t("commandPaletteNoResults")}</CommandEmpty>
@@ -427,13 +446,14 @@ function isEditableTarget(target: EventTarget | null) {
     );
 }
 
-export function CommandPaletteProvider({
+function CommandPaletteProviderInner({
     children,
     orgId,
     orgs,
     navItems
 }: CommandPaletteProviderProps) {
     const [open, setOpen] = useState(false);
+    const canUseCommandPalette = useCanUseCommandPalette(orgId, orgs);
 
     const toggle = useCallback(() => {
         setOpen((current) => !current);
@@ -449,6 +469,10 @@ export function CommandPaletteProvider({
     );
 
     useEffect(() => {
+        if (!canUseCommandPalette) {
+            return;
+        }
+
         function onKeyDown(event: KeyboardEvent) {
             if (
                 event.key.toLowerCase() !== "k" ||
@@ -467,12 +491,18 @@ export function CommandPaletteProvider({
 
         document.addEventListener("keydown", onKeyDown);
         return () => document.removeEventListener("keydown", onKeyDown);
-    }, [open, toggle]);
+    }, [canUseCommandPalette, open, toggle]);
 
     return (
         <CommandPaletteContext value={contextValue}>
             {children}
-            <CommandPalette orgId={orgId} orgs={orgs} navItems={navItems} />
+            {canUseCommandPalette ? (
+                <CommandPalette orgId={orgId} orgs={orgs} navItems={navItems} />
+            ) : null}
         </CommandPaletteContext>
     );
+}
+
+export function CommandPaletteProvider(props: CommandPaletteProviderProps) {
+    return <CommandPaletteProviderInner {...props} />;
 }

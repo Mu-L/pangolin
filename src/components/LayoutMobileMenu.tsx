@@ -17,7 +17,7 @@ import {
 import { useUserContext } from "@app/hooks/useUserContext";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import { Menu, Server, Settings, SquareMousePointer } from "lucide-react";
+import { Menu, Server, Settings, LayoutGrid } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -151,7 +151,7 @@ export function LayoutMobileMenu({
                                                                     }
                                                                 >
                                                                     <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground mr-3">
-                                                                        <SquareMousePointer className="h-4 w-4" />
+                                                                        <LayoutGrid className="h-4 w-4" />
                                                                     </span>
                                                                     <span className="flex-1">
                                                                         {t(
@@ -207,7 +207,11 @@ export function LayoutMobileMenu({
                 {showTopBar && (
                     <div className="ml-auto flex items-center justify-end">
                         <div className="flex items-center space-x-2">
-                            <CommandPaletteTrigger variant="mobile" />
+                            <CommandPaletteTrigger
+                                variant="mobile"
+                                orgId={orgId}
+                                orgs={orgs}
+                            />
                             <ThemeSwitcher />
                             <ProfileIcon />
                         </div>

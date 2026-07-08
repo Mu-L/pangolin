@@ -105,8 +105,11 @@ export function LayoutHeader({
 
                         {showTopBar && (
                             <div className="flex items-center space-x-2">
-                                <CommandPaletteTrigger />
                                 <ThemeSwitcher />
+                                <CommandPaletteTrigger
+                                    orgId={orgId}
+                                    orgs={orgs}
+                                />
                                 <ProfileIcon />
                             </div>
                         )}

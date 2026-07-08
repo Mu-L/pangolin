@@ -21,9 +21,9 @@ import { ListUserOrgsResponse } from "@server/routers/org";
 import {
     ArrowRight,
     ExternalLink,
+    LayoutGrid,
     PanelRightOpen,
-    Server,
-    SquareMousePointer
+    Server
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
@@ -186,7 +186,7 @@ export function LayoutSidebar({
                                                     )}
                                                 >
                                                     <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground">
-                                                        <SquareMousePointer className="h-4 w-4" />
+                                                        <LayoutGrid className="h-4 w-4" />
                                                     </span>
                                                 </Link>
                                             </TooltipTrigger>
@@ -195,7 +195,9 @@ export function LayoutSidebar({
                                                 sideOffset={8}
                                             >
                                                 <p>
-                                                    {t("resourceSidebarLauncherTitle")}
+                                                    {t(
+                                                        "resourceSidebarLauncherTitle"
+                                                    )}
                                                 </p>
                                             </TooltipContent>
                                         </Tooltip>
@@ -208,7 +210,7 @@ export function LayoutSidebar({
                                         )}
                                     >
                                         <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center text-muted-foreground">
-                                            <SquareMousePointer className="h-4 w-4" />
+                                            <LayoutGrid className="h-4 w-4" />
                                         </span>
                                         <span className="flex-1">
                                             {t("resourceSidebarLauncherTitle")}

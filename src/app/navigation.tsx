@@ -15,6 +15,7 @@ import {
     GlobeLock,
     KeyRound,
     Laptop,
+    LayoutGrid,
     Link as LinkIcon,
     Logs,
     MonitorUp,
@@ -49,7 +50,7 @@ export const orgLangingNavItems: SidebarNavItem[] = [
     {
         title: "sidebarAccount",
         href: "/{orgId}",
-        icon: <User className="size-4 flex-none" />
+        icon: <LayoutGrid className="size-4 flex-none" />
     }
 ];
 
@@ -360,6 +361,16 @@ export const commandBarNavSections = (
     env?: Env,
     options?: OrgNavSectionsOptions
 ): CommandBarNavSection[] => [
+    {
+        heading: "commandLauncher",
+        items: [
+            {
+                title: "commandResourceLauncher",
+                href: "/{orgId}",
+                icon: <LayoutGrid className="size-4 flex-none" />
+            }
+        ]
+    },
     {
         heading: "network",
         items: [
