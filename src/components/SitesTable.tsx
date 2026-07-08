@@ -361,9 +361,12 @@ export default function SitesTable({
 
                     let updateAvailable = Boolean(
                         latestNewtVersion &&
-                        originalRow.newtVersion &&
-                        semver.valid(originalRow.newtVersion) &&
-                        semver.lt(originalRow.newtVersion, latestNewtVersion)
+                            originalRow.newtVersion &&
+                            semver.valid(originalRow.newtVersion) &&
+                            semver.lt(
+                                originalRow.newtVersion,
+                                latestNewtVersion
+                            )
                     );
 
                     if (originalRow.type === "newt") {
@@ -572,9 +575,7 @@ export default function SitesTable({
                                                     setRestartingSite(siteRow)
                                                 }
                                             >
-                                                <span className="text-orange-500">
-                                                    {t("siteRestartButton")}
-                                                </span>
+                                                {t("siteRestartButton")}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                         </>
