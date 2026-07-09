@@ -106,17 +106,23 @@ export function PrivateResourceNetworkAccessFields({
     embedInParentGrid = false
 }: PrivateResourceNetworkAccessFieldsProps) {
     const t = useTranslations();
+    const resolvedInitialTcp = initialTcp !== undefined ? initialTcp : "*";
+    const resolvedInitialUdp = initialUdp !== undefined ? initialUdp : "*";
     const [tcpPortMode, setTcpPortMode] = useState<PortMode>(() =>
-        getPortModeFromString(initialTcp)
+        getPortModeFromString(resolvedInitialTcp)
     );
     const [udpPortMode, setUdpPortMode] = useState<PortMode>(() =>
-        getPortModeFromString(initialUdp)
+        getPortModeFromString(resolvedInitialUdp)
     );
     const [tcpCustomPorts, setTcpCustomPorts] = useState(() =>
-        initialTcp && initialTcp !== "*" ? initialTcp : ""
+        resolvedInitialTcp && resolvedInitialTcp !== "*"
+            ? resolvedInitialTcp
+            : ""
     );
     const [udpCustomPorts, setUdpCustomPorts] = useState(() =>
-        initialUdp && initialUdp !== "*" ? initialUdp : ""
+        resolvedInitialUdp && resolvedInitialUdp !== "*"
+            ? resolvedInitialUdp
+            : ""
     );
 
     useEffect(() => {
