@@ -736,11 +736,14 @@ export async function verifyResourceSession(
             }
         }
 
-        // If headerAuthExtendedCompatibility is activated but no clientHeaderAuth provided, force client to challenge
+        // If headerAuthExtendedCompatibility is activated but no clientHeaderAuth provided, force client to challenge.
+        // Skip the challenge when SSO is also enabled so browsers get the SSO redirect instead of a native Basic
+        // Auth dialog; clients that proactively send Authorization: Basic are still accepted above.
         if (
             headerAuthExtendedCompatibility &&
             headerAuthExtendedCompatibility.extendedCompatibilityIsActivated &&
-            !clientHeaderAuth
+            !clientHeaderAuth &&
+            !sso
         ) {
             return headerAuthChallenged(res, redirectPath, resource.orgId);
         }
