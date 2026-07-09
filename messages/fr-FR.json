@@ -1462,6 +1462,7 @@
     "actionGenerateAccessToken": "Générer un jeton d'accès",
     "actionDeleteAccessToken": "Supprimer un jeton d'accès",
     "actionListAccessTokens": "Lister les jetons d'accès",
+    "actionCreateResourceSessionToken": "Créer un jeton de session de ressource",
     "actionCreateResourceRule": "Créer une règle de ressource",
     "actionDeleteResourceRule": "Supprimer une règle de ressource",
     "actionListResourceRules": "Lister les règles de ressource",

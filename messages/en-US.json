@@ -1462,6 +1462,7 @@
     "actionGenerateAccessToken": "Generate Access Token",
     "actionDeleteAccessToken": "Delete Access Token",
     "actionListAccessTokens": "List Access Tokens",
+    "actionCreateResourceSessionToken": "Create Resource Session Token",
     "actionCreateResourceRule": "Create Resource Rule",
     "actionDeleteResourceRule": "Delete Resource Rule",
     "actionListResourceRules": "List Resource Rules",

@@ -77,7 +77,8 @@ function getActionsCategories(root: boolean) {
             [t("actionDeleteSiteResource")]: "deleteSiteResource",
             [t("actionGetSiteResource")]: "getSiteResource",
             [t("actionListSiteResources")]: "listSiteResources",
-            [t("actionUpdateSiteResource")]: "updateSiteResource"
+            [t("actionUpdateSiteResource")]: "updateSiteResource",
+            [t("actionCreateResourceSessionToken")]: "createResourceSessionToken"
         },
 
         Target: {

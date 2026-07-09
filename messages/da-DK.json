@@ -1462,6 +1462,7 @@
     "actionGenerateAccessToken": "Generer adgangstoken",
     "actionDeleteAccessToken": "Slet adgangstoken",
     "actionListAccessTokens": "Vis adgangstokens",
+    "actionCreateResourceSessionToken": "Opret ressourcesessionstoken",
     "actionCreateResourceRule": "Opret ressourceregel",
     "actionDeleteResourceRule": "Slet ressourceregel",
     "actionListResourceRules": "Vis ressourceregler",
