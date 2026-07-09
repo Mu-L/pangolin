@@ -64,7 +64,7 @@ export default function PrivateResourceGeneralPage() {
                         {t("resourceGeneral")}
                     </SettingsSectionTitle>
                     <SettingsSectionDescription>
-                        {t("resourceGeneralDescription")}
+                        {t("privateResourceGeneralDescription")}
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
 
