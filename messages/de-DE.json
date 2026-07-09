@@ -3680,7 +3680,7 @@
     "resourceLauncherSaveForEveryoneDescription": "Teilen Sie diese Ansicht mit allen Organisationsmitgliedern. Wenn nicht aktiviert, ist die Ansicht nur für Sie sichtbar.",
     "resourceLauncherMakePersonal": "Persönlich machen",
     "resourceLauncherFilter": "Filter",
-    "resourceLauncherFilterWithCount": "Filter, {count} applied",
+    "resourceLauncherFilterWithCount": "Filter, {count} angewendet",
     "resourceLauncherSort": "Sortieren",
     "resourceLauncherSortAscending": "Aufsteigend sortieren",
     "resourceLauncherSortDescending": "Absteigend sortieren",
