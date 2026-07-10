@@ -50,16 +50,20 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { PrivateResourceSitesField } from "../PrivateResourceSitesField";
-import { PrivateResourceHttpFields } from "../PrivateResourceHttpFields";
-import { PrivateResourceSshFields } from "../PrivateResourceSshFields";
-import { PrivateResourcePortRanges } from "../PrivateResourcePortRanges";
+import { PrivateResourceSitesField } from "@app/components/PrivateResourceSitesField";
+import { PrivateResourceHttpFields } from "@app/components/PrivateResourceHttpFields";
+import { PrivateResourceSshFields } from "@app/components/PrivateResourceSshFields";
+import { PrivateResourcePortRanges } from "@app/components/PrivateResourcePortRanges";
 import {
     PrivateResourceAliasField,
     PrivateResourceCidrDestinationField,
     PrivateResourceHostDestinationFields
-} from "../PrivateResourceDestinationFields";
-import { asAnyControl, asAnySetValue, asAnyWatch } from "../formControlUtils";
+} from "@app/components/PrivateResourceDestinationFields";
+import {
+    asAnyControl,
+    asAnySetValue,
+    asAnyWatch
+} from "@app/lib/formControlUtils";
 
 export default function CreatePrivateResourcePage() {
     const params = useParams();

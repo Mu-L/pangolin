@@ -30,7 +30,7 @@ import { useTranslations } from "next-intl";
 import { useActionState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useSaveSiteResource } from "../../useSaveSiteResource";
+import { useSaveSiteResource } from "@app/hooks/useSaveSiteResource";
 
 export default function PrivateResourceGeneralPage() {
     const t = useTranslations();
