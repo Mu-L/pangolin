@@ -200,7 +200,10 @@ export const resources = pgTable(
         authDaemonMode: varchar("authDaemonMode", { length: 32 })
             .$type<"site" | "remote" | "native">()
             .default("site"),
-        authDaemonPort: integer("authDaemonPort").default(22123)
+        authDaemonPort: integer("authDaemonPort").default(22123),
+        status: varchar("status")
+            .$type<"pending" | "approved">()
+            .default("approved")
     },
     (t) => [
         index("idx_resources_fulldomain")
@@ -451,7 +454,10 @@ export const siteResources = pgTable(
             onDelete: "set null"
         }),
         subdomain: varchar("subdomain"),
-        fullDomain: varchar("fullDomain")
+        fullDomain: varchar("fullDomain"),
+        status: varchar("status")
+            .$type<"pending" | "approved">()
+            .default("approved")
     },
     (t) => [index("idx_siteresources_orgid_niceid").on(t.orgId, t.niceId)]
 );
