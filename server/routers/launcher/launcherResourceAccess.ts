@@ -157,7 +157,8 @@ async function resolveAccessibleIdsUncached(
             .where(
                 and(
                     eq(userResources.userId, userId),
-                    eq(resources.orgId, orgId)
+                    eq(resources.orgId, orgId),
+                    eq(resources.status, "approved")
                 )
             ),
         userRoleIds.length > 0
@@ -171,7 +172,8 @@ async function resolveAccessibleIdsUncached(
                   .where(
                       and(
                           inArray(roleResources.roleId, userRoleIds),
-                          eq(resources.orgId, orgId)
+                          eq(resources.orgId, orgId),
+                          eq(resources.status, "approved")
                       )
                   )
             : Promise.resolve([]),
@@ -183,7 +185,11 @@ async function resolveAccessibleIdsUncached(
                 eq(effectiveResourcePolicyId, userPolicies.resourcePolicyId)
             )
             .where(
-                and(eq(userPolicies.userId, userId), eq(resources.orgId, orgId))
+                and(
+                    eq(userPolicies.userId, userId),
+                    eq(resources.orgId, orgId),
+                    eq(resources.status, "approved")
+                )
             ),
         userRoleIds.length > 0
             ? db
@@ -199,21 +205,48 @@ async function resolveAccessibleIdsUncached(
                   .where(
                       and(
                           inArray(rolePolicies.roleId, userRoleIds),
-                          eq(resources.orgId, orgId)
+                          eq(resources.orgId, orgId),
+                          eq(resources.status, "approved")
                       )
                   )
             : Promise.resolve([]),
         db
             .select({ siteResourceId: userSiteResources.siteResourceId })
             .from(userSiteResources)
-            .where(eq(userSiteResources.userId, userId)),
+            .innerJoin(
+                siteResources,
+                eq(
+                    userSiteResources.siteResourceId,
+                    siteResources.siteResourceId
+                )
+            )
+            .where(
+                and(
+                    eq(userSiteResources.userId, userId),
+                    eq(siteResources.orgId, orgId),
+                    eq(siteResources.status, "approved")
+                )
+            ),
         userRoleIds.length > 0
             ? db
                   .select({
                       siteResourceId: roleSiteResources.siteResourceId
                   })
                   .from(roleSiteResources)
-                  .where(inArray(roleSiteResources.roleId, userRoleIds))
+                  .innerJoin(
+                      siteResources,
+                      eq(
+                          roleSiteResources.siteResourceId,
+                          siteResources.siteResourceId
+                      )
+                  )
+                  .where(
+                      and(
+                          inArray(roleSiteResources.roleId, userRoleIds),
+                          eq(siteResources.orgId, orgId),
+                          eq(siteResources.status, "approved")
+                      )
+                  )
             : Promise.resolve([])
     ]);
 
@@ -365,6 +398,7 @@ async function filterPublicResourceIdsByTextSearch(
                 inArray(resources.resourceId, resourceIds),
                 eq(resources.orgId, orgId),
                 eq(resources.enabled, true),
+                eq(resources.status, "approved"),
                 textMatch
             )
         );
@@ -402,6 +436,7 @@ async function filterSiteResourceIdsByTextSearch(
                 inArray(siteResources.siteResourceId, siteResourceIds),
                 eq(siteResources.orgId, orgId),
                 eq(siteResources.enabled, true),
+                eq(siteResources.status, "approved"),
                 textMatch
             )
         );
@@ -503,7 +538,8 @@ async function listSiteGroups(
         const publicConditions = [
             inArray(resources.resourceId, accessible.resourceIds),
             eq(resources.orgId, orgId),
-            eq(resources.enabled, true)
+            eq(resources.enabled, true),
+            eq(resources.status, "approved")
         ];
         if (searchPublic) {
             publicConditions.push(searchPublic);
@@ -558,7 +594,8 @@ async function listSiteGroups(
         const siteConditions = [
             inArray(siteResources.siteResourceId, accessible.siteResourceIds),
             eq(siteResources.orgId, orgId),
-            eq(siteResources.enabled, true)
+            eq(siteResources.enabled, true),
+            eq(siteResources.status, "approved")
         ];
         if (searchSite) {
             siteConditions.push(searchSite);
@@ -621,7 +658,8 @@ async function listSiteGroups(
         const noSitePublicConditions = [
             inArray(resources.resourceId, accessible.resourceIds),
             eq(resources.orgId, orgId),
-            eq(resources.enabled, true)
+            eq(resources.enabled, true),
+            eq(resources.status, "approved")
         ];
         if (searchPublic) {
             noSitePublicConditions.push(searchPublic);
@@ -655,7 +693,8 @@ async function listSiteGroups(
         const noSiteSiteConditions = [
             inArray(siteResources.siteResourceId, accessible.siteResourceIds),
             eq(siteResources.orgId, orgId),
-            eq(siteResources.enabled, true)
+            eq(siteResources.enabled, true),
+            eq(siteResources.status, "approved")
         ];
         if (searchSite) {
             noSiteSiteConditions.push(searchSite);
@@ -746,7 +785,8 @@ async function listLabelGroups(
         const publicConditions = [
             inArray(resources.resourceId, accessible.resourceIds),
             eq(resources.orgId, orgId),
-            eq(resources.enabled, true)
+            eq(resources.enabled, true),
+            eq(resources.status, "approved")
         ];
         const searchPublic = buildSearchConditionForPublic(query.query);
         if (searchPublic) {
@@ -810,7 +850,8 @@ async function listLabelGroups(
         const siteConditions = [
             inArray(siteResources.siteResourceId, accessible.siteResourceIds),
             eq(siteResources.orgId, orgId),
-            eq(siteResources.enabled, true)
+            eq(siteResources.enabled, true),
+            eq(siteResources.status, "approved")
         ];
         const searchSite = buildSearchConditionForSiteResource(query.query);
         if (searchSite) {
@@ -997,6 +1038,7 @@ async function mapPublicResources(
                 inArray(resources.resourceId, resourceIds),
                 eq(resources.orgId, orgId),
                 eq(resources.enabled, true),
+                eq(resources.status, "approved"),
                 siteIdFilter != null
                     ? eq(sites.siteId, siteIdFilter)
                     : undefined
@@ -1088,6 +1130,7 @@ async function mapSiteResources(
                 inArray(siteResources.siteResourceId, siteResourceIds),
                 eq(siteResources.orgId, orgId),
                 eq(siteResources.enabled, true),
+                eq(siteResources.status, "approved"),
                 siteIdFilter != null
                     ? eq(sites.siteId, siteIdFilter)
                     : undefined
@@ -1382,7 +1425,8 @@ async function collectAccessibleSites(
         const publicConditions = [
             inArray(resources.resourceId, accessible.resourceIds),
             eq(resources.orgId, orgId),
-            eq(resources.enabled, true)
+            eq(resources.enabled, true),
+            eq(resources.status, "approved")
         ];
         if (siteNameSearch) {
             publicConditions.push(siteNameSearch);
@@ -1422,7 +1466,8 @@ async function collectAccessibleSites(
         const siteConditions = [
             inArray(siteResources.siteResourceId, accessible.siteResourceIds),
             eq(siteResources.orgId, orgId),
-            eq(siteResources.enabled, true)
+            eq(siteResources.enabled, true),
+            eq(siteResources.status, "approved")
         ];
         if (siteNameSearch) {
             siteConditions.push(siteNameSearch);
@@ -1476,6 +1521,7 @@ async function collectAccessibleLabels(
             inArray(resources.resourceId, accessible.resourceIds),
             eq(resources.orgId, orgId),
             eq(resources.enabled, true),
+            eq(resources.status, "approved"),
             eq(labels.orgId, orgId)
         ];
         if (labelNameSearch) {
@@ -1511,6 +1557,7 @@ async function collectAccessibleLabels(
             inArray(siteResources.siteResourceId, accessible.siteResourceIds),
             eq(siteResources.orgId, orgId),
             eq(siteResources.enabled, true),
+            eq(siteResources.status, "approved"),
             eq(labels.orgId, orgId)
         ];
         if (labelNameSearch) {
