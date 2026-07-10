@@ -10,7 +10,7 @@ export enum OpenAPITags {
     Client = "Client",
     Org = "Organization",
     Domain = "Domain",
-    Policy = "Policy",
+    PublicResourcePolicy = "Public Resource Policy",
     Role = "Role",
     User = "User",
     Rule = "Rule",
@@ -23,6 +23,7 @@ export enum OpenAPITags {
     Blueprint = "Blueprint",
     Ssh = "SSH",
     Logs = "Logs",
+    PublicResourcePolicyLegacy = "Public Resource Policy (Legacy)",
     PublicResourceLegacy = "Public Resource (Legacy)",
     PrivateResourceLegacy = "Private Resource (Legacy)"
 }

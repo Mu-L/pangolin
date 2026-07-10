@@ -40,7 +40,7 @@ registry.registerPath({
     path: "/resource-policy/{resourceId}/access-control",
     description:
         "Set access control users for a resource policy, including SSO, users, roles, Identity provider.",
-    tags: [OpenAPITags.Policy, OpenAPITags.User],
+    tags: [OpenAPITags.PublicResourcePolicyLegacy],
     request: {
         params: setResourcePolicyAccessControlParamsSchema,
         body: {
@@ -59,7 +59,7 @@ registry.registerPath({
     path: "/public-resource-policy/{resourceId}/access-control",
     description:
         "Set access control users for a resource policy, including SSO, users, roles, Identity provider.",
-    tags: [OpenAPITags.Policy, OpenAPITags.User],
+    tags: [OpenAPITags.PublicResourcePolicy, OpenAPITags.User],
     request: {
         params: setResourcePolicyAccessControlParamsSchema,
         body: {

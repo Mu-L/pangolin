@@ -24,7 +24,7 @@ registry.registerPath({
     path: "/resource-policy/{resourcePolicyId}/password",
     description:
         "Set the password for a resource policy. Setting the password to null will remove it.",
-    tags: [OpenAPITags.Policy],
+    tags: [OpenAPITags.PublicResourcePolicyLegacy],
     request: {
         params: setResourcePolicyPasswordParamsSchema,
         body: {
@@ -43,7 +43,7 @@ registry.registerPath({
     path: "/public-resource-policy/{resourcePolicyId}/password",
     description:
         "Set the password for a resource policy. Setting the password to null will remove it.",
-    tags: [OpenAPITags.Policy],
+    tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: setResourcePolicyPasswordParamsSchema,
         body: {

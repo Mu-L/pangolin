@@ -33,7 +33,7 @@ registry.registerPath({
     method: "post",
     path: "/site-resource/{siteResourceId}/roles/remove",
     description: "Remove a single role from a site resource.",
-    tags: [OpenAPITags.PrivateResource, OpenAPITags.Role],
+    tags: [OpenAPITags.PrivateResourceLegacy],
     request: {
         params: removeRoleFromSiteResourceParamsSchema,
         body: {

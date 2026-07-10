@@ -27,7 +27,7 @@ registry.registerPath({
     path: "/resource-policy/{resourcePolicyId}/pincode",
     description:
         "Set the PIN code for a resource policy. Setting the PIN code to null will remove it.",
-    tags: [OpenAPITags.Policy],
+    tags: [OpenAPITags.PublicResourcePolicyLegacy],
     request: {
         params: setResourcePolicyPincodeParamsSchema,
         body: {
@@ -46,7 +46,7 @@ registry.registerPath({
     path: "/public-resource-policy/{resourcePolicyId}/pincode",
     description:
         "Set the PIN code for a resource policy. Setting the PIN code to null will remove it.",
-    tags: [OpenAPITags.Policy],
+    tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: setResourcePolicyPincodeParamsSchema,
         body: {

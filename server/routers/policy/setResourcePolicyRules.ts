@@ -47,7 +47,7 @@ registry.registerPath({
     path: "/resource-policy/{resourcePolicyId}/rules",
     description:
         "Set all rules for a resource policy at once. This will replace all existing rules.",
-    tags: [OpenAPITags.Policy],
+    tags: [OpenAPITags.PublicResourcePolicyLegacy],
     request: {
         params: setResourcePolicyRulesParamsSchema,
         body: {
@@ -66,7 +66,7 @@ registry.registerPath({
     path: "/public-resource-policy/{resourcePolicyId}/rules",
     description:
         "Set all rules for a resource policy at once. This will replace all existing rules.",
-    tags: [OpenAPITags.Policy],
+    tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: setResourcePolicyRulesParamsSchema,
         body: {

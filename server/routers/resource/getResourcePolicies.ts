@@ -39,7 +39,7 @@ registry.registerPath({
     path: "/public-resource/{resourceId}/policies",
     description:
         "Get the inline and shared policies associated with a resource.",
-    tags: [OpenAPITags.PublicResource, OpenAPITags.Policy],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.PublicResourcePolicy],
     request: {
         params: getResourcePoliciesParamsSchema
     },

@@ -33,7 +33,7 @@ registry.registerPath({
     path: "/site-resource/{siteResourceId}/clients/remove",
     description:
         "Remove a single client from a site resource. Clients with a userId cannot be removed.",
-    tags: [OpenAPITags.PrivateResource, OpenAPITags.Client],
+    tags: [OpenAPITags.PrivateResourceLegacy],
     request: {
         params: removeClientFromSiteResourceParamsSchema,
         body: {
