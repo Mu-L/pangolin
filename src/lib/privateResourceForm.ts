@@ -165,7 +165,6 @@ export function buildCreateSiteResourcePayload(
         siteIds: data.siteIds,
         mode: data.mode,
         destination: isNativeSsh ? undefined : (data.destination ?? undefined),
-        enabled: true,
         ...(data.mode === "http" && {
             scheme: data.scheme,
             ssl: data.ssl ?? false,
