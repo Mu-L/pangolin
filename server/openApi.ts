@@ -23,6 +23,9 @@ export enum OpenAPITags {
     Blueprint = "Blueprint",
     Ssh = "SSH",
     Logs = "Logs",
+    EventStreamingDestination = "Event Streaming Destination",
+    AlertRule = "Alert Rule",
+    HealthCheck = "Health Check",
     PublicResourcePolicyLegacy = "Public Resource Policy (Legacy)",
     PublicResourceLegacy = "Public Resource (Legacy)",
     PrivateResourceLegacy = "Private Resource (Legacy)"

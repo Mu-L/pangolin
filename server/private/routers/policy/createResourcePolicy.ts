@@ -121,7 +121,7 @@ registry.registerPath({
     method: "post",
     path: "/org/{orgId}/resource-policy",
     description: "Create a resource policy.",
-    tags: [OpenAPITags.Org, OpenAPITags.PublicResourcePolicy],
+    tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: createResourcePolicyParamsSchema,
         body: {

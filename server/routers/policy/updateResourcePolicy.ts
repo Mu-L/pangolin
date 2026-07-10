@@ -22,7 +22,7 @@ registry.registerPath({
     method: "put",
     path: "/resource-policy/{resourcePolicyId}",
     description: "Update a resource policy.",
-    tags: [OpenAPITags.Org, OpenAPITags.PublicResourcePolicy],
+    tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: updateResourcePolicyParamsSchema,
         body: {
@@ -40,7 +40,7 @@ registry.registerPath({
     method: "put",
     path: "/public-resource-policy/{resourcePolicyId}",
     description: "Update a resource policy.",
-    tags: [OpenAPITags.Org, OpenAPITags.PublicResourcePolicy],
+    tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: updateResourcePolicyParamsSchema,
         body: {

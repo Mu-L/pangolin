@@ -168,7 +168,7 @@ registry.registerPath({
     path: "/org/{orgId}/resource-policy/{niceId}",
     description:
         "Get a resource policy by orgId and niceId. NiceId is a readable ID for the resource and unique on a per org basis.",
-    tags: [OpenAPITags.Org, OpenAPITags.PublicResourcePolicy],
+    tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: z.object({
             orgId: z.string(),
