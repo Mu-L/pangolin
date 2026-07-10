@@ -32,7 +32,7 @@ registry.registerPath({
     method: "put",
     path: "/resource/{resourceId}/rule",
     description: "Create a resource rule.",
-    tags: [OpenAPITags.PublicResource, OpenAPITags.Rule],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: createResourceRuleParamsSchema,
         body: {

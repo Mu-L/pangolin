@@ -23,7 +23,7 @@ registry.registerPath({
     path: "/resource/{resourceId}/users",
     description:
         "Set users for a resource. This will replace all existing users. When the resource has an inline policy defined (no shared resource policy assigned), users are set on the inline policy instead of directly on the resource.",
-    tags: [OpenAPITags.PublicResource, OpenAPITags.User],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: setUserResourcesParamsSchema,
         body: {

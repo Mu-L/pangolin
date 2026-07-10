@@ -29,7 +29,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/users/remove",
     description: "Remove a single user from a resource.",
-    tags: [OpenAPITags.PublicResource, OpenAPITags.User],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: removeUserFromResourceParamsSchema,
         body: {

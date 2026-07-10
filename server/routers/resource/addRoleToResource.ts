@@ -30,7 +30,7 @@ registry.registerPath({
     path: "/resource/{resourceId}/roles/add",
     description:
         "Add a single role to a resource. When the resource has an inline policy defined (no shared resource policy assigned), the role is added to the inline policy instead of directly to the resource.",
-    tags: [OpenAPITags.PublicResource, OpenAPITags.Role],
+    tags: [OpenAPITags.PublicResourceLegacy, OpenAPITags.Role],
     request: {
         params: addRoleToResourceParamsSchema,
         body: {

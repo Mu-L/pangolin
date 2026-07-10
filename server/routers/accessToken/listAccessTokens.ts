@@ -159,7 +159,7 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/access-tokens",
     description: "List all access tokens for a resource.",
-    tags: [OpenAPITags.PublicResource, OpenAPITags.AccessToken],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: z.object({
             resourceId: z.number()

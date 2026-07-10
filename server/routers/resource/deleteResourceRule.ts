@@ -19,7 +19,7 @@ registry.registerPath({
     method: "delete",
     path: "/resource/{resourceId}/rule/{ruleId}",
     description: "Delete a resource rule.",
-    tags: [OpenAPITags.PublicResource, OpenAPITags.Rule],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: deleteResourceRuleSchema
     },

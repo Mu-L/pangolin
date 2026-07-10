@@ -30,7 +30,7 @@ registry.registerPath({
     path: "/resource/{resourceId}/users/add",
     description:
         "Add a single user to a resource. When the resource has an inline policy defined (no shared resource policy assigned), the user is added to the inline policy instead of directly to the resource.",
-    tags: [OpenAPITags.PublicResource, OpenAPITags.User],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: addUserToResourceParamsSchema,
         body: {
