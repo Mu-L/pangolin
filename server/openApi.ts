@@ -4,25 +4,30 @@ export const registry = new OpenAPIRegistry();
 
 export enum OpenAPITags {
     Site = "Site",
-    Org = "Organization",
     PublicResource = "Public Resource",
-    PublicResourceLegacy = "Public Resource (Legacy)",
+    Target = "Resource Target",
     PrivateResource = "Private Resource",
-    PrivateResourceLegacy = "Private Resource (Legacy)",
+    Client = "Client",
+    Org = "Organization",
+    Domain = "Domain",
     Policy = "Policy",
     Role = "Role",
     User = "User",
-    Invitation = "User Invitation",
-    Target = "Resource Target",
     Rule = "Rule",
+    Invitation = "User Invitation",
     AccessToken = "Access Token",
     GlobalIdp = "Identity Provider (Global)",
     OrgIdp = "Identity Provider (Organization Only)",
-    Client = "Client",
     ApiKey = "API Key",
     SiteProvisioningKey = "Site Provisioning Key",
-    Domain = "Domain",
     Blueprint = "Blueprint",
     Ssh = "SSH",
-    Logs = "Logs"
+    Logs = "Logs",
+    PublicResourceLegacy = "Public Resource (Legacy)",
+    PrivateResourceLegacy = "Private Resource (Legacy)"
 }
+
+// Order here controls the order tags are displayed in Swagger UI
+export const openApiTags = Object.values(OpenAPITags).map((name) => ({
+    name
+}));
