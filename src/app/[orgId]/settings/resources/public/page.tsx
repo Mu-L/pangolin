@@ -38,6 +38,7 @@ export default async function ProxyResourcesPage(
     const params = await props.params;
     const t = await getTranslations();
     const searchParams = new URLSearchParams(await props.searchParams);
+    searchParams.set("status", "approved");
 
     let resources: ListResourcesResponse["resources"] = [];
     let pagination: ListResourcesResponse["pagination"] = {
