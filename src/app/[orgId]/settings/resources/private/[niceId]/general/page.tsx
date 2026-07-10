@@ -16,12 +16,14 @@ import { Button } from "@app/components/ui/button";
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
+import { SwitchInput } from "@app/components/SwitchInput";
 import { createGeneralFormSchema } from "@app/lib/privateResourceForm";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
@@ -41,7 +43,8 @@ export default function PrivateResourceGeneralPage() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: siteResource.name,
-            niceId: siteResource.niceId
+            niceId: siteResource.niceId,
+            enabled: siteResource.enabled
         }
     });
 
@@ -52,7 +55,8 @@ export default function PrivateResourceGeneralPage() {
         const data = form.getValues();
         await save({
             name: data.name,
-            niceId: data.niceId
+            niceId: data.niceId,
+            enabled: data.enabled
         });
     }, null);
 
@@ -76,6 +80,42 @@ export default function PrivateResourceGeneralPage() {
                                 id="private-resource-general-form"
                             >
                                 <SettingsFormGrid>
+                                    <SettingsFormCell span="full">
+                                        <FormField
+                                            control={form.control}
+                                            name="enabled"
+                                            render={() => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <SwitchInput
+                                                            id="enable-resource"
+                                                            defaultChecked={
+                                                                siteResource.enabled
+                                                            }
+                                                            label={t(
+                                                                "resourceEnable"
+                                                            )}
+                                                            onCheckedChange={(
+                                                                val
+                                                            ) =>
+                                                                form.setValue(
+                                                                    "enabled",
+                                                                    val
+                                                                )
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "disabledResourceDescription"
+                                                        )}
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
+
                                     <SettingsFormCell span="half">
                                         <FormField
                                             control={form.control}

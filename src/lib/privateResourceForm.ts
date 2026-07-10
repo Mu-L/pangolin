@@ -342,7 +342,8 @@ export function createGeneralFormSchema(t: TranslateFn) {
             .string()
             .min(1)
             .max(255)
-            .regex(/^[a-zA-Z0-9-]+$/)
+            .regex(/^[a-zA-Z0-9-]+$/),
+        enabled: z.boolean()
     });
 }
 
