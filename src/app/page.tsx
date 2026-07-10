@@ -19,9 +19,11 @@ export default async function Page(props: {
     searchParams: Promise<{
         redirect: string | undefined;
         t: string | undefined;
+        orgs?: string | undefined;
     }>;
 }) {
     const params = await props.searchParams; // this is needed to prevent static optimization
+    const showOrgPicker = params.orgs === "1";
 
     const env = pullEnv();
 
@@ -103,7 +105,7 @@ export default async function Page(props: {
         }
     }
 
-    if (targetOrgId) {
+    if (targetOrgId && !showOrgPicker) {
         const targetOrg = orgs.find((org) => org.orgId === targetOrgId);
         return (
             <RedirectToOrg
