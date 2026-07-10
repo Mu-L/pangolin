@@ -240,8 +240,7 @@ export async function updatePrivateResources(
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
-                    enabled: true, // hardcoded for now
-                    // enabled: resourceData.enabled ?? true,
+                    enabled: resourceData.enabled ?? true,
                     alias: resourceData.alias || null,
                     disableIcmp:
                         resourceData["disable-icmp"] ||
@@ -493,8 +492,7 @@ export async function updatePrivateResources(
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
-                    enabled: true, // hardcoded for now
-                    // enabled: resourceData.enabled ?? true,
+                    enabled: resourceData.enabled ?? true,
                     alias: resourceData.alias || null,
                     aliasAddress: aliasAddress,
                     disableIcmp:

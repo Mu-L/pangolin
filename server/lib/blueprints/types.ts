@@ -470,7 +470,7 @@ export const PrivateResourceSchema = z
         // proxyPort: z.int().positive().optional(),
         "destination-port": z.int().positive().optional(),
         destination: z.string().min(1).optional(),
-        // enabled: z.boolean().default(true),
+        enabled: z.boolean().default(true),
         "tcp-ports": portRangeStringSchema.optional().default("*"),
         "udp-ports": portRangeStringSchema.optional().default("*"),
         "disable-icmp": z.boolean().optional().default(false),
