@@ -152,6 +152,11 @@ const updateSiteResourceSchema = z
     )
     .refine(
         (data) => {
+            // this is a partial update; only enforce destination when the
+            // caller is actually changing mode or destination
+            if (data.mode === undefined && data.destination === undefined) {
+                return true;
+            }
             // destination is only optional for ssh mode with native authDaemonMode
             if (data.mode === "ssh" && data.authDaemonMode === "native") {
                 return true;
