@@ -273,6 +273,42 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "post",
+    path: "/public-resource/{resourceId}",
+    description:
+        "Update a resource. Policy fields (sso, mfa, pincode, password, whitelist) update the inline policy when no shared resource policy is assigned; when a shared policy is assigned those fields override the shared policy for this resource only.",
+    tags: [OpenAPITags.PublicResource],
+    request: {
+        params: updateResourceParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: updateHttpResourceBodySchema.and(
+                        updateRawResourceBodySchema
+                    )
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function updateResource(
     req: Request,
     res: Response,

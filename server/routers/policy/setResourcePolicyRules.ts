@@ -61,6 +61,25 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "put",
+    path: "/public-resource-policy/{resourcePolicyId}/rules",
+    description:
+        "Set all rules for a resource policy at once. This will replace all existing rules.",
+    tags: [OpenAPITags.Policy],
+    request: {
+        params: setResourcePolicyRulesParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyRulesBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
 export async function setResourcePolicyRules(
     req: Request,
     res: Response,

@@ -74,6 +74,39 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "post",
+    path: "/public-resource/{resourceId}/access-token",
+    description: "Generate a new access token for a resource.",
+    tags: [OpenAPITags.PublicResource, OpenAPITags.AccessToken],
+    request: {
+        params: generateAccssTokenParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: generateAccessTokenBodySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function generateAccessToken(
     req: Request,
     res: Response,

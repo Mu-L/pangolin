@@ -253,6 +253,33 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "get",
+    path: "/org/{orgId}/private-resources",
+    description: "List all site resources for an organization.",
+    tags: [OpenAPITags.PrivateResource],
+    request: {
+        params: listAllSiteResourcesByOrgParamsSchema,
+        query: listAllSiteResourcesByOrgQuerySchema
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function listAllSiteResourcesByOrg(
     req: Request,
     res: Response,

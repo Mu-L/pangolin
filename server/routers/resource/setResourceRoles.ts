@@ -52,6 +52,40 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "post",
+    path: "/public-resource/{resourceId}/roles",
+    description:
+        "Set roles for a resource. This will replace all existing roles. When the resource has an inline policy defined (no shared resource policy assigned), roles are set on the inline policy instead of directly on the resource.",
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Role],
+    request: {
+        params: setResourceRolesParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourceRolesBodySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function setResourceRoles(
     req: Request,
     res: Response,

@@ -36,6 +36,24 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "put",
+    path: "/public-resource-policy/{resourcePolicyId}",
+    description: "Update a resource policy.",
+    tags: [OpenAPITags.Org, OpenAPITags.Policy],
+    request: {
+        params: updateResourcePolicyParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: updateResourcePolicyBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
 export async function updateResourcePolicy(
     req: Request,
     res: Response,

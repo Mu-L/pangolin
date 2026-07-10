@@ -54,6 +54,25 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "post",
+    path: "/public-resource-policy/{resourceId}/access-control",
+    description:
+        "Set access control users for a resource policy, including SSO, users, roles, Identity provider.",
+    tags: [OpenAPITags.Policy, OpenAPITags.User],
+    request: {
+        params: setResourcePolicyAccessControlParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyAcccessControlBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
 export async function setResourcePolicyAccessControl(
     req: Request,
     res: Response,

@@ -62,6 +62,40 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "post",
+    path: "/private-resource/{siteResourceId}/clients/add",
+    description:
+        "Add a single client to a site resource. Clients with a userId cannot be added.",
+    tags: [OpenAPITags.PrivateResource, OpenAPITags.Client],
+    request: {
+        params: addClientToSiteResourceParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: addClientToSiteResourceBodySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function addClientToSiteResource(
     req: Request,
     res: Response,

@@ -85,6 +85,36 @@ registry.registerPath({
 
 registry.registerPath({
     method: "get",
+    path: "/private-resource/{siteResourceId}",
+    description: "Get a specific site resource by siteResourceId.",
+    tags: [OpenAPITags.PrivateResource],
+    request: {
+        params: z.object({
+            siteResourceId: z.number(),
+            siteId: z.number(),
+            orgId: z.string()
+        })
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
+registry.registerPath({
+    method: "get",
     path: "/org/{orgId}/site/{siteId}/resource/nice/{niceId}",
     description: "Get a specific site resource by niceId.",
     tags: [OpenAPITags.PrivateResource],

@@ -46,6 +46,25 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "put",
+    path: "/public-resource-policy/{resourcePolicyId}/whitelist",
+    description:
+        "Set email whitelist for a resource policy. This will replace all existing emails.",
+    tags: [OpenAPITags.Policy],
+    request: {
+        params: setResourcePolicyWhitelistParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyWhitelistBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
 export async function setResourcePolicyWhitelist(
     req: Request,
     res: Response,

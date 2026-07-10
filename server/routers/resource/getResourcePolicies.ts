@@ -33,6 +33,17 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "get",
+    path: "/public-resource/{resourceId}/policies",
+    description: "Get the inline and shared policies associated with a resource.",
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Policy],
+    request: {
+        params: getResourcePoliciesParamsSchema
+    },
+    responses: {}
+});
+
 export async function getResourcePolicies(
     req: Request,
     res: Response,

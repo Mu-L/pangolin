@@ -43,6 +43,25 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "put",
+    path: "/public-resource-policy/{resourcePolicyId}/header-auth",
+    description:
+        "Set or update the header authentication for a resource policy. If user and password is not provided, it will remove the header authentication.",
+    tags: [OpenAPITags.Policy],
+    request: {
+        params: setResourcePolicyHeaderAuthParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyHeaderAuthBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
 export async function setResourcePolicyHeaderAuth(
     req: Request,
     res: Response,

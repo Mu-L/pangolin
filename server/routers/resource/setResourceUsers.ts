@@ -52,6 +52,40 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "post",
+    path: "/public-resource/{resourceId}/users",
+    description:
+        "Set users for a resource. This will replace all existing users. When the resource has an inline policy defined (no shared resource policy assigned), users are set on the inline policy instead of directly on the resource.",
+    tags: [OpenAPITags.PublicResource, OpenAPITags.User],
+    request: {
+        params: setUserResourcesParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setUserResourcesBodySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function setResourceUsers(
     req: Request,
     res: Response,

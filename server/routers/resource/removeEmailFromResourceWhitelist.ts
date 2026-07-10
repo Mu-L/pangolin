@@ -63,6 +63,39 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "post",
+    path: "/public-resource/{resourceId}/whitelist/remove",
+    description: "Remove a single email from the resource whitelist.",
+    tags: [OpenAPITags.PublicResource],
+    request: {
+        params: removeEmailFromResourceWhitelistParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: removeEmailFromResourceWhitelistBodySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function removeEmailFromResourceWhitelist(
     req: Request,
     res: Response,

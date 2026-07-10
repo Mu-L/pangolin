@@ -191,6 +191,19 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "get",
+    path: "/public-resource-policy/{resourcePolicyId}",
+    description: "Get a resource policy by its resourcePolicyId.",
+    tags: [OpenAPITags.Policy],
+    request: {
+        params: z.object({
+            resourcePolicyId: z.number()
+        })
+    },
+    responses: {}
+});
+
 export async function getResourcePolicy(
     req: Request,
     res: Response,

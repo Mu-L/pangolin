@@ -41,6 +41,25 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "put",
+    path: "/public-resource-policy/{resourcePolicyId}/pincode",
+    description:
+        "Set the PIN code for a resource policy. Setting the PIN code to null will remove it.",
+    tags: [OpenAPITags.Policy],
+    request: {
+        params: setResourcePolicyPincodeParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyPincodeBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
 export async function setResourcePolicyPincode(
     req: Request,
     res: Response,

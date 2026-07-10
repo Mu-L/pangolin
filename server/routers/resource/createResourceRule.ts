@@ -61,6 +61,39 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "put",
+    path: "/public-resource/{resourceId}/rule",
+    description: "Create a resource rule.",
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Rule],
+    request: {
+        params: createResourceRuleParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: createResourceRuleSchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function createResourceRule(
     req: Request,
     res: Response,

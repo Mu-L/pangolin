@@ -38,6 +38,25 @@ registry.registerPath({
     responses: {}
 });
 
+registry.registerPath({
+    method: "put",
+    path: "/public-resource-policy/{resourcePolicyId}/password",
+    description:
+        "Set the password for a resource policy. Setting the password to null will remove it.",
+    tags: [OpenAPITags.Policy],
+    request: {
+        params: setResourcePolicyPasswordParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyPasswordBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
 export async function setResourcePolicyPassword(
     req: Request,
     res: Response,

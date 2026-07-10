@@ -67,6 +67,39 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "post",
+    path: "/client/{clientId}/private-resources",
+    description: "Add a machine client to multiple site resources at once.",
+    tags: [OpenAPITags.Client],
+    request: {
+        params: batchAddClientToSiteResourcesParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: batchAddClientToSiteResourcesBodySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function batchAddClientToSiteResources(
     req: Request,
     res: Response,

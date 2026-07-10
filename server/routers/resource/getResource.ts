@@ -116,6 +116,34 @@ registry.registerPath({
     }
 });
 
+registry.registerPath({
+    method: "get",
+    path: "/public-resource/{resourceId}",
+    description: "Get a resource by resourceId.",
+    tags: [OpenAPITags.PublicResource],
+    request: {
+        params: z.object({
+            resourceId: z.number()
+        })
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
 export async function getResource(
     req: Request,
     res: Response,
