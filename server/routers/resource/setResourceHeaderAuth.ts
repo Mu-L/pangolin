@@ -31,7 +31,7 @@ registry.registerPath({
     path: "/resource/{resourceId}/header-auth",
     description:
         "Set or update the header authentication for a resource. If user and password is not provided, it will remove the header authentication.",
-    tags: [OpenAPITags.PublicResource],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: setResourceAuthMethodsParamsSchema,
         body: {

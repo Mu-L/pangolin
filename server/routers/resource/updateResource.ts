@@ -242,7 +242,7 @@ registry.registerPath({
     path: "/resource/{resourceId}",
     description:
         "Update a resource. Policy fields (sso, mfa, pincode, password, whitelist) update the inline policy when no shared resource policy is assigned; when a shared policy is assigned those fields override the shared policy for this resource only.",
-    tags: [OpenAPITags.PublicResource],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: updateResourceParamsSchema,
         body: {

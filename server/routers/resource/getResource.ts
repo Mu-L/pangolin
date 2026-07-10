@@ -63,7 +63,7 @@ registry.registerPath({
     path: "/org/{orgId}/resource/{niceId}",
     description:
         "Get a resource by orgId and niceId. NiceId is a readable ID for the resource and unique on a per org basis.",
-    tags: [OpenAPITags.PublicResource],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: z.object({
             orgId: z.string(),
@@ -92,7 +92,7 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}",
     description: "Get a resource by resourceId.",
-    tags: [OpenAPITags.PublicResource],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: z.object({
             resourceId: z.number()

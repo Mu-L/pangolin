@@ -34,7 +34,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/whitelist/add",
     description: "Add a single email to the resource whitelist.",
-    tags: [OpenAPITags.PublicResource],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: addEmailToResourceWhitelistParamsSchema,
         body: {
@@ -177,10 +177,7 @@ export async function addEmailToResourceWhitelist(
                 .from(resourcePolicyWhiteList)
                 .where(
                     and(
-                        eq(
-                            resourcePolicyWhiteList.resourcePolicyId,
-                            policyId
-                        ),
+                        eq(resourcePolicyWhiteList.resourcePolicyId, policyId),
                         eq(resourcePolicyWhiteList.email, email)
                     )
                 );

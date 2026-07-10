@@ -57,7 +57,7 @@ registry.registerPath({
     method: "get",
     path: "/site-resource/{siteResourceId}",
     description: "Get a specific site resource by siteResourceId.",
-    tags: [OpenAPITags.PrivateResource],
+    tags: [OpenAPITags.PrivateResourceLegacy],
     request: {
         params: z.object({
             siteResourceId: z.number(),

@@ -34,7 +34,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/whitelist/remove",
     description: "Remove a single email from the resource whitelist.",
-    tags: [OpenAPITags.PublicResource],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: removeEmailFromResourceWhitelistParamsSchema,
         body: {
@@ -176,10 +176,7 @@ export async function removeEmailFromResourceWhitelist(
                 .from(resourcePolicyWhiteList)
                 .where(
                     and(
-                        eq(
-                            resourcePolicyWhiteList.resourcePolicyId,
-                            policyId
-                        ),
+                        eq(resourcePolicyWhiteList.resourcePolicyId, policyId),
                         eq(resourcePolicyWhiteList.email, email)
                     )
                 );
@@ -197,10 +194,7 @@ export async function removeEmailFromResourceWhitelist(
                 .delete(resourcePolicyWhiteList)
                 .where(
                     and(
-                        eq(
-                            resourcePolicyWhiteList.resourcePolicyId,
-                            policyId
-                        ),
+                        eq(resourcePolicyWhiteList.resourcePolicyId, policyId),
                         eq(resourcePolicyWhiteList.email, email)
                     )
                 );

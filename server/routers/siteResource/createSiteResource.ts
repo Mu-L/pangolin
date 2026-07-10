@@ -207,7 +207,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/site-resource",
     description: "Create a new site resource.",
-    tags: [OpenAPITags.PrivateResource],
+    tags: [OpenAPITags.PrivateResourceLegacy],
     request: {
         params: createSiteResourceParamsSchema,
         body: {

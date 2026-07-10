@@ -33,7 +33,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/resources-names",
     description: "List all resource names for an organization.",
-    tags: [OpenAPITags.PublicResource],
+    tags: [OpenAPITags.PublicResourceLegacy],
     request: {
         params: z.object({
             orgId: z.string()

@@ -27,7 +27,7 @@ registry.registerPath({
     method: "delete",
     path: "/site-resource/{siteResourceId}",
     description: "Delete a site resource.",
-    tags: [OpenAPITags.PrivateResource],
+    tags: [OpenAPITags.PrivateResourceLegacy],
     request: {
         params: deleteSiteResourceParamsSchema
     },
