@@ -219,6 +219,13 @@ export async function updatePrivateResources(
             );
         }
 
+        const resourceEnabled =
+            resourceData.enabled == undefined || resourceData.enabled == null
+                ? true
+                : resourceStatusFromSite === "pending"
+                  ? false
+                  : resourceData.enabled;
+
         if (existingResource) {
             let domainInfo:
                 | { subdomain: string | null; domainId: string }
@@ -242,7 +249,7 @@ export async function updatePrivateResources(
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
-                    enabled: resourceData.enabled ?? true,
+                    enabled: resourceEnabled,
                     alias: resourceData.alias || null,
                     disableIcmp:
                         resourceData["disable-icmp"] ||
@@ -495,7 +502,7 @@ export async function updatePrivateResources(
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
-                    enabled: resourceData.enabled ?? true,
+                    enabled: resourceEnabled,
                     alias: resourceData.alias || null,
                     aliasAddress: aliasAddress,
                     disableIcmp:

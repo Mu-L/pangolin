@@ -246,7 +246,10 @@ export async function updatePublicResources(
         const resourceEnabled =
             resourceData.enabled == undefined || resourceData.enabled == null
                 ? true
-                : resourceData.enabled;
+                : resourceStatusFromSite === "pending"
+                  ? false
+                  : resourceData.enabled;
+
         const resourceSsl =
             resourceData.ssl == undefined || resourceData.ssl == null
                 ? true
