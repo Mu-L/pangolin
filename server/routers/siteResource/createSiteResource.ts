@@ -56,7 +56,6 @@ const createSiteResourceSchema = z
         siteId: z.number().int().positive().optional(), // DEPRECATED: for backward compatibility, we will convert this to siteIds array if provided
         destinationPort: z.int().positive().optional(),
         destination: z.string().min(1).nullish(),
-        enabled: z.boolean().default(true),
         alias: z
             .string()
             .regex(
@@ -275,7 +274,6 @@ export async function createSiteResource(
             scheme,
             destinationPort,
             destination,
-            enabled,
             ssl,
             alias,
             userIds,
@@ -539,7 +537,6 @@ export async function createSiteResource(
                     destination: destination, // the ssh can be null
                     scheme,
                     destinationPort,
-                    enabled,
                     alias: alias ? alias.trim() : null,
                     aliasAddress,
                     tcpPortRangeString: tcpPortRangeStringAdjusted,
