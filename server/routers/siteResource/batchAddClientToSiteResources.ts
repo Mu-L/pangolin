@@ -38,7 +38,7 @@ registry.registerPath({
     method: "post",
     path: "/client/{clientId}/site-resources",
     description: "Add a machine client to multiple site resources at once.",
-    tags: [OpenAPITags.Client],
+    tags: [OpenAPITags.PrivateResourceLegacy],
     request: {
         params: batchAddClientToSiteResourcesParamsSchema,
         body: {
