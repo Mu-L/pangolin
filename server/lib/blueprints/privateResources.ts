@@ -198,17 +198,19 @@ export async function updatePrivateResources(
             }
         }
 
+        let resourceStatusFromSite: "approved" | "pending" = "approved";
         if (siteId && allSites.length === 0) {
             // only add if there are not provided sites
             // Use the provided siteId directly, but verify it belongs to the org
             const [siteSingle] = await trx
-                .select({ siteId: sites.siteId })
+                .select({ siteId: sites.siteId, status: sites.status })
                 .from(sites)
                 .where(and(eq(sites.siteId, siteId), eq(sites.orgId, orgId)))
                 .limit(1);
             if (siteSingle) {
                 allSites.push(siteSingle);
             }
+            resourceStatusFromSite = siteSingle.status ?? "approved";
         }
 
         if (allSites.length === 0) {
@@ -259,7 +261,8 @@ export async function updatePrivateResources(
                     pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
                     authDaemonMode:
                         resourceData["auth-daemon"]?.mode || "native",
-                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
+                    status: resourceStatusFromSite
                 })
                 .where(
                     eq(
@@ -512,7 +515,8 @@ export async function updatePrivateResources(
                     pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
                     authDaemonMode:
                         resourceData["auth-daemon"]?.mode || "native",
-                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
+                    status: resourceStatusFromSite
                 })
                 .returning();
 
