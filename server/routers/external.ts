@@ -248,6 +248,14 @@ authenticated.post(
     site.updateSite
 );
 
+authenticated.post(
+    "/site/:siteId/approve",
+    verifySiteAccess,
+    verifyUserHasAction(ActionsEnum.updateSite),
+    logActionAudit(ActionsEnum.updateSite),
+    site.approveSite
+);
+
 authenticated.delete(
     "/site/:siteId",
     verifySiteAccess,

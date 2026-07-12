@@ -111,7 +111,7 @@ export default function PendingSitesTable({
     async function approveSite(siteId: number) {
         setApprovingIds((prev) => new Set(prev).add(siteId));
         try {
-            await api.post(`/site/${siteId}`, { status: "approved" });
+            await api.post(`/site/${siteId}/approve`);
             toast({
                 title: t("success"),
                 description: t("siteApproveSuccess"),
