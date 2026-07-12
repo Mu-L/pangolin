@@ -14,41 +14,27 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { cleanupSiteAssociations } from "@server/lib/rebuildClientAssociations";
 import { usageService } from "@server/lib/billing/usageService";
 import { LimitId } from "@server/lib/billing";
-import { ActionsEnum, checkUserActionPermission } from "@server/auth/actions";
 import {
-    deleteAssociatedResourcesForSite,
+    deletePendingAssociatedResourcesForSite,
     exceedsSiteAssociatedResourceDeleteLimit,
-    getAssociatedResourceCountForSite,
+    getPendingAssociatedResourceCountForSite,
     runDeleteSiteAssociatedResourcesSideEffects,
     MAX_SITE_ASSOCIATED_RESOURCES_FOR_BULK_DELETE,
     type DeleteSiteAssociatedResourcesSideEffects
 } from "@server/lib/deleteSiteAssociatedResources";
 
-const deleteSiteSchema = z.strictObject({
+const rejectSiteParamsSchema = z.strictObject({
     siteId: z.coerce.number().int().positive()
 });
 
-const deleteSiteQuerySchema = z.strictObject({
-    deleteResources: z
-        .enum(["true", "false"])
-        .transform((v) => v === "true")
-        .optional()
-        .catch(false)
-        .openapi({
-            type: "boolean",
-            description:
-                "When true, also deletes all public and private resources associated with this site"
-        })
-});
-
 registry.registerPath({
-    method: "delete",
-    path: "/site/{siteId}",
-    description: "Delete a site and all its associated data.",
+    method: "post",
+    path: "/site/{siteId}/reject",
+    description:
+        "Reject a pending site by deleting it and any associated resources that are still pending.",
     tags: [OpenAPITags.Site],
     request: {
-        params: deleteSiteSchema,
-        query: deleteSiteQuerySchema
+        params: rejectSiteParamsSchema
     },
     responses: {
         200: {
@@ -68,13 +54,13 @@ registry.registerPath({
     }
 });
 
-export async function deleteSite(
+export async function rejectSite(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedParams = deleteSiteSchema.safeParse(req.params);
+        const parsedParams = rejectSiteParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -84,18 +70,7 @@ export async function deleteSite(
             );
         }
 
-        const parsedQuery = deleteSiteQuerySchema.safeParse(req.query);
-        if (!parsedQuery.success) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    fromError(parsedQuery.error).toString()
-                )
-            );
-        }
-
         const { siteId } = parsedParams.data;
-        const { deleteResources } = parsedQuery.data;
 
         const [site] = await db
             .select()
@@ -112,40 +87,29 @@ export async function deleteSite(
             );
         }
 
-        if (deleteResources) {
-            const canDeletePublic = await checkUserActionPermission(
-                ActionsEnum.deleteResource,
-                req
-            );
-            const canDeletePrivate = await checkUserActionPermission(
-                ActionsEnum.deleteSiteResource,
-                req
-            );
-
-            if (!canDeletePublic || !canDeletePrivate) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "User does not have permission to delete associated resources"
-                    )
-                );
-            }
-
-            const associatedResourceCount =
-                await getAssociatedResourceCountForSite(siteId, site.orgId);
-
-            if (
-                exceedsSiteAssociatedResourceDeleteLimit(
-                    associatedResourceCount
+        if (!site.orgId) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    `Site with ID ${siteId} has no organization`
                 )
-            ) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        `Cannot delete site and associated resources when the site has more than ${MAX_SITE_ASSOCIATED_RESOURCES_FOR_BULK_DELETE} resources`
-                    )
-                );
-            }
+            );
+        }
+
+        const pendingAssociatedResourceCount =
+            await getPendingAssociatedResourceCountForSite(siteId, site.orgId);
+
+        if (
+            exceedsSiteAssociatedResourceDeleteLimit(
+                pendingAssociatedResourceCount
+            )
+        ) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    `Cannot reject site and associated pending resources when the site has more than ${MAX_SITE_ASSOCIATED_RESOURCES_FOR_BULK_DELETE} pending resources`
+                )
+            );
         }
 
         const [deletedNewt] = await db
@@ -159,19 +123,15 @@ export async function deleteSite(
             siteResources: []
         };
 
-        if (deleteResources) {
-            await db.transaction(async (trx) => {
-                resourceSideEffects = await deleteAssociatedResourcesForSite(
-                    siteId,
-                    site.orgId,
-                    trx
-                );
-            });
-
-            await runDeleteSiteAssociatedResourcesSideEffects(
-                resourceSideEffects
+        await db.transaction(async (trx) => {
+            resourceSideEffects = await deletePendingAssociatedResourcesForSite(
+                siteId,
+                site.orgId,
+                trx
             );
-        }
+        });
+
+        await runDeleteSiteAssociatedResourcesSideEffects(resourceSideEffects);
 
         await db.transaction(async (trx) => {
             if (site.type == "wireguard") {
@@ -203,7 +163,7 @@ export async function deleteSite(
             data: null,
             success: true,
             error: false,
-            message: "Site deleted successfully",
+            message: "Site rejected successfully",
             status: HttpCode.OK
         });
     } catch (error) {

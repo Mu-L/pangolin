@@ -251,9 +251,17 @@ authenticated.post(
 authenticated.post(
     "/site/:siteId/approve",
     verifySiteAccess,
-    verifyUserHasAction(ActionsEnum.updateSite),
-    logActionAudit(ActionsEnum.updateSite),
+    verifyUserHasAction(ActionsEnum.updateSiteApprovals),
+    logActionAudit(ActionsEnum.updateSiteApprovals),
     site.approveSite
+);
+
+authenticated.post(
+    "/site/:siteId/reject",
+    verifySiteAccess,
+    verifyUserHasAction(ActionsEnum.updateSiteApprovals),
+    logActionAudit(ActionsEnum.updateSiteApprovals),
+    site.rejectSite
 );
 
 authenticated.delete(

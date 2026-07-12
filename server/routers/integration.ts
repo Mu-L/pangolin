@@ -140,13 +140,6 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site/:siteId/approve",
-    verifyApiKeySiteAccess,
-    verifyApiKeyHasAction(ActionsEnum.updateSite),
-    logActionAudit(ActionsEnum.updateSite),
-    site.approveSite
-);
-authenticated.post(
     "/org/:orgId/reset-bandwidth",
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.resetSiteBandwidth),

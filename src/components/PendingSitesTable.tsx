@@ -65,7 +65,7 @@ export default function PendingSitesTable({
     const [isRefreshing, startTransition] = useTransition();
     const [approvingIds, setApprovingIds] = useState<Set<number>>(new Set());
     const [rejectingIds, setRejectingIds] = useState<Set<number>>(new Set());
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
 
     const api = createApiClient(useEnvContext());
@@ -136,20 +136,20 @@ export default function PendingSitesTable({
     async function rejectSite(siteId: number) {
         setRejectingIds((prev) => new Set(prev).add(siteId));
         try {
-            await api.delete(`/site/${siteId}`);
+            await api.post(`/site/${siteId}/reject`);
             toast({
                 title: t("success"),
-                description: t("siteDeleted"),
+                description: t("siteRejectSuccess"),
                 variant: "default"
             });
-            setIsDeleteModalOpen(false);
+            setIsRejectModalOpen(false);
             setSelectedSite(null);
             router.refresh();
         } catch (e) {
             toast({
                 variant: "destructive",
-                title: t("siteErrorDelete"),
-                description: formatAxiosError(e, t("siteErrorDelete"))
+                title: t("siteRejectError"),
+                description: formatAxiosError(e, t("siteRejectError"))
             });
         } finally {
             setRejectingIds((prev) => {
@@ -445,7 +445,7 @@ export default function PendingSitesTable({
                             disabled={isApproving || isRejecting}
                             onClick={() => {
                                 setSelectedSite(siteRow);
-                                setIsDeleteModalOpen(true);
+                                setIsRejectModalOpen(true);
                             }}
                         >
                             <X className="mr-2 w-4 h-4" />
@@ -493,23 +493,23 @@ export default function PendingSitesTable({
         <>
             {selectedSite && (
                 <ConfirmDeleteDialog
-                    open={isDeleteModalOpen}
+                    open={isRejectModalOpen}
                     setOpen={(val) => {
-                        setIsDeleteModalOpen(val);
+                        setIsRejectModalOpen(val);
                         if (!val) {
                             setSelectedSite(null);
                         }
                     }}
                     dialog={
                         <div className="space-y-2">
-                            <p>{t("siteQuestionRemove")}</p>
-                            <p>{t("siteMessageRemove")}</p>
+                            <p>{t("siteQuestionReject")}</p>
+                            <p>{t("siteMessageReject")}</p>
                         </div>
                     }
-                    buttonText={t("siteConfirmDelete")}
+                    buttonText={t("siteConfirmReject")}
                     onConfirm={async () => rejectSite(selectedSite.id)}
                     string={selectedSite.name}
-                    title={t("siteDelete")}
+                    title={t("siteReject")}
                 />
             )}
             <ControlledDataTable
