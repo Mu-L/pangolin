@@ -166,6 +166,24 @@ export async function deleteSite(
                     site.orgId,
                     trx
                 );
+
+                if (resourceSideEffects.resources.length > 0) {
+                    await usageService.add(
+                        site.orgId,
+                        LimitId.PUBLIC_RESOURCES,
+                        -resourceSideEffects.resources.length,
+                        trx
+                    );
+                }
+
+                if (resourceSideEffects.siteResources.length > 0) {
+                    await usageService.add(
+                        site.orgId,
+                        LimitId.PRIVATE_RESOURCES,
+                        -resourceSideEffects.siteResources.length,
+                        trx
+                    );
+                }
             });
 
             await runDeleteSiteAssociatedResourcesSideEffects(
