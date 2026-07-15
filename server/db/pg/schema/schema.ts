@@ -107,6 +107,7 @@ export const sites = pgTable(
         lastPing: integer("lastPing"),
         address: varchar("address"),
         endpoint: varchar("endpoint"),
+        localEndpoints: varchar("localEndpoints"), // JSON encoded list of string ips on the local machine to try to connect to
         publicKey: varchar("publicKey"),
         lastHolePunch: bigint("lastHolePunch", { mode: "number" }),
         listenPort: integer("listenPort"),
