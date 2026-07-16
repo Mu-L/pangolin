@@ -426,6 +426,15 @@ authenticated.put(
     domain.createOrgDomain
 );
 
+authenticated.post(
+    "/org/:orgId/domain/:domainId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyDomainAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateOrgDomain),
+    domain.updateOrgDomain
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.patch(
     "/org/:orgId/domain/:domainId",
     verifyApiKeyOrgAccess,
@@ -531,6 +540,17 @@ authenticated.post(
     resource.updateResource
 );
 
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId",
+        "/public-resource-policy/:resourcePolicyId"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateResourcePolicy),
+    policy.updateResourcePolicy
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
     [
         "/resource-policy/:resourcePolicyId",
@@ -698,6 +718,22 @@ authenticated.post(
     resource.setResourceUsers
 );
 
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/access-control",
+        "/public-resource-policy/:resourcePolicyId/access-control"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyRoleAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
+    verifyUserHasAction(ActionsEnum.setResourcePolicyRoles),
+    logActionAudit(ActionsEnum.setResourcePolicyUsers),
+    logActionAudit(ActionsEnum.setResourcePolicyRoles),
+    policy.setResourcePolicyAccessControl
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
     [
         "/resource-policy/:resourcePolicyId/access-control",
@@ -713,6 +749,19 @@ authenticated.put(
     policy.setResourcePolicyAccessControl
 );
 
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/password",
+        "/public-resource-policy/:resourcePolicyId/password"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyPassword),
+    logActionAudit(ActionsEnum.setResourcePolicyPassword),
+    policy.setResourcePolicyPassword
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
     [
         "/resource-policy/:resourcePolicyId/password",
@@ -725,6 +774,19 @@ authenticated.put(
     policy.setResourcePolicyPassword
 );
 
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/pincode",
+        "/public-resource-policy/:resourcePolicyId/pincode"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyPincode),
+    logActionAudit(ActionsEnum.setResourcePolicyPincode),
+    policy.setResourcePolicyPincode
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
     [
         "/resource-policy/:resourcePolicyId/pincode",
@@ -737,6 +799,19 @@ authenticated.put(
     policy.setResourcePolicyPincode
 );
 
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/header-auth",
+        "/public-resource-policy/:resourcePolicyId/header-auth"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyHeaderAuth),
+    logActionAudit(ActionsEnum.setResourcePolicyHeaderAuth),
+    policy.setResourcePolicyHeaderAuth
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
     [
         "/resource-policy/:resourcePolicyId/header-auth",
@@ -749,6 +824,19 @@ authenticated.put(
     policy.setResourcePolicyHeaderAuth
 );
 
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/whitelist",
+        "/public-resource-policy/:resourcePolicyId/whitelist"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyWhitelist),
+    logActionAudit(ActionsEnum.setResourcePolicyWhitelist),
+    policy.setResourcePolicyWhitelist
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
     [
         "/resource-policy/:resourcePolicyId/whitelist",
@@ -761,6 +849,19 @@ authenticated.put(
     policy.setResourcePolicyWhitelist
 );
 
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/rules",
+        "/public-resource-policy/:resourcePolicyId/rules"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyRules),
+    logActionAudit(ActionsEnum.setResourcePolicyRules),
+    policy.setResourcePolicyRules
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
     [
         "/resource-policy/:resourcePolicyId/rules",

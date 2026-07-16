@@ -28,7 +28,7 @@ const setResourcePolicyWhitelistParamsSchema = z.strictObject({
 });
 
 registry.registerPath({
-    method: "put",
+    method: "post",
     path: "/resource-policy/{resourcePolicyId}/whitelist",
     description:
         "Set email whitelist for a resource policy. This will replace all existing emails.",
@@ -47,10 +47,50 @@ registry.registerPath({
 });
 
 registry.registerPath({
-    method: "put",
+    method: "post",
     path: "/public-resource-policy/{resourcePolicyId}/whitelist",
     description:
         "Set email whitelist for a resource policy. This will replace all existing emails.",
+    tags: [OpenAPITags.PublicResourcePolicy],
+    request: {
+        params: setResourcePolicyWhitelistParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyWhitelistBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
+registry.registerPath({
+    method: "put",
+    path: "/resource-policy/{resourcePolicyId}/whitelist",
+    description:
+        "Set email whitelist for a resource policy. This will replace all existing emails. Deprecated: use POST instead.",
+    deprecated: true,
+    tags: [OpenAPITags.PublicResourcePolicyLegacy],
+    request: {
+        params: setResourcePolicyWhitelistParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyWhitelistBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
+registry.registerPath({
+    method: "put",
+    path: "/public-resource-policy/{resourcePolicyId}/whitelist",
+    description:
+        "Set email whitelist for a resource policy. This will replace all existing emails. Deprecated: use POST instead.",
+    deprecated: true,
     tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: setResourcePolicyWhitelistParamsSchema,

@@ -43,7 +43,7 @@ const setResourcePolicyRulesParamsSchema = z.strictObject({
 });
 
 registry.registerPath({
-    method: "put",
+    method: "post",
     path: "/resource-policy/{resourcePolicyId}/rules",
     description:
         "Set all rules for a resource policy at once. This will replace all existing rules.",
@@ -62,10 +62,50 @@ registry.registerPath({
 });
 
 registry.registerPath({
-    method: "put",
+    method: "post",
     path: "/public-resource-policy/{resourcePolicyId}/rules",
     description:
         "Set all rules for a resource policy at once. This will replace all existing rules.",
+    tags: [OpenAPITags.PublicResourcePolicy],
+    request: {
+        params: setResourcePolicyRulesParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyRulesBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
+registry.registerPath({
+    method: "put",
+    path: "/resource-policy/{resourcePolicyId}/rules",
+    description:
+        "Set all rules for a resource policy at once. This will replace all existing rules. Deprecated: use POST instead.",
+    deprecated: true,
+    tags: [OpenAPITags.PublicResourcePolicyLegacy],
+    request: {
+        params: setResourcePolicyRulesParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourcePolicyRulesBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
+
+registry.registerPath({
+    method: "put",
+    path: "/public-resource-policy/{resourcePolicyId}/rules",
+    description:
+        "Set all rules for a resource policy at once. This will replace all existing rules. Deprecated: use POST instead.",
+    deprecated: true,
     tags: [OpenAPITags.PublicResourcePolicy],
     request: {
         params: setResourcePolicyRulesParamsSchema,
