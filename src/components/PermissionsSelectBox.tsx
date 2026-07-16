@@ -143,6 +143,13 @@ function getActionsCategories(root: boolean) {
         Logs: {
             [t("actionExportLogs")]: "exportLogs",
             [t("actionViewLogs")]: "viewLogs"
+        },
+
+        "Site Provisioning Key": {
+            [t("actionCreateSiteProvisioningKey")]: "createSiteProvisioningKey",
+            [t("actionListSiteProvisioningKeys")]: "listSiteProvisioningKeys",
+            [t("actionUpdateSiteProvisioningKey")]: "updateSiteProvisioningKey",
+            [t("actionDeleteSiteProvisioningKey")]: "deleteSiteProvisioningKey"
         }
     };
 
