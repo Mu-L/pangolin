@@ -138,6 +138,15 @@ const listResourcesSchema = z.strictObject({
         description:
             "When set, only resources that have at least one target on this site are returned"
     }),
+    status: z
+        .enum(["pending", "approved"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["pending", "approved"],
+            description: "Filter by resource status"
+        }),
     labels: z
         .preprocess((val) => {
             if (val === undefined || val === null || val === "") {
@@ -451,6 +460,7 @@ export async function listResources(
             sort_by,
             order,
             siteId,
+            status,
             labels: labelFilter
         } = parsedQuery.data;
 
@@ -658,6 +668,10 @@ export async function listResources(
                     conditions.push(eq(resources.mode, protocol));
                     break;
             }
+        }
+
+        if (typeof status !== "undefined") {
+            conditions.push(eq(resources.status, status));
         }
 
         if (siteId != null) {

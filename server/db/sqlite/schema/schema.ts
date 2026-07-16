@@ -209,7 +209,8 @@ export const resources = sqliteTable("resources", {
     authDaemonMode: text("authDaemonMode")
         .$type<"site" | "remote" | "native">()
         .default("site"),
-    authDaemonPort: integer("authDaemonPort").default(22123)
+    authDaemonPort: integer("authDaemonPort").default(22123),
+    status: text("status").$type<"pending" | "approved">().default("approved")
 });
 
 export const labels = sqliteTable("labels", {
@@ -447,7 +448,8 @@ export const siteResources = sqliteTable("siteResources", {
         onDelete: "set null"
     }),
     subdomain: text("subdomain"),
-    fullDomain: text("fullDomain")
+    fullDomain: text("fullDomain"),
+    status: text("status").$type<"pending" | "approved">().default("approved")
 });
 
 export const networks = sqliteTable("networks", {

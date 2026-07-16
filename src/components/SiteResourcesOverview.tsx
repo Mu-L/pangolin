@@ -174,8 +174,8 @@ type OverviewRow = {
 type OverviewColumnProps = {
     title: string;
     description: string;
-    viewAllHref: string;
-    viewAllLabel: string;
+    viewAllHref?: string;
+    viewAllLabel?: string;
     emptyLabel: string;
     isForbidden: boolean;
     isFetching: boolean;
@@ -212,12 +212,14 @@ function OverviewColumn({
                         {description}
                     </p>
                 </div>
-                <Link
-                    href={viewAllHref}
-                    className="shrink-0 text-muted-foreground text-sm hover:underline"
-                >
-                    {viewAllLabel}
-                </Link>
+                {viewAllHref && viewAllLabel ? (
+                    <Link
+                        href={viewAllHref}
+                        className="shrink-0 text-muted-foreground text-sm hover:underline"
+                    >
+                        {viewAllLabel}
+                    </Link>
+                ) : null}
             </div>
         </div>
     );
@@ -319,6 +321,8 @@ type SiteResourcesOverviewProps = {
     initialPrivateForbidden: boolean;
     /** When not under `/[orgId]/...` routes, pass org id explicitly (e.g. credenza on sites list). */
     orgIdOverride?: string;
+    /** When false, hides links to the org resources tables filtered by this site. */
+    showViewAllLinks?: boolean;
 };
 
 export default function SiteResourcesOverview({
@@ -327,7 +331,8 @@ export default function SiteResourcesOverview({
     initialPrivateData,
     initialPublicForbidden,
     initialPrivateForbidden,
-    orgIdOverride
+    orgIdOverride,
+    showViewAllLinks = true
 }: SiteResourcesOverviewProps) {
     const t = useTranslations();
     const params = useParams<{ orgId: string }>();
@@ -467,8 +472,10 @@ export default function SiteResourcesOverview({
             key="public"
             title={t("siteResourcesSectionPublic")}
             description={t("siteResourcesSectionPublicDescription")}
-            viewAllHref={publicViewAllHref}
-            viewAllLabel={t("siteResourcesViewAllPublic")}
+            viewAllHref={showViewAllLinks ? publicViewAllHref : undefined}
+            viewAllLabel={
+                showViewAllLinks ? t("siteResourcesViewAllPublic") : undefined
+            }
             emptyLabel={t("siteResourcesEmptyPublic")}
             isForbidden={publicForbidden}
             isFetching={publicQuery.isFetching}
@@ -484,8 +491,10 @@ export default function SiteResourcesOverview({
             key="private"
             title={t("siteResourcesSectionPrivate")}
             description={t("siteResourcesSectionPrivateDescription")}
-            viewAllHref={privateViewAllHref}
-            viewAllLabel={t("siteResourcesViewAllPrivate")}
+            viewAllHref={showViewAllLinks ? privateViewAllHref : undefined}
+            viewAllLabel={
+                showViewAllLinks ? t("siteResourcesViewAllPrivate") : undefined
+            }
             emptyLabel={t("siteResourcesEmptyPrivate")}
             isForbidden={privateForbidden}
             isFetching={privateQuery.isFetching}

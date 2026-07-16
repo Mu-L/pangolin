@@ -86,6 +86,15 @@ const listAllSiteResourcesByOrgQuerySchema = z.strictObject({
         description:
             "When set, only site resources associated with this site (via network) are returned"
     }),
+    status: z
+        .enum(["pending", "approved"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["pending", "approved"],
+            description: "Filter by site resource status"
+        }),
     labels: z
         .preprocess((val) => {
             if (val === undefined || val === null || val === "") {
@@ -283,6 +292,7 @@ export async function listAllSiteResourcesByOrg(
             sort_by,
             order,
             siteId,
+            status,
             labels: labelFilter
         } = parsedQuery.data;
 
@@ -313,6 +323,10 @@ export async function listAllSiteResourcesByOrg(
 
         if (mode) {
             conditions.push(eq(siteResources.mode, mode));
+        }
+
+        if (typeof status !== "undefined") {
+            conditions.push(eq(siteResources.status, status));
         }
 
         if (labelFilter && labelFilter.length > 0) {

@@ -14,8 +14,6 @@ import {
 } from "@server/db";
 import logger from "@server/logger";
 import { removeTargets } from "@server/routers/newt/targets";
-import createHttpError from "http-errors";
-import HttpCode from "@server/types/HttpCode";
 
 export type DeleteResourceResult = {
     deletedResource: Resource;
@@ -117,10 +115,10 @@ export async function runResourceDeleteSideEffects(
             .limit(1);
 
         if (!site) {
-            throw createHttpError(
-                HttpCode.NOT_FOUND,
-                `Site with ID ${target.siteId} not found`
+            logger.debug(
+                `Site with ID ${target.siteId} not found during resource delete side effects; skipping target removal`
             );
+            continue;
         }
 
         if (site.pubKey && site.type === "newt") {

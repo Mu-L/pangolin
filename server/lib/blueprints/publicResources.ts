@@ -25,6 +25,7 @@ import {
     rolePolicies,
     roleResources,
     roles,
+    Site,
     sites,
     Target,
     TargetHealthCheck,
@@ -74,19 +75,40 @@ export async function updatePublicResources(
     )) {
         const targetsToUpdate: Target[] = [];
         const healthchecksToUpdate: TargetHealthCheck[] = [];
+
         let resource: Resource;
+        let resourceStatusFromSite: "approved" | "pending" = "approved";
+        let providedSite: Partial<Site> | undefined;
+        if (siteId) {
+            // Use the provided siteId directly, but verify it belongs to the org
+            [providedSite] = await trx
+                .select({
+                    siteId: sites.siteId,
+                    type: sites.type,
+                    status: sites.status
+                })
+                .from(sites)
+                .where(and(eq(sites.siteId, siteId), eq(sites.orgId, orgId)))
+                .limit(1);
+
+            resourceStatusFromSite = providedSite?.status ?? "approved";
+        }
 
         async function createTarget( // reusable function to create a target
             resourceId: number,
             targetData: TargetData
         ) {
             const targetSiteId = targetData.site;
-            let site;
+            let site: Partial<Site> | undefined;
 
             if (targetSiteId) {
                 // Look up site by niceId
                 [site] = await trx
-                    .select({ siteId: sites.siteId, type: sites.type })
+                    .select({
+                        siteId: sites.siteId,
+                        type: sites.type,
+                        status: sites.status
+                    })
                     .from(sites)
                     .where(
                         and(
@@ -95,15 +117,9 @@ export async function updatePublicResources(
                         )
                     )
                     .limit(1);
-            } else if (siteId) {
+            } else if (siteId && providedSite) {
                 // Use the provided siteId directly, but verify it belongs to the org
-                [site] = await trx
-                    .select({ siteId: sites.siteId, type: sites.type })
-                    .from(sites)
-                    .where(
-                        and(eq(sites.siteId, siteId), eq(sites.orgId, orgId))
-                    )
-                    .limit(1);
+                site = providedSite;
             } else {
                 throw new Error(`Target site is required`);
             }
@@ -139,7 +155,7 @@ export async function updatePublicResources(
                 .insert(targets)
                 .values({
                     resourceId: resourceId,
-                    siteId: site.siteId,
+                    siteId: site.siteId!,
                     ip: targetData.hostname,
                     mode: resourceData.mode as Target["mode"],
                     method: targetData.method,
@@ -172,7 +188,7 @@ export async function updatePublicResources(
                 .insert(targetHealthCheck)
                 .values({
                     name: `${targetData.hostname}:${targetData.port}`,
-                    siteId: site.siteId,
+                    siteId: site.siteId!,
                     targetId: newTarget.targetId,
                     orgId: orgId,
                     hcEnabled: healthcheckData?.enabled || false,
@@ -230,7 +246,10 @@ export async function updatePublicResources(
         const resourceEnabled =
             resourceData.enabled == undefined || resourceData.enabled == null
                 ? true
-                : resourceData.enabled;
+                : resourceStatusFromSite === "pending"
+                  ? false
+                  : resourceData.enabled;
+
         const resourceSsl =
             resourceData.ssl == undefined || resourceData.ssl == null
                 ? true
@@ -406,7 +425,8 @@ export async function updatePublicResources(
                                     ? (resourceData["proxy-protocol-version"] ??
                                       1)
                                     : 1,
-                            resourcePolicyId: sharedPolicy.resourcePolicyId
+                            resourcePolicyId: sharedPolicy.resourcePolicyId,
+                            status: resourceStatusFromSite
                         })
                         .where(
                             eq(
@@ -590,7 +610,8 @@ export async function updatePublicResources(
                             authDaemonPort:
                                 resourceData["auth-daemon"]?.port || 22123,
                             resourcePolicyId: null,
-                            defaultResourcePolicyId: inlinePolicyId
+                            defaultResourcePolicyId: inlinePolicyId,
+                            status: resourceStatusFromSite
                         })
                         .where(
                             eq(
@@ -1131,6 +1152,7 @@ export async function updatePublicResources(
                 .values({
                     orgId,
                     niceId: resourceNiceId,
+                    status: resourceStatusFromSite,
                     name: resourceData.name || "Unnamed Resource",
                     mode: resourceData.mode,
                     proxyPort: ["http", "ssh", "rdp", "vnc"].includes(

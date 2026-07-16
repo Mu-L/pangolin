@@ -26,9 +26,6 @@ import { createCertificate } from "#dynamic/routers/certificates/createCertifica
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "../billing/tierMatrix";
 import { build } from "@server/build";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import next from "next";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
 
@@ -201,17 +198,19 @@ export async function updatePrivateResources(
             }
         }
 
+        let resourceStatusFromSite: "approved" | "pending" = "approved";
         if (siteId && allSites.length === 0) {
             // only add if there are not provided sites
             // Use the provided siteId directly, but verify it belongs to the org
             const [siteSingle] = await trx
-                .select({ siteId: sites.siteId })
+                .select({ siteId: sites.siteId, status: sites.status })
                 .from(sites)
                 .where(and(eq(sites.siteId, siteId), eq(sites.orgId, orgId)))
                 .limit(1);
             if (siteSingle) {
                 allSites.push(siteSingle);
             }
+            resourceStatusFromSite = siteSingle.status ?? "approved";
         }
 
         if (allSites.length === 0) {
@@ -219,6 +218,13 @@ export async function updatePrivateResources(
                 `No valid sites found for private private resource ${resourceNiceId} in org ${orgId}`
             );
         }
+
+        const resourceEnabled =
+            resourceData.enabled == undefined || resourceData.enabled == null
+                ? true
+                : resourceStatusFromSite === "pending"
+                  ? false
+                  : resourceData.enabled;
 
         if (existingResource) {
             let domainInfo:
@@ -243,8 +249,7 @@ export async function updatePrivateResources(
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
-                    enabled: true, // hardcoded for now
-                    // enabled: resourceData.enabled ?? true,
+                    enabled: resourceEnabled,
                     alias: resourceData.alias || null,
                     disableIcmp:
                         resourceData["disable-icmp"] ||
@@ -263,7 +268,8 @@ export async function updatePrivateResources(
                     pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
                     authDaemonMode:
                         resourceData["auth-daemon"]?.mode || "native",
-                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
+                    status: resourceStatusFromSite
                 })
                 .where(
                     eq(
@@ -496,8 +502,7 @@ export async function updatePrivateResources(
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
-                    enabled: true, // hardcoded for now
-                    // enabled: resourceData.enabled ?? true,
+                    enabled: resourceEnabled,
                     alias: resourceData.alias || null,
                     aliasAddress: aliasAddress,
                     disableIcmp:
@@ -517,7 +522,8 @@ export async function updatePrivateResources(
                     pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
                     authDaemonMode:
                         resourceData["auth-daemon"]?.mode || "native",
-                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
+                    status: resourceStatusFromSite
                 })
                 .returning();
 

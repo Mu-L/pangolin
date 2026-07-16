@@ -16,7 +16,7 @@ import {
     generateRemoteSubnets
 } from "@server/lib/ip";
 import logger from "@server/logger";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { addPeer, deletePeer } from "../newt/peers";
 import config from "@server/lib/config";
 
@@ -70,7 +70,13 @@ export async function buildSiteConfigurationForOlmClient(
         .innerJoin(networks, eq(siteResources.networkId, networks.networkId))
         .innerJoin(siteNetworks, eq(networks.networkId, siteNetworks.networkId))
         .where(
-            eq(clientSiteResourcesAssociationsCache.clientId, client.clientId)
+            and(
+                eq(
+                    clientSiteResourcesAssociationsCache.clientId,
+                    client.clientId
+                ),
+                eq(siteResources.enabled, true)
+            )
         );
 
     const siteResourcesBySiteId = new Map<number, SiteResource[]>();

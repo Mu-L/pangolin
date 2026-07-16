@@ -152,6 +152,11 @@ const updateSiteResourceSchema = z
     )
     .refine(
         (data) => {
+            // this is a partial update; only enforce destination when the
+            // caller is actually changing mode or destination
+            if (data.mode === undefined && data.destination === undefined) {
+                return true;
+            }
             // destination is only optional for ssh mode with native authDaemonMode
             if (data.mode === "ssh" && data.authDaemonMode === "native") {
                 return true;
@@ -411,8 +416,10 @@ export async function updateSiteResource(
             : [];
         const existingSiteIds = existingSiteNetworks.map((sn) => sn.siteId);
 
-        let fullDomain: string | null = null;
-        let finalSubdomain: string | null = null;
+        // undefined means "leave unchanged" (partial update); only nulled out
+        // when the mode is explicitly being changed away from http
+        let fullDomain: string | null | undefined = undefined;
+        let finalSubdomain: string | null | undefined = undefined;
         if (domainId) {
             // Validate domain and construct full domain
             const domainResult = await validateAndConstructDomain(
@@ -448,6 +455,11 @@ export async function updateSiteResource(
                     )
                 );
             }
+        } else if (mode !== undefined && mode !== "http") {
+            // mode is explicitly changing away from http, so the resource
+            // can no longer have a domain associated with it
+            fullDomain = null;
+            finalSubdomain = null;
         }
 
         // make sure the alias is unique within the org if provided
@@ -516,15 +528,28 @@ export async function updateSiteResource(
                     destination: destination,
                     destinationPort: destinationPort,
                     enabled: enabled,
-                    alias: alias ? alias.trim() : null,
+                    alias:
+                        alias !== undefined
+                            ? alias
+                                ? alias.trim()
+                                : null
+                            : mode !== undefined &&
+                                mode !== "host" &&
+                                mode !== "ssh"
+                              ? null
+                              : undefined,
                     tcpPortRangeString: tcpPortRangeStringAdjusted,
                     udpPortRangeString:
                         mode == "http" || mode == "ssh"
                             ? ""
                             : udpPortRangeString,
                     disableIcmp:
-                        disableIcmp ||
-                        (mode == "http" || mode == "ssh" ? true : false),
+                        mode !== undefined
+                            ? disableIcmp ||
+                              (mode == "http" || mode == "ssh"
+                                  ? true
+                                  : false)
+                            : disableIcmp,
                     domainId,
                     subdomain: finalSubdomain,
                     fullDomain,

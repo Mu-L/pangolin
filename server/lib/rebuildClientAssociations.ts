@@ -1561,9 +1561,19 @@ export async function handleMessagingForUpdatedSiteResource(
                 updatedSiteResource.udpPortRangeString ||
             existingSiteResource.disableIcmp !==
                 updatedSiteResource.disableIcmp);
+    // Toggling enabled on/off doesn't change any of the fields above, but it
+    // does change whether targets/peer data should exist at all, so it needs
+    // to drive the same old->new diff machinery: going enabled->disabled
+    // diffs "real data" against "nothing" (a remove), and disabled->enabled
+    // diffs "nothing" against "real data" (an add). generateSubnetProxyTargetV2/
+    // generateRemoteSubnets/generateAliasConfig already return nothing for a
+    // disabled resource, so no other changes are needed here.
+    const enabledChanged =
+        existingSiteResource &&
+        existingSiteResource.enabled !== updatedSiteResource.enabled;
 
     logger.debug(
-        `handleMessagingForUpdatedSiteResource: change flags destinationChanged=${Boolean(destinationChanged)} destinationPortChanged=${Boolean(destinationPortChanged)} aliasChanged=${Boolean(aliasChanged)} fullDomainChanged=${Boolean(fullDomainChanged)} sslChanged=${Boolean(sslChanged)} portRangesChanged=${Boolean(portRangesChanged)}`
+        `handleMessagingForUpdatedSiteResource: change flags destinationChanged=${Boolean(destinationChanged)} destinationPortChanged=${Boolean(destinationPortChanged)} aliasChanged=${Boolean(aliasChanged)} fullDomainChanged=${Boolean(fullDomainChanged)} sslChanged=${Boolean(sslChanged)} portRangesChanged=${Boolean(portRangesChanged)} enabledChanged=${Boolean(enabledChanged)}`
     );
 
     // if the existingSiteResource is undefined (new resource) we don't need to do anything here, the rebuild above handled it all
@@ -1574,14 +1584,16 @@ export async function handleMessagingForUpdatedSiteResource(
         fullDomainChanged ||
         sslChanged ||
         portRangesChanged ||
-        destinationPortChanged
+        destinationPortChanged ||
+        enabledChanged
     ) {
         const shouldUpdateTargets =
             destinationChanged ||
             sslChanged ||
             portRangesChanged ||
             fullDomainChanged ||
-            destinationPortChanged;
+            destinationPortChanged ||
+            enabledChanged;
 
         logger.debug(
             `handleMessagingForUpdatedSiteResource: entering unchanged-site update path shouldUpdateTargets=${shouldUpdateTargets}`
@@ -1657,20 +1669,22 @@ export async function handleMessagingForUpdatedSiteResource(
                 peerDataUpdateBatch.push({
                     clientId: client.clientId,
                     siteId,
-                    remoteSubnets: destinationChanged
-                        ? {
-                              oldRemoteSubnets: !oldDestinationStillInUseBySite
-                                  ? generateRemoteSubnets([
-                                        existingSiteResource
-                                    ])
-                                  : [],
-                              newRemoteSubnets: generateRemoteSubnets([
-                                  updatedSiteResource
-                              ])
-                          }
-                        : undefined,
+                    remoteSubnets:
+                        destinationChanged || enabledChanged
+                            ? {
+                                  oldRemoteSubnets:
+                                      !oldDestinationStillInUseBySite
+                                          ? generateRemoteSubnets([
+                                                existingSiteResource
+                                            ])
+                                          : [],
+                                  newRemoteSubnets: generateRemoteSubnets([
+                                      updatedSiteResource
+                                  ])
+                              }
+                            : undefined,
                     aliases:
-                        aliasChanged || fullDomainChanged // the full domain is sent down as an alias
+                        aliasChanged || fullDomainChanged || enabledChanged // the full domain is sent down as an alias
                             ? {
                                   oldAliases: generateAliasConfig([
                                       existingSiteResource
