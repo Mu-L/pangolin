@@ -650,9 +650,13 @@ export const orgQueries = {
         queryOptions({
             queryKey: ["SITE_STATUS_HISTORY", siteId, days] as const,
             queryFn: async ({ signal, meta }) => {
+                const tzOffsetMinutes = -new Date().getTimezoneOffset();
                 const res = await meta!.api.get<
                     AxiosResponse<StatusHistoryResponse>
-                >(`/site/${siteId}/status-history?days=${days}`, { signal });
+                >(
+                    `/site/${siteId}/status-history?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`,
+                    { signal }
+                );
                 return res.data.data;
             }
         }),
@@ -667,11 +671,13 @@ export const orgQueries = {
         queryOptions({
             queryKey: ["RESOURCE_STATUS_HISTORY", resourceId, days] as const,
             queryFn: async ({ signal, meta }) => {
+                const tzOffsetMinutes = -new Date().getTimezoneOffset();
                 const res = await meta!.api.get<
                     AxiosResponse<StatusHistoryResponse>
-                >(`/resource/${resourceId}/status-history?days=${days}`, {
-                    signal
-                });
+                >(
+                    `/resource/${resourceId}/status-history?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`,
+                    { signal }
+                );
                 return res.data.data;
             }
         }),
@@ -693,10 +699,11 @@ export const orgQueries = {
                 days
             ] as const,
             queryFn: async ({ signal, meta }) => {
+                const tzOffsetMinutes = -new Date().getTimezoneOffset();
                 const res = await meta!.api.get<
                     AxiosResponse<StatusHistoryResponse>
                 >(
-                    `/org/${orgId}/health-check/${healthCheckId}/status-history?days=${days}`,
+                    `/org/${orgId}/health-check/${healthCheckId}/status-history?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`,
                     { signal }
                 );
                 return res.data.data;
