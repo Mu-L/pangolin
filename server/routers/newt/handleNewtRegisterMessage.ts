@@ -48,7 +48,8 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         pingResults,
         newtVersion,
         backwardsCompatible,
-        chainId
+        chainId,
+        localEndpoints
     } = message.data;
     if (!publicKey) {
         logger.warn("Public key not provided");
@@ -131,7 +132,8 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
             .set({
                 pubKey: publicKey,
                 exitNodeId: exitNodeId,
-                subnet: newSubnet
+                subnet: newSubnet,
+                localEndpoints: localEndpoints || null
             })
             .where(eq(sites.siteId, siteId))
             .returning();
@@ -139,7 +141,8 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         await db
             .update(sites)
             .set({
-                pubKey: publicKey
+                pubKey: publicKey,
+                localEndpoints: localEndpoints || null
             })
             .where(eq(sites.siteId, siteId))
             .returning();
