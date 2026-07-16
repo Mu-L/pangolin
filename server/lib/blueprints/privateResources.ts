@@ -239,6 +239,31 @@ export async function updatePrivateResources(
                 );
             }
 
+            if (resourceData.alias) {
+                const [aliasConflict] = await trx
+                    .select({
+                        siteResourceId: siteResources.siteResourceId
+                    })
+                    .from(siteResources)
+                    .where(
+                        and(
+                            eq(siteResources.orgId, orgId),
+                            eq(siteResources.alias, resourceData.alias),
+                            ne(
+                                siteResources.siteResourceId,
+                                existingResource.siteResourceId
+                            )
+                        )
+                    )
+                    .limit(1);
+
+                if (aliasConflict) {
+                    throw new Error(
+                        `Alias ${resourceData.alias} already in use by another site resource in org ${orgId}`
+                    );
+                }
+            }
+
             // Update existing resource
             const [updatedResource] = await trx
                 .update(siteResources)
@@ -478,6 +503,27 @@ export async function updatePrivateResources(
                     orgId,
                     trx
                 );
+            }
+
+            if (resourceData.alias) {
+                const [aliasConflict] = await trx
+                    .select({
+                        siteResourceId: siteResources.siteResourceId
+                    })
+                    .from(siteResources)
+                    .where(
+                        and(
+                            eq(siteResources.orgId, orgId),
+                            eq(siteResources.alias, resourceData.alias)
+                        )
+                    )
+                    .limit(1);
+
+                if (aliasConflict) {
+                    throw new Error(
+                        `Alias ${resourceData.alias} already in use by another site resource in org ${orgId}`
+                    );
+                }
             }
 
             const [network] = await trx
