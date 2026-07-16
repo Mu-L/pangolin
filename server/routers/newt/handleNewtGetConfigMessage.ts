@@ -29,7 +29,7 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
         return;
     }
 
-    const { publicKey, port, chainId } = message.data;
+    const { publicKey, port, localEndpoints, chainId } = message.data;
     const siteId = newt.siteId;
 
     // Get the current site data
@@ -69,7 +69,10 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
         .update(sites)
         .set({
             publicKey,
-            listenPort: port
+            listenPort: port,
+            localEndpoints: localEndpoints
+                ? JSON.stringify(localEndpoints)
+                : null
         })
         .where(eq(sites.siteId, siteId))
         .returning();
