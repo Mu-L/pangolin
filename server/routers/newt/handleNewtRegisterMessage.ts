@@ -133,7 +133,9 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
                 pubKey: publicKey,
                 exitNodeId: exitNodeId,
                 subnet: newSubnet,
-                localEndpoints: localEndpoints || null
+                localEndpoints: localEndpoints
+                    ? JSON.stringify(localEndpoints)
+                    : null
             })
             .where(eq(sites.siteId, siteId))
             .returning();
@@ -142,7 +144,9 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
             .update(sites)
             .set({
                 pubKey: publicKey,
-                localEndpoints: localEndpoints || null
+                localEndpoints: localEndpoints
+                    ? JSON.stringify(localEndpoints)
+                    : null
             })
             .where(eq(sites.siteId, siteId))
             .returning();
