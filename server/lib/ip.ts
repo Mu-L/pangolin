@@ -496,6 +496,7 @@ export function generateRemoteSubnets(
 ): string[] {
     const remoteSubnets = allSiteResources
         .filter((sr) => {
+            if (!sr.enabled) return false;
             if (!sr.destination) return false;
 
             if (sr.mode === "cidr") {
@@ -530,6 +531,7 @@ export function generateAliasConfig(allSiteResources: SiteResource[]): Alias[] {
     return allSiteResources
         .filter(
             (sr) =>
+                sr.enabled &&
                 sr.aliasAddress &&
                 ((sr.alias && (sr.mode == "host" || sr.mode == "ssh")) ||
                     (sr.fullDomain && sr.mode == "http"))
@@ -662,6 +664,13 @@ export async function generateSubnetProxyTargetV2(
         subnet: string | null;
     }[]
 ): Promise<SubnetProxyTargetV2[] | undefined> {
+    if (!siteResource.enabled) {
+        logger.debug(
+            `Site resource ${siteResource.siteResourceId} is disabled, skipping target generation.`
+        );
+        return;
+    }
+
     if (clients.length === 0) {
         logger.debug(
             `No clients have access to site resource ${siteResource.siteResourceId}, skipping target generation.`

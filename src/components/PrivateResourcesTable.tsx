@@ -23,6 +23,7 @@ import {
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
+import { Switch } from "@app/components/ui/switch";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
@@ -36,7 +37,9 @@ import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHr
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { UpdateSiteResourceResponse } from "@server/routers/siteResource";
 import type { PaginationState } from "@tanstack/react-table";
+import { AxiosResponse } from "axios";
 import {
     ArrowDown01Icon,
     ArrowRight,
@@ -49,8 +52,17 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useMemo, useState, useTransition } from "react";
+import {
+    startTransition,
+    useMemo,
+    useOptimistic,
+    useRef,
+    useState,
+    useTransition,
+    type ComponentRef
+} from "react";
 import { useDebouncedCallback } from "use-debounce";
+import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { LabelsTableCell } from "./LabelsTableCell";
@@ -114,6 +126,11 @@ function isSafeUrlForLink(href: string): boolean {
     }
 }
 
+const booleanSearchFilterSchema = z
+    .enum(["true", "false"])
+    .optional()
+    .catch(undefined);
+
 type ClientResourcesTableProps = {
     internalResources: InternalResourceRow[];
     orgId: string;
@@ -173,6 +190,30 @@ export default function PrivateResourcesTable({
             }
         });
     };
+
+    async function toggleInternalResourceEnabled(
+        val: boolean,
+        resourceId: number
+    ) {
+        try {
+            await api.post<AxiosResponse<UpdateSiteResourceResponse>>(
+                `site-resource/${resourceId}`,
+                {
+                    enabled: val
+                }
+            );
+            router.refresh();
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("resourcesErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("resourcesErrorUpdateDescription")
+                )
+            });
+        }
+    }
 
     const deleteInternalResource = async (
         resourceId: number,
@@ -430,6 +471,36 @@ export default function PrivateResourcesTable({
                 }
             },
             {
+                accessorKey: "enabled",
+                friendlyName: t("enabled"),
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            { value: "true", label: t("enabled") },
+                            { value: "false", label: t("disabled") }
+                        ]}
+                        selectedValue={booleanSearchFilterSchema.parse(
+                            searchParams.get("enabled")
+                        )}
+                        onValueChange={(value) =>
+                            handleFilterChange("enabled", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("enabled")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }) => (
+                    <InternalResourceEnabledForm
+                        resource={row.original}
+                        onToggleInternalResourceEnabled={
+                            toggleInternalResourceEnabled
+                        }
+                    />
+                )
+            },
+            {
                 id: "labels",
                 accessorKey: "labels",
                 header: () => (
@@ -641,5 +712,41 @@ function ClientResourceLabelCell({
             onToggleLabel={toggleLabel}
             selectedLabels={localLabels}
         />
+    );
+}
+
+type InternalResourceEnabledFormProps = {
+    resource: InternalResourceRow;
+    onToggleInternalResourceEnabled: (
+        val: boolean,
+        resourceId: number
+    ) => Promise<void>;
+};
+
+function InternalResourceEnabledForm({
+    resource,
+    onToggleInternalResourceEnabled
+}: InternalResourceEnabledFormProps) {
+    const [optimisticEnabled, setOptimisticEnabled] = useOptimistic(
+        resource.enabled
+    );
+
+    const formRef = useRef<ComponentRef<"form">>(null);
+
+    async function submitAction(formData: FormData) {
+        const newEnabled = !(formData.get("enabled") === "on");
+        setOptimisticEnabled(newEnabled);
+        await onToggleInternalResourceEnabled(newEnabled, resource.id);
+    }
+
+    return (
+        <form action={submitAction} ref={formRef}>
+            <Switch
+                checked={optimisticEnabled}
+                disabled={optimisticEnabled !== resource.enabled}
+                name="enabled"
+                onCheckedChange={() => formRef.current?.requestSubmit()}
+            />
+        </form>
     );
 }

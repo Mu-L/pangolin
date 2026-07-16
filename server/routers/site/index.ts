@@ -3,6 +3,8 @@ export * from "./getStatusHistory";
 export * from "./createSite";
 export * from "./deleteSite";
 export * from "./updateSite";
+export * from "./approveSite";
+export * from "./rejectSite";
 export * from "./listSites";
 export * from "./listSiteRoles";
 export * from "./pickSiteDefaults";

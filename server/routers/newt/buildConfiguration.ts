@@ -148,7 +148,12 @@ export async function buildClientConfigurationForNewtClient(
         .from(siteResources)
         .innerJoin(networks, eq(siteResources.networkId, networks.networkId))
         .innerJoin(siteNetworks, eq(networks.networkId, siteNetworks.networkId))
-        .where(eq(siteNetworks.siteId, siteId))
+        .where(
+            and(
+                eq(siteNetworks.siteId, siteId),
+                eq(siteResources.enabled, true)
+            )
+        )
         .then((rows) => rows.map((r) => r.siteResources));
 
     const targetsToSend: SubnetProxyTargetV2[] = [];

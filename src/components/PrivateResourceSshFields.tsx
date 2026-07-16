@@ -9,10 +9,10 @@ import {
 } from "@app/components/Settings";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { SshServerSettingsFields } from "@app/components/SshServerSettingsFields";
-import { PrivateResourceAliasField } from "./PrivateResourceDestinationFields";
-import { PrivateResourceSitesField } from "./PrivateResourceSitesField";
-import { getSshUseMultiSiteTargetForm } from "./privateResourceUtils";
+import { PrivateResourceAliasField } from "@app/components/PrivateResourceDestinationFields";
+import { PrivateResourceSitesField } from "@app/components/PrivateResourceSitesField";
 import { inferSshPamMode } from "@app/lib/privateResourceForm";
+import { getSshUseMultiSiteTargetForm } from "@app/lib/privateResourceUtils";
 import {
     FormControl,
     FormField,

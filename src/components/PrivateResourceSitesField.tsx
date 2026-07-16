@@ -23,7 +23,7 @@ import {
 import { ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Control, FieldPath, FieldValues } from "react-hook-form";
-import { PrivateResourceMultiSiteRoutingHelp } from "./PrivateResourceMultiSiteRoutingHelp";
+import { PrivateResourceMultiSiteRoutingHelp } from "@app/components/PrivateResourceMultiSiteRoutingHelp";
 
 type PrivateResourceSitesFieldProps<T extends FieldValues> = {
     control: Control<T>;

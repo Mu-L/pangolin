@@ -165,7 +165,6 @@ export function buildCreateSiteResourcePayload(
         siteIds: data.siteIds,
         mode: data.mode,
         destination: isNativeSsh ? undefined : (data.destination ?? undefined),
-        enabled: true,
         ...(data.mode === "http" && {
             scheme: data.scheme,
             ssl: data.ssl ?? false,
@@ -342,7 +341,8 @@ export function createGeneralFormSchema(t: TranslateFn) {
             .string()
             .min(1)
             .max(255)
-            .regex(/^[a-zA-Z0-9-]+$/)
+            .regex(/^[a-zA-Z0-9-]+$/),
+        enabled: z.boolean()
     });
 }
 

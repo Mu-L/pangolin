@@ -138,6 +138,7 @@ authenticated.post(
     logActionAudit(ActionsEnum.updateSite),
     site.updateSite
 );
+
 authenticated.post(
     "/org/:orgId/reset-bandwidth",
     verifyApiKeyOrgAccess,

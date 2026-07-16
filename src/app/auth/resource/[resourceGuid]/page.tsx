@@ -27,6 +27,7 @@ import { CheckOrgUserAccessResponse } from "@server/routers/org";
 import OrgPolicyRequired from "@app/components/OrgPolicyRequired";
 import { isOrgSubscribed } from "@app/lib/api/isOrgSubscribed";
 import { normalizePostAuthPath } from "@server/lib/normalizePostAuthPath";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -70,14 +71,25 @@ export default async function ResourceAuthPage(props: {
         );
     }
 
-    const subscribed = await isOrgSubscribed(authInfo.orgId);
+    const hasLoginPageDomain = await isOrgSubscribed(
+        authInfo.orgId,
+        tierMatrix.loginPageDomain
+    );
+    const hasOrgOidc = await isOrgSubscribed(
+        authInfo.orgId,
+        tierMatrix.orgOidc
+    );
+    const hasLoginPageBranding = await isOrgSubscribed(
+        authInfo.orgId,
+        tierMatrix.loginPageBranding
+    );
 
     const allHeaders = await headers();
     const host = allHeaders.get("host");
 
     const expectedHost = env.app.dashboardUrl.split("//")[1];
     if (host !== expectedHost) {
-        if (build === "saas" && !subscribed) {
+        if (build === "saas" && !hasLoginPageDomain) {
             redirect(env.app.dashboardUrl);
         }
 
@@ -106,7 +118,10 @@ export default async function ResourceAuthPage(props: {
             const redirectPort = new URL(searchParams.redirect).port;
             const serverResourceHostWithPort = `${serverResourceHost}:${redirectPort}`;
 
-            const wildcardMatchesRedirect = (wildcardDomain: string, host: string): boolean => {
+            const wildcardMatchesRedirect = (
+                wildcardDomain: string,
+                host: string
+            ): boolean => {
                 if (!wildcardDomain.startsWith("*.")) return false;
                 const suffix = wildcardDomain.slice(1); // e.g. ".wildcard.owen.fosrl.io"
                 return host.endsWith(suffix) && host.length > suffix.length;
@@ -228,7 +243,7 @@ export default async function ResourceAuthPage(props: {
 
     let loginIdps: LoginFormIDP[] = [];
     if (build === "saas" || env.app.identityProviderMode === "org") {
-        if (subscribed) {
+        if (hasOrgOidc) {
             const idpsRes = await cache(
                 async () =>
                     await priv.get<AxiosResponse<ListOrgIdpsResponse>>(
@@ -271,7 +286,7 @@ export default async function ResourceAuthPage(props: {
 
     let branding: LoadLoginPageBrandingResponse | null = null;
     try {
-        if (subscribed) {
+        if (hasLoginPageBranding) {
             const res = await priv.get<
                 AxiosResponse<LoadLoginPageBrandingResponse>
             >(`/login-page-branding?orgId=${authInfo.orgId}`);

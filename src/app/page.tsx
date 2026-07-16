@@ -5,7 +5,6 @@ import UserProvider from "@app/providers/UserProvider";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import { AxiosResponse } from "axios";
 import { redirect } from "next/navigation";
-import { cache } from "react";
 import OrganizationLanding from "@app/components/OrganizationLanding";
 import { pullEnv } from "@app/lib/pullEnv";
 import { cleanRedirect } from "@app/lib/cleanRedirect";
@@ -13,7 +12,6 @@ import { Layout } from "@app/components/Layout";
 import RedirectToOrg from "@app/components/RedirectToOrg";
 import { InitialSetupCompleteResponse } from "@server/routers/auth";
 import { cookies } from "next/headers";
-import { build } from "@server/build";
 
 export const dynamic = "force-dynamic";
 
@@ -29,8 +27,7 @@ export default async function Page(props: {
 
     const env = pullEnv();
 
-    const getUser = cache(verifySession);
-    const user = await getUser({ skipCheckVerifyEmail: true });
+    const user = await verifySession({ skipCheckVerifyEmail: true });
 
     let complete = false;
     try {
