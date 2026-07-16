@@ -20,7 +20,9 @@ import {
     handleOlmServerPeerAddMessage,
     handleOlmUnRelayMessage,
     handleOlmDisconnectingMessage,
-    handleOlmServerInitAddPeerHandshake
+    handleOlmServerInitAddPeerHandshake,
+    handleOlmLocalMessage,
+    handleOlmUnLocalMessage
 } from "../olm";
 import { handleHealthcheckStatusMessage } from "../target";
 import { handleRoundTripMessage } from "./handleRoundTripMessage";
@@ -32,6 +34,8 @@ export const messageHandlers: Record<string, MessageHandler> = {
     "olm/wg/register": handleOlmRegisterMessage,
     "olm/wg/relay": handleOlmRelayMessage,
     "olm/wg/unrelay": handleOlmUnRelayMessage,
+    "olm/wg/local": handleOlmLocalMessage,
+    "olm/wg/unlocal": handleOlmUnLocalMessage,
     "olm/ping": handleOlmPingMessage,
     "olm/disconnecting": handleOlmDisconnectingMessage,
     "newt/disconnecting": handleNewtDisconnectingMessage,
