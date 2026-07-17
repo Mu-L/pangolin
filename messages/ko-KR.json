@@ -1511,6 +1511,10 @@
     "actionListInvitations": "초대 목록",
     "actionExportLogs": "로그 내보내기",
     "actionViewLogs": "로그 보기",
+    "actionCreateSiteProvisioningKey": "사이트 프로비저닝 키 생성",
+    "actionListSiteProvisioningKeys": "사이트 프로비저닝 키 목록",
+    "actionUpdateSiteProvisioningKey": "사이트 프로비저닝 키 업데이트",
+    "actionDeleteSiteProvisioningKey": "사이트 프로비저닝 키 삭제",
     "noneSelected": "선택된 항목 없음",
     "orgNotFound2": "조직이 없습니다.",
     "search": "검색…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "업로드 실패",
     "rdpUnicodeKeyboardMode": "유니코드 키보드 모드",
     "sessionToolbarShow": "툴바 보기",
-    "sessionToolbarHide": "툴바 숨기기"
+    "sessionToolbarHide": "툴바 숨기기",
+    "actionUpdateSiteApprovals": "사이트 승인 업데이트"
 }

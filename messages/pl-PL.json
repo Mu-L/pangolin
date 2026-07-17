@@ -1511,6 +1511,10 @@
     "actionListInvitations": "Lista zaproszeń",
     "actionExportLogs": "Eksportuj dzienniki",
     "actionViewLogs": "Zobacz dzienniki",
+    "actionCreateSiteProvisioningKey": "Utwórz klucz konfiguracji strony",
+    "actionListSiteProvisioningKeys": "Lista kluczy konfiguracji strony",
+    "actionUpdateSiteProvisioningKey": "Zaktualizuj klucz konfiguracji strony",
+    "actionDeleteSiteProvisioningKey": "Usuń klucz konfiguracji strony",
     "noneSelected": "Nie wybrano",
     "orgNotFound2": "Nie znaleziono organizacji.",
     "search": "Szukaj…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "Niepowodzenie przesyłania",
     "rdpUnicodeKeyboardMode": "Tryb klawiatury Unicode",
     "sessionToolbarShow": "Pokaż pasek narzędzi",
-    "sessionToolbarHide": "Ukryj pasek narzędzi"
+    "sessionToolbarHide": "Ukryj pasek narzędzi",
+    "actionUpdateSiteApprovals": "Zaktualizuj zgody na stronę"
 }
