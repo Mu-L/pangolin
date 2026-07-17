@@ -30,6 +30,7 @@ export async function buildSiteConfigurationForOlmClient(
         siteId: number;
         name?: string;
         endpoint?: string;
+        localEndpoints?: string[];
         publicKey?: string;
         serverIP?: string | null;
         serverPort?: number | null;
@@ -206,6 +207,9 @@ export async function buildSiteConfigurationForOlmClient(
             name: site.name,
             // relayEndpoint: relayEndpoint, // this can be undefined now if not relayed // lets not do this for now because it would conflict with the hole punch testing
             endpoint: site.endpoint,
+            localEndpoints: site.localEndpoints
+                ? JSON.parse(site.localEndpoints)
+                : undefined,
             publicKey: site.publicKey,
             serverIP: site.address,
             serverPort: site.listenPort,

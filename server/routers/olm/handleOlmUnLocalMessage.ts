@@ -5,11 +5,11 @@ import { and, eq } from "drizzle-orm";
 import { updatePeer as newtUpdatePeer } from "../newt/peers";
 import logger from "@server/logger";
 
-export const handleOlmUnRelayMessage: MessageHandler = async (context) => {
+export const handleOlmUnLocalMessage: MessageHandler = async (context) => {
     const { message, client: c, sendToClient } = context;
     const olm = c as Olm;
 
-    logger.info("Handling unrelay olm message!");
+    logger.info("Handling unlocal olm message!");
 
     if (!olm) {
         logger.warn("Olm not found");
@@ -55,17 +55,14 @@ export const handleOlmUnRelayMessage: MessageHandler = async (context) => {
     }
 
     const [clientSiteAssociation] = await db
-        .update(clientSitesAssociationsCache)
-        .set({
-            isRelayed: false
-        })
+        .select()
+        .from(clientSitesAssociationsCache)
         .where(
             and(
                 eq(clientSitesAssociationsCache.clientId, olm.clientId),
                 eq(clientSitesAssociationsCache.siteId, siteId)
             )
-        )
-        .returning();
+        );
 
     if (!clientSiteAssociation) {
         logger.warn("Client-Site association not found");
@@ -79,15 +76,16 @@ export const handleOlmUnRelayMessage: MessageHandler = async (context) => {
 
     // update the peer on the newt
     await newtUpdatePeer(siteId, client.pubKey, {
-        endpoint: clientSiteAssociation.endpoint // this is the endpoint of the client to connect directly to the newt
+        endpoint: clientSiteAssociation.isRelayed
+            ? ""
+            : clientSiteAssociation.endpoint // this is the endpoint of the client to connect directly to the newt
     });
 
     return {
         message: {
-            type: "olm/wg/peer/unrelay",
+            type: "olm/wg/peer/unlocal",
             data: {
                 siteId: siteId,
-                endpoint: site.endpoint,
                 chainId
             }
         },
