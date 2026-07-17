@@ -1511,6 +1511,10 @@
     "actionListInvitations": "邀请列表",
     "actionExportLogs": "导出日志",
     "actionViewLogs": "查看日志",
+    "actionCreateSiteProvisioningKey": "创建站点预配密钥",
+    "actionListSiteProvisioningKeys": "列出站点预配密钥",
+    "actionUpdateSiteProvisioningKey": "更新站点预配密钥",
+    "actionDeleteSiteProvisioningKey": "删除站点预配密钥",
     "noneSelected": "未选择",
     "orgNotFound2": "未找到组织。",
     "search": "搜索…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "上传失败",
     "rdpUnicodeKeyboardMode": "Unicode 键盘模式",
     "sessionToolbarShow": "显示工具栏",
-    "sessionToolbarHide": "隐藏工具栏"
+    "sessionToolbarHide": "隐藏工具栏",
+    "actionUpdateSiteApprovals": "更新站点审批"
 }

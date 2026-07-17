@@ -18,6 +18,7 @@ export enum OpenAPITags {
     OrgIdp = "Identity Provider (Organization Only)",
     Client = "Client",
     ApiKey = "API Key",
+    SiteProvisioningKey = "Site Provisioning Key",
     Domain = "Domain",
     Blueprint = "Blueprint",
     Ssh = "SSH",

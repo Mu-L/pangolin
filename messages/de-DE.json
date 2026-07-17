@@ -1511,6 +1511,10 @@
     "actionListInvitations": "Einladungen auflisten",
     "actionExportLogs": "Logs exportieren",
     "actionViewLogs": "Logs anzeigen",
+    "actionCreateSiteProvisioningKey": "Bereitstellungsschlüssel für Standort erstellen",
+    "actionListSiteProvisioningKeys": "Liste der Bereitstellungsschlüssel für Standorte",
+    "actionUpdateSiteProvisioningKey": "Bereitstellungsschlüssel für Standort aktualisieren",
+    "actionDeleteSiteProvisioningKey": "Bereitstellungsschlüssel für Standort löschen",
     "noneSelected": "Keine ausgewählt",
     "orgNotFound2": "Keine Organisationen gefunden.",
     "search": "Suche…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "Upload fehlgeschlagen",
     "rdpUnicodeKeyboardMode": "Unicode-Tastaturmodus",
     "sessionToolbarShow": "Werkzeugleiste zeigen",
-    "sessionToolbarHide": "Werkzeugleiste ausblenden"
+    "sessionToolbarHide": "Werkzeugleiste ausblenden",
+    "actionUpdateSiteApprovals": "Standortgenehmigungen aktualisieren"
 }

@@ -1511,6 +1511,10 @@
     "actionListInvitations": "Список приглашений",
     "actionExportLogs": "Экспорт журналов",
     "actionViewLogs": "Просмотр журналов",
+    "actionCreateSiteProvisioningKey": "Создать ключ конфигурации сайта",
+    "actionListSiteProvisioningKeys": "Список ключей конфигурации сайтов",
+    "actionUpdateSiteProvisioningKey": "Обновить ключ конфигурации сайта",
+    "actionDeleteSiteProvisioningKey": "Удалить ключ конфигурации сайта",
     "noneSelected": "Ничего не выбрано",
     "orgNotFound2": "Организации не найдены.",
     "search": "Поиск…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "Ошибка загрузки",
     "rdpUnicodeKeyboardMode": "Режим клавиатуры Unicode",
     "sessionToolbarShow": "Показать панель инструментов",
-    "sessionToolbarHide": "Скрыть панель инструментов"
+    "sessionToolbarHide": "Скрыть панель инструментов",
+    "actionUpdateSiteApprovals": "Обновить утверждения сайта"
 }

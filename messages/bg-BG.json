@@ -1511,6 +1511,10 @@
     "actionListInvitations": "Списък с покани",
     "actionExportLogs": "Експортиране на дневници",
     "actionViewLogs": "Преглед на дневници",
+    "actionCreateSiteProvisioningKey": "Създаване на ключ за предоставяне на сайт",
+    "actionListSiteProvisioningKeys": "Списък на ключовете за предоставяне на сайт",
+    "actionUpdateSiteProvisioningKey": "Актуализиране на ключ за предоставяне на сайт",
+    "actionDeleteSiteProvisioningKey": "Изтриване на ключ за предоставяне на сайт",
     "noneSelected": "Нищо не е избрано",
     "orgNotFound2": "Няма намерени организации.",
     "search": "Търси…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "Качването неуспешно",
     "rdpUnicodeKeyboardMode": "Режим на unicode клавиатура",
     "sessionToolbarShow": "Показване на лентата с инструменти",
-    "sessionToolbarHide": "Скриване на лентата с инструменти"
+    "sessionToolbarHide": "Скриване на лентата с инструменти",
+    "actionUpdateSiteApprovals": "Обновяване на одобренията на сайта"
 }
