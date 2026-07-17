@@ -1511,6 +1511,10 @@
     "actionListInvitations": "Davetiyeleri Listele",
     "actionExportLogs": "Kayıtları Dışa Aktar",
     "actionViewLogs": "Kayıtları Görüntüle",
+    "actionCreateSiteProvisioningKey": "Site Sağlama Anahtarı Oluştur",
+    "actionListSiteProvisioningKeys": "Site Sağlama Anahtarlarını Listele",
+    "actionUpdateSiteProvisioningKey": "Site Sağlama Anahtarını Güncelle",
+    "actionDeleteSiteProvisioningKey": "Site Sağlama Anahtarını Sil",
     "noneSelected": "Hiçbiri seçili değil",
     "orgNotFound2": "Hiçbir organizasyon bulunamadı.",
     "search": "Ara…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "Yükleme başarısız",
     "rdpUnicodeKeyboardMode": "Unicode klavye modu",
     "sessionToolbarShow": "Araç çubuğunu göster",
-    "sessionToolbarHide": "Araç çubuğunu gizle"
+    "sessionToolbarHide": "Araç çubuğunu gizle",
+    "actionUpdateSiteApprovals": "Site Onaylarını Güncelle"
 }

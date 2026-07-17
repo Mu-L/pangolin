@@ -16,6 +16,7 @@ import * as org from "#private/routers/org";
 import * as logs from "#private/routers/auditLogs";
 import * as alertEvents from "#private/routers/alertEvents";
 import * as certificates from "#private/routers/certificates";
+import * as siteProvisioning from "#private/routers/siteProvisioning";
 
 import {
     verifyApiKeyHasAction,
@@ -24,6 +25,7 @@ import {
     verifyApiKeyIdpAccess,
     verifyApiKeyRoleAccess,
     verifyApiKeyUserAccess,
+    verifyApiKeySiteProvisioningKeyAccess,
     verifyLimits
 } from "@server/middlewares";
 import * as user from "#private/routers/user";
@@ -214,4 +216,46 @@ authenticated.delete(
     verifyApiKeyHasAction(ActionsEnum.removeUserRole),
     logActionAudit(ActionsEnum.removeUserRole),
     user.removeUserRole
+);
+
+authenticated.put(
+    "/org/:orgId/site-provisioning-key",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.siteProvisioningKeys),
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.createSiteProvisioningKey),
+    logActionAudit(ActionsEnum.createSiteProvisioningKey),
+    siteProvisioning.createSiteProvisioningKey
+);
+
+authenticated.get(
+    "/org/:orgId/site-provisioning-keys",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.siteProvisioningKeys),
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listSiteProvisioningKeys),
+    siteProvisioning.listSiteProvisioningKeys
+);
+
+authenticated.delete(
+    "/org/:orgId/site-provisioning-key/:siteProvisioningKeyId",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.siteProvisioningKeys),
+    verifyApiKeyOrgAccess,
+    verifyApiKeySiteProvisioningKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteSiteProvisioningKey),
+    logActionAudit(ActionsEnum.deleteSiteProvisioningKey),
+    siteProvisioning.deleteSiteProvisioningKey
+);
+
+authenticated.patch(
+    "/org/:orgId/site-provisioning-key/:siteProvisioningKeyId",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.siteProvisioningKeys),
+    verifyApiKeyOrgAccess,
+    verifyApiKeySiteProvisioningKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateSiteProvisioningKey),
+    logActionAudit(ActionsEnum.updateSiteProvisioningKey),
+    siteProvisioning.updateSiteProvisioningKey
 );

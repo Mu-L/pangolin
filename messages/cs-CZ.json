@@ -1511,6 +1511,10 @@
     "actionListInvitations": "Seznam pozvánek",
     "actionExportLogs": "Exportovat protokoly",
     "actionViewLogs": "Zobrazit logy",
+    "actionCreateSiteProvisioningKey": "Vytvořit klíč pro zřízení webu",
+    "actionListSiteProvisioningKeys": "Seznam klíčů pro zřízení webu",
+    "actionUpdateSiteProvisioningKey": "Aktualizovat klíč pro zřízení webu",
+    "actionDeleteSiteProvisioningKey": "Smazat klíč pro zřízení webu",
     "noneSelected": "Není vybráno",
     "orgNotFound2": "Nebyly nalezeny žádné organizace.",
     "search": "Vyhledávání…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "Nahrání selhalo",
     "rdpUnicodeKeyboardMode": "Režim Unicode klávesnice",
     "sessionToolbarShow": "Zobrazit panel nástrojů",
-    "sessionToolbarHide": "Skrýt panel nástrojů"
+    "sessionToolbarHide": "Skrýt panel nástrojů",
+    "actionUpdateSiteApprovals": "Aktualizovat schválení webu"
 }

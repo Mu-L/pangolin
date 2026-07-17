@@ -1511,6 +1511,10 @@
     "actionListInvitations": "Lister les invitations",
     "actionExportLogs": "Exporter les journaux",
     "actionViewLogs": "Voir les logs",
+    "actionCreateSiteProvisioningKey": "Créer une clé de provisionnement de site",
+    "actionListSiteProvisioningKeys": "Lister les clés de provisionnement de site",
+    "actionUpdateSiteProvisioningKey": "Mettre à jour la clé de provisionnement de site",
+    "actionDeleteSiteProvisioningKey": "Supprimer la clé de provisionnement de site",
     "noneSelected": "Aucune sélection",
     "orgNotFound2": "Aucune organisation trouvée.",
     "search": "Rechercher…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "Échec du téléchargement",
     "rdpUnicodeKeyboardMode": "Mode clavier Unicode",
     "sessionToolbarShow": "Afficher la barre d'outils",
-    "sessionToolbarHide": "Masquer la barre d'outils"
+    "sessionToolbarHide": "Masquer la barre d'outils",
+    "actionUpdateSiteApprovals": "Mettre à jour les approbations de site"
 }

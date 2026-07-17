@@ -1511,6 +1511,10 @@
     "actionListInvitations": "Toon uitnodigingen",
     "actionExportLogs": "Logboeken exporteren",
     "actionViewLogs": "Logboeken bekijken",
+    "actionCreateSiteProvisioningKey": "Een sitevoorzie-ningssleutel aanmaken",
+    "actionListSiteProvisioningKeys": "Sitevoorzie-ningssleutels weergeven",
+    "actionUpdateSiteProvisioningKey": "Sitevoorzie-ningssleutel bijwerken",
+    "actionDeleteSiteProvisioningKey": "Sitevoorzie-ningssleutel verwijderen",
     "noneSelected": "Niet geselecteerd",
     "orgNotFound2": "Geen organisaties gevonden.",
     "search": "Zoeken…",
@@ -3811,5 +3815,6 @@
     "rdpUploadFailed": "Upload mislukt",
     "rdpUnicodeKeyboardMode": "Unicode toetsenbordmodus",
     "sessionToolbarShow": "Toon werkbalk",
-    "sessionToolbarHide": "Verberg werkbalk"
+    "sessionToolbarHide": "Verberg werkbalk",
+    "actionUpdateSiteApprovals": "Sitegoedkeuringen bijwerken"
 }

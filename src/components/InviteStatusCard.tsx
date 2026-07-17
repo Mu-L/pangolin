@@ -93,14 +93,20 @@ export default function InviteStatusCard({
             setType(type);
 
             if (!user && type === "user_does_not_exist") {
+                const inviteRedirect = encodeURIComponent(
+                    `/invite?token=${tokenParam}`
+                );
                 const redirectUrl = email
-                    ? `/auth/signup?redirect=/invite?token=${tokenParam}&email=${email}`
-                    : `/auth/signup?redirect=/invite?token=${tokenParam}`;
+                    ? `/auth/signup?redirect=${inviteRedirect}&email=${encodeURIComponent(email)}`
+                    : `/auth/signup?redirect=${inviteRedirect}`;
                 router.push(redirectUrl);
             } else if (!user && type === "not_logged_in") {
+                const inviteRedirect = encodeURIComponent(
+                    `/invite?token=${tokenParam}`
+                );
                 const redirectUrl = email
-                    ? `/auth/login?redirect=/invite?token=${tokenParam}&user=${email}`
-                    : `/auth/login?redirect=/invite?token=${tokenParam}`;
+                    ? `/auth/login?redirect=${inviteRedirect}&user=${encodeURIComponent(email)}`
+                    : `/auth/login?redirect=${inviteRedirect}`;
                 router.push(redirectUrl);
             } else {
                 setLoading(false);
@@ -112,17 +118,23 @@ export default function InviteStatusCard({
 
     async function goToLogin() {
         await api.post("/auth/logout", {});
+        const inviteRedirect = encodeURIComponent(
+            `/invite?token=${tokenParam}`
+        );
         const redirectUrl = email
-            ? `/auth/login?redirect=/invite?token=${tokenParam}&user=${email}`
-            : `/auth/login?redirect=/invite?token=${tokenParam}`;
+            ? `/auth/login?redirect=${inviteRedirect}&user=${encodeURIComponent(email)}`
+            : `/auth/login?redirect=${inviteRedirect}`;
         router.push(redirectUrl);
     }
 
     async function goToSignup() {
         await api.post("/auth/logout", {});
+        const inviteRedirect = encodeURIComponent(
+            `/invite?token=${tokenParam}`
+        );
         const redirectUrl = email
-            ? `/auth/signup?redirect=/invite?token=${tokenParam}&email=${email}`
-            : `/auth/signup?redirect=/invite?token=${tokenParam}`;
+            ? `/auth/signup?redirect=${inviteRedirect}&email=${encodeURIComponent(email)}`
+            : `/auth/signup?redirect=${inviteRedirect}`;
         router.push(redirectUrl);
     }
 
