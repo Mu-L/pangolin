@@ -118,6 +118,7 @@ export const sites = sqliteTable("sites", {
     // exit node stuff that is how to connect to the site when it has a wg server
     address: text("address"), // this is the address of the wireguard interface in newt
     endpoint: text("endpoint"), // this is how to reach gerbil externally - gets put into the wireguard config
+    localEndpoints: text("localEndpoints"), // JSON encoded list of string ips on the local machine to try to connect to
     publicKey: text("publicKey"), // TODO: Fix typo in publicKey
     lastHolePunch: integer("lastHolePunch"),
     listenPort: integer("listenPort"),
@@ -1125,12 +1126,18 @@ export const resourceAccessToken = sqliteTable("resourceAccessToken", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
     path: text("path"),
     tokenHash: text("tokenHash").notNull(),
     sessionLength: integer("sessionLength").notNull(),
     expiresAt: integer("expiresAt"),
     title: text("title"),
     description: text("description"),
+    persistSession: integer("persistSession", { mode: "boolean" })
+        .notNull()
+        .default(false),
     createdAt: integer("createdAt").notNull()
 });
 

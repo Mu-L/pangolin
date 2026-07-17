@@ -107,6 +107,7 @@ export const sites = pgTable(
         lastPing: integer("lastPing"),
         address: varchar("address"),
         endpoint: varchar("endpoint"),
+        localEndpoints: varchar("localEndpoints"), // JSON encoded list of string ips on the local machine to try to connect to
         publicKey: varchar("publicKey"),
         lastHolePunch: bigint("lastHolePunch", { mode: "number" }),
         listenPort: integer("listenPort"),
@@ -905,12 +906,16 @@ export const resourceAccessToken = pgTable("resourceAccessToken", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
+    userId: varchar("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
     path: varchar("path"),
     tokenHash: varchar("tokenHash").notNull(),
     sessionLength: bigint("sessionLength", { mode: "number" }).notNull(),
     expiresAt: bigint("expiresAt", { mode: "number" }),
     title: varchar("title"),
     description: varchar("description"),
+    persistSession: boolean("persistSession").notNull().default(false),
     createdAt: bigint("createdAt", { mode: "number" }).notNull()
 });
 
