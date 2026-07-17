@@ -1125,12 +1125,18 @@ export const resourceAccessToken = sqliteTable("resourceAccessToken", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
     path: text("path"),
     tokenHash: text("tokenHash").notNull(),
     sessionLength: integer("sessionLength").notNull(),
     expiresAt: integer("expiresAt"),
     title: text("title"),
     description: text("description"),
+    persistSession: integer("persistSession", { mode: "boolean" })
+        .notNull()
+        .default(false),
     createdAt: integer("createdAt").notNull()
 });
 

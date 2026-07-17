@@ -809,16 +809,6 @@ authenticated.post(
     accessToken.generateAccessToken
 );
 
-authenticated.post(
-    `/resource/:resourceId/session-token`,
-    verifyApiKeyResourceAccess,
-    verifyApiKeyUserAccess,
-    verifyLimits,
-    verifyApiKeyHasAction(ActionsEnum.createResourceSessionToken),
-    logActionAudit(ActionsEnum.createResourceSessionToken),
-    resource.createResourceSessionToken
-);
-
 authenticated.delete(
     `/access-token/:accessTokenId`,
     verifyApiKeyAccessTokenAccess,

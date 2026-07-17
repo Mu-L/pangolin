@@ -905,12 +905,16 @@ export const resourceAccessToken = pgTable("resourceAccessToken", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
+    userId: varchar("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
     path: varchar("path"),
     tokenHash: varchar("tokenHash").notNull(),
     sessionLength: bigint("sessionLength", { mode: "number" }).notNull(),
     expiresAt: bigint("expiresAt", { mode: "number" }),
     title: varchar("title"),
     description: varchar("description"),
+    persistSession: boolean("persistSession").notNull().default(false),
     createdAt: bigint("createdAt", { mode: "number" }).notNull()
 });
 

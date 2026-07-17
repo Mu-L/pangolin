@@ -17,7 +17,6 @@ export * from "./getResourceWhitelist";
 export * from "./authWithWhitelist";
 export * from "./authWithAccessToken";
 export * from "./getExchangeToken";
-export * from "./createResourceSessionToken";
 export * from "./createResourceRule";
 export * from "./deleteResourceRule";
 export * from "./listResourceRules";
