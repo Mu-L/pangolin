@@ -17,6 +17,10 @@ import * as logs from "#private/routers/auditLogs";
 import * as alertEvents from "#private/routers/alertEvents";
 import * as certificates from "#private/routers/certificates";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
+import * as policy from "#private/routers/policy";
+import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
+import * as alertRule from "#private/routers/alertRule";
+import * as healthChecks from "#private/routers/healthChecks";
 
 import {
     verifyApiKeyHasAction,
@@ -26,6 +30,7 @@ import {
     verifyApiKeyRoleAccess,
     verifyApiKeyUserAccess,
     verifyApiKeySiteProvisioningKeyAccess,
+    verifyApiKeyResourcePolicyAccess,
     verifyLimits
 } from "@server/middlewares";
 import * as user from "#private/routers/user";
@@ -258,4 +263,151 @@ authenticated.patch(
     verifyApiKeyHasAction(ActionsEnum.updateSiteProvisioningKey),
     logActionAudit(ActionsEnum.updateSiteProvisioningKey),
     siteProvisioning.updateSiteProvisioningKey
+);
+
+authenticated.get(
+    ["/org/:orgId/resource-policies", "/org/:orgId/public-resource-policies"],
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.listResourcePolicies),
+    logActionAudit(ActionsEnum.listResourcePolicies),
+    policy.listResourcePolicies
+);
+
+authenticated.post(
+    ["/org/:orgId/resource-policy", "/org/:orgId/public-resource-policy"],
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.createResourcePolicy),
+    logActionAudit(ActionsEnum.createResourcePolicy),
+    policy.createResourcePolicy
+);
+
+authenticated.delete(
+    [
+        "/resource-policy/:resourcePolicyId",
+        "/public-resource-policy/:resourcePolicyId"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.deleteResourcePolicy),
+    logActionAudit(ActionsEnum.deleteResourcePolicy),
+    policy.deleteResourcePolicy
+);
+
+authenticated.put(
+    "/org/:orgId/event-streaming-destination",
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.createEventStreamingDestination),
+    logActionAudit(ActionsEnum.createEventStreamingDestination),
+    eventStreamingDestination.createEventStreamingDestination
+);
+
+authenticated.post(
+    "/org/:orgId/event-streaming-destination/:destinationId",
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.updateEventStreamingDestination),
+    logActionAudit(ActionsEnum.updateEventStreamingDestination),
+    eventStreamingDestination.updateEventStreamingDestination
+);
+
+authenticated.delete(
+    "/org/:orgId/event-streaming-destination/:destinationId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteEventStreamingDestination),
+    logActionAudit(ActionsEnum.deleteEventStreamingDestination),
+    eventStreamingDestination.deleteEventStreamingDestination
+);
+
+authenticated.get(
+    "/org/:orgId/event-streaming-destinations",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listEventStreamingDestinations),
+    eventStreamingDestination.listEventStreamingDestinations
+);
+
+authenticated.put(
+    "/org/:orgId/alert-rule",
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.createAlertRule),
+    logActionAudit(ActionsEnum.createAlertRule),
+    alertRule.createAlertRule
+);
+
+authenticated.post(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateAlertRule),
+    logActionAudit(ActionsEnum.updateAlertRule),
+    alertRule.updateAlertRule
+);
+
+authenticated.delete(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteAlertRule),
+    logActionAudit(ActionsEnum.deleteAlertRule),
+    alertRule.deleteAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/alert-rules",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAlertRules),
+    alertRule.listAlertRules
+);
+
+authenticated.get(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.getAlertRule),
+    alertRule.getAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/health-checks",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listHealthChecks),
+    healthChecks.listHealthChecks
+);
+
+authenticated.put(
+    "/org/:orgId/health-check",
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.createHealthCheck),
+    logActionAudit(ActionsEnum.createHealthCheck),
+    healthChecks.createHealthCheck
+);
+
+authenticated.post(
+    "/org/:orgId/health-check/:healthCheckId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateHealthCheck),
+    logActionAudit(ActionsEnum.updateHealthCheck),
+    healthChecks.updateHealthCheck
+);
+
+authenticated.delete(
+    "/org/:orgId/health-check/:healthCheckId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteHealthCheck),
+    logActionAudit(ActionsEnum.deleteHealthCheck),
+    healthChecks.deleteHealthCheck
+);
+
+authenticated.get(
+    "/org/:orgId/health-check/:healthCheckId/status-history",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.getTarget),
+    healthChecks.getHealthCheckStatusHistory
 );

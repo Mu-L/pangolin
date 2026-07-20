@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -43,10 +43,12 @@ import {
     CheckCircle2,
     ChevronsUpDown,
     ExternalLink,
+    Globe,
     KeyRound,
     Zap
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@/hooks/usePaidStatus";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -493,6 +495,28 @@ export default function DomainPicker({
         )?.domainNamespaceId;
     const hasMoreProvided =
         sortedAvailableOptions.length > providedDomainsShown;
+
+    const noDomainsAvailable =
+        !loadingDomains &&
+        organizationDomains.length === 0 &&
+        (build === "oss" || hideFreeDomain || requiresPaywall);
+
+    if (noDomainsAvailable) {
+        return (
+            <Alert>
+                <Globe className="h-4 w-4" />
+                <AlertTitle>{t("domainPickerNoDomainsAvailableTitle")}</AlertTitle>
+                <AlertDescription className="space-y-3">
+                    <p>{t("domainPickerNoDomainsAvailableDescription")}</p>
+                    <Button asChild size="sm" variant="outline">
+                        <Link href={`/${orgId}/settings/domains`}>
+                            {t("domainPickerNoDomainsAvailableAction")}
+                        </Link>
+                    </Button>
+                </AlertDescription>
+            </Alert>
+        );
+    }
 
     return (
         <div className="space-y-4">

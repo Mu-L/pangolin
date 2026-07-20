@@ -163,7 +163,7 @@ authenticated.get(
 
 // Site Resource endpoints
 authenticated.put(
-    "/org/:orgId/site-resource",
+    ["/org/:orgId/site-resource", "/org/:orgId/private-resource"],
     verifyApiKeyOrgAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.createSiteResource),
@@ -172,7 +172,10 @@ authenticated.put(
 );
 
 authenticated.get(
-    "/org/:orgId/site/:siteId/resources",
+    [
+        "/org/:orgId/site/:siteId/resources",
+        "/org/:orgId/site/:siteId/private-resources"
+    ],
     verifyApiKeyOrgAccess,
     verifyApiKeySiteAccess,
     verifyApiKeyHasAction(ActionsEnum.listSiteResources),
@@ -180,21 +183,21 @@ authenticated.get(
 );
 
 authenticated.get(
-    "/org/:orgId/site-resources",
+    ["/org/:orgId/site-resources", "/org/:orgId/private-resources"],
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.listSiteResources),
     siteResource.listAllSiteResourcesByOrg
 );
 
 authenticated.get(
-    "/site-resource/:siteResourceId",
+    ["/site-resource/:siteResourceId", "/private-resource/:siteResourceId"],
     verifyApiKeySiteResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.getSiteResource),
     siteResource.getSiteResource
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId",
+    ["/site-resource/:siteResourceId", "/private-resource/:siteResourceId"],
     verifyApiKeySiteResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.updateSiteResource),
@@ -203,7 +206,7 @@ authenticated.post(
 );
 
 authenticated.delete(
-    "/site-resource/:siteResourceId",
+    ["/site-resource/:siteResourceId", "/private-resource/:siteResourceId"],
     verifyApiKeySiteResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.deleteSiteResource),
     logActionAudit(ActionsEnum.deleteSiteResource),
@@ -211,28 +214,40 @@ authenticated.delete(
 );
 
 authenticated.get(
-    "/site-resource/:siteResourceId/roles",
+    [
+        "/site-resource/:siteResourceId/roles",
+        "/private-resource/:siteResourceId/roles"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.listResourceRoles),
     siteResource.listSiteResourceRoles
 );
 
 authenticated.get(
-    "/site-resource/:siteResourceId/users",
+    [
+        "/site-resource/:siteResourceId/users",
+        "/private-resource/:siteResourceId/users"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.listResourceUsers),
     siteResource.listSiteResourceUsers
 );
 
 authenticated.get(
-    "/site-resource/:siteResourceId/clients",
+    [
+        "/site-resource/:siteResourceId/clients",
+        "/private-resource/:siteResourceId/clients"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.listResourceUsers),
     siteResource.listSiteResourceClients
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/roles",
+    [
+        "/site-resource/:siteResourceId/roles",
+        "/private-resource/:siteResourceId/roles"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeyRoleAccess,
     verifyLimits,
@@ -242,7 +257,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/users",
+    [
+        "/site-resource/:siteResourceId/users",
+        "/private-resource/:siteResourceId/users"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeySetResourceUsers,
     verifyLimits,
@@ -252,7 +270,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/roles/add",
+    [
+        "/site-resource/:siteResourceId/roles/add",
+        "/private-resource/:siteResourceId/roles/add"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeyRoleAccess,
     verifyLimits,
@@ -262,7 +283,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/roles/remove",
+    [
+        "/site-resource/:siteResourceId/roles/remove",
+        "/private-resource/:siteResourceId/roles/remove"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeyRoleAccess,
     verifyLimits,
@@ -272,7 +296,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/users/add",
+    [
+        "/site-resource/:siteResourceId/users/add",
+        "/private-resource/:siteResourceId/users/add"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeySetResourceUsers,
     verifyLimits,
@@ -282,7 +309,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/users/remove",
+    [
+        "/site-resource/:siteResourceId/users/remove",
+        "/private-resource/:siteResourceId/users/remove"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeySetResourceUsers,
     verifyLimits,
@@ -292,7 +322,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/clients",
+    [
+        "/site-resource/:siteResourceId/clients",
+        "/private-resource/:siteResourceId/clients"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeySetResourceClients,
     verifyLimits,
@@ -302,7 +335,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/clients/add",
+    [
+        "/site-resource/:siteResourceId/clients/add",
+        "/private-resource/:siteResourceId/clients/add"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeySetResourceClients,
     verifyLimits,
@@ -312,7 +348,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/site-resource/:siteResourceId/clients/remove",
+    [
+        "/site-resource/:siteResourceId/clients/remove",
+        "/private-resource/:siteResourceId/clients/remove"
+    ],
     verifyApiKeySiteResourceAccess,
     verifyApiKeySetResourceClients,
     verifyLimits,
@@ -322,7 +361,7 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/client/:clientId/site-resources",
+    ["/client/:clientId/site-resources", "/client/:clientId/private-resources"],
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourceUsers),
     logActionAudit(ActionsEnum.setResourceUsers),
@@ -330,7 +369,7 @@ authenticated.post(
 );
 
 authenticated.put(
-    "/org/:orgId/resource",
+    ["/org/:orgId/resource", "/org/:orgId/public-resource"],
     verifyApiKeyOrgAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.createResource),
@@ -339,7 +378,10 @@ authenticated.put(
 );
 
 authenticated.put(
-    "/org/:orgId/site/:siteId/resource",
+    [
+        "/org/:orgId/site/:siteId/resource",
+        "/org/:orgId/site/:siteId/public-resource"
+    ],
     verifyApiKeyOrgAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.createResource),
@@ -348,14 +390,14 @@ authenticated.put(
 );
 
 authenticated.get(
-    "/site/:siteId/resources",
+    ["/site/:siteId/resources", "/site/:siteId/public-resources"],
     verifyApiKeySiteAccess,
     verifyApiKeyHasAction(ActionsEnum.listResources),
     resource.listResources
 );
 
 authenticated.get(
-    "/org/:orgId/resources",
+    ["/org/:orgId/resources", "/org/:orgId/public-resources"],
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.listResources),
     resource.listResources
@@ -384,6 +426,15 @@ authenticated.put(
     domain.createOrgDomain
 );
 
+authenticated.post(
+    "/org/:orgId/domain/:domainId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyDomainAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateOrgDomain),
+    domain.updateOrgDomain
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.patch(
     "/org/:orgId/domain/:domainId",
     verifyApiKeyOrgAccess,
@@ -443,42 +494,45 @@ authenticated.delete(
 );
 
 authenticated.get(
-    "/resource/:resourceId/roles",
+    ["/resource/:resourceId/roles", "/public-resource/:resourceId/roles"],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.listResourceRoles),
     resource.listResourceRoles
 );
 
 authenticated.get(
-    "/resource/:resourceId/users",
+    ["/resource/:resourceId/users", "/public-resource/:resourceId/users"],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.listResourceUsers),
     resource.listResourceUsers
 );
 
 authenticated.get(
-    "/resource/:resourceId",
+    ["/resource/:resourceId", "/public-resource/:resourceId"],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.getResource),
     resource.getResource
 );
 
 authenticated.get(
-    "/resource-policy/:resourcePolicyId",
+    [
+        "/resource-policy/:resourcePolicyId",
+        "/public-resource-policy/:resourcePolicyId"
+    ],
     verifyApiKeyResourcePolicyAccess,
     verifyApiKeyHasAction(ActionsEnum.getResourcePolicy),
     policy.getResourcePolicy
 );
 
 authenticated.get(
-    "/resource/:resourceId/policies",
+    ["/resource/:resourceId/policies", "/public-resource/:resourceId/policies"],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.getResourcePolicy),
     resource.getResourcePolicies
 );
 
 authenticated.post(
-    "/resource/:resourceId",
+    ["/resource/:resourceId", "/public-resource/:resourceId"],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.updateResource),
@@ -486,15 +540,29 @@ authenticated.post(
     resource.updateResource
 );
 
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId",
+        "/public-resource-policy/:resourcePolicyId"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateResourcePolicy),
+    policy.updateResourcePolicy
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
-    "/resource-policy/:resourcePolicyId",
+    [
+        "/resource-policy/:resourcePolicyId",
+        "/public-resource-policy/:resourcePolicyId"
+    ],
     verifyApiKeyResourcePolicyAccess,
     verifyApiKeyHasAction(ActionsEnum.updateResourcePolicy),
     policy.updateResourcePolicy
 );
 
 authenticated.delete(
-    "/resource/:resourceId",
+    ["/resource/:resourceId", "/public-resource/:resourceId"],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.deleteResource),
     logActionAudit(ActionsEnum.deleteResource),
@@ -502,7 +570,7 @@ authenticated.delete(
 );
 
 authenticated.put(
-    "/resource/:resourceId/target",
+    ["/resource/:resourceId/target", "/public-resource/:resourceId/target"],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.createTarget),
@@ -511,14 +579,14 @@ authenticated.put(
 );
 
 authenticated.get(
-    "/resource/:resourceId/targets",
+    ["/resource/:resourceId/targets", "/public-resource/:resourceId/targets"],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.listTargets),
     target.listTargets
 );
 
 authenticated.put(
-    "/resource/:resourceId/rule",
+    ["/resource/:resourceId/rule", "/public-resource/:resourceId/rule"],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.createResourceRule),
@@ -527,14 +595,17 @@ authenticated.put(
 );
 
 authenticated.get(
-    "/resource/:resourceId/rules",
+    ["/resource/:resourceId/rules", "/public-resource/:resourceId/rules"],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.listResourceRules),
     resource.listResourceRules
 );
 
 authenticated.post(
-    "/resource/:resourceId/rule/:ruleId",
+    [
+        "/resource/:resourceId/rule/:ruleId",
+        "/public-resource/:resourceId/rule/:ruleId"
+    ],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.updateResourceRule),
@@ -543,7 +614,10 @@ authenticated.post(
 );
 
 authenticated.delete(
-    "/resource/:resourceId/rule/:ruleId",
+    [
+        "/resource/:resourceId/rule/:ruleId",
+        "/public-resource/:resourceId/rule/:ruleId"
+    ],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.deleteResourceRule),
     logActionAudit(ActionsEnum.deleteResourceRule),
@@ -625,7 +699,7 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/resource/:resourceId/roles",
+    ["/resource/:resourceId/roles", "/public-resource/:resourceId/roles"],
     verifyApiKeyResourceAccess,
     verifyApiKeyRoleAccess,
     verifyLimits,
@@ -635,7 +709,7 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/resource/:resourceId/users",
+    ["/resource/:resourceId/users", "/public-resource/:resourceId/users"],
     verifyApiKeyResourceAccess,
     verifyApiKeySetResourceUsers,
     verifyLimits,
@@ -644,8 +718,11 @@ authenticated.post(
     resource.setResourceUsers
 );
 
-authenticated.put(
-    "/resource-policy/:resourcePolicyId/access-control",
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/access-control",
+        "/public-resource-policy/:resourcePolicyId/access-control"
+    ],
     verifyApiKeyResourcePolicyAccess,
     verifyApiKeyRoleAccess,
     verifyLimits,
@@ -656,8 +733,27 @@ authenticated.put(
     policy.setResourcePolicyAccessControl
 );
 
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
-    "/resource-policy/:resourcePolicyId/password",
+    [
+        "/resource-policy/:resourcePolicyId/access-control",
+        "/public-resource-policy/:resourcePolicyId/access-control"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyRoleAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
+    verifyUserHasAction(ActionsEnum.setResourcePolicyRoles),
+    logActionAudit(ActionsEnum.setResourcePolicyUsers),
+    logActionAudit(ActionsEnum.setResourcePolicyRoles),
+    policy.setResourcePolicyAccessControl
+);
+
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/password",
+        "/public-resource-policy/:resourcePolicyId/password"
+    ],
     verifyApiKeyResourcePolicyAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourcePolicyPassword),
@@ -665,8 +761,24 @@ authenticated.put(
     policy.setResourcePolicyPassword
 );
 
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
-    "/resource-policy/:resourcePolicyId/pincode",
+    [
+        "/resource-policy/:resourcePolicyId/password",
+        "/public-resource-policy/:resourcePolicyId/password"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyPassword),
+    logActionAudit(ActionsEnum.setResourcePolicyPassword),
+    policy.setResourcePolicyPassword
+);
+
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/pincode",
+        "/public-resource-policy/:resourcePolicyId/pincode"
+    ],
     verifyApiKeyResourcePolicyAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourcePolicyPincode),
@@ -674,8 +786,24 @@ authenticated.put(
     policy.setResourcePolicyPincode
 );
 
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
-    "/resource-policy/:resourcePolicyId/header-auth",
+    [
+        "/resource-policy/:resourcePolicyId/pincode",
+        "/public-resource-policy/:resourcePolicyId/pincode"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyPincode),
+    logActionAudit(ActionsEnum.setResourcePolicyPincode),
+    policy.setResourcePolicyPincode
+);
+
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/header-auth",
+        "/public-resource-policy/:resourcePolicyId/header-auth"
+    ],
     verifyApiKeyResourcePolicyAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourcePolicyHeaderAuth),
@@ -683,8 +811,24 @@ authenticated.put(
     policy.setResourcePolicyHeaderAuth
 );
 
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
-    "/resource-policy/:resourcePolicyId/whitelist",
+    [
+        "/resource-policy/:resourcePolicyId/header-auth",
+        "/public-resource-policy/:resourcePolicyId/header-auth"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyHeaderAuth),
+    logActionAudit(ActionsEnum.setResourcePolicyHeaderAuth),
+    policy.setResourcePolicyHeaderAuth
+);
+
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/whitelist",
+        "/public-resource-policy/:resourcePolicyId/whitelist"
+    ],
     verifyApiKeyResourcePolicyAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourcePolicyWhitelist),
@@ -692,8 +836,37 @@ authenticated.put(
     policy.setResourcePolicyWhitelist
 );
 
+// Deprecated: use POST instead. Kept for backward compatibility.
 authenticated.put(
-    "/resource-policy/:resourcePolicyId/rules",
+    [
+        "/resource-policy/:resourcePolicyId/whitelist",
+        "/public-resource-policy/:resourcePolicyId/whitelist"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyWhitelist),
+    logActionAudit(ActionsEnum.setResourcePolicyWhitelist),
+    policy.setResourcePolicyWhitelist
+);
+
+authenticated.post(
+    [
+        "/resource-policy/:resourcePolicyId/rules",
+        "/public-resource-policy/:resourcePolicyId/rules"
+    ],
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyRules),
+    logActionAudit(ActionsEnum.setResourcePolicyRules),
+    policy.setResourcePolicyRules
+);
+
+// Deprecated: use POST instead. Kept for backward compatibility.
+authenticated.put(
+    [
+        "/resource-policy/:resourcePolicyId/rules",
+        "/public-resource-policy/:resourcePolicyId/rules"
+    ],
     verifyApiKeyResourcePolicyAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourcePolicyRules),
@@ -702,7 +875,10 @@ authenticated.put(
 );
 
 authenticated.post(
-    "/resource/:resourceId/roles/add",
+    [
+        "/resource/:resourceId/roles/add",
+        "/public-resource/:resourceId/roles/add"
+    ],
     verifyApiKeyResourceAccess,
     verifyApiKeyRoleAccess,
     verifyLimits,
@@ -712,7 +888,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/resource/:resourceId/roles/remove",
+    [
+        "/resource/:resourceId/roles/remove",
+        "/public-resource/:resourceId/roles/remove"
+    ],
     verifyApiKeyResourceAccess,
     verifyApiKeyRoleAccess,
     verifyLimits,
@@ -722,7 +901,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/resource/:resourceId/users/add",
+    [
+        "/resource/:resourceId/users/add",
+        "/public-resource/:resourceId/users/add"
+    ],
     verifyApiKeyResourceAccess,
     verifyApiKeySetResourceUsers,
     verifyLimits,
@@ -732,7 +914,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    "/resource/:resourceId/users/remove",
+    [
+        "/resource/:resourceId/users/remove",
+        "/public-resource/:resourceId/users/remove"
+    ],
     verifyApiKeyResourceAccess,
     verifyApiKeySetResourceUsers,
     verifyLimits,
@@ -742,7 +927,7 @@ authenticated.post(
 );
 
 authenticated.post(
-    `/resource/:resourceId/password`,
+    [`/resource/:resourceId/password`, `/public-resource/:resourceId/password`],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourcePassword),
@@ -751,7 +936,7 @@ authenticated.post(
 );
 
 authenticated.post(
-    `/resource/:resourceId/pincode`,
+    [`/resource/:resourceId/pincode`, `/public-resource/:resourceId/pincode`],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourcePincode),
@@ -760,7 +945,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    `/resource/:resourceId/header-auth`,
+    [
+        `/resource/:resourceId/header-auth`,
+        `/public-resource/:resourceId/header-auth`
+    ],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourceHeaderAuth),
@@ -769,7 +957,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    `/resource/:resourceId/whitelist`,
+    [
+        `/resource/:resourceId/whitelist`,
+        `/public-resource/:resourceId/whitelist`
+    ],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourceWhitelist),
@@ -778,7 +969,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    `/resource/:resourceId/whitelist/add`,
+    [
+        `/resource/:resourceId/whitelist/add`,
+        `/public-resource/:resourceId/whitelist/add`
+    ],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourceWhitelist),
@@ -786,7 +980,10 @@ authenticated.post(
 );
 
 authenticated.post(
-    `/resource/:resourceId/whitelist/remove`,
+    [
+        `/resource/:resourceId/whitelist/remove`,
+        `/public-resource/:resourceId/whitelist/remove`
+    ],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.setResourceWhitelist),
@@ -794,14 +991,20 @@ authenticated.post(
 );
 
 authenticated.get(
-    `/resource/:resourceId/whitelist`,
+    [
+        `/resource/:resourceId/whitelist`,
+        `/public-resource/:resourceId/whitelist`
+    ],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.getResourceWhitelist),
     resource.getResourceWhitelist
 );
 
 authenticated.post(
-    `/resource/:resourceId/access-token`,
+    [
+        `/resource/:resourceId/access-token`,
+        `/public-resource/:resourceId/access-token`
+    ],
     verifyApiKeyResourceAccess,
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.generateAccessToken),
@@ -825,7 +1028,10 @@ authenticated.get(
 );
 
 authenticated.get(
-    `/resource/:resourceId/access-tokens`,
+    [
+        `/resource/:resourceId/access-tokens`,
+        `/public-resource/:resourceId/access-tokens`
+    ],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.listAccessTokens),
     accessToken.listAccessTokens
@@ -1155,7 +1361,7 @@ authenticated.get(
 );
 
 authenticated.get(
-    "/org/:orgId/resource-names",
+    ["/org/:orgId/resource-names", "/org/:orgId/public-resource-names"],
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.listResources),
     resource.listAllResourceNames

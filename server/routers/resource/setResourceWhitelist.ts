@@ -37,6 +37,40 @@ registry.registerPath({
     path: "/resource/{resourceId}/whitelist",
     description:
         "Set email whitelist for a resource. This will replace all existing emails.",
+    tags: [OpenAPITags.PublicResourceLegacy],
+    request: {
+        params: setResourceWhitelistParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setResourceWhitelistBodySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
+registry.registerPath({
+    method: "post",
+    path: "/public-resource/{resourceId}/whitelist",
+    description:
+        "Set email whitelist for a resource. This will replace all existing emails.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: setResourceWhitelistParamsSchema,

@@ -109,7 +109,7 @@ registry.registerPath({
     path: "/org/{orgId}/event-streaming-destination",
     description:
         "List all event streaming destinations for a specific organization.",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.EventStreamingDestination],
     request: {
         query: querySchema,
         params: paramsSchema

@@ -207,6 +207,39 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/site-resource",
     description: "Create a new site resource.",
+    tags: [OpenAPITags.PrivateResourceLegacy],
+    request: {
+        params: createSiteResourceParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: createSiteResourceSchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
+registry.registerPath({
+    method: "put",
+    path: "/org/{orgId}/private-resource",
+    description: "Create a new site resource.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: createSiteResourceParamsSchema,
