@@ -92,6 +92,33 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/targets",
     description: "List targets for a resource.",
+    tags: [OpenAPITags.PublicResourceLegacy],
+    request: {
+        params: listTargetsParamsSchema,
+        query: listTargetsSchema
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
+registry.registerPath({
+    method: "get",
+    path: "/public-resource/{resourceId}/targets",
+    description: "List targets for a resource.",
     tags: [OpenAPITags.PublicResource, OpenAPITags.Target],
     request: {
         params: listTargetsParamsSchema,

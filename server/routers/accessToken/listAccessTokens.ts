@@ -159,6 +159,35 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/access-tokens",
     description: "List all access tokens for a resource.",
+    tags: [OpenAPITags.PublicResourceLegacy],
+    request: {
+        params: z.object({
+            resourceId: z.number()
+        }),
+        query: listAccessTokensSchema
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
+registry.registerPath({
+    method: "get",
+    path: "/public-resource/{resourceId}/access-tokens",
+    description: "List all access tokens for a resource.",
     tags: [OpenAPITags.PublicResource, OpenAPITags.AccessToken],
     request: {
         params: z.object({

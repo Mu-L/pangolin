@@ -67,6 +67,33 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/site/{siteId}/resources",
     description: "List site resources for a site.",
+    tags: [OpenAPITags.PrivateResourceLegacy],
+    request: {
+        params: listSiteResourcesParamsSchema,
+        query: listSiteResourcesQuerySchema
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
+registry.registerPath({
+    method: "get",
+    path: "/org/{orgId}/site/{siteId}/private-resources",
+    description: "List site resources for a site.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: listSiteResourcesParamsSchema,
