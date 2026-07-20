@@ -9,12 +9,11 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import {
-    isValidCIDR,
-    isValidIP,
-    isValidUrlGlobPattern
+    RESOURCE_RULE_MATCH_TYPES,
+    getResourceRuleValueValidationError,
+    ResourceRuleMatchType
 } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
-import { isValidRegionId } from "@server/db/regions";
 
 // Define Zod schema for request parameters validation
 const updateResourceRuleParamsSchema = z.strictObject({
@@ -22,15 +21,7 @@ const updateResourceRuleParamsSchema = z.strictObject({
     resourceId: z.coerce.number().int().positive()
 });
 
-const resourceRuleMatchSchema = z.enum([
-    "CIDR",
-    "IP",
-    "PATH",
-    "COUNTRY",
-    "COUNTRY_IS_NOT",
-    "ASN",
-    "REGION"
-]);
+const resourceRuleMatchSchema = z.enum(RESOURCE_RULE_MATCH_TYPES);
 
 // Define Zod schema for request body validation
 const updateResourceRuleSchema = z
@@ -173,14 +164,7 @@ export async function updateResourceRule(
             resource.resourcePolicyId === null &&
             resource.defaultResourcePolicyId !== null;
 
-        let existingMatch:
-            | "CIDR"
-            | "IP"
-            | "PATH"
-            | "COUNTRY"
-            | "COUNTRY_IS_NOT"
-            | "ASN"
-            | "REGION";
+        let existingMatch: ResourceRuleMatchType;
 
         if (isInlinePolicy) {
             const policyId = resource.defaultResourcePolicyId!;
@@ -264,42 +248,14 @@ export async function updateResourceRule(
         const { value } = updateData;
 
         if (value !== undefined) {
-            if (match === "CIDR") {
-                if (!isValidCIDR(value)) {
-                    return next(
-                        createHttpError(
-                            HttpCode.BAD_REQUEST,
-                            "Invalid CIDR provided"
-                        )
-                    );
-                }
-            } else if (match === "IP") {
-                if (!isValidIP(value)) {
-                    return next(
-                        createHttpError(
-                            HttpCode.BAD_REQUEST,
-                            "Invalid IP provided"
-                        )
-                    );
-                }
-            } else if (match === "PATH") {
-                if (!isValidUrlGlobPattern(value)) {
-                    return next(
-                        createHttpError(
-                            HttpCode.BAD_REQUEST,
-                            "Invalid URL glob pattern provided"
-                        )
-                    );
-                }
-            } else if (match === "REGION") {
-                if (!isValidRegionId(value)) {
-                    return next(
-                        createHttpError(
-                            HttpCode.BAD_REQUEST,
-                            "Invalid region ID provided"
-                        )
-                    );
-                }
+            const valueValidationError = getResourceRuleValueValidationError(
+                match,
+                value
+            );
+            if (valueValidationError) {
+                return next(
+                    createHttpError(HttpCode.BAD_REQUEST, valueValidationError)
+                );
             }
         }
 
