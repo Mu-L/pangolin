@@ -19,6 +19,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import {
+    batchFetchCertsForSiteResources,
     formatEndpoint,
     generateSubnetProxyTargetV2,
     SubnetProxyTargetV2
@@ -206,11 +207,18 @@ export async function buildClientConfigurationForNewtClient(
         });
     }
 
+    // Batch-fetch certs for every SSL-enabled HTTP resource's domain in one
+    // call rather than letting each resource fetch its own — with thousands
+    // of resources this avoids a concurrent DB/cache stampede for what is
+    // often the very same (e.g. wildcard) certificate.
+    const certByDomain = await batchFetchCertsForSiteResources(allSiteResources);
+
     const resourceTargetsArr = await Promise.all(
         allSiteResources.map((resource) =>
             generateSubnetProxyTargetV2(
                 resource,
-                clientsByResourceId.get(resource.siteResourceId) ?? []
+                clientsByResourceId.get(resource.siteResourceId) ?? [],
+                certByDomain
             )
         )
     );

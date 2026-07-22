@@ -7,7 +7,11 @@ import { eq } from "drizzle-orm";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
 import { buildClientConfigurationForNewtClient } from "./buildConfiguration";
 import { convertTargetsIfNecessary } from "../client/targets";
-import { canCompress } from "@server/lib/clientVersionChecks";
+import {
+    canCompress,
+    supportsCertReferences
+} from "@server/lib/clientVersionChecks";
+import { dedupeCertsForTargets } from "@server/lib/ip";
 import config from "@server/lib/config";
 import { waitForSiteRebuildIdle } from "@server/lib/rebuildClientAssociations";
 
@@ -119,7 +123,16 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
         exitNode
     );
 
-    const targetsToSend = await convertTargetsIfNecessary(newt.newtId, targets); // for backward compatibility with old newt versions that don't support the new target format
+    // Older newt clients only understand inline tlsCert/tlsKey on each
+    // target, so only switch to certId references once we know the client
+    // can resolve them.
+    let dedupedTargets = targets;
+    let certs: { id: string; cert: string; key: string }[] = [];
+    if (supportsCertReferences(newt.version)) {
+        ({ targets: dedupedTargets, certs } = dedupeCertsForTargets(targets));
+    }
+
+    const targetsToSend = await convertTargetsIfNecessary(newt.newtId, dedupedTargets); // for backward compatibility with old newt versions that don't support the new target format
 
     return {
         message: {
@@ -128,6 +141,7 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
                 ipAddress: site.address,
                 peers,
                 targets: targetsToSend,
+                certs,
                 chainId: chainId
             }
         },
