@@ -5,6 +5,7 @@ export async function getValidCertificatesForDomains(
     Array<{
         id: number;
         domain: string;
+        queriedDomain: string;
         wildcard: boolean | null;
         certFile: string | null;
         keyFile: string | null;

@@ -5,6 +5,7 @@ import config from "@server/lib/config";
 import z from "zod";
 import logger from "@server/logger";
 import semver from "semver";
+import { createHash } from "crypto";
 import { getValidCertificatesForDomains } from "#dynamic/lib/certificates";
 import { lockManager } from "#dynamic/lib/lock";
 
@@ -648,7 +649,42 @@ export type SubnetProxyTargetV2 = {
     httpTargets?: HTTPTarget[];
     tlsCert?: string;
     tlsKey?: string;
+    tlsCertId?: string; // references an entry in the sync message's top-level `certs` array instead of inlining tlsCert/tlsKey
 };
+
+export type CertRef = { id: string; cert: string; key: string };
+
+/**
+ * Replaces each target's inline tlsCert/tlsKey with a tlsCertId reference
+ * into a deduplicated certs array, so that many targets sharing the same
+ * certificate (e.g. a wildcard cert used by thousands of site resources)
+ * only need that certificate sent once per sync message.
+ */
+export function dedupeCertsForTargets(
+    targetsV2: SubnetProxyTargetV2[]
+): { targets: SubnetProxyTargetV2[]; certs: CertRef[] } {
+    const idByContent = new Map<string, string>();
+    const certs: CertRef[] = [];
+
+    const targets = targetsV2.map((target) => {
+        if (!target.tlsCert || !target.tlsKey) {
+            return target;
+        }
+
+        const contentKey = `${target.tlsCert}|${target.tlsKey}`;
+        let id = idByContent.get(contentKey);
+        if (!id) {
+            id = createHash("sha1").update(contentKey).digest("hex").slice(0, 16);
+            idByContent.set(contentKey, id);
+            certs.push({ id, cert: target.tlsCert, key: target.tlsKey });
+        }
+
+        const { tlsCert, tlsKey, ...rest } = target;
+        return { ...rest, tlsCertId: id };
+    });
+
+    return { targets, certs };
+}
 
 export type HTTPTarget = {
     destAddr: string; // must be an IP or hostname
@@ -656,13 +692,58 @@ export type HTTPTarget = {
     scheme: "http" | "https";
 };
 
+export type CertByDomain = Map<string, { certFile: string; keyFile: string }>;
+
+/**
+ * Fetches the TLS certificates for every enabled, SSL-enabled HTTP site
+ * resource's fullDomain in a single batched call, instead of one call per
+ * resource. Many resources commonly resolve to the very same certificate
+ * (e.g. a wildcard covering the org's domain), so batching turns what would
+ * be N concurrent DB/cache round-trips into one, and a lookup failure fails
+ * loudly for the whole batch rather than silently dropping the cert on a
+ * random subset of otherwise-identical resources under load.
+ */
+export async function batchFetchCertsForSiteResources(
+    allSiteResources: SiteResource[]
+): Promise<CertByDomain> {
+    const domains = new Set(
+        allSiteResources
+            .filter((r) => r.enabled && r.mode === "http" && r.ssl && r.fullDomain)
+            .map((r) => r.fullDomain as string)
+    );
+
+    const certByDomain: CertByDomain = new Map();
+    if (domains.size === 0) {
+        return certByDomain;
+    }
+
+    try {
+        const certResults = await getValidCertificatesForDomains(domains, true);
+        for (const cert of certResults) {
+            if (cert.certFile && cert.keyFile) {
+                certByDomain.set(cert.queriedDomain, {
+                    certFile: cert.certFile,
+                    keyFile: cert.keyFile
+                });
+            }
+        }
+    } catch (err) {
+        logger.error(
+            `Failed to batch-retrieve certificates for ${domains.size} domain(s): ${err}`
+        );
+    }
+
+    return certByDomain;
+}
+
 export async function generateSubnetProxyTargetV2(
     siteResource: SiteResource,
     clients: {
         clientId: number;
         pubKey: string | null;
         subnet: string | null;
-    }[]
+    }[],
+    certByDomain?: CertByDomain
 ): Promise<SubnetProxyTargetV2[] | undefined> {
     if (!siteResource.enabled) {
         logger.debug(
@@ -750,23 +831,40 @@ export async function generateSubnetProxyTargetV2(
         let tlsKey: string | undefined;
 
         if (siteResource.ssl && siteResource.fullDomain) {
-            try {
-                const certs = await getValidCertificatesForDomains(
-                    new Set([siteResource.fullDomain]),
-                    true
-                );
-                if (certs.length > 0 && certs[0].certFile && certs[0].keyFile) {
-                    tlsCert = certs[0].certFile;
-                    tlsKey = certs[0].keyFile;
+            if (certByDomain) {
+                // Caller batch-fetched certs for all resources up front (the
+                // common, high-scale path) — just look up this resource's
+                // domain rather than issuing its own DB/cache round-trip.
+                const cert = certByDomain.get(siteResource.fullDomain);
+                if (cert) {
+                    tlsCert = cert.certFile;
+                    tlsKey = cert.keyFile;
                 } else {
                     logger.warn(
                         `No valid certificate found for SSL site resource ${siteResource.siteResourceId} with domain ${siteResource.fullDomain}`
                     );
                 }
-            } catch (err) {
-                logger.error(
-                    `Failed to retrieve certificate for site resource ${siteResource.siteResourceId} domain ${siteResource.fullDomain}: ${err}`
-                );
+            } else {
+                // No batched map supplied by the caller — fall back to a
+                // single-domain lookup for this resource alone.
+                try {
+                    const certs = await getValidCertificatesForDomains(
+                        new Set([siteResource.fullDomain]),
+                        true
+                    );
+                    if (certs.length > 0 && certs[0].certFile && certs[0].keyFile) {
+                        tlsCert = certs[0].certFile;
+                        tlsKey = certs[0].keyFile;
+                    } else {
+                        logger.warn(
+                            `No valid certificate found for SSL site resource ${siteResource.siteResourceId} with domain ${siteResource.fullDomain}`
+                        );
+                    }
+                } catch (err) {
+                    logger.error(
+                        `Failed to retrieve certificate for site resource ${siteResource.siteResourceId} domain ${siteResource.fullDomain}: ${err}`
+                    );
+                }
             }
         }
 
