@@ -7,6 +7,7 @@ import logger from "@server/logger";
 import config from "@server/lib/config";
 import { findNextAvailableCidr } from "@server/lib/ip";
 import {
+    ExitNodePingResult,
     selectBestExitNode,
     verifyExitNodeOrgAccess
 } from "#dynamic/lib/exitNodes";
@@ -14,16 +15,6 @@ import { fetchContainers } from "./dockerSocket";
 import { lockManager } from "#dynamic/lib/lock";
 import { buildTargetConfigurationForNewtClient } from "./buildConfiguration";
 import { canCompress } from "@server/lib/clientVersionChecks";
-
-export type ExitNodePingResult = {
-    exitNodeId: number;
-    latencyMs: number;
-    weight: number;
-    error?: string;
-    exitNodeName: string;
-    endpoint: string;
-    wasPreviouslyConnected: boolean;
-};
 
 export const handleNewtRegisterMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;

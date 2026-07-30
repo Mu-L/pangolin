@@ -1,6 +1,5 @@
 import { db, exitNodes, Transaction } from "@server/db";
 import logger from "@server/logger";
-import { ExitNodePingResult } from "@server/routers/newt";
 import { eq } from "drizzle-orm";
 
 export async function verifyExitNodeOrgAccess(
@@ -51,6 +50,16 @@ export async function listExitNodes(
 
     return allExitNodes;
 }
+
+export type ExitNodePingResult = {
+    exitNodeId: number;
+    latencyMs: number;
+    weight: number;
+    error?: string;
+    exitNodeName: string;
+    endpoint: string;
+    wasPreviouslyConnected: boolean;
+};
 
 export function selectBestExitNode(
     pingResults: ExitNodePingResult[]

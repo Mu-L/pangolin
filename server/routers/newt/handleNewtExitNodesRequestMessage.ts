@@ -2,14 +2,17 @@ import { db, sites } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { exitNodes, Newt } from "@server/db";
 import logger from "@server/logger";
-import { ne, eq, or, and, count } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { listExitNodes } from "#dynamic/lib/exitNodes";
+import { calculateExitNodeWeight } from "@server/lib/exitNodes";
 
-export const handleNewtPingRequestMessage: MessageHandler = async (context) => {
+export const handleNewtExitNodesRequestMessage: MessageHandler = async (
+    context
+) => {
     const { message, client, sendToClient } = context;
     const newt = client as Newt;
 
-    logger.info("Handling ping request newt message!");
+    logger.info("Handling exit nodes request newt message!");
 
     if (!newt) {
         logger.warn("Newt not found");
@@ -54,32 +57,13 @@ export const handleNewtPingRequestMessage: MessageHandler = async (context) => {
 
     const exitNodesPayload = await Promise.all(
         exitNodesList.map(async (node) => {
-            // (MAX_CONNECTIONS - current_connections) / MAX_CONNECTIONS)
-            // higher = more desirable
-            // like saying, this node has x% of its capacity left
+            const weight = await calculateExitNodeWeight(
+                node.exitNodeId,
+                node.maxConnections
+            );
 
-            let weight = 1;
-            const maxConnections = node.maxConnections;
-            if (maxConnections !== null && maxConnections !== undefined) {
-                const [currentConnections] = await db
-                    .select({
-                        count: count()
-                    })
-                    .from(sites)
-                    .where(
-                        and(
-                            eq(sites.exitNodeId, node.exitNodeId),
-                            eq(sites.online, true)
-                        )
-                    );
-
-                if (currentConnections.count >= maxConnections) {
-                    return null;
-                }
-
-                weight =
-                    (maxConnections - currentConnections.count) /
-                    maxConnections;
+            if (weight === null) {
+                return null;
             }
 
             return {

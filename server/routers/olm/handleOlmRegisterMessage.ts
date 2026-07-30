@@ -22,6 +22,7 @@ import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";
 import cache from "#dynamic/lib/cache"; // not using regional here because we need this in the register message handler before we know where the client is
 import { waitForClientRebuildIdle } from "@server/lib/rebuildClientAssociations";
+import { ExitNodePingResult, selectBestExitNode } from "#dynamic/lib/exitNodes";
 
 const HOLEPUNCH_STALE_CHAIN_THRESHOLD = 18;
 const HOLEPUNCH_STALE_CHAIN_TTL_SECONDS = 1800;
@@ -49,6 +50,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         olmAgent,
         orgId,
         userToken,
+        pingResults,
         fingerprint,
         postures,
         chainId
@@ -284,7 +286,22 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         return;
     }
 
-    if (client.pubKey !== publicKey || client.archived) {
+    let exitNodeId: number | undefined;
+    if (pingResults) {
+        const bestPingResult = selectBestExitNode(
+            pingResults as ExitNodePingResult[]
+        );
+        if (!bestPingResult) {
+            logger.warn("No suitable exit node found based on ping results");
+        }
+        exitNodeId = bestPingResult?.exitNodeId;
+    }
+
+    if (
+        client.pubKey !== publicKey ||
+        client.archived ||
+        client.exitNodeId !== exitNodeId
+    ) {
         logger.info(
             "[handleOlmRegisterMessage] Public key mismatch. Updating public key and clearing session info...",
             { orgId: client.orgId, clientId: client.clientId }
@@ -294,7 +311,8 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             .update(clients)
             .set({
                 pubKey: publicKey,
-                archived: false
+                archived: false,
+                exitNodeId: exitNodeId // this can be undefined if no exit node was selected, which is fine just means we cant talk to the node or connect to it
             })
             .where(eq(clients.clientId, client.clientId));
 

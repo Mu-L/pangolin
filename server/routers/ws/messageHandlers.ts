@@ -5,7 +5,7 @@ import {
     handleNewtGetConfigMessage,
     handleDockerStatusMessage,
     handleDockerContainersMessage,
-    handleNewtPingRequestMessage,
+    handleNewtExitNodesRequestMessage,
     handleApplyBlueprintMessage,
     handleNewtPingMessage,
     startNewtOfflineChecker,
@@ -45,7 +45,7 @@ export const messageHandlers: Record<string, MessageHandler> = {
     "newt/receive-bandwidth": handleReceiveBandwidthMessage,
     "newt/socket/status": handleDockerStatusMessage,
     "newt/socket/containers": handleDockerContainersMessage,
-    "newt/ping/request": handleNewtPingRequestMessage,
+    "newt/ping/request": handleNewtExitNodesRequestMessage,
     "newt/blueprint/apply": handleApplyBlueprintMessage,
     "newt/healthcheck/status": handleHealthcheckStatusMessage,
     "ws/round-trip/complete": handleRoundTripMessage
