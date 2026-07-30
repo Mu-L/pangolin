@@ -203,7 +203,10 @@ export const resources = sqliteTable("resources", {
     postAuthPath: text("postAuthPath"),
     health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
     wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
-    mode: text("mode").default("http").notNull(), // rdp, ssh, http, vnc
+    mode: text("mode")
+        .default("http")
+        .$type<"rdp" | "ssh" | "http" | "vnc" | "inference">()
+        .notNull(), // rdp, ssh, http, vnc, inference
     pamMode: text("pamMode")
         .$type<"passthrough" | "push">()
         .default("passthrough"),
@@ -425,7 +428,9 @@ export const siteResources = sqliteTable("siteResources", {
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
     ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),
-    mode: text("mode").$type<"host" | "cidr" | "http" | "ssh">().notNull(), // "host" | "cidr" | "http"
+    mode: text("mode")
+        .$type<"host" | "cidr" | "http" | "ssh" | "inference">()
+        .notNull(), // "host" | "cidr" | "http"
     scheme: text("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode

@@ -195,7 +195,10 @@ export const resources = pgTable(
         postAuthPath: text("postAuthPath"),
         health: varchar("health").default("unknown"), // "healthy", "unhealthy", "unknown"
         wildcard: boolean("wildcard").notNull().default(false),
-        mode: text("mode").default("http").notNull(), // rdp, ssh, http, vnc
+        mode: text("mode")
+            .default("http")
+            .$type<"rdp" | "ssh" | "http" | "vnc" | "inference">()
+            .notNull(),
         pamMode: varchar("pamMode", { length: 32 })
             .$type<"passthrough" | "push">()
             .default("passthrough"),
@@ -429,7 +432,7 @@ export const siteResources = pgTable(
         name: varchar("name").notNull(),
         ssl: boolean("ssl").notNull().default(false),
         mode: varchar("mode")
-            .$type<"host" | "cidr" | "http" | "ssh">()
+            .$type<"host" | "cidr" | "http" | "ssh" | "inference">()
             .notNull(), // "host" | "cidr" | "http"
         scheme: varchar("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
         proxyPort: integer("proxyPort"), // only for port mode

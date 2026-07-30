@@ -1,4 +1,4 @@
-import { db, orgs, primaryDb } from "@server/db";
+import { db, ExitNode, orgs, primaryDb } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import {
     clients,
@@ -311,14 +311,15 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     }
 
     let clientSubnet = client.exitNodeSubnet;
+    let exitNode: ExitNode | null = null;
     if (
         exitNodeId &&
         (client.exitNodeId !== exitNodeId || !client.exitNodeSubnet)
     ) {
-        const { exitNode, hasAccess } = await verifyExitNodeOrgAccess(
-            exitNodeId,
-            client.orgId
-        );
+        const { exitNode: exitNodeResult, hasAccess } =
+            await verifyExitNodeOrgAccess(exitNodeId, client.orgId);
+
+        exitNode = exitNodeResult;
 
         if (!exitNode) {
             logger.warn("[handleOlmRegisterMessage] Exit node not found", {
@@ -466,6 +467,18 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 sites: siteConfigurations,
                 tunnelIP: client.subnet,
                 utilitySubnet: org.utilitySubnet,
+                exitNode:
+                    exitNode && client.exitNodeSubnet
+                        ? {
+                              endpoint: `${exitNode.endpoint}:${exitNode.listenPort}`,
+                              relayPort:
+                                  config.getRawConfig().gerbil
+                                      .clients_start_port,
+                              publicKey: exitNode.publicKey,
+                              serverIP: exitNode.address.split("/")[0],
+                              tunnelIP: client.exitNodeSubnet.split("/")[0]
+                          }
+                        : undefined,
                 chainId: chainId
             }
         },
