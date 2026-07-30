@@ -966,7 +966,7 @@ export async function updateClientSiteDestinations(
         .where(eq(clientSitesAssociationsCache.clientId, client.clientId));
 
     for (const site of sitesData) {
-        if (!site.sites.subnet) {
+        if (!site.sites.exitNodeSubnet) {
             logger.debug(`Site ${site.sites.siteId} has no subnet, skipping`);
             continue;
         }
@@ -1002,7 +1002,7 @@ export async function updateClientSiteDestinations(
                 sourcePort: parsedEndpoint.port,
                 destinations: [
                     {
-                        destinationIP: site.sites.subnet.split("/")[0],
+                        destinationIP: site.sites.exitNodeSubnet.split("/")[0],
                         destinationPort: site.sites.listenPort || 1 // this satisfies gerbil for now but should be reevaluated
                     }
                 ]
@@ -1010,7 +1010,7 @@ export async function updateClientSiteDestinations(
         } else {
             // add to the existing destinations
             destinations.destinations.push({
-                destinationIP: site.sites.subnet.split("/")[0],
+                destinationIP: site.sites.exitNodeSubnet.split("/")[0],
                 destinationPort: site.sites.listenPort || 1 // this satisfies gerbil for now but should be reevaluated
             });
         }

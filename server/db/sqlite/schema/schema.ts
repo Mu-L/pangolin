@@ -107,7 +107,7 @@ export const sites = sqliteTable("sites", {
     }),
     name: text("name").notNull(),
     pubKey: text("pubKey"),
-    subnet: text("subnet"),
+    exitNodeSubnet: text("exitNodeSubnet"),
     megabytesIn: integer("bytesIn").default(0),
     megabytesOut: integer("bytesOut").default(0),
     lastBandwidthUpdate: text("lastBandwidthUpdate"),
@@ -599,6 +599,7 @@ export const clients = sqliteTable("clients", {
     pubKey: text("pubKey"),
     olmId: text("olmId"), // to lock it to a specific olm optionally
     subnet: text("subnet").notNull(),
+    exitNodeSubnet: text("exitNodeSubnet"), // this is the subnet when connecting to an exit node
     megabytesIn: integer("bytesIn"),
     megabytesOut: integer("bytesOut"),
     lastBandwidthUpdate: text("lastBandwidthUpdate"),

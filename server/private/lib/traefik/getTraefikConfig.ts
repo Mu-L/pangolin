@@ -136,7 +136,7 @@ export async function getTraefikConfig(
             siteId: sites.siteId,
             siteType: sites.type,
             siteOnline: sites.online,
-            subnet: sites.subnet,
+            subnet: sites.exitNodeSubnet,
             exitNodeId: sites.exitNodeId,
             // Namespace
             domainNamespaceId: domainNamespaces.domainNamespaceId,

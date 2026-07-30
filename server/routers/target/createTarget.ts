@@ -263,7 +263,7 @@ export async function createTarget(
                 // make sure the target is within the site subnet
                 if (
                     site.type == "wireguard" &&
-                    !isIpInCidr(targetData.ip, site.subnet!)
+                    !isIpInCidr(targetData.ip, site.exitNodeSubnet!)
                 ) {
                     return next(
                         createHttpError(

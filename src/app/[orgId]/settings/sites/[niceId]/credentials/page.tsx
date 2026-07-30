@@ -72,8 +72,7 @@ export default function CredentialsPage() {
     const { data: latestVersions } = useQuery(
         productUpdatesQueries.latestVersion(true)
     );
-    const newtVersion =
-        latestVersions?.data?.newt?.latestVersion ?? "latest";
+    const newtVersion = latestVersions?.data?.newt?.latestVersion ?? "latest";
 
     // Fetch site defaults for wireguard sites to show in obfuscated config
     useEffect(() => {
@@ -354,7 +353,7 @@ export default function CredentialsPage() {
                                             text={generateObfuscatedWireGuardConfig(
                                                 {
                                                     subnet:
-                                                        site?.subnet ||
+                                                        site?.exitNodeSubnet ||
                                                         siteDefaults?.subnet ||
                                                         null,
                                                     address:

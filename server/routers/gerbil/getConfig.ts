@@ -89,7 +89,7 @@ export async function generateGerbilConfig(exitNode: ExitNode) {
             and(
                 eq(sites.exitNodeId, exitNode.exitNodeId),
                 isNotNull(sites.pubKey),
-                isNotNull(sites.subnet)
+                isNotNull(sites.exitNodeSubnet)
             )
         );
 
@@ -103,7 +103,7 @@ export async function generateGerbilConfig(exitNode: ExitNode) {
             } else if (site.type === "newt") {
                 return {
                     publicKey: site.pubKey,
-                    allowedIps: [site.subnet!]
+                    allowedIps: [site.exitNodeSubnet!]
                 };
             }
             return {

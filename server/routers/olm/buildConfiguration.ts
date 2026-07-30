@@ -167,7 +167,7 @@ export async function buildSiteConfigurationForOlmClient(
             peerOps.push(deletePeer(site.siteId, client.pubKey!));
         }
 
-        if (!site.subnet) {
+        if (!site.exitNodeSubnet) {
             logger.debug(`Site ${site.siteId} has no subnet, skipping`);
             continue;
         }

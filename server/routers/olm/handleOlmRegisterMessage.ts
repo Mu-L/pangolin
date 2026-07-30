@@ -22,7 +22,12 @@ import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";
 import cache from "#dynamic/lib/cache"; // not using regional here because we need this in the register message handler before we know where the client is
 import { waitForClientRebuildIdle } from "@server/lib/rebuildClientAssociations";
-import { ExitNodePingResult, selectBestExitNode } from "#dynamic/lib/exitNodes";
+import {
+    ExitNodePingResult,
+    selectBestExitNode,
+    verifyExitNodeOrgAccess
+} from "#dynamic/lib/exitNodes";
+import { getUniqueSubnetForExitNode } from "@server/lib/exitNodes";
 
 const HOLEPUNCH_STALE_CHAIN_THRESHOLD = 18;
 const HOLEPUNCH_STALE_CHAIN_TTL_SECONDS = 1800;
@@ -297,10 +302,50 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         exitNodeId = bestPingResult?.exitNodeId;
     }
 
+    let clientSubnet = client.exitNodeSubnet;
+    if (
+        exitNodeId &&
+        (client.exitNodeId !== exitNodeId || !client.exitNodeSubnet)
+    ) {
+        const { exitNode, hasAccess } = await verifyExitNodeOrgAccess(
+            exitNodeId,
+            client.orgId
+        );
+
+        if (!exitNode) {
+            logger.warn("[handleOlmRegisterMessage] Exit node not found", {
+                orgId: client.orgId,
+                clientId: client.clientId
+            });
+            return;
+        }
+
+        if (!hasAccess) {
+            logger.warn(
+                "[handleOlmRegisterMessage] Not authorized to use this exit node",
+                { orgId: client.orgId, clientId: client.clientId }
+            );
+            return;
+        }
+
+        const newSubnet = await getUniqueSubnetForExitNode(exitNode);
+
+        if (!newSubnet) {
+            logger.error(
+                `[handleOlmRegisterMessage] No available subnets found for exit node id ${exitNodeId} and client id ${client.clientId}`,
+                { orgId: client.orgId, clientId: client.clientId }
+            );
+            return;
+        }
+
+        clientSubnet = newSubnet;
+    }
+
     if (
         client.pubKey !== publicKey ||
         client.archived ||
-        client.exitNodeId !== exitNodeId
+        client.exitNodeId !== exitNodeId ||
+        client.exitNodeSubnet !== clientSubnet
     ) {
         logger.info(
             "[handleOlmRegisterMessage] Public key mismatch. Updating public key and clearing session info...",
@@ -312,7 +357,8 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             .set({
                 pubKey: publicKey,
                 archived: false,
-                exitNodeId: exitNodeId // this can be undefined if no exit node was selected, which is fine just means we cant talk to the node or connect to it
+                exitNodeId: exitNodeId, // this can be undefined if no exit node was selected, which is fine just means we cant talk to the node or connect to it
+                exitNodeSubnet: clientSubnet
             })
             .where(eq(clients.clientId, client.clientId));
 
