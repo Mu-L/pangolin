@@ -58,8 +58,16 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         pingResults,
         fingerprint,
         postures,
+        backwardsCompatible,
         chainId
     } = message.data;
+
+    if (backwardsCompatible) {
+        logger.debug(
+            "[handleOlmRegisterMessage] Backwards compatible mode detected - not sending connect message and waiting for ping response."
+        );
+        return;
+    }
 
     if (!olm.clientId) {
         logger.warn("[handleOlmRegisterMessage] Olm client ID not found");
