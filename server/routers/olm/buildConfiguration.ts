@@ -19,6 +19,7 @@ import logger from "@server/logger";
 import { and, eq, inArray } from "drizzle-orm";
 import { addPeer, deletePeer } from "../newt/peers";
 import config from "@server/lib/config";
+import { SiR } from "react-icons/si";
 
 export async function buildSiteConfigurationForOlmClient(
     client: Client,
@@ -37,6 +38,8 @@ export async function buildSiteConfigurationForOlmClient(
         remoteSubnets?: string[];
         aliases: Alias[];
     }[] = [];
+
+    let exitNodeAliases: string[] = [];
 
     // Get all sites data
     const sitesData = await db
@@ -76,16 +79,12 @@ export async function buildSiteConfigurationForOlmClient(
             )
         );
 
-    const haveInferenceResources = allClientSiteResources.some(
-        (row) => row.siteResource.requiresExitNodeConnection === true
-    );
-
-    if (sitesData.length === 0) {
-        return { siteConfigurations, haveInferenceResources };
-    }
-
     const siteResourcesBySiteId = new Map<number, SiteResource[]>();
+    let siteResourcesForExitNode = [];
     for (const row of allClientSiteResources) {
+        if (row.siteResource.requiresExitNodeConnection) {
+            siteResourcesForExitNode.push(row.siteResource);
+        }
         if (!row.siteId) {
             // because we are doing a leftJoin above to get the inference resources without a network / sites
             continue;
@@ -96,6 +95,17 @@ export async function buildSiteConfigurationForOlmClient(
         } else {
             siteResourcesBySiteId.set(row.siteId, [row.siteResource]);
         }
+    }
+
+    exitNodeAliases = siteResourcesForExitNode
+        .map((sr) => sr.alias)
+        .filter((a) => a != null);
+
+    if (sitesData.length == 0) {
+        return {
+            siteConfigurations,
+            exitNodeAliases
+        };
     }
 
     // Batch-fetch exit nodes for all sites in one query (only needed in relay mode).
@@ -234,5 +244,8 @@ export async function buildSiteConfigurationForOlmClient(
         });
     }
 
-    return { siteConfigurations, haveInferenceResources };
+    return {
+        siteConfigurations,
+        exitNodeAliases
+    };
 }

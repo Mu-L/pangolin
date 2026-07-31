@@ -462,13 +462,17 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     // NOTE: its important that the client here is the old client and the public key is the new key
     await waitForClientRebuildIdle(olm.clientId);
 
-    const { siteConfigurations, haveInferenceResources } =
+    const { siteConfigurations, exitNodeAliases } =
         await buildSiteConfigurationForOlmClient(
             client,
             publicKey,
             relay,
             jitMode
         );
+
+    logger.info(
+        `+++++++++++++++++++++++++++++++ ExitNode Aliases: ${exitNodeAliases}`
+    );
 
     // Return connect message with all site configurations
     return {
@@ -481,11 +485,9 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 exitNode:
                     exitNode && client.exitNodeSubnet
                         ? {
-                              connect: haveInferenceResources, // we do not need to connect to the exit node if we do not have inference resources
+                              aliases: exitNodeAliases,
+                              connect: exitNodeAliases.length > 0, // we do not need to connect to the exit node if we do not have inference resources and right now all site resources on the exit node have an alias
                               endpoint: `${exitNode.endpoint}:${exitNode.listenPort}`,
-                              relayPort:
-                                  config.getRawConfig().gerbil
-                                      .clients_start_port,
                               publicKey: exitNode.publicKey,
                               serverIP: exitNode.address.split("/")[0],
                               tunnelIP: client.exitNodeSubnet.split("/")[0]
