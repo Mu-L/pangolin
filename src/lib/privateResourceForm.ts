@@ -485,6 +485,7 @@ function destinationRefine(
     const isNativeSsh = data.mode === "ssh" && data.authDaemonMode === "native";
     const trimmedDestination = data.destination?.trim();
     if (
+        data.mode !== "inference" &&
         !isNativeSsh &&
         (!trimmedDestination || trimmedDestination.length < 1)
     ) {
@@ -551,6 +552,15 @@ export function createHostFormSchema(t: TranslateFn) {
                 .optional()
                 .nullable(),
             authDaemonPort: z.number().int().positive().optional().nullable()
+        })
+        .superRefine((data, ctx) => destinationRefine(data, ctx, t));
+}
+
+export function createInferenceFormSchema(t: TranslateFn) {
+    return z
+        .object({
+            mode: z.literal("inference"),
+            alias: z.string().nullish()
         })
         .superRefine((data, ctx) => destinationRefine(data, ctx, t));
 }

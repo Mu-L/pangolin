@@ -52,7 +52,8 @@ export default async function PrivateResourceLayout(
         | "hostSettings"
         | "cidrSettings"
         | "httpSettings"
-        | "sshSettings";
+        | "sshSettings"
+        | "inferenceSettings";
 
     const navItems = [
         {
