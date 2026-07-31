@@ -337,6 +337,8 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             return;
         }
 
+        // TODO: IF WE DO NOT HAVE AN INFERENCE RESOURCE DO WE NEED TO BE HOLDING A SUBNET ON THE CLIENT?
+
         const newSubnet = await getUniqueSubnetForExitNode(exitNode);
 
         if (!newSubnet) {
@@ -452,12 +454,13 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     // NOTE: its important that the client here is the old client and the public key is the new key
     await waitForClientRebuildIdle(olm.clientId);
 
-    const siteConfigurations = await buildSiteConfigurationForOlmClient(
-        client,
-        publicKey,
-        relay,
-        jitMode
-    );
+    const { siteConfigurations, haveInferenceResources } =
+        await buildSiteConfigurationForOlmClient(
+            client,
+            publicKey,
+            relay,
+            jitMode
+        );
 
     // Return connect message with all site configurations
     return {
@@ -470,6 +473,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 exitNode:
                     exitNode && client.exitNodeSubnet
                         ? {
+                              connect: haveInferenceResources, // we do not need to connect to the exit node if we do not have inference resources
                               endpoint: `${exitNode.endpoint}:${exitNode.listenPort}`,
                               relayPort:
                                   config.getRawConfig().gerbil

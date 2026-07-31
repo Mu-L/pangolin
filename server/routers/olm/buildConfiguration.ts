@@ -48,10 +48,6 @@ export async function buildSiteConfigurationForOlmClient(
         )
         .where(eq(clientSitesAssociationsCache.clientId, client.clientId));
 
-    if (sitesData.length === 0) {
-        return siteConfigurations;
-    }
-
     // Batch-fetch every site resource this client has access to across ALL sites
     // in a single query, then group by siteId in memory. This avoids issuing one
     // query per site (which would be N round-trips for N sites).
@@ -68,8 +64,8 @@ export async function buildSiteConfigurationForOlmClient(
                 clientSiteResourcesAssociationsCache.siteResourceId
             )
         )
-        .innerJoin(networks, eq(siteResources.networkId, networks.networkId))
-        .innerJoin(siteNetworks, eq(networks.networkId, siteNetworks.networkId))
+        .leftJoin(networks, eq(siteResources.networkId, networks.networkId))
+        .leftJoin(siteNetworks, eq(networks.networkId, siteNetworks.networkId))
         .where(
             and(
                 eq(
@@ -80,8 +76,20 @@ export async function buildSiteConfigurationForOlmClient(
             )
         );
 
+    const haveInferenceResources = allClientSiteResources.some(
+        (row) => row.siteResource.requiresExitNodeConnection === true
+    );
+
+    if (sitesData.length === 0) {
+        return { siteConfigurations, haveInferenceResources };
+    }
+
     const siteResourcesBySiteId = new Map<number, SiteResource[]>();
     for (const row of allClientSiteResources) {
+        if (!row.siteId) {
+            // because we are doing a leftJoin above to get the inference resources without a network / sites
+            continue;
+        }
         const arr = siteResourcesBySiteId.get(row.siteId);
         if (arr) {
             arr.push(row.siteResource);
@@ -226,5 +234,5 @@ export async function buildSiteConfigurationForOlmClient(
         });
     }
 
-    return siteConfigurations;
+    return { siteConfigurations, haveInferenceResources };
 }

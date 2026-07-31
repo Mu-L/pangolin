@@ -425,6 +425,11 @@ export const siteResources = sqliteTable("siteResources", {
         () => networks.networkId,
         { onDelete: "restrict" }
     ),
+    requiresExitNodeConnection: integer("requiresExitNodeConnection", {
+        mode: "boolean"
+    })
+        .notNull()
+        .default(false),
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
     ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),

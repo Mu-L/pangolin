@@ -428,6 +428,9 @@ export const siteResources = pgTable(
                 onDelete: "restrict"
             }
         ),
+        requiresExitNodeConnection: boolean("requiresExitNodeConnection")
+            .notNull()
+            .default(false),
         niceId: varchar("niceId").notNull(),
         name: varchar("name").notNull(),
         ssl: boolean("ssl").notNull().default(false),
