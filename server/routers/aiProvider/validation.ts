@@ -1,13 +1,19 @@
 import { z } from "zod";
-import type {
-    AiBudgetUnit,
-    AiProviderType
+import {
+    providerRequiresUpstreamUrl,
+    type AiBudgetUnit,
+    type AiProviderType
 } from "@server/lib/aiProviderDefaults";
 
 export const aiProviderTypeSchema = z.enum([
     "openai",
     "anthropic",
+    "googleGemini",
+    "vertexAi",
     "bedrock",
+    "microsoftFoundry",
+    "openRouter",
+    "vercelAiGateway",
     "custom"
 ]);
 
@@ -36,7 +42,7 @@ export function refineBudgetFields(
     }
 }
 
-export function refineCustomProviderFields(
+export function refineProviderUpstreamFields(
     data: {
         type: AiProviderType;
         upstreamUrl?: string | null;
@@ -44,19 +50,15 @@ export function refineCustomProviderFields(
     },
     ctx: z.RefinementCtx
 ) {
-    if (data.type !== "custom") {
-        return;
-    }
-
-    if (!data.upstreamUrl) {
+    if (providerRequiresUpstreamUrl(data.type) && !data.upstreamUrl) {
         ctx.addIssue({
             code: "custom",
-            message: "upstreamUrl is required for custom providers",
+            message: `upstreamUrl is required for ${data.type} providers`,
             path: ["upstreamUrl"]
         });
     }
 
-    if (!data.authType) {
+    if (data.type === "custom" && !data.authType) {
         ctx.addIssue({
             code: "custom",
             message: "authType is required for custom providers",

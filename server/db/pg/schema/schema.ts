@@ -1554,7 +1554,17 @@ export const aiProviders = pgTable("aiProviders", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     name: varchar("name").notNull(),
     type: varchar("type")
-        .$type<"openai" | "anthropic" | "bedrock" | "custom">()
+        .$type<
+            | "openai"
+            | "anthropic"
+            | "googleGemini"
+            | "vertexAi"
+            | "bedrock"
+            | "microsoftFoundry"
+            | "openRouter"
+            | "vercelAiGateway"
+            | "custom"
+        >()
         .notNull(),
     upstreamUrl: text("upstreamUrl"),
     apiKey: text("apiKey"),

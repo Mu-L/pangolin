@@ -16,7 +16,7 @@ import {
     aiBudgetUnitSchema,
     aiProviderTypeSchema,
     refineBudgetFields,
-    refineCustomProviderFields
+    refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
 
 const paramsSchema = z.strictObject({
@@ -36,7 +36,7 @@ const bodySchema = z
         enabled: z.boolean().optional()
     })
     .superRefine((data, ctx) => {
-        refineCustomProviderFields(data, ctx);
+        refineProviderUpstreamFields(data, ctx);
         refineBudgetFields(data, ctx);
     });
 

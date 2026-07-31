@@ -1,9 +1,19 @@
-export type AiProviderType = "openai" | "anthropic" | "bedrock" | "custom";
+export type AiProviderType =
+    | "openai"
+    | "anthropic"
+    | "googleGemini"
+    | "vertexAi"
+    | "bedrock"
+    | "microsoftFoundry"
+    | "openRouter"
+    | "vercelAiGateway"
+    | "custom";
+
 export type AiProviderAuthType = "bearer";
 export type AiBudgetUnit = "usd" | "tokens";
 
 type AiProviderDefaults = {
-    upstreamUrl: string;
+    upstreamUrl: string | null;
     authType: AiProviderAuthType;
 };
 
@@ -19,11 +29,38 @@ export const AI_PROVIDER_DEFAULTS: Record<
         upstreamUrl: "https://api.anthropic.com",
         authType: "bearer"
     },
+    googleGemini: {
+        upstreamUrl: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        authType: "bearer"
+    },
+    vertexAi: {
+        upstreamUrl: null,
+        authType: "bearer"
+    },
     bedrock: {
         upstreamUrl: "https://bedrock-runtime.us-east-1.amazonaws.com",
         authType: "bearer"
+    },
+    microsoftFoundry: {
+        upstreamUrl: null,
+        authType: "bearer"
+    },
+    openRouter: {
+        upstreamUrl: "https://openrouter.ai/api/v1",
+        authType: "bearer"
+    },
+    vercelAiGateway: {
+        upstreamUrl: "https://ai-gateway.vercel.sh/v1",
+        authType: "bearer"
     }
 };
+
+export function providerRequiresUpstreamUrl(type: AiProviderType): boolean {
+    if (type === "custom") {
+        return true;
+    }
+    return AI_PROVIDER_DEFAULTS[type].upstreamUrl === null;
+}
 
 export function resolveAiProviderConfig(input: {
     type: AiProviderType;

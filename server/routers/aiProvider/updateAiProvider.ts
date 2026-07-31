@@ -12,13 +12,17 @@ import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import { toPublicAiProvider } from "@server/routers/aiProvider/types";
-import type { AiProviderType } from "@server/lib/aiProviderDefaults";
 import {
     aiAuthTypeSchema,
     aiBudgetUnitSchema,
+    aiProviderTypeSchema,
     refineBudgetFields,
-    refineCustomProviderFields
+    refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
+import {
+    providerRequiresUpstreamUrl,
+    type AiProviderType
+} from "@server/lib/aiProviderDefaults";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty(),
@@ -115,26 +119,29 @@ export async function updateAiProvider(
         }
 
         const providerType = existing.type as AiProviderType;
+        const nextUpstreamUrl =
+            body.upstreamUrl !== undefined
+                ? body.upstreamUrl
+                : existing.upstreamUrl;
+        const nextAuthType =
+            body.authType !== undefined ? body.authType : existing.authType;
 
-        if (providerType === "custom") {
-            const nextUpstreamUrl =
-                body.upstreamUrl !== undefined
-                    ? body.upstreamUrl
-                    : existing.upstreamUrl;
-            const nextAuthType =
-                body.authType !== undefined ? body.authType : existing.authType;
-
+        if (
+            providerRequiresUpstreamUrl(providerType) ||
+            body.upstreamUrl !== undefined ||
+            body.authType !== undefined
+        ) {
             const validation = z
                 .object({
-                    type: z.literal("custom"),
+                    type: aiProviderTypeSchema,
                     upstreamUrl: z.string().nullable().optional(),
                     authType: aiAuthTypeSchema.nullable().optional()
                 })
                 .superRefine((data, ctx) =>
-                    refineCustomProviderFields(data, ctx)
+                    refineProviderUpstreamFields(data, ctx)
                 )
                 .safeParse({
-                    type: "custom",
+                    type: providerType,
                     upstreamUrl: nextUpstreamUrl,
                     authType: nextAuthType
                 });

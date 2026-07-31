@@ -1545,7 +1545,17 @@ export const aiProviders = sqliteTable("aiProviders", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     name: text("name").notNull(),
     type: text("type")
-        .$type<"openai" | "anthropic" | "bedrock" | "custom">()
+        .$type<
+            | "openai"
+            | "anthropic"
+            | "googleGemini"
+            | "vertexAi"
+            | "bedrock"
+            | "microsoftFoundry"
+            | "openRouter"
+            | "vercelAiGateway"
+            | "custom"
+        >()
         .notNull(),
     upstreamUrl: text("upstreamUrl"),
     apiKey: text("apiKey"),
