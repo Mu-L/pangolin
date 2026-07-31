@@ -7,18 +7,17 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { GetAiProviderResponse } from "@server/routers/aiProvider/types";
 import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 
 const paramsSchema = z.strictObject({
-    orgId: z.string().nonempty(),
     providerId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({
     method: "get",
-    path: "/org/{orgId}/ai-provider/{providerId}",
+    path: "/ai-provider/{providerId}",
     description: "Get an AI provider by ID.",
     tags: [OpenAPITags.AiProvider],
     request: {
@@ -47,7 +46,7 @@ export async function getAiProvider(
             );
         }
 
-        const { orgId, providerId } = parsedParams.data;
+        const { providerId } = parsedParams.data;
 
         const [provider] =
             req.aiProvider && req.aiProvider.providerId === providerId
@@ -55,12 +54,7 @@ export async function getAiProvider(
                 : await db
                       .select()
                       .from(aiProviders)
-                      .where(
-                          and(
-                              eq(aiProviders.providerId, providerId),
-                              eq(aiProviders.orgId, orgId)
-                          )
-                      )
+                      .where(eq(aiProviders.providerId, providerId))
                       .limit(1);
 
         if (!provider) {

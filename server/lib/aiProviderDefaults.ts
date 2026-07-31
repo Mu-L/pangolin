@@ -11,6 +11,7 @@ export type AiProviderType =
 
 export type AiProviderAuthType = "bearer";
 export type AiBudgetUnit = "usd" | "tokens";
+export type AiProviderRoutingMode = "url" | "target";
 
 type AiProviderDefaults = {
     upstreamUrl: string | null;
@@ -55,7 +56,13 @@ export const AI_PROVIDER_DEFAULTS: Record<
     }
 };
 
-export function providerRequiresUpstreamUrl(type: AiProviderType): boolean {
+export function providerRequiresUpstreamUrl(
+    type: AiProviderType,
+    routingMode: AiProviderRoutingMode = "url"
+): boolean {
+    if (routingMode === "target") {
+        return false;
+    }
     if (type === "custom") {
         return true;
     }
@@ -66,20 +73,34 @@ export function resolveAiProviderConfig(input: {
     type: AiProviderType;
     upstreamUrl: string | null;
     authType: AiProviderAuthType | null;
+    routingMode?: AiProviderRoutingMode | null;
 }): {
     upstreamUrl: string | null;
     authType: AiProviderAuthType | null;
+    routingMode: AiProviderRoutingMode;
 } {
+    const routingMode = input.routingMode ?? "url";
+
+    if (routingMode === "target") {
+        return {
+            upstreamUrl: null,
+            authType: input.authType ?? "bearer",
+            routingMode
+        };
+    }
+
     if (input.type === "custom") {
         return {
             upstreamUrl: input.upstreamUrl,
-            authType: input.authType
+            authType: input.authType,
+            routingMode
         };
     }
 
     const defaults = AI_PROVIDER_DEFAULTS[input.type];
     return {
         upstreamUrl: input.upstreamUrl ?? defaults.upstreamUrl,
-        authType: input.authType ?? defaults.authType
+        authType: input.authType ?? defaults.authType,
+        routingMode
     };
 }

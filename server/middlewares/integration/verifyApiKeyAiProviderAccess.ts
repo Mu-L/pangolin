@@ -14,17 +14,10 @@ export async function verifyApiKeyAiProviderAccess(
         const apiKey = req.apiKey;
         const providerIdRaw = getFirstString(req.params.providerId);
         const providerId = Number.parseInt(providerIdRaw ?? "", 10);
-        const orgId = getFirstString(req.params.orgId);
 
         if (!apiKey) {
             return next(
                 createHttpError(HttpCode.UNAUTHORIZED, "Key not authenticated")
-            );
-        }
-
-        if (!orgId) {
-            return next(
-                createHttpError(HttpCode.BAD_REQUEST, "Invalid organization ID")
             );
         }
 
@@ -34,40 +27,10 @@ export async function verifyApiKeyAiProviderAccess(
             );
         }
 
-        if (apiKey.isRoot) {
-            const [provider] = await db
-                .select()
-                .from(aiProviders)
-                .where(
-                    and(
-                        eq(aiProviders.providerId, providerId),
-                        eq(aiProviders.orgId, orgId)
-                    )
-                )
-                .limit(1);
-
-            if (!provider) {
-                return next(
-                    createHttpError(
-                        HttpCode.NOT_FOUND,
-                        `AI provider with ID ${providerId} not found`
-                    )
-                );
-            }
-
-            req.aiProvider = provider;
-            return next();
-        }
-
         const [provider] = await db
             .select()
             .from(aiProviders)
-            .where(
-                and(
-                    eq(aiProviders.providerId, providerId),
-                    eq(aiProviders.orgId, orgId)
-                )
-            )
+            .where(eq(aiProviders.providerId, providerId))
             .limit(1);
 
         if (!provider) {
@@ -79,7 +42,14 @@ export async function verifyApiKeyAiProviderAccess(
             );
         }
 
-        if (!req.apiKeyOrg) {
+        if (apiKey.isRoot) {
+            req.aiProvider = provider;
+            return next();
+        }
+
+        const orgId = provider.orgId;
+
+        if (!req.apiKeyOrg || req.apiKeyOrg.orgId !== orgId) {
             const apiKeyOrgRes = await db
                 .select()
                 .from(apiKeyOrg)

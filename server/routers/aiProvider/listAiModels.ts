@@ -11,7 +11,6 @@ import { and, asc, eq, like, sql } from "drizzle-orm";
 import type { ListAiModelsResponse } from "@server/routers/aiProvider/types";
 
 const paramsSchema = z.strictObject({
-    orgId: z.string().nonempty(),
     providerId: z.coerce.number().int().positive()
 });
 
@@ -45,7 +44,7 @@ const listSchema = z.object({
 
 registry.registerPath({
     method: "get",
-    path: "/org/{orgId}/ai-provider/{providerId}/models",
+    path: "/ai-provider/{providerId}/models",
     description: "List AI models for a provider.",
     tags: [OpenAPITags.AiModel],
     request: {
@@ -85,7 +84,7 @@ export async function listAiModels(
             );
         }
 
-        const { orgId, providerId } = parsedParams.data;
+        const { providerId } = parsedParams.data;
 
         const [provider] =
             req.aiProvider && req.aiProvider.providerId === providerId
@@ -93,12 +92,7 @@ export async function listAiModels(
                 : await db
                       .select({ providerId: aiProviders.providerId })
                       .from(aiProviders)
-                      .where(
-                          and(
-                              eq(aiProviders.providerId, providerId),
-                              eq(aiProviders.orgId, orgId)
-                          )
-                      )
+                      .where(eq(aiProviders.providerId, providerId))
                       .limit(1);
 
         if (!provider) {

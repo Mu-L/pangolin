@@ -3,6 +3,7 @@ import type { PaginatedResponse } from "@server/types/Pagination";
 import {
     resolveAiProviderConfig,
     type AiProviderAuthType,
+    type AiProviderRoutingMode,
     type AiProviderType
 } from "@server/lib/aiProviderDefaults";
 
@@ -40,7 +41,8 @@ export function toPublicAiProvider(provider: AiProvider): AiProviderPublic {
     const resolved = resolveAiProviderConfig({
         type: provider.type as AiProviderType,
         upstreamUrl: provider.upstreamUrl,
-        authType: provider.authType as AiProviderAuthType | null
+        authType: provider.authType as AiProviderAuthType | null,
+        routingMode: provider.routingMode as AiProviderRoutingMode | null
     });
 
     return {

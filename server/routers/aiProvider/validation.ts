@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
     providerRequiresUpstreamUrl,
     type AiBudgetUnit,
+    type AiProviderRoutingMode,
     type AiProviderType
 } from "@server/lib/aiProviderDefaults";
 
@@ -20,6 +21,8 @@ export const aiProviderTypeSchema = z.enum([
 export const aiBudgetUnitSchema = z.enum(["usd", "tokens"]);
 
 export const aiAuthTypeSchema = z.enum(["bearer"]);
+
+export const aiRoutingModeSchema = z.enum(["url", "target"]);
 
 export function refineBudgetFields(
     data: {
@@ -47,10 +50,24 @@ export function refineProviderUpstreamFields(
         type: AiProviderType;
         upstreamUrl?: string | null;
         authType?: "bearer" | null;
+        routingMode?: AiProviderRoutingMode | null;
     },
     ctx: z.RefinementCtx
 ) {
-    if (providerRequiresUpstreamUrl(data.type) && !data.upstreamUrl) {
+    const routingMode = data.routingMode ?? "url";
+
+    if (data.type !== "custom" && routingMode === "target") {
+        ctx.addIssue({
+            code: "custom",
+            message: "routingMode target is only allowed for custom providers",
+            path: ["routingMode"]
+        });
+    }
+
+    if (
+        providerRequiresUpstreamUrl(data.type, routingMode) &&
+        !data.upstreamUrl
+    ) {
         ctx.addIssue({
             code: "custom",
             message: `upstreamUrl is required for ${data.type} providers`,
@@ -58,7 +75,7 @@ export function refineProviderUpstreamFields(
         });
     }
 
-    if (data.type === "custom" && !data.authType) {
+    if (data.type === "custom" && routingMode === "url" && !data.authType) {
         ctx.addIssue({
             code: "custom",
             message: "authType is required for custom providers",

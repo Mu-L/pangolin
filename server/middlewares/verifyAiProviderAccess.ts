@@ -16,17 +16,10 @@ export async function verifyAiProviderAccess(
         const userId = req.user!.userId;
         const providerIdRaw = getFirstString(req.params.providerId);
         const providerId = Number.parseInt(providerIdRaw ?? "", 10);
-        const orgId = getFirstString(req.params.orgId);
 
         if (!userId) {
             return next(
                 createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
-            );
-        }
-
-        if (!orgId) {
-            return next(
-                createHttpError(HttpCode.BAD_REQUEST, "Invalid organization ID")
             );
         }
 
@@ -39,12 +32,7 @@ export async function verifyAiProviderAccess(
         const [provider] = await db
             .select()
             .from(aiProviders)
-            .where(
-                and(
-                    eq(aiProviders.providerId, providerId),
-                    eq(aiProviders.orgId, orgId)
-                )
-            )
+            .where(eq(aiProviders.providerId, providerId))
             .limit(1);
 
         if (!provider) {
@@ -56,7 +44,9 @@ export async function verifyAiProviderAccess(
             );
         }
 
-        if (!req.userOrg) {
+        const orgId = provider.orgId;
+
+        if (!req.userOrg || req.userOrg.orgId !== orgId) {
             const userOrgRole = await db
                 .select()
                 .from(userOrgs)
@@ -93,6 +83,7 @@ export async function verifyAiProviderAccess(
             }
         }
 
+        req.userOrgId = orgId;
         req.userOrgRoleIds = await getUserOrgRoleIds(req.userOrg.userId, orgId);
         req.aiProvider = provider;
 

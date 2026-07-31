@@ -1385,16 +1385,31 @@ authenticated.get(
 );
 
 authenticated.get(
-    "/org/:orgId/ai-provider/:providerId",
-    verifyOrgAccess,
+    "/ai-provider/:providerId",
     verifyAiProviderAccess,
     verifyUserHasAction(ActionsEnum.getAiProvider),
     aiProvider.getAiProvider
 );
 
+authenticated.put(
+    "/ai-provider/:providerId/target",
+    verifyAiProviderAccess,
+    verifySiteAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createTarget),
+    logActionAudit(ActionsEnum.createTarget),
+    target.createTarget
+);
+
+authenticated.get(
+    "/ai-provider/:providerId/targets",
+    verifyAiProviderAccess,
+    verifyUserHasAction(ActionsEnum.listTargets),
+    target.listTargets
+);
+
 authenticated.post(
-    "/org/:orgId/ai-provider/:providerId",
-    verifyOrgAccess,
+    "/ai-provider/:providerId",
     verifyAiProviderAccess,
     verifyUserHasAction(ActionsEnum.updateAiProvider),
     logActionAudit(ActionsEnum.updateAiProvider),
@@ -1402,8 +1417,7 @@ authenticated.post(
 );
 
 authenticated.delete(
-    "/org/:orgId/ai-provider/:providerId",
-    verifyOrgAccess,
+    "/ai-provider/:providerId",
     verifyAiProviderAccess,
     verifyUserHasAction(ActionsEnum.deleteAiProvider),
     logActionAudit(ActionsEnum.deleteAiProvider),
@@ -1411,8 +1425,7 @@ authenticated.delete(
 );
 
 authenticated.put(
-    "/org/:orgId/ai-provider/:providerId/model",
-    verifyOrgAccess,
+    "/ai-provider/:providerId/model",
     verifyAiProviderAccess,
     verifyUserHasAction(ActionsEnum.createAiModel),
     logActionAudit(ActionsEnum.createAiModel),
@@ -1420,24 +1433,21 @@ authenticated.put(
 );
 
 authenticated.get(
-    "/org/:orgId/ai-provider/:providerId/models",
-    verifyOrgAccess,
+    "/ai-provider/:providerId/models",
     verifyAiProviderAccess,
     verifyUserHasAction(ActionsEnum.listAiModels),
     aiProvider.listAiModels
 );
 
 authenticated.get(
-    "/org/:orgId/ai-provider/:providerId/model/:modelId",
-    verifyOrgAccess,
+    "/ai-model/:modelId",
     verifyAiModelAccess,
     verifyUserHasAction(ActionsEnum.getAiModel),
     aiProvider.getAiModel
 );
 
 authenticated.post(
-    "/org/:orgId/ai-provider/:providerId/model/:modelId",
-    verifyOrgAccess,
+    "/ai-model/:modelId",
     verifyAiModelAccess,
     verifyUserHasAction(ActionsEnum.updateAiModel),
     logActionAudit(ActionsEnum.updateAiModel),
@@ -1445,8 +1455,7 @@ authenticated.post(
 );
 
 authenticated.delete(
-    "/org/:orgId/ai-provider/:providerId/model/:modelId",
-    verifyOrgAccess,
+    "/ai-model/:modelId",
     verifyAiModelAccess,
     verifyUserHasAction(ActionsEnum.deleteAiModel),
     logActionAudit(ActionsEnum.deleteAiModel),

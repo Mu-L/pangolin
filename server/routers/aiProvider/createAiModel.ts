@@ -15,7 +15,6 @@ import {
 } from "@server/routers/aiProvider/validation";
 
 const paramsSchema = z.strictObject({
-    orgId: z.string().nonempty(),
     providerId: z.coerce.number().int().positive()
 });
 
@@ -33,7 +32,7 @@ const bodySchema = z
 
 registry.registerPath({
     method: "put",
-    path: "/org/{orgId}/ai-provider/{providerId}/model",
+    path: "/ai-provider/{providerId}/model",
     description: "Create an AI model under a provider.",
     tags: [OpenAPITags.AiModel],
     request: {
@@ -79,7 +78,7 @@ export async function createAiModel(
             );
         }
 
-        const { orgId, providerId } = parsedParams.data;
+        const { providerId } = parsedParams.data;
         const { modelKey, name, budgetAmount, budgetUnit, enabled } =
             parsedBody.data;
 
@@ -89,12 +88,7 @@ export async function createAiModel(
                 : await db
                       .select()
                       .from(aiProviders)
-                      .where(
-                          and(
-                              eq(aiProviders.providerId, providerId),
-                              eq(aiProviders.orgId, orgId)
-                          )
-                      )
+                      .where(eq(aiProviders.providerId, providerId))
                       .limit(1);
 
         if (!provider) {

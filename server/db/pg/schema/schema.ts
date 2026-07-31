@@ -323,11 +323,18 @@ export const targets = pgTable(
     "targets",
     {
         targetId: serial("targetId").primaryKey(),
-        resourceId: integer("resourceId")
-            .references(() => resources.resourceId, {
+        resourceId: integer("resourceId").references(
+            () => resources.resourceId,
+            {
                 onDelete: "cascade"
-            })
-            .notNull(),
+            }
+        ),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            {
+                onDelete: "cascade"
+            }
+        ),
         siteId: integer("siteId")
             .references(() => sites.siteId, {
                 onDelete: "cascade"
@@ -351,6 +358,7 @@ export const targets = pgTable(
     },
     (t) => [
         index("idx_targets_resourceid_siteid").on(t.resourceId, t.siteId),
+        index("idx_targets_providerid_siteid").on(t.providerId, t.siteId),
         index("idx_targets_site_enabled_priority_target_resource")
             .on(t.siteId, t.priority.desc(), t.targetId, t.resourceId)
             .where(sql`${t.enabled} = true`)
@@ -1572,6 +1580,10 @@ export const aiProviders = pgTable("aiProviders", {
     apiKey: text("apiKey"),
     apiKeyLastChars: varchar("apiKeyLastChars"),
     authType: varchar("authType").$type<"bearer">(),
+    routingMode: varchar("routingMode")
+        .$type<"url" | "target">()
+        .notNull()
+        .default("url"),
     skipTlsVerification: boolean("skipTlsVerification")
         .notNull()
         .default(false),

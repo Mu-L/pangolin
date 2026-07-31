@@ -1,23 +1,21 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { aiModels, aiProviders, db } from "@server/db";
+import { aiModels, db } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const paramsSchema = z.strictObject({
-    orgId: z.string().nonempty(),
-    providerId: z.coerce.number().int().positive(),
     modelId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({
     method: "delete",
-    path: "/org/{orgId}/ai-provider/{providerId}/model/{modelId}",
+    path: "/ai-model/{modelId}",
     description: "Delete an AI model.",
     tags: [OpenAPITags.AiModel],
     request: {
@@ -46,22 +44,12 @@ export async function deleteAiModel(
             );
         }
 
-        const { orgId, providerId, modelId } = parsedParams.data;
+        const { modelId } = parsedParams.data;
 
         const [existing] = await db
             .select({ modelId: aiModels.modelId })
             .from(aiModels)
-            .innerJoin(
-                aiProviders,
-                eq(aiModels.providerId, aiProviders.providerId)
-            )
-            .where(
-                and(
-                    eq(aiModels.modelId, modelId),
-                    eq(aiModels.providerId, providerId),
-                    eq(aiProviders.orgId, orgId)
-                )
-            )
+            .where(eq(aiModels.modelId, modelId))
             .limit(1);
 
         if (!existing) {
@@ -73,14 +61,7 @@ export async function deleteAiModel(
             );
         }
 
-        await db
-            .delete(aiModels)
-            .where(
-                and(
-                    eq(aiModels.modelId, modelId),
-                    eq(aiModels.providerId, providerId)
-                )
-            );
+        await db.delete(aiModels).where(eq(aiModels.modelId, modelId));
 
         return response(res, {
             data: null,

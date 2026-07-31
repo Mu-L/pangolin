@@ -64,13 +64,20 @@ export async function performDeleteResources(
 
     const targetsByResourceId = new Map<number, Target[]>();
     for (const target of targetsToBeRemoved) {
+        if (target.resourceId == null) {
+            continue;
+        }
         const existing = targetsByResourceId.get(target.resourceId) ?? [];
         existing.push(target);
         targetsByResourceId.set(target.resourceId, existing);
     }
 
     const targetIdToResourceId = new Map(
-        targetsToBeRemoved.map((target) => [target.targetId, target.resourceId])
+        targetsToBeRemoved.flatMap((target) =>
+            target.resourceId == null
+                ? []
+                : [[target.targetId, target.resourceId] as const]
+        )
     );
 
     const healthChecksByResourceId = new Map<number, TargetHealthCheck[]>();

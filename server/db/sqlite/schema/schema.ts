@@ -326,11 +326,12 @@ export const clientLabels = sqliteTable(
 
 export const targets = sqliteTable("targets", {
     targetId: integer("targetId").primaryKey({ autoIncrement: true }),
-    resourceId: integer("resourceId")
-        .references(() => resources.resourceId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
+    resourceId: integer("resourceId").references(() => resources.resourceId, {
+        onDelete: "cascade"
+    }),
+    providerId: integer("providerId").references(() => aiProviders.providerId, {
+        onDelete: "cascade"
+    }),
     siteId: integer("siteId")
         .references(() => sites.siteId, {
             onDelete: "cascade"
@@ -1561,6 +1562,10 @@ export const aiProviders = sqliteTable("aiProviders", {
     apiKey: text("apiKey"),
     apiKeyLastChars: text("apiKeyLastChars"),
     authType: text("authType").$type<"bearer">(),
+    routingMode: text("routingMode")
+        .$type<"url" | "target">()
+        .notNull()
+        .default("url"),
     skipTlsVerification: integer("skipTlsVerification", { mode: "boolean" })
         .notNull()
         .default(false),

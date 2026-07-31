@@ -596,6 +596,7 @@ export function ProxyResourceTargetsForm({
             priority: 100,
             enabled: true,
             resourceId: resource?.resourceId ?? 0,
+            providerId: null,
             hcEnabled: false,
             hcPath: null,
             hcMethod: null,

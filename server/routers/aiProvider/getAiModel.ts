@@ -1,24 +1,22 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { aiModels, aiProviders, db } from "@server/db";
+import { aiModels, db } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { GetAiModelResponse } from "@server/routers/aiProvider/types";
 
 const paramsSchema = z.strictObject({
-    orgId: z.string().nonempty(),
-    providerId: z.coerce.number().int().positive(),
     modelId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({
     method: "get",
-    path: "/org/{orgId}/ai-provider/{providerId}/model/{modelId}",
+    path: "/ai-model/{modelId}",
     description: "Get an AI model by ID.",
     tags: [OpenAPITags.AiModel],
     request: {
@@ -47,27 +45,16 @@ export async function getAiModel(
             );
         }
 
-        const { orgId, providerId, modelId } = parsedParams.data;
+        const { modelId } = parsedParams.data;
 
         const [model] =
             req.aiModel && req.aiModel.modelId === modelId
                 ? [req.aiModel]
                 : await db
-                      .select({ model: aiModels })
+                      .select()
                       .from(aiModels)
-                      .innerJoin(
-                          aiProviders,
-                          eq(aiModels.providerId, aiProviders.providerId)
-                      )
-                      .where(
-                          and(
-                              eq(aiModels.modelId, modelId),
-                              eq(aiModels.providerId, providerId),
-                              eq(aiProviders.orgId, orgId)
-                          )
-                      )
-                      .limit(1)
-                      .then((rows) => rows.map((r) => r.model));
+                      .where(eq(aiModels.modelId, modelId))
+                      .limit(1);
 
         if (!model) {
             return next(

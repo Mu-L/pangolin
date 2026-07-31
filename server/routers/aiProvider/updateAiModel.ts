@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { aiModels, aiProviders, db } from "@server/db";
+import { aiModels, db } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -15,8 +15,6 @@ import {
 } from "@server/routers/aiProvider/validation";
 
 const paramsSchema = z.strictObject({
-    orgId: z.string().nonempty(),
-    providerId: z.coerce.number().int().positive(),
     modelId: z.coerce.number().int().positive()
 });
 
@@ -34,7 +32,7 @@ const bodySchema = z
 
 registry.registerPath({
     method: "post",
-    path: "/org/{orgId}/ai-provider/{providerId}/model/{modelId}",
+    path: "/ai-model/{modelId}",
     description: "Update an AI model.",
     tags: [OpenAPITags.AiModel],
     request: {
@@ -80,28 +78,17 @@ export async function updateAiModel(
             );
         }
 
-        const { orgId, providerId, modelId } = parsedParams.data;
+        const { modelId } = parsedParams.data;
         const body = parsedBody.data;
 
         const [existing] =
             req.aiModel && req.aiModel.modelId === modelId
                 ? [req.aiModel]
                 : await db
-                      .select({ model: aiModels })
+                      .select()
                       .from(aiModels)
-                      .innerJoin(
-                          aiProviders,
-                          eq(aiModels.providerId, aiProviders.providerId)
-                      )
-                      .where(
-                          and(
-                              eq(aiModels.modelId, modelId),
-                              eq(aiModels.providerId, providerId),
-                              eq(aiProviders.orgId, orgId)
-                          )
-                      )
-                      .limit(1)
-                      .then((rows) => rows.map((r) => r.model));
+                      .where(eq(aiModels.modelId, modelId))
+                      .limit(1);
 
         if (!existing) {
             return next(
@@ -121,7 +108,7 @@ export async function updateAiModel(
                 .from(aiModels)
                 .where(
                     and(
-                        eq(aiModels.providerId, providerId),
+                        eq(aiModels.providerId, existing.providerId),
                         eq(aiModels.modelKey, body.modelKey),
                         ne(aiModels.modelId, modelId)
                     )
@@ -161,12 +148,7 @@ export async function updateAiModel(
         const [model] = await db
             .update(aiModels)
             .set(updateData)
-            .where(
-                and(
-                    eq(aiModels.modelId, modelId),
-                    eq(aiModels.providerId, providerId)
-                )
-            )
+            .where(eq(aiModels.modelId, modelId))
             .returning();
 
         return response<CreateOrEditAiModelResponse>(res, {

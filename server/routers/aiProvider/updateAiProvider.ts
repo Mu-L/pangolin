@@ -7,7 +7,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
@@ -16,16 +16,16 @@ import {
     aiAuthTypeSchema,
     aiBudgetUnitSchema,
     aiProviderTypeSchema,
+    aiRoutingModeSchema,
     refineBudgetFields,
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
-import {
-    providerRequiresUpstreamUrl,
-    type AiProviderType
+import type {
+    AiProviderRoutingMode,
+    AiProviderType
 } from "@server/lib/aiProviderDefaults";
 
 const paramsSchema = z.strictObject({
-    orgId: z.string().nonempty(),
     providerId: z.coerce.number().int().positive()
 });
 
@@ -35,6 +35,7 @@ const bodySchema = z
         upstreamUrl: z.url().optional().nullable(),
         apiKey: z.string().optional(),
         authType: aiAuthTypeSchema.optional().nullable(),
+        routingMode: aiRoutingModeSchema.optional(),
         skipTlsVerification: z.boolean().optional(),
         budgetAmount: z.number().positive().optional().nullable(),
         budgetUnit: aiBudgetUnitSchema.optional().nullable(),
@@ -46,7 +47,7 @@ const bodySchema = z
 
 registry.registerPath({
     method: "post",
-    path: "/org/{orgId}/ai-provider/{providerId}",
+    path: "/ai-provider/{providerId}",
     description: "Update an AI provider.",
     tags: [OpenAPITags.AiProvider],
     request: {
@@ -92,7 +93,7 @@ export async function updateAiProvider(
             );
         }
 
-        const { orgId, providerId } = parsedParams.data;
+        const { providerId } = parsedParams.data;
         const body = parsedBody.data;
 
         const [existing] =
@@ -101,12 +102,7 @@ export async function updateAiProvider(
                 : await db
                       .select()
                       .from(aiProviders)
-                      .where(
-                          and(
-                              eq(aiProviders.providerId, providerId),
-                              eq(aiProviders.orgId, orgId)
-                          )
-                      )
+                      .where(eq(aiProviders.providerId, providerId))
                       .limit(1);
 
         if (!existing) {
@@ -119,6 +115,11 @@ export async function updateAiProvider(
         }
 
         const providerType = existing.type as AiProviderType;
+        const nextRoutingMode: AiProviderRoutingMode =
+            providerType === "custom"
+                ? ((body.routingMode ??
+                      existing.routingMode) as AiProviderRoutingMode)
+                : "url";
         const nextUpstreamUrl =
             body.upstreamUrl !== undefined
                 ? body.upstreamUrl
@@ -126,38 +127,33 @@ export async function updateAiProvider(
         const nextAuthType =
             body.authType !== undefined ? body.authType : existing.authType;
 
-        if (
-            providerRequiresUpstreamUrl(providerType) ||
-            body.upstreamUrl !== undefined ||
-            body.authType !== undefined
-        ) {
-            const validation = z
-                .object({
-                    type: aiProviderTypeSchema,
-                    upstreamUrl: z.string().nullable().optional(),
-                    authType: aiAuthTypeSchema.nullable().optional()
-                })
-                .superRefine((data, ctx) =>
-                    refineProviderUpstreamFields(data, ctx)
-                )
-                .safeParse({
-                    type: providerType,
-                    upstreamUrl: nextUpstreamUrl,
-                    authType: nextAuthType
-                });
+        const validation = z
+            .object({
+                type: aiProviderTypeSchema,
+                upstreamUrl: z.string().nullable().optional(),
+                authType: aiAuthTypeSchema.nullable().optional(),
+                routingMode: aiRoutingModeSchema.optional()
+            })
+            .superRefine((data, ctx) => refineProviderUpstreamFields(data, ctx))
+            .safeParse({
+                type: providerType,
+                upstreamUrl: nextUpstreamUrl,
+                authType: nextAuthType,
+                routingMode: nextRoutingMode
+            });
 
-            if (!validation.success) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        fromError(validation.error).toString()
-                    )
-                );
-            }
+        if (!validation.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(validation.error).toString()
+                )
+            );
         }
 
         const updateData: Partial<typeof aiProviders.$inferInsert> = {
-            updatedAt: Date.now()
+            updatedAt: Date.now(),
+            routingMode: nextRoutingMode
         };
 
         if (body.name !== undefined) {
@@ -175,7 +171,9 @@ export async function updateAiProvider(
         if (body.budgetUnit !== undefined) {
             updateData.budgetUnit = body.budgetUnit;
         }
-        if (body.upstreamUrl !== undefined) {
+        if (nextRoutingMode === "target") {
+            updateData.upstreamUrl = null;
+        } else if (body.upstreamUrl !== undefined) {
             updateData.upstreamUrl = body.upstreamUrl;
         }
         if (body.authType !== undefined) {
@@ -191,12 +189,7 @@ export async function updateAiProvider(
         const [provider] = await db
             .update(aiProviders)
             .set(updateData)
-            .where(
-                and(
-                    eq(aiProviders.providerId, providerId),
-                    eq(aiProviders.orgId, orgId)
-                )
-            )
+            .where(eq(aiProviders.providerId, providerId))
             .returning();
 
         return response<CreateOrEditAiProviderResponse>(res, {

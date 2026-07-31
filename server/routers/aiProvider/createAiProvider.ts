@@ -15,6 +15,7 @@ import {
     aiAuthTypeSchema,
     aiBudgetUnitSchema,
     aiProviderTypeSchema,
+    aiRoutingModeSchema,
     refineBudgetFields,
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
@@ -30,6 +31,7 @@ const bodySchema = z
         upstreamUrl: z.url().optional().nullable(),
         apiKey: z.string().optional(),
         authType: aiAuthTypeSchema.optional().nullable(),
+        routingMode: aiRoutingModeSchema.optional(),
         skipTlsVerification: z.boolean().optional(),
         budgetAmount: z.number().positive().optional().nullable(),
         budgetUnit: aiBudgetUnitSchema.optional().nullable(),
@@ -95,6 +97,7 @@ export async function createAiProvider(
             upstreamUrl,
             apiKey,
             authType,
+            routingMode,
             skipTlsVerification,
             budgetAmount,
             budgetUnit,
@@ -105,6 +108,8 @@ export async function createAiProvider(
         const encryptedApiKey = apiKey ? encrypt(apiKey, key) : null;
         const apiKeyLastChars = apiKey ? apiKey.slice(-4) : null;
         const now = Date.now();
+        const resolvedRoutingMode =
+            type === "custom" ? (routingMode ?? "url") : "url";
 
         const [provider] = await db
             .insert(aiProviders)
@@ -112,10 +117,14 @@ export async function createAiProvider(
                 orgId,
                 name,
                 type,
-                upstreamUrl: upstreamUrl ?? null,
+                upstreamUrl:
+                    resolvedRoutingMode === "target"
+                        ? null
+                        : (upstreamUrl ?? null),
                 apiKey: encryptedApiKey,
                 apiKeyLastChars,
                 authType: authType ?? null,
+                routingMode: resolvedRoutingMode,
                 skipTlsVerification: skipTlsVerification ?? false,
                 budgetAmount: budgetAmount ?? null,
                 budgetUnit: budgetUnit ?? null,

@@ -14,25 +14,10 @@ export async function verifyApiKeyAiModelAccess(
         const apiKey = req.apiKey;
         const modelIdRaw = getFirstString(req.params.modelId);
         const modelId = Number.parseInt(modelIdRaw ?? "", 10);
-        const providerIdRaw = getFirstString(req.params.providerId);
-        const providerId = Number.parseInt(providerIdRaw ?? "", 10);
-        const orgId = getFirstString(req.params.orgId);
 
         if (!apiKey) {
             return next(
                 createHttpError(HttpCode.UNAUTHORIZED, "Key not authenticated")
-            );
-        }
-
-        if (!orgId) {
-            return next(
-                createHttpError(HttpCode.BAD_REQUEST, "Invalid organization ID")
-            );
-        }
-
-        if (Number.isNaN(providerId)) {
-            return next(
-                createHttpError(HttpCode.BAD_REQUEST, "Invalid provider ID")
             );
         }
 
@@ -52,13 +37,7 @@ export async function verifyApiKeyAiModelAccess(
                 aiProviders,
                 eq(aiModels.providerId, aiProviders.providerId)
             )
-            .where(
-                and(
-                    eq(aiModels.modelId, modelId),
-                    eq(aiModels.providerId, providerId),
-                    eq(aiProviders.orgId, orgId)
-                )
-            )
+            .where(eq(aiModels.modelId, modelId))
             .limit(1);
 
         if (!row) {
@@ -76,7 +55,9 @@ export async function verifyApiKeyAiModelAccess(
             return next();
         }
 
-        if (!req.apiKeyOrg) {
+        const orgId = row.provider.orgId;
+
+        if (!req.apiKeyOrg || req.apiKeyOrg.orgId !== orgId) {
             const apiKeyOrgRes = await db
                 .select()
                 .from(apiKeyOrg)
