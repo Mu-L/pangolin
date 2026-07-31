@@ -1,4 +1,4 @@
-import { db, ExitNode, orgs, primaryDb } from "@server/db";
+import { db, ExitNode, exitNodes, orgs, primaryDb } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import {
     clients,
@@ -311,15 +311,14 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     }
 
     let clientSubnet = client.exitNodeSubnet;
-    let exitNode: ExitNode | null = null;
     if (
         exitNodeId &&
         (client.exitNodeId !== exitNodeId || !client.exitNodeSubnet)
     ) {
-        const { exitNode: exitNodeResult, hasAccess } =
-            await verifyExitNodeOrgAccess(exitNodeId, client.orgId);
-
-        exitNode = exitNodeResult;
+        const { exitNode, hasAccess } = await verifyExitNodeOrgAccess(
+            exitNodeId,
+            client.orgId
+        );
 
         if (!exitNode) {
             logger.warn("[handleOlmRegisterMessage] Exit node not found", {
@@ -449,6 +448,15 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             );
         }
         return;
+    }
+
+    let exitNode: ExitNode | null = null;
+    if (exitNodeId) {
+        [exitNode] = await db
+            .select()
+            .from(exitNodes)
+            .where(eq(exitNodes.exitNodeId, exitNodeId))
+            .limit(1);
     }
 
     // NOTE: its important that the client here is the old client and the public key is the new key
