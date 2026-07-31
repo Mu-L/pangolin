@@ -1547,6 +1547,47 @@ export const statusHistory = pgTable(
     ]
 );
 
+export const aiProviders = pgTable("aiProviders", {
+    providerId: serial("providerId").primaryKey(),
+    orgId: varchar("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    name: varchar("name").notNull(),
+    type: varchar("type")
+        .$type<"openai" | "anthropic" | "bedrock" | "custom">()
+        .notNull(),
+    upstreamUrl: text("upstreamUrl"),
+    apiKey: text("apiKey"),
+    apiKeyLastChars: varchar("apiKeyLastChars"),
+    authType: varchar("authType").$type<"bearer">(),
+    skipTlsVerification: boolean("skipTlsVerification")
+        .notNull()
+        .default(false),
+    budgetAmount: real("budgetAmount"),
+    budgetUnit: varchar("budgetUnit").$type<"usd" | "tokens">(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: bigint("createdAt", { mode: "number" }).notNull(),
+    updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
+});
+
+export const aiModels = pgTable(
+    "aiModels",
+    {
+        modelId: serial("modelId").primaryKey(),
+        providerId: integer("providerId")
+            .notNull()
+            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+        modelKey: varchar("modelKey").notNull(),
+        name: varchar("name").notNull(),
+        budgetAmount: real("budgetAmount"),
+        budgetUnit: varchar("budgetUnit").$type<"usd" | "tokens">(),
+        enabled: boolean("enabled").notNull().default(true),
+        createdAt: bigint("createdAt", { mode: "number" }).notNull(),
+        updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
+    },
+    (t) => [unique("ai_model_provider_key_uniq").on(t.providerId, t.modelKey)]
+);
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -1631,3 +1672,5 @@ export type ResourcePolicy = InferSelectModel<typeof resourcePolicies>;
 export type RolePolicy = InferSelectModel<typeof rolePolicies>;
 export type UserPolicy = InferSelectModel<typeof userPolicies>;
 export type ResourcePolicyRule = InferSelectModel<typeof resourcePolicyRules>;
+export type AiProvider = InferSelectModel<typeof aiProviders>;
+export type AiModel = InferSelectModel<typeof aiModels>;

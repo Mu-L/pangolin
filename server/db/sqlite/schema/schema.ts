@@ -4,6 +4,7 @@ import {
     index,
     integer,
     primaryKey,
+    real,
     sqliteTable,
     text,
     unique
@@ -1537,6 +1538,49 @@ export const statusHistory = sqliteTable(
     ]
 );
 
+export const aiProviders = sqliteTable("aiProviders", {
+    providerId: integer("providerId").primaryKey({ autoIncrement: true }),
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type")
+        .$type<"openai" | "anthropic" | "bedrock" | "custom">()
+        .notNull(),
+    upstreamUrl: text("upstreamUrl"),
+    apiKey: text("apiKey"),
+    apiKeyLastChars: text("apiKeyLastChars"),
+    authType: text("authType").$type<"bearer">(),
+    skipTlsVerification: integer("skipTlsVerification", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    budgetAmount: real("budgetAmount"),
+    budgetUnit: text("budgetUnit").$type<"usd" | "tokens">(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("createdAt").notNull(),
+    updatedAt: integer("updatedAt").notNull()
+});
+
+export const aiModels = sqliteTable(
+    "aiModels",
+    {
+        modelId: integer("modelId").primaryKey({ autoIncrement: true }),
+        providerId: integer("providerId")
+            .notNull()
+            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+        modelKey: text("modelKey").notNull(),
+        name: text("name").notNull(),
+        budgetAmount: real("budgetAmount"),
+        budgetUnit: text("budgetUnit").$type<"usd" | "tokens">(),
+        enabled: integer("enabled", { mode: "boolean" })
+            .notNull()
+            .default(true),
+        createdAt: integer("createdAt").notNull(),
+        updatedAt: integer("updatedAt").notNull()
+    },
+    (t) => [unique("ai_model_provider_key_uniq").on(t.providerId, t.modelKey)]
+);
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -1619,3 +1663,5 @@ export type ResourcePolicyHeaderAuth = InferSelectModel<
 >;
 export type RolePolicy = InferSelectModel<typeof rolePolicies>;
 export type UserPolicy = InferSelectModel<typeof userPolicies>;
+export type AiProvider = InferSelectModel<typeof aiProviders>;
+export type AiModel = InferSelectModel<typeof aiModels>;
