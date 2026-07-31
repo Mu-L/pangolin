@@ -206,7 +206,7 @@ function createAddTargetSchema(t: TranslateFn) {
         );
 }
 
-type NewResourceType = "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp";
+type NewResourceType = "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp" | "inference";
 
 type CreateBgTargetFormValues = SshSettingsFormValues;
 

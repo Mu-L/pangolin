@@ -18,6 +18,7 @@ import {
     domains,
     exitNodes,
     loginPage,
+    SiteResource,
     targetHealthCheck
 } from "@server/db";
 import {
@@ -361,7 +362,7 @@ export async function getTraefikConfig(
     let siteResourcesWithFullDomain: {
         siteResourceId: number;
         fullDomain: string | null;
-        mode: "http" | "host" | "cidr" | "ssh";
+        mode: SiteResource["mode"];
     }[] = [];
     if (
         build == "enterprise" &&

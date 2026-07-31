@@ -2411,6 +2411,7 @@
     "editInternalResourceDialogModeCidr": "CIDR",
     "editInternalResourceDialogModeHttp": "HTTP",
     "editInternalResourceDialogModeHttps": "HTTPS",
+    "editInternalResourceDialogModeInference": "Inference",
     "editInternalResourceDialogModeSsh": "SSH",
     "editInternalResourceDialogScheme": "Scheme",
     "editInternalResourceDialogEnableSsl": "Enable TLS",

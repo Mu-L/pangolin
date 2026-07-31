@@ -93,7 +93,8 @@ export function SiteResourceInfoSections({
         host: t("editInternalResourceDialogModeHost"),
         cidr: t("editInternalResourceDialogModeCidr"),
         http: t("editInternalResourceDialogModeHttp"),
-        ssh: t("editInternalResourceDialogModeSsh")
+        ssh: t("editInternalResourceDialogModeSsh"),
+        inference: t("editInternalResourceDialogModeInference")
     };
 
     const destination = formatSiteResourceDestinationDisplay({

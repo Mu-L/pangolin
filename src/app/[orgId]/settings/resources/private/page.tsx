@@ -1,5 +1,5 @@
 import PrivateResourcesBanner from "@app/components/PrivateResourcesBanner";
-import type { InternalResourceRow } from "@app/components/PrivateResourcesTable";
+import type { PrivateResourceRow } from "@app/components/PrivateResourcesTable";
 import PrivateResourcesTable from "@app/components/PrivateResourcesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { internal } from "@app/lib/api";
@@ -61,7 +61,7 @@ export default async function ClientResourcesPage(
         redirect(`/${params.orgId}/settings/resources`);
     }
 
-    const internalResourceRows: InternalResourceRow[] = siteResources.map(
+    const internalResourceRows: PrivateResourceRow[] = siteResources.map(
         (siteResource) => {
             return {
                 id: siteResource.siteResourceId,

@@ -1,9 +1,10 @@
 import { z } from "zod";
-import type { InternalResourceRow } from "@app/components/PrivateResourcesTable";
+import type { PrivateResourceRow } from "@app/components/PrivateResourcesTable";
+import { SiteResource } from "@server/db";
 
-export type PrivateResourceMode = "host" | "cidr" | "http" | "ssh";
+export type PrivateResourceMode = SiteResource["mode"];
 
-export type SiteResourceData = InternalResourceRow & {
+export type SiteResourceData = PrivateResourceRow & {
     enabled: boolean;
 };
 

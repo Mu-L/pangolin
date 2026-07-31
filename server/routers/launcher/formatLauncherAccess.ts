@@ -1,7 +1,8 @@
+import { SiteResource } from "@server/db";
 import { formatEndpoint, parseEndpoint } from "@server/lib/ip";
 
 export type SiteResourceDestinationInput = {
-    mode: "host" | "cidr" | "http" | "ssh";
+    mode: SiteResource["mode"];
     destination: string | null;
     destinationPort: number | null;
     scheme: "http" | "https" | null;

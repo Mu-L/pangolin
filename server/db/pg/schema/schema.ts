@@ -197,7 +197,9 @@ export const resources = pgTable(
         wildcard: boolean("wildcard").notNull().default(false),
         mode: text("mode")
             .default("http")
-            .$type<"rdp" | "ssh" | "http" | "vnc" | "inference">()
+            .$type<
+                "rdp" | "ssh" | "http" | "vnc" | "inference" | "tcp" | "udp"
+            >()
             .notNull(),
         pamMode: varchar("pamMode", { length: 32 })
             .$type<"passthrough" | "push">()

@@ -44,11 +44,11 @@ const createResourceParamsSchema = z.strictObject({
 });
 
 function resolveModeFromLegacyFields(data: {
-    mode?: "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp";
+    mode?: "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp" | "inference";
     http?: boolean;
     protocol?: "tcp" | "udp";
 }): {
-    mode?: "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp";
+    mode?: "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp" | "inference";
     error?: string;
 } {
     if (data.mode) {

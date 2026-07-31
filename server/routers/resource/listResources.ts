@@ -637,11 +637,12 @@ export async function listResources(
                     ${resourcePassword.passwordId}
                 )
             `;
-            const browserGatewayModes = ["http", "ssh", "rdp", "vnc"];
+            const browserGatewayModes = ["http", "ssh", "rdp", "vnc"] as const;
 
             switch (authState) {
                 case "none":
                     conditions.push(
+                        // TODO: Does inference belong here?
                         or(eq(resources.mode, "tcp"), eq(resources.mode, "udp"))
                     );
                     break;

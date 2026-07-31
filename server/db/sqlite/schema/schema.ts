@@ -206,7 +206,7 @@ export const resources = sqliteTable("resources", {
     wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
     mode: text("mode")
         .default("http")
-        .$type<"rdp" | "ssh" | "http" | "vnc" | "inference">()
+        .$type<"rdp" | "ssh" | "http" | "vnc" | "inference" | "tcp" | "udp">()
         .notNull(), // rdp, ssh, http, vnc, inference
     pamMode: text("pamMode")
         .$type<"passthrough" | "push">()
