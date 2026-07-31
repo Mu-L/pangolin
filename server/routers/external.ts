@@ -45,7 +45,9 @@ import {
     verifySiteResourceAccess,
     verifyOlmAccess,
     verifyLimits,
-    verifyResourcePolicyAccess
+    verifyResourcePolicyAccess,
+    verifyAiProviderAccess,
+    verifyAiModelAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -55,6 +57,7 @@ import { createStore } from "#dynamic/lib/rateLimitStore";
 import { logActionAudit } from "#dynamic/middlewares";
 import { checkRoundTripMessage } from "./ws";
 import * as labels from "@server/routers/labels";
+import * as aiProvider from "@server/routers/aiProvider";
 
 // Root routes
 export const unauthenticated = Router();
@@ -1365,6 +1368,90 @@ authenticated.get(
 );
 
 authenticated.get("/ws/round-trip-message/:messageId", checkRoundTripMessage);
+
+authenticated.put(
+    "/org/:orgId/ai-provider",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.createAiProvider),
+    logActionAudit(ActionsEnum.createAiProvider),
+    aiProvider.createAiProvider
+);
+
+authenticated.get(
+    "/org/:orgId/ai-providers",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listAiProviders),
+    aiProvider.listAiProviders
+);
+
+authenticated.get(
+    "/org/:orgId/ai-provider/:providerId",
+    verifyOrgAccess,
+    verifyAiProviderAccess,
+    verifyUserHasAction(ActionsEnum.getAiProvider),
+    aiProvider.getAiProvider
+);
+
+authenticated.post(
+    "/org/:orgId/ai-provider/:providerId",
+    verifyOrgAccess,
+    verifyAiProviderAccess,
+    verifyUserHasAction(ActionsEnum.updateAiProvider),
+    logActionAudit(ActionsEnum.updateAiProvider),
+    aiProvider.updateAiProvider
+);
+
+authenticated.delete(
+    "/org/:orgId/ai-provider/:providerId",
+    verifyOrgAccess,
+    verifyAiProviderAccess,
+    verifyUserHasAction(ActionsEnum.deleteAiProvider),
+    logActionAudit(ActionsEnum.deleteAiProvider),
+    aiProvider.deleteAiProvider
+);
+
+authenticated.put(
+    "/org/:orgId/ai-provider/:providerId/model",
+    verifyOrgAccess,
+    verifyAiProviderAccess,
+    verifyUserHasAction(ActionsEnum.createAiModel),
+    logActionAudit(ActionsEnum.createAiModel),
+    aiProvider.createAiModel
+);
+
+authenticated.get(
+    "/org/:orgId/ai-provider/:providerId/models",
+    verifyOrgAccess,
+    verifyAiProviderAccess,
+    verifyUserHasAction(ActionsEnum.listAiModels),
+    aiProvider.listAiModels
+);
+
+authenticated.get(
+    "/org/:orgId/ai-provider/:providerId/model/:modelId",
+    verifyOrgAccess,
+    verifyAiModelAccess,
+    verifyUserHasAction(ActionsEnum.getAiModel),
+    aiProvider.getAiModel
+);
+
+authenticated.post(
+    "/org/:orgId/ai-provider/:providerId/model/:modelId",
+    verifyOrgAccess,
+    verifyAiModelAccess,
+    verifyUserHasAction(ActionsEnum.updateAiModel),
+    logActionAudit(ActionsEnum.updateAiModel),
+    aiProvider.updateAiModel
+);
+
+authenticated.delete(
+    "/org/:orgId/ai-provider/:providerId/model/:modelId",
+    verifyOrgAccess,
+    verifyAiModelAccess,
+    verifyUserHasAction(ActionsEnum.deleteAiModel),
+    logActionAudit(ActionsEnum.deleteAiModel),
+    aiProvider.deleteAiModel
+);
 
 authenticated.get(
     "/org/:orgId/labels",

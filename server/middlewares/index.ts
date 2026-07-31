@@ -27,6 +27,8 @@ export * from "./verifyUserHasAction";
 export * from "./verifyApiKeyAccess";
 export * from "./verifySiteProvisioningKeyAccess";
 export * from "./verifyDomainAccess";
+export * from "./verifyAiProviderAccess";
+export * from "./verifyAiModelAccess";
 export * from "./verifyUserIsOrgOwner";
 export * from "./verifyUserFromResourceSession";
 export * from "./verifySiteResourceAccess";

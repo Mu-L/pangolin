@@ -1,0 +1,208 @@
+import { Request, Response, NextFunction } from "express";
+import { z } from "zod";
+import { aiProviders, db } from "@server/db";
+import response from "@server/lib/response";
+import HttpCode from "@server/types/HttpCode";
+import createHttpError from "http-errors";
+import logger from "@server/logger";
+import { fromError } from "zod-validation-error";
+import { OpenAPITags, registry } from "@server/openApi";
+import { and, eq } from "drizzle-orm";
+import { encrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
+import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
+import { toPublicAiProvider } from "@server/routers/aiProvider/types";
+import type { AiProviderType } from "@server/lib/aiProviderDefaults";
+import {
+    aiAuthTypeSchema,
+    aiBudgetUnitSchema,
+    refineBudgetFields,
+    refineCustomProviderFields
+} from "@server/routers/aiProvider/validation";
+
+const paramsSchema = z.strictObject({
+    orgId: z.string().nonempty(),
+    providerId: z.coerce.number().int().positive()
+});
+
+const bodySchema = z
+    .strictObject({
+        name: z.string().nonempty().optional(),
+        upstreamUrl: z.url().optional().nullable(),
+        apiKey: z.string().optional(),
+        authType: aiAuthTypeSchema.optional().nullable(),
+        skipTlsVerification: z.boolean().optional(),
+        budgetAmount: z.number().positive().optional().nullable(),
+        budgetUnit: aiBudgetUnitSchema.optional().nullable(),
+        enabled: z.boolean().optional()
+    })
+    .superRefine((data, ctx) => {
+        refineBudgetFields(data, ctx);
+    });
+
+registry.registerPath({
+    method: "post",
+    path: "/org/{orgId}/ai-provider/{providerId}",
+    description: "Update an AI provider.",
+    tags: [OpenAPITags.AiProvider],
+    request: {
+        params: paramsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: bodySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            description: "Successful response"
+        }
+    }
+});
+
+export async function updateAiProvider(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<any> {
+    try {
+        const parsedParams = paramsSchema.safeParse(req.params);
+        if (!parsedParams.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedParams.error).toString()
+                )
+            );
+        }
+
+        const parsedBody = bodySchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedBody.error).toString()
+                )
+            );
+        }
+
+        const { orgId, providerId } = parsedParams.data;
+        const body = parsedBody.data;
+
+        const [existing] =
+            req.aiProvider && req.aiProvider.providerId === providerId
+                ? [req.aiProvider]
+                : await db
+                      .select()
+                      .from(aiProviders)
+                      .where(
+                          and(
+                              eq(aiProviders.providerId, providerId),
+                              eq(aiProviders.orgId, orgId)
+                          )
+                      )
+                      .limit(1);
+
+        if (!existing) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `AI provider with ID ${providerId} not found`
+                )
+            );
+        }
+
+        const providerType = existing.type as AiProviderType;
+
+        if (providerType === "custom") {
+            const nextUpstreamUrl =
+                body.upstreamUrl !== undefined
+                    ? body.upstreamUrl
+                    : existing.upstreamUrl;
+            const nextAuthType =
+                body.authType !== undefined ? body.authType : existing.authType;
+
+            const validation = z
+                .object({
+                    type: z.literal("custom"),
+                    upstreamUrl: z.string().nullable().optional(),
+                    authType: aiAuthTypeSchema.nullable().optional()
+                })
+                .superRefine((data, ctx) =>
+                    refineCustomProviderFields(data, ctx)
+                )
+                .safeParse({
+                    type: "custom",
+                    upstreamUrl: nextUpstreamUrl,
+                    authType: nextAuthType
+                });
+
+            if (!validation.success) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        fromError(validation.error).toString()
+                    )
+                );
+            }
+        }
+
+        const updateData: Partial<typeof aiProviders.$inferInsert> = {
+            updatedAt: Date.now()
+        };
+
+        if (body.name !== undefined) {
+            updateData.name = body.name;
+        }
+        if (body.skipTlsVerification !== undefined) {
+            updateData.skipTlsVerification = body.skipTlsVerification;
+        }
+        if (body.enabled !== undefined) {
+            updateData.enabled = body.enabled;
+        }
+        if (body.budgetAmount !== undefined) {
+            updateData.budgetAmount = body.budgetAmount;
+        }
+        if (body.budgetUnit !== undefined) {
+            updateData.budgetUnit = body.budgetUnit;
+        }
+        if (body.upstreamUrl !== undefined) {
+            updateData.upstreamUrl = body.upstreamUrl;
+        }
+        if (body.authType !== undefined) {
+            updateData.authType = body.authType;
+        }
+
+        if (body.apiKey !== undefined) {
+            const key = config.getRawConfig().server.secret!;
+            updateData.apiKey = encrypt(body.apiKey, key);
+            updateData.apiKeyLastChars = body.apiKey.slice(-4);
+        }
+
+        const [provider] = await db
+            .update(aiProviders)
+            .set(updateData)
+            .where(
+                and(
+                    eq(aiProviders.providerId, providerId),
+                    eq(aiProviders.orgId, orgId)
+                )
+            )
+            .returning();
+
+        return response<CreateOrEditAiProviderResponse>(res, {
+            data: { provider: toPublicAiProvider(provider) },
+            success: true,
+            error: false,
+            message: "AI provider updated successfully",
+            status: HttpCode.OK
+        });
+    } catch (error) {
+        logger.error(error);
+        return next(
+            createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "An error occurred")
+        );
+    }
+}

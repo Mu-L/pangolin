@@ -13,6 +13,7 @@ import * as apiKeys from "./apiKeys";
 import * as idp from "./idp";
 import * as logs from "./auditLogs";
 import * as siteResource from "./siteResource";
+import * as aiProvider from "./aiProvider";
 import {
     verifyApiKey,
     verifyApiKeyOrgAccess,
@@ -31,6 +32,8 @@ import {
     verifyLimits,
     verifyApiKeyDomainAccess,
     verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyAiModelAccess,
     verifyUserHasAction
 } from "@server/middlewares";
 import HttpCode from "@server/types/HttpCode";
@@ -1365,4 +1368,88 @@ authenticated.get(
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.listResources),
     resource.listAllResourceNames
+);
+
+authenticated.put(
+    "/org/:orgId/ai-provider",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.createAiProvider),
+    logActionAudit(ActionsEnum.createAiProvider),
+    aiProvider.createAiProvider
+);
+
+authenticated.get(
+    "/org/:orgId/ai-providers",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiProviders),
+    aiProvider.listAiProviders
+);
+
+authenticated.get(
+    "/org/:orgId/ai-provider/:providerId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.getAiProvider),
+    aiProvider.getAiProvider
+);
+
+authenticated.post(
+    "/org/:orgId/ai-provider/:providerId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateAiProvider),
+    logActionAudit(ActionsEnum.updateAiProvider),
+    aiProvider.updateAiProvider
+);
+
+authenticated.delete(
+    "/org/:orgId/ai-provider/:providerId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteAiProvider),
+    logActionAudit(ActionsEnum.deleteAiProvider),
+    aiProvider.deleteAiProvider
+);
+
+authenticated.put(
+    "/org/:orgId/ai-provider/:providerId/model",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.createAiModel),
+    logActionAudit(ActionsEnum.createAiModel),
+    aiProvider.createAiModel
+);
+
+authenticated.get(
+    "/org/:orgId/ai-provider/:providerId/models",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiModels),
+    aiProvider.listAiModels
+);
+
+authenticated.get(
+    "/org/:orgId/ai-provider/:providerId/model/:modelId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyHasAction(ActionsEnum.getAiModel),
+    aiProvider.getAiModel
+);
+
+authenticated.post(
+    "/org/:orgId/ai-provider/:providerId/model/:modelId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateAiModel),
+    logActionAudit(ActionsEnum.updateAiModel),
+    aiProvider.updateAiModel
+);
+
+authenticated.delete(
+    "/org/:orgId/ai-provider/:providerId/model/:modelId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteAiModel),
+    logActionAudit(ActionsEnum.deleteAiModel),
+    aiProvider.deleteAiModel
 );

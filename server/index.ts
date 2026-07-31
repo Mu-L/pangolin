@@ -9,6 +9,8 @@ import { createIntegrationApiServer } from "./integrationApiServer";
 import {
     ApiKey,
     ApiKeyOrg,
+    AiModel,
+    AiProvider,
     RemoteExitNode,
     Session,
     SiteResource,
@@ -83,6 +85,8 @@ declare global {
             userOrgIds?: string[];
             remoteExitNode?: RemoteExitNode;
             siteResource?: SiteResource;
+            aiProvider?: AiProvider;
+            aiModel?: AiModel;
             orgPolicyAllowed?: boolean;
         }
     }

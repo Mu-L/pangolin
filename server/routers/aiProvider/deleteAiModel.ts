@@ -1,0 +1,98 @@
+import { Request, Response, NextFunction } from "express";
+import { z } from "zod";
+import { aiModels, aiProviders, db } from "@server/db";
+import response from "@server/lib/response";
+import HttpCode from "@server/types/HttpCode";
+import createHttpError from "http-errors";
+import logger from "@server/logger";
+import { fromError } from "zod-validation-error";
+import { OpenAPITags, registry } from "@server/openApi";
+import { and, eq } from "drizzle-orm";
+
+const paramsSchema = z.strictObject({
+    orgId: z.string().nonempty(),
+    providerId: z.coerce.number().int().positive(),
+    modelId: z.coerce.number().int().positive()
+});
+
+registry.registerPath({
+    method: "delete",
+    path: "/org/{orgId}/ai-provider/{providerId}/model/{modelId}",
+    description: "Delete an AI model.",
+    tags: [OpenAPITags.AiModel],
+    request: {
+        params: paramsSchema
+    },
+    responses: {
+        200: {
+            description: "Successful response"
+        }
+    }
+});
+
+export async function deleteAiModel(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<any> {
+    try {
+        const parsedParams = paramsSchema.safeParse(req.params);
+        if (!parsedParams.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedParams.error).toString()
+                )
+            );
+        }
+
+        const { orgId, providerId, modelId } = parsedParams.data;
+
+        const [existing] = await db
+            .select({ modelId: aiModels.modelId })
+            .from(aiModels)
+            .innerJoin(
+                aiProviders,
+                eq(aiModels.providerId, aiProviders.providerId)
+            )
+            .where(
+                and(
+                    eq(aiModels.modelId, modelId),
+                    eq(aiModels.providerId, providerId),
+                    eq(aiProviders.orgId, orgId)
+                )
+            )
+            .limit(1);
+
+        if (!existing) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `AI model with ID ${modelId} not found`
+                )
+            );
+        }
+
+        await db
+            .delete(aiModels)
+            .where(
+                and(
+                    eq(aiModels.modelId, modelId),
+                    eq(aiModels.providerId, providerId)
+                )
+            );
+
+        return response(res, {
+            data: null,
+            success: true,
+            error: false,
+            message: "AI model deleted successfully",
+            status: HttpCode.OK
+        });
+    } catch (error) {
+        logger.error(error);
+        return next(
+            createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "An error occurred")
+        );
+    }
+}

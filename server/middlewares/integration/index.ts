@@ -16,5 +16,7 @@ export * from "./verifyApiKeyClientAccess";
 export * from "./verifyApiKeySiteResourceAccess";
 export * from "./verifyApiKeyIdpAccess";
 export * from "./verifyApiKeyDomainAccess";
+export * from "./verifyApiKeyAiProviderAccess";
+export * from "./verifyApiKeyAiModelAccess";
 export * from "./verifyApiKeyResourcePolicyAccess";
 export * from "./verifyApiKeySiteProvisioningKeyAccess";

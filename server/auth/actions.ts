@@ -182,7 +182,17 @@ export enum ActionsEnum {
     setResourcePolicyHeaderAuth = "setResourcePolicyHeaderAuth",
     setResourcePolicyWhitelist = "setResourcePolicyWhitelist",
     setResourcePolicyRules = "setResourcePolicyRules",
-    createOrgWideLauncherView = "createOrgWideLauncherView"
+    createOrgWideLauncherView = "createOrgWideLauncherView",
+    createAiProvider = "createAiProvider",
+    deleteAiProvider = "deleteAiProvider",
+    getAiProvider = "getAiProvider",
+    listAiProviders = "listAiProviders",
+    updateAiProvider = "updateAiProvider",
+    createAiModel = "createAiModel",
+    deleteAiModel = "deleteAiModel",
+    getAiModel = "getAiModel",
+    listAiModels = "listAiModels",
+    updateAiModel = "updateAiModel"
 }
 
 export async function checkUserActionPermission(

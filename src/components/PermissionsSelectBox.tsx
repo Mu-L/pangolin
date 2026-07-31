@@ -150,6 +150,22 @@ function getActionsCategories(root: boolean) {
             [t("actionListSiteProvisioningKeys")]: "listSiteProvisioningKeys",
             [t("actionUpdateSiteProvisioningKey")]: "updateSiteProvisioningKey",
             [t("actionDeleteSiteProvisioningKey")]: "deleteSiteProvisioningKey"
+        },
+
+        "AI Provider": {
+            [t("actionCreateAiProvider")]: "createAiProvider",
+            [t("actionDeleteAiProvider")]: "deleteAiProvider",
+            [t("actionGetAiProvider")]: "getAiProvider",
+            [t("actionListAiProviders")]: "listAiProviders",
+            [t("actionUpdateAiProvider")]: "updateAiProvider"
+        },
+
+        "AI Model": {
+            [t("actionCreateAiModel")]: "createAiModel",
+            [t("actionDeleteAiModel")]: "deleteAiModel",
+            [t("actionGetAiModel")]: "getAiModel",
+            [t("actionListAiModels")]: "listAiModels",
+            [t("actionUpdateAiModel")]: "updateAiModel"
         }
     };
 

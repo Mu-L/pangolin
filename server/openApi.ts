@@ -28,7 +28,9 @@ export enum OpenAPITags {
     HealthCheck = "Health Check",
     PublicResourcePolicyLegacy = "Public Resource Policy (Legacy)",
     PublicResourceLegacy = "Public Resource (Legacy)",
-    PrivateResourceLegacy = "Private Resource (Legacy)"
+    PrivateResourceLegacy = "Private Resource (Legacy)",
+    AiProvider = "AI Provider",
+    AiModel = "AI Model"
 }
 
 // Order here controls the order tags are displayed in Swagger UI
