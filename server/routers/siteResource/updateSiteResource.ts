@@ -507,7 +507,11 @@ export async function updateSiteResource(
                     and(
                         eq(siteResources.orgId, existingSiteResource.orgId),
                         eq(siteResources.alias, alias.trim()),
-                        ne(siteResources.siteResourceId, siteResourceId) // exclude self
+                        ne(siteResources.siteResourceId, siteResourceId), // exclude self
+                        ne(
+                            siteResources.requiresExitNodeConnection,
+                            mode == "inference"
+                        ) // exclude looking at the ones on exit nodes if this is an inference resource
                     )
                 )
                 .limit(1);
@@ -587,8 +591,7 @@ export async function updateSiteResource(
                     domainId,
                     subdomain: finalSubdomain,
                     fullDomain,
-                    networkId:
-                        mode === "inference" ? null : undefined,
+                    networkId: mode === "inference" ? null : undefined,
                     requiresExitNodeConnection:
                         mode !== undefined ? mode === "inference" : undefined,
                     ...sshPamSet

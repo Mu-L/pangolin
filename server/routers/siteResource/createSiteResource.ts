@@ -29,7 +29,7 @@ import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -490,7 +490,11 @@ export async function createSiteResource(
                 .where(
                     and(
                         eq(siteResources.orgId, orgId),
-                        eq(siteResources.alias, alias.trim())
+                        eq(siteResources.alias, alias.trim()),
+                        ne(
+                            siteResources.requiresExitNodeConnection,
+                            mode == "inference"
+                        ) // exclude looking at the ones on exit nodes if this is an inference resource
                     )
                 )
                 .limit(1);
@@ -527,6 +531,7 @@ export async function createSiteResource(
         let aliasAddress: string | null = null;
         let releaseAliasLock: (() => Promise<void>) | null = null;
         if (mode === "host" || mode === "http" || mode === "ssh") {
+            // no alias address but we do have an alias for inference
             const { value, release } =
                 await getNextAvailableAliasAddress(orgId);
             aliasAddress = value;

@@ -1137,7 +1137,9 @@ async function syncClientExitNodeConnections(
             )
         );
 
-    const needsConnectSet = new Set(requiresExitNodeRows.map((r) => r.clientId));
+    const needsConnectSet = new Set(
+        requiresExitNodeRows.map((r) => r.clientId)
+    );
 
     const exitNodeIds = Array.from(
         new Set(
@@ -1243,6 +1245,61 @@ async function syncClientExitNodeConnections(
         await sendToClientsBatch(disconnectPayloads).catch((error) => {
             logger.error(
                 `rebuildClientAssociations: Error sending exit node disconnect messages:`,
+                error
+            );
+        });
+    }
+}
+
+// Notifies the olms of every given client that the alias of the site resource
+// they're using an exit node connection for has changed, via the dedicated
+// exit node data-update message. Unlike syncClientExitNodeConnections, this
+// doesn't touch connect/disconnect state - it's purely a rename for clients
+// that are (and remain) connected to the exit node for this resource.
+async function syncClientExitNodeAliasUpdate(
+    clientIds: number[],
+    oldAlias: string | null,
+    newAlias: string | null,
+    trx: Transaction | typeof db = db
+): Promise<void> {
+    const uniqueClientIds = Array.from(new Set(clientIds));
+    if (uniqueClientIds.length === 0) {
+        return;
+    }
+
+    const oldAliases = oldAlias ? [oldAlias] : [];
+    const newAliases = newAlias ? [newAlias] : [];
+    if (oldAliases.length === 0 && newAliases.length === 0) {
+        return;
+    }
+
+    const olmRows = await trx
+        .select({
+            clientId: olms.clientId,
+            olmId: olms.olmId,
+            version: olms.version
+        })
+        .from(olms)
+        .where(inArray(olms.clientId, uniqueClientIds));
+
+    const updatePayloads = olmRows
+        .filter((r) => r.clientId !== null)
+        .map((olm) => ({
+            clientId: olm.olmId,
+            message: {
+                type: "olm/wg/exitnode/data/update",
+                data: {
+                    oldAliases,
+                    newAliases
+                }
+            },
+            options: { compress: canCompress(olm.version, "olm") }
+        }));
+
+    if (updatePayloads.length > 0) {
+        await sendToClientsBatch(updatePayloads).catch((error) => {
+            logger.error(
+                `rebuildClientAssociations: Error sending exit node alias update messages:`,
                 error
             );
         });
@@ -1479,7 +1536,7 @@ export async function handleMessagingForUpdatedSiteResource(
         `handleMessagingForUpdatedSiteResource: fetched newts for ${newtsForSites.length}/${allSiteIds.length} site(s)`
     );
 
-    // WARNING: THIS RELIES ON THE CACHE TABLES BEING UP TO DATE, SO CALL THIS AFTER THE ASSOCIATION CACHE IS UPDATED
+    // !!!!!!!!!!!!!!!!!! WARNING: THIS RELIES ON THE CACHE TABLES BEING UP TO DATE, SO CALL THIS AFTER THE ASSOCIATION CACHE IS UPDATED !!!!!!!!!!!!!!!!!!
     const mergedAllClients = await trx
         .select({
             clientId: clientSiteResourcesAssociationsCache.clientId,
@@ -1903,6 +1960,24 @@ export async function handleMessagingForUpdatedSiteResource(
     } else {
         logger.debug(
             "handleMessagingForUpdatedSiteResource: no unchanged-site update required because no relevant fields changed"
+        );
+    }
+
+    // For a resource that stays on an exit node connection across the update,
+    // the alias is the only field that affects already-connected clients (the
+    // exit node itself, its endpoint, etc. are not per-resource). Tell those
+    // clients' olms about the rename directly via the exit node data-update
+    // message rather than a full connect/disconnect cycle.
+    if (
+        existingSiteResource?.requiresExitNodeConnection &&
+        updatedSiteResource.requiresExitNodeConnection &&
+        aliasChanged
+    ) {
+        await syncClientExitNodeAliasUpdate(
+            mergedAllClients.map((c) => c.clientId),
+            existingSiteResource.alias,
+            updatedSiteResource.alias,
+            trx
         );
     }
 
