@@ -50,7 +50,7 @@ const updateSiteResourceSchema = z
             )
             .optional(),
         // mode: z.enum(["host", "cidr", "port"]).optional(),
-        mode: z.enum(["host", "cidr", "http", "ssh"]).optional(),
+        mode: z.enum(["host", "cidr", "http", "ssh", "inference"]).optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).nullish(),
         destinationPort: z.int().positive().nullish(),
@@ -173,6 +173,9 @@ const updateSiteResourceSchema = z
     )
     .refine(
         (data) => {
+            if (data.mode == "inference") {
+                return true;
+            }
             // if neither is provided, the existing site associations are left unchanged
             if (data.siteIds === undefined && data.siteId === undefined) {
                 return true;
@@ -579,13 +582,15 @@ export async function updateSiteResource(
                     disableIcmp:
                         mode !== undefined
                             ? disableIcmp ||
-                              (mode == "http" || mode == "ssh"
-                                  ? true
-                                  : false)
+                              (mode == "http" || mode == "ssh" ? true : false)
                             : disableIcmp,
                     domainId,
                     subdomain: finalSubdomain,
                     fullDomain,
+                    networkId:
+                        mode === "inference" ? null : undefined,
+                    requiresExitNodeConnection:
+                        mode !== undefined ? mode === "inference" : undefined,
                     ...sshPamSet
                 })
                 .where(and(eq(siteResources.siteResourceId, siteResourceId)))
@@ -593,7 +598,20 @@ export async function updateSiteResource(
 
             //////////////////// update the associations ////////////////////
 
-            if (siteIds !== undefined) {
+            if (mode === "inference") {
+                // inference resources are not attached to any site network
+                if (existingSiteResource.networkId) {
+                    await trx
+                        .delete(siteNetworks)
+                        .where(
+                            eq(
+                                siteNetworks.networkId,
+                                existingSiteResource.networkId
+                            )
+                        );
+                }
+                updatedSiteIds = [];
+            } else if (siteIds !== undefined) {
                 // delete the site - site resources associations
                 await trx
                     .delete(siteNetworks)

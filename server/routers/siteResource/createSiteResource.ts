@@ -49,7 +49,7 @@ const createSiteResourceSchema = z
         name: z.string().min(1).max(255),
         niceId: z.string().optional(),
         // protocol: z.enum(["tcp", "udp"]).optional(),
-        mode: z.enum(["host", "cidr", "http", "ssh"]),
+        mode: z.enum(["host", "cidr", "http", "ssh", "inference"]),
         ssl: z.boolean().optional(), // only used for http mode
         scheme: z.enum(["http", "https"]).optional(),
         siteIds: z.array(z.int()).optional(),
@@ -171,6 +171,9 @@ const createSiteResourceSchema = z
     )
     .refine(
         (data) => {
+            if (data.mode == "inference") {
+                return true;
+            }
             return (
                 (data.siteIds !== undefined && data.siteIds.length > 0) ||
                 data.siteId !== undefined
@@ -533,21 +536,24 @@ export async function createSiteResource(
         let newSiteResource: SiteResource | undefined;
         try {
             await db.transaction(async (trx) => {
-                const [network] = await trx
-                    .insert(networks)
-                    .values({
-                        scope: "resource",
-                        orgId: orgId
-                    })
-                    .returning();
+                let network: typeof networks.$inferSelect | undefined;
+                if (mode !== "inference") {
+                    [network] = await trx
+                        .insert(networks)
+                        .values({
+                            scope: "resource",
+                            orgId: orgId
+                        })
+                        .returning();
 
-                if (!network) {
-                    return next(
-                        createHttpError(
-                            HttpCode.INTERNAL_SERVER_ERROR,
-                            `Failed to create network`
-                        )
-                    );
+                    if (!network) {
+                        return next(
+                            createHttpError(
+                                HttpCode.INTERNAL_SERVER_ERROR,
+                                `Failed to create network`
+                            )
+                        );
+                    }
                 }
 
                 let tcpPortRangeStringAdjusted = tcpPortRangeString;
@@ -566,7 +572,7 @@ export async function createSiteResource(
                     name,
                     mode,
                     ssl,
-                    networkId: network.networkId,
+                    networkId: network ? network.networkId : null,
                     destination: destination, // the ssh can be null
                     scheme,
                     destinationPort,
@@ -582,7 +588,8 @@ export async function createSiteResource(
                         (mode == "http" || mode == "ssh" ? true : false), // default to true for http resources, otherwise false
                     domainId,
                     subdomain: finalSubdomain,
-                    fullDomain
+                    fullDomain,
+                    requiresExitNodeConnection: mode === "inference" // in the future we might want to have different modes that do this
                 };
                 if (isLicensedSshPam) {
                     if (authDaemonPort !== undefined)
@@ -600,11 +607,13 @@ export async function createSiteResource(
 
                 //////////////////// update the associations ////////////////////
 
-                for (const siteId of siteIds) {
-                    await trx.insert(siteNetworks).values({
-                        siteId: siteId,
-                        networkId: network.networkId
-                    });
+                if (network) {
+                    for (const siteId of siteIds) {
+                        await trx.insert(siteNetworks).values({
+                            siteId: siteId,
+                            networkId: network.networkId
+                        });
+                    }
                 }
 
                 const [adminRole] = await trx
