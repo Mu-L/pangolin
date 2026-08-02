@@ -78,7 +78,15 @@ const createSiteResourceSchema = z
         authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         pamMode: z.enum(["passthrough", "push"]).optional(),
         domainId: z.string().optional(), // only used for http mode, we need this to verify the alias is unique within the org
-        subdomain: z.string().optional() // only used for http mode, we need this to verify the alias is unique within the org
+        subdomain: z.string().optional(), // only used for http mode, we need this to verify the alias is unique within the org
+        aiProviderId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+                "For inference-mode site resources: the AI provider this resource proxies chat completions to."
+            )
     })
     .strict()
     .refine(
@@ -322,7 +330,8 @@ export async function createSiteResource(
             authDaemonMode,
             pamMode,
             domainId,
-            subdomain
+            subdomain,
+            aiProviderId
         } = parsedBody.data;
 
         // Backward compatibility: merge deprecated siteId into siteIds array
@@ -594,7 +603,8 @@ export async function createSiteResource(
                     domainId,
                     subdomain: finalSubdomain,
                     fullDomain,
-                    requiresExitNodeConnection: mode === "inference" // in the future we might want to have different modes that do this
+                    requiresExitNodeConnection: mode === "inference", // in the future we might want to have different modes that do this
+                    aiProviderId: aiProviderId ?? null
                 };
                 if (isLicensedSshPam) {
                     if (authDaemonPort !== undefined)

@@ -90,11 +90,22 @@ const createHttpResourceSchema = z
         domainId: z.string(),
         stickySession: z.boolean().optional(),
         postAuthPath: z.string().nullable().optional(),
-        mode: z.enum(["http", "ssh", "rdp", "vnc", "tcp", "udp"]).optional(),
+        mode: z
+            .enum(["http", "ssh", "rdp", "vnc", "tcp", "udp", "inference"])
+            .optional(),
         // SSH Settings
         pamMode: z.enum(["passthrough", "push"]).optional(),
         authDaemonPort: z.int().positive().optional(),
-        authDaemonMode: z.enum(["site", "remote", "native"]).optional()
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
+        // Inference settings
+        aiProviderId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+                "For inference-mode resources: the AI provider this resource proxies chat completions to."
+            )
     })
     .refine(
         (data) => {
@@ -365,7 +376,8 @@ async function createHttpResource(
         mode,
         authDaemonPort,
         authDaemonMode,
-        pamMode
+        pamMode,
+        aiProviderId
     } = parsedBody.data;
     const subdomain = parsedBody.data.subdomain;
     const stickySession = parsedBody.data.stickySession;
@@ -552,7 +564,8 @@ async function createHttpResource(
                 postAuthPath: postAuthPath,
                 wildcard,
                 health: "unknown",
-                defaultResourcePolicyId: defaultPolicy.resourcePolicyId
+                defaultResourcePolicyId: defaultPolicy.resourcePolicyId,
+                aiProviderId: aiProviderId ?? null
             })
             .returning();
 

@@ -41,7 +41,8 @@ import {
     siteNetworks,
     siteResources,
     Target,
-    targets
+    targets,
+    aiProviders
 } from "@server/db";
 import {
     sanitize,
@@ -88,7 +89,8 @@ export async function getTraefikConfig(
     generateLoginPageRouters = false,
     allowRawResources = true,
     maintenancePageUiUrl: string | null = null,
-    browserGatewayUiUrl: string | null = null
+    browserGatewayUiUrl: string | null = null,
+    aiGatewayUrl: string | null = null
 ): Promise<any> {
     // Get resources with their targets and sites in a single optimized query
     // Start from sites on this exit node, then join to targets and resources
@@ -395,6 +397,65 @@ export async function getTraefikConfig(
             );
     }
 
+    // Inference-mode resources/siteResources have no targets/sites/network
+    // (their "backend" is the central AI gateway, not something on a site),
+    // so they can't be reached via the joins above - query them separately
+    // and include them on every exit node.
+    const inferenceResources = await db
+        .select({
+            resourceId: resources.resourceId,
+            fullDomain: resources.fullDomain,
+            ssl: resources.ssl,
+            subdomain: resources.subdomain,
+            domainId: resources.domainId,
+            enabled: resources.enabled,
+            wildcard: resources.wildcard,
+            domainCertResolver: domains.certResolver,
+            preferWildcardCert: domains.preferWildcardCert
+        })
+        .from(resources)
+        .innerJoin(
+            aiProviders,
+            eq(resources.aiProviderId, aiProviders.providerId)
+        )
+        .leftJoin(domains, eq(domains.domainId, resources.domainId))
+        .where(
+            and(
+                eq(resources.mode, "inference"),
+                eq(resources.enabled, true),
+                eq(aiProviders.enabled, true)
+            )
+        );
+
+    let siteResourcesInference: {
+        siteResourceId: number;
+        alias: string | null;
+        ssl: boolean | null;
+        enabled: boolean | null;
+    }[] = [];
+    if (build == "enterprise") {
+        siteResourcesInference = await db
+            .select({
+                siteResourceId: siteResources.siteResourceId,
+                alias: siteResources.alias,
+                ssl: siteResources.ssl,
+                enabled: siteResources.enabled
+            })
+            .from(siteResources)
+            .innerJoin(
+                aiProviders,
+                eq(siteResources.aiProviderId, aiProviders.providerId)
+            )
+            .where(
+                and(
+                    eq(siteResources.mode, "inference"),
+                    eq(siteResources.enabled, true),
+                    eq(aiProviders.enabled, true),
+                    isNotNull(siteResources.alias)
+                )
+            );
+    }
+
     let validCerts: CertificateResult[] = [];
     if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
         // create a list of all domains to get certs for
@@ -414,6 +475,17 @@ export async function getTraefikConfig(
         for (const bgResource of browserGatewayResourcesMap.values()) {
             if (bgResource.enabled && bgResource.ssl && bgResource.fullDomain) {
                 domains.add(bgResource.fullDomain);
+            }
+        }
+        // Include inference resource/siteResource domains
+        for (const ir of inferenceResources) {
+            if (ir.enabled && ir.ssl && ir.fullDomain) {
+                domains.add(ir.fullDomain);
+            }
+        }
+        for (const sr of siteResourcesInference) {
+            if (sr.enabled && sr.ssl && sr.alias) {
+                domains.add(sr.alias);
             }
         }
         // get the valid certs for these domains
@@ -1458,6 +1530,199 @@ export async function getTraefikConfig(
                 rule: `Host(\`${fullDomain}\`) && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
                 priority: 101,
                 tls
+            };
+        }
+    }
+
+    if (aiGatewayUrl) {
+        // Public inference resources: same TLS/cert-resolver handling as
+        // plain http-mode resources, but the service points at the AI
+        // gateway instead of any real backend targets.
+        for (const ir of inferenceResources) {
+            if (!ir.enabled) continue;
+            if (!ir.domainId || !ir.fullDomain) continue;
+
+            if (!config_output.http.routers) config_output.http.routers = {};
+            if (!config_output.http.services) config_output.http.services = {};
+
+            const fullDomain = ir.fullDomain;
+            const irKey = `inference-r${ir.resourceId}`;
+            const routerName = `${irKey}-router`;
+            const serviceName = `${irKey}-service`;
+
+            let rule: string;
+            if (ir.wildcard && fullDomain.startsWith("*.")) {
+                const escaped = fullDomain.slice(2).replace(/\./g, "\\.");
+                rule = `HostRegexp(\`^[^.]+\\.${escaped}$\`)`;
+            } else {
+                rule = `Host(\`${fullDomain}\`)`;
+            }
+
+            let tls: any = {};
+            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
+                const domainParts = fullDomain.split(".");
+                let wildCard;
+                if (domainParts.length <= 2) {
+                    wildCard = `*.${domainParts.join(".")}`;
+                } else {
+                    wildCard = `*.${domainParts.slice(1).join(".")}`;
+                }
+                if (!ir.subdomain) {
+                    wildCard = fullDomain;
+                }
+
+                const globalDefaultResolver =
+                    config.getRawConfig().traefik.cert_resolver;
+                const globalDefaultPreferWildcard =
+                    config.getRawConfig().traefik.prefer_wildcard_cert;
+                const resolverName = ir.domainCertResolver
+                    ? ir.domainCertResolver.trim()
+                    : globalDefaultResolver;
+                const preferWildcard =
+                    ir.preferWildcardCert !== undefined &&
+                    ir.preferWildcardCert !== null
+                        ? ir.preferWildcardCert
+                        : globalDefaultPreferWildcard;
+
+                tls = {
+                    certResolver: resolverName,
+                    ...(preferWildcard
+                        ? { domains: [{ main: wildCard }] }
+                        : {})
+                };
+            } else {
+                const matchingCert = validCerts.find(
+                    (cert) => cert.queriedDomain === fullDomain
+                );
+                if (!matchingCert) {
+                    logger.debug(
+                        `No matching certificate found for inference resource domain: ${fullDomain}`
+                    );
+                    continue;
+                }
+            }
+
+            const additionalMiddlewares =
+                config.getRawConfig().traefik.additional_middlewares || [];
+            const routerMiddlewares = [
+                badgerMiddlewareName,
+                ...additionalMiddlewares
+            ];
+
+            if (ir.ssl) {
+                config_output.http.routers[routerName + "-redirect"] = {
+                    entryPoints: [
+                        config.getRawConfig().traefik.http_entrypoint
+                    ],
+                    middlewares: [redirectHttpsMiddlewareName],
+                    service: serviceName,
+                    rule,
+                    priority: 100
+                };
+            }
+
+            config_output.http.routers[routerName] = {
+                entryPoints: [
+                    ir.ssl
+                        ? config.getRawConfig().traefik.https_entrypoint
+                        : config.getRawConfig().traefik.http_entrypoint
+                ],
+                middlewares: routerMiddlewares,
+                service: serviceName,
+                rule,
+                priority: 100,
+                ...(ir.ssl ? { tls } : {})
+            };
+
+            config_output.http.services[serviceName] = {
+                loadBalancer: {
+                    servers: [{ url: `${aiGatewayUrl}/chat/completions` }],
+                    passHostHeader: true
+                }
+            };
+        }
+
+        // Private (siteResource) inference resources: routed by their alias
+        // instead of a public fullDomain, and deliberately WITHOUT the
+        // badger middleware - no per-user auth/policy stack exists for
+        // siteResources today (see plan doc), so gating here is
+        // reachability-only for now.
+        for (const sr of siteResourcesInference) {
+            if (!sr.enabled || !sr.alias) continue;
+
+            if (!config_output.http.routers) config_output.http.routers = {};
+            if (!config_output.http.services) config_output.http.services = {};
+
+            const alias = sr.alias;
+            const srKey = `inference-sr${sr.siteResourceId}`;
+            const routerName = `${srKey}-router`;
+            const serviceName = `${srKey}-service`;
+            const rule = `Host(\`${alias}\`)`;
+
+            let tls: any = {};
+            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
+                const domainParts = alias.split(".");
+                const wildCard =
+                    domainParts.length <= 2
+                        ? `*.${domainParts.join(".")}`
+                        : `*.${domainParts.slice(1).join(".")}`;
+
+                const globalDefaultResolver =
+                    config.getRawConfig().traefik.cert_resolver;
+                const globalDefaultPreferWildcard =
+                    config.getRawConfig().traefik.prefer_wildcard_cert;
+
+                tls = {
+                    certResolver: globalDefaultResolver,
+                    ...(globalDefaultPreferWildcard
+                        ? { domains: [{ main: wildCard }] }
+                        : {})
+                };
+            } else {
+                const matchingCert = validCerts.find(
+                    (cert) => cert.queriedDomain === alias
+                );
+                if (!matchingCert) {
+                    logger.debug(
+                        `No matching certificate found for inference siteResource alias: ${alias}`
+                    );
+                    continue;
+                }
+            }
+
+            const additionalMiddlewares =
+                config.getRawConfig().traefik.additional_middlewares || [];
+
+            if (sr.ssl) {
+                config_output.http.routers[routerName + "-redirect"] = {
+                    entryPoints: [
+                        config.getRawConfig().traefik.http_entrypoint
+                    ],
+                    middlewares: [redirectHttpsMiddlewareName],
+                    service: serviceName,
+                    rule,
+                    priority: 100
+                };
+            }
+
+            config_output.http.routers[routerName] = {
+                entryPoints: [
+                    sr.ssl
+                        ? config.getRawConfig().traefik.https_entrypoint
+                        : config.getRawConfig().traefik.http_entrypoint
+                ],
+                middlewares: additionalMiddlewares,
+                service: serviceName,
+                rule,
+                priority: 100,
+                ...(sr.ssl ? { tls } : {})
+            };
+
+            config_output.http.services[serviceName] = {
+                loadBalancer: {
+                    servers: [{ url: `${aiGatewayUrl}/chat/completions` }],
+                    passHostHeader: true
+                }
             };
         }
     }

@@ -210,7 +210,11 @@ export const resources = pgTable(
         authDaemonPort: integer("authDaemonPort").default(22123),
         status: varchar("status")
             .$type<"pending" | "approved">()
-            .default("approved")
+            .default("approved"),
+        aiProviderId: integer("aiProviderId").references(
+            () => aiProviders.providerId,
+            { onDelete: "set null" }
+        )
     },
     (t) => [
         index("idx_resources_fulldomain")
@@ -219,6 +223,19 @@ export const resources = pgTable(
         index("idx_resources_niceid").on(t.niceId),
         index("idx_resources_orgid_niceid").on(t.orgId, t.niceId)
     ]
+);
+
+export const resourceAiModels = pgTable(
+    "resourceAiModels",
+    {
+        resourceId: integer("resourceId")
+            .notNull()
+            .references(() => resources.resourceId, { onDelete: "cascade" }),
+        modelId: integer("modelId")
+            .notNull()
+            .references(() => aiModels.modelId, { onDelete: "cascade" })
+    },
+    (t) => [primaryKey({ columns: [t.resourceId, t.modelId] })]
 );
 
 export const labels = pgTable("labels", {
@@ -475,9 +492,28 @@ export const siteResources = pgTable(
         fullDomain: varchar("fullDomain"),
         status: varchar("status")
             .$type<"pending" | "approved">()
-            .default("approved")
+            .default("approved"),
+        aiProviderId: integer("aiProviderId").references(
+            () => aiProviders.providerId,
+            { onDelete: "set null" }
+        )
     },
     (t) => [index("idx_siteresources_orgid_niceid").on(t.orgId, t.niceId)]
+);
+
+export const siteResourceAiModels = pgTable(
+    "siteResourceAiModels",
+    {
+        siteResourceId: integer("siteResourceId")
+            .notNull()
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            }),
+        modelId: integer("modelId")
+            .notNull()
+            .references(() => aiModels.modelId, { onDelete: "cascade" })
+    },
+    (t) => [primaryKey({ columns: [t.siteResourceId, t.modelId] })]
 );
 
 export const networks = pgTable(
@@ -1698,3 +1734,5 @@ export type UserPolicy = InferSelectModel<typeof userPolicies>;
 export type ResourcePolicyRule = InferSelectModel<typeof resourcePolicyRules>;
 export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
+export type ResourceAiModel = InferSelectModel<typeof resourceAiModels>;
+export type SiteResourceAiModel = InferSelectModel<typeof siteResourceAiModels>;

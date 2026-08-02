@@ -516,6 +516,9 @@ export class TraefikConfigManager {
             const maintenanceHost =
                 config.getRawConfig().server.internal_hostname;
             const pangolinUIUrl = `http://${maintenanceHost}:${maintenancePort}`;
+            const aiGatewayUrl = `http://${maintenanceHost}:${
+                config.getRawConfig().server.internal_port
+            }/api/v1/ai-gateway`;
 
             // logger.debug(`Fetching traefik config for exit node: ${currentExitNode}`);
             traefikConfig = await getTraefikConfig(
@@ -528,7 +531,8 @@ export class TraefikConfigManager {
                     ? false
                     : config.getRawConfig().traefik.allow_raw_resources, // dont allow raw resources on saas otherwise use config
                 pangolinUIUrl, // generate maintenance pages on cloud and hybrid
-                pangolinUIUrl // generate browser gateway targets on cloud and hybrid
+                pangolinUIUrl, // generate browser gateway targets on cloud and hybrid
+                aiGatewayUrl
             );
 
             const domains = new Set<string>();

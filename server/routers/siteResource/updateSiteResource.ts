@@ -78,7 +78,16 @@ const updateSiteResourceSchema = z
         authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         pamMode: z.enum(["passthrough", "push"]).optional(),
         domainId: z.string().optional(),
-        subdomain: z.string().optional()
+        subdomain: z.string().optional(),
+        aiProviderId: z
+            .number()
+            .int()
+            .positive()
+            .nullable()
+            .optional()
+            .describe(
+                "For inference-mode site resources: the AI provider this resource proxies chat completions to. Set to null to unlink."
+            )
     })
     .strict()
     .refine(
@@ -329,7 +338,8 @@ export async function updateSiteResource(
             authDaemonMode,
             pamMode,
             domainId,
-            subdomain
+            subdomain,
+            aiProviderId
         } = parsedBody.data;
 
         // Backward compatibility: merge deprecated siteId into siteIds array
@@ -594,6 +604,7 @@ export async function updateSiteResource(
                     networkId: mode === "inference" ? null : undefined,
                     requiresExitNodeConnection:
                         mode !== undefined ? mode === "inference" : undefined,
+                    aiProviderId: aiProviderId,
                     ...sshPamSet
                 })
                 .where(and(eq(siteResources.siteResourceId, siteResourceId)))

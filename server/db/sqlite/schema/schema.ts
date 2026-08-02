@@ -215,8 +215,25 @@ export const resources = sqliteTable("resources", {
         .$type<"site" | "remote" | "native">()
         .default("site"),
     authDaemonPort: integer("authDaemonPort").default(22123),
-    status: text("status").$type<"pending" | "approved">().default("approved")
+    status: text("status").$type<"pending" | "approved">().default("approved"),
+    aiProviderId: integer("aiProviderId").references(
+        () => aiProviders.providerId,
+        { onDelete: "set null" }
+    )
 });
+
+export const resourceAiModels = sqliteTable(
+    "resourceAiModels",
+    {
+        resourceId: integer("resourceId")
+            .notNull()
+            .references(() => resources.resourceId, { onDelete: "cascade" }),
+        modelId: integer("modelId")
+            .notNull()
+            .references(() => aiModels.modelId, { onDelete: "cascade" })
+    },
+    (t) => [primaryKey({ columns: [t.resourceId, t.modelId] })]
+);
 
 export const labels = sqliteTable("labels", {
     labelId: integer("labelId").primaryKey({ autoIncrement: true }),
@@ -462,8 +479,27 @@ export const siteResources = sqliteTable("siteResources", {
     }),
     subdomain: text("subdomain"),
     fullDomain: text("fullDomain"),
-    status: text("status").$type<"pending" | "approved">().default("approved")
+    status: text("status").$type<"pending" | "approved">().default("approved"),
+    aiProviderId: integer("aiProviderId").references(
+        () => aiProviders.providerId,
+        { onDelete: "set null" }
+    )
 });
+
+export const siteResourceAiModels = sqliteTable(
+    "siteResourceAiModels",
+    {
+        siteResourceId: integer("siteResourceId")
+            .notNull()
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            }),
+        modelId: integer("modelId")
+            .notNull()
+            .references(() => aiModels.modelId, { onDelete: "cascade" })
+    },
+    (t) => [primaryKey({ columns: [t.siteResourceId, t.modelId] })]
+);
 
 export const networks = sqliteTable("networks", {
     networkId: integer("networkId").primaryKey({ autoIncrement: true }),
@@ -1680,3 +1716,5 @@ export type RolePolicy = InferSelectModel<typeof rolePolicies>;
 export type UserPolicy = InferSelectModel<typeof userPolicies>;
 export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
+export type ResourceAiModel = InferSelectModel<typeof resourceAiModels>;
+export type SiteResourceAiModel = InferSelectModel<typeof siteResourceAiModels>;

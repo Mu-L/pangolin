@@ -20,6 +20,9 @@ export async function traefikConfigProvider(
         const maintenancePort = config.getRawConfig().server.next_port;
         const maintenanceHost = config.getRawConfig().server.internal_hostname;
         const pangolinUIUrl = `http://${maintenanceHost}:${maintenancePort}`;
+        const aiGatewayUrl = `http://${maintenanceHost}:${
+            config.getRawConfig().server.internal_port
+        }/api/v1/ai-gateway`;
 
         const traefikConfig = await getTraefikConfig(
             currentExitNodeId,
@@ -28,7 +31,8 @@ export async function traefikConfigProvider(
             build != "oss", // generate the login pages on the cloud and and enterprise,
             config.getRawConfig().traefik.allow_raw_resources,
             pangolinUIUrl,
-            pangolinUIUrl
+            pangolinUIUrl,
+            aiGatewayUrl
         );
 
         if (traefikConfig?.http?.middlewares) {

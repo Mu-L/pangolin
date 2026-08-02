@@ -1,4 +1,4 @@
-import { db, targetHealthCheck, domains } from "@server/db";
+import { db, targetHealthCheck, domains, aiProviders } from "@server/db";
 import {
     and,
     eq,
@@ -45,7 +45,8 @@ export async function getTraefikConfig(
     generateLoginPageRouters = false, // UNUSED BUT USED IN PRIVATE
     allowRawResources = true,
     maintenancePageUiUrl: string | null = null, // UNUSED BUT USED IN PRIVATE
-    browserGatewayUiUrl: string | null = null // UNUSED BUT USED IN PRIVATE
+    browserGatewayUiUrl: string | null = null, // UNUSED BUT USED IN PRIVATE
+    aiGatewayUrl: string | null = null
 ): Promise<any> {
     // Get resources with their targets and sites in a single optimized query
     // Start from sites on this exit node, then join to targets and resources
@@ -209,8 +210,37 @@ export async function getTraefikConfig(
         });
     });
 
+    // Inference-mode resources have no targets/sites (their "backend" is the
+    // central AI gateway), so they can't be reached via the targets->sites
+    // join above - query them separately and include them on every exit node.
+    const inferenceResources = await db
+        .select({
+            resourceId: resources.resourceId,
+            resourceName: resources.name,
+            fullDomain: resources.fullDomain,
+            ssl: resources.ssl,
+            subdomain: resources.subdomain,
+            domainId: resources.domainId,
+            enabled: resources.enabled,
+            domainCertResolver: domains.certResolver,
+            preferWildcardCert: domains.preferWildcardCert
+        })
+        .from(resources)
+        .innerJoin(
+            aiProviders,
+            eq(resources.aiProviderId, aiProviders.providerId)
+        )
+        .leftJoin(domains, eq(domains.domainId, resources.domainId))
+        .where(
+            and(
+                eq(resources.mode, "inference"),
+                eq(resources.enabled, true),
+                eq(aiProviders.enabled, true)
+            )
+        );
+
     // make sure we have at least one resource
-    if (resourcesMap.size === 0) {
+    if (resourcesMap.size === 0 && inferenceResources.length === 0) {
         return {};
     }
 
@@ -673,5 +703,90 @@ export async function getTraefikConfig(
             };
         }
     }
+
+    if (aiGatewayUrl) {
+        for (const ir of inferenceResources) {
+            if (!ir.enabled) continue;
+            if (!ir.domainId || !ir.fullDomain) continue;
+
+            if (!config_output.http.routers) config_output.http.routers = {};
+            if (!config_output.http.services) config_output.http.services = {};
+
+            const fullDomain = ir.fullDomain;
+            const irKey = `inference-r${ir.resourceId}`;
+            const routerName = `${irKey}-router`;
+            const serviceName = `${irKey}-service`;
+            const rule = `Host(\`${fullDomain}\`)`;
+
+            const domainParts = fullDomain.split(".");
+            let wildCard;
+            if (domainParts.length <= 2) {
+                wildCard = `*.${domainParts.join(".")}`;
+            } else {
+                wildCard = `*.${domainParts.slice(1).join(".")}`;
+            }
+            if (!ir.subdomain) {
+                wildCard = fullDomain;
+            }
+
+            const globalDefaultResolver =
+                config.getRawConfig().traefik.cert_resolver;
+            const globalDefaultPreferWildcard =
+                config.getRawConfig().traefik.prefer_wildcard_cert;
+            const resolverName = ir.domainCertResolver
+                ? ir.domainCertResolver.trim()
+                : globalDefaultResolver;
+            const preferWildcard =
+                ir.preferWildcardCert !== undefined &&
+                ir.preferWildcardCert !== null
+                    ? ir.preferWildcardCert
+                    : globalDefaultPreferWildcard;
+
+            const tls = {
+                certResolver: resolverName,
+                ...(preferWildcard ? { domains: [{ main: wildCard }] } : {})
+            };
+
+            const additionalMiddlewares =
+                config.getRawConfig().traefik.additional_middlewares || [];
+            const routerMiddlewares = [
+                badgerMiddlewareName,
+                ...additionalMiddlewares
+            ];
+
+            config_output.http.routers[routerName] = {
+                entryPoints: [
+                    ir.ssl
+                        ? config.getRawConfig().traefik.https_entrypoint
+                        : config.getRawConfig().traefik.http_entrypoint
+                ],
+                middlewares: routerMiddlewares,
+                service: serviceName,
+                rule,
+                priority: 100,
+                ...(ir.ssl ? { tls } : {})
+            };
+
+            if (ir.ssl) {
+                config_output.http.routers[routerName + "-redirect"] = {
+                    entryPoints: [
+                        config.getRawConfig().traefik.http_entrypoint
+                    ],
+                    middlewares: [redirectHttpsMiddlewareName],
+                    service: serviceName,
+                    rule,
+                    priority: 100
+                };
+            }
+
+            config_output.http.services[serviceName] = {
+                loadBalancer: {
+                    servers: [{ url: `${aiGatewayUrl}/chat/completions` }],
+                    passHostHeader: true
+                }
+            };
+        }
+    }
+
     return config_output;
 }
