@@ -222,7 +222,9 @@ export async function verifyResourceSession(
         }
 
         const { blockAccess, mode } = resource;
-        const dontStripSession = ["ssh", "rdp", "vnc"].includes(mode);
+        const dontStripSession = ["ssh", "rdp", "vnc", "inference"].includes(
+            mode
+        );
 
         if (blockAccess) {
             logger.debug("Resource blocked", host);

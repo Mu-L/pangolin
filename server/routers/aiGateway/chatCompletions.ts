@@ -8,7 +8,8 @@ import {
     resourceAiModels,
     resources,
     siteResourceAiModels,
-    siteResources
+    siteResources,
+    users
 } from "@server/db";
 import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
@@ -18,18 +19,121 @@ import {
     AiProviderType,
     resolveAiProviderConfig
 } from "@server/lib/aiProviderDefaults";
+import { verifyResourceAccessToken } from "@server/auth/verifyResourceAccessToken";
+import {
+    SESSION_COOKIE_NAME,
+    validateSessionToken
+} from "@server/auth/sessions/app";
+import { getUserOrgRoles } from "@server/lib/userOrgRoles";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 
 type ResolvedTarget = {
+    resourceId: number | null;
+    orgId: string | null;
     provider: AiProvider;
     // null = no restriction; every enabled model on the provider is allowed
     allowedModelIds: number[] | null;
 };
 
+// Fallback for clients that hit the endpoint directly (e.g. an AI tool's
+// "API key" field) instead of going through a browser session - badger
+// forwards whatever Authorization header the client sent untouched in that
+// case. This prefix lets us tell "this bearer value is a Pangolin resource
+// access token" apart from an arbitrary/opaque API key a user might paste
+// in, without guessing based on format alone.
+const USER_TOKEN_PREFIX = "pu_";
+
+export type RequestUser = {
+    userId: string;
+    username: string;
+    email: string | null;
+    name: string | null;
+    role: string | null;
+};
+
+async function buildRequestUser(
+    userId: string,
+    orgId: string | null
+): Promise<RequestUser | null> {
+    const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.userId, userId))
+        .limit(1);
+
+    if (!user) {
+        return null;
+    }
+
+    const orgRoles = orgId ? await getUserOrgRoles(user.userId, orgId) : [];
+
+    return {
+        userId: user.userId,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        role: orgRoles.map((r) => r.roleName).join(", ") || null
+    };
+}
+
+async function resolveRequestUser(
+    req: Request,
+    resourceId: number | null,
+    orgId: string | null
+): Promise<RequestUser | null> {
+    // Public resources behind badger: badger passes the resource session
+    // cookie through to the backend (same mechanism the browser gateway,
+    // e.g. the SSH page, relies on), so we can validate it exactly like
+    // verifySessionUserMiddleware does for the dashboard.
+    const sessionToken = req.cookies?.[SESSION_COOKIE_NAME];
+    if (sessionToken) {
+        const { session, user } = await validateSessionToken(sessionToken);
+        if (session && user) {
+            return buildRequestUser(user.userId, orgId);
+        }
+    }
+
+    // User devices hitting the endpoint directly (no browser session to
+    // forward) fall back to a Pangolin resource access token passed as the
+    // client's "API key".
+    const authHeader = req.headers["authorization"];
+    if (typeof authHeader !== "string" || !resourceId) {
+        return null;
+    }
+
+    const bearer = authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
+    if (!bearer || !bearer.startsWith(USER_TOKEN_PREFIX)) {
+        return null;
+    }
+
+    const [accessTokenId, accessToken] = bearer
+        .slice(USER_TOKEN_PREFIX.length)
+        .split(".");
+    if (!accessTokenId || !accessToken) {
+        return null;
+    }
+
+    const { valid, tokenItem } = await verifyResourceAccessToken({
+        accessToken,
+        accessTokenId,
+        resourceId
+    });
+
+    if (!valid || !tokenItem?.userId) {
+        return null;
+    }
+
+    return buildRequestUser(tokenItem.userId, tokenItem.orgId);
+}
+
 async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
     const [resourceRow] = await db
-        .select({ resourceId: resources.resourceId, provider: aiProviders })
+        .select({
+            resourceId: resources.resourceId,
+            orgId: resources.orgId,
+            provider: aiProviders
+        })
         .from(resources)
         .innerJoin(
             aiProviders,
@@ -52,6 +156,8 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
             .where(eq(resourceAiModels.resourceId, resourceRow.resourceId));
 
         return {
+            resourceId: resourceRow.resourceId,
+            orgId: resourceRow.orgId,
             provider: resourceRow.provider,
             allowedModelIds: restrictions.length
                 ? restrictions.map((r) => r.modelId)
@@ -62,6 +168,7 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
     const [siteResourceRow] = await db
         .select({
             siteResourceId: siteResources.siteResourceId,
+            orgId: siteResources.orgId,
             provider: aiProviders
         })
         .from(siteResources)
@@ -91,6 +198,11 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
             );
 
         return {
+            // siteResources have no per-user auth/policy stack today (see
+            // the routing comment in getTraefikConfig.ts), so there's no
+            // resource access token scope to validate a user token against.
+            resourceId: null,
+            orgId: siteResourceRow.orgId,
             provider: siteResourceRow.provider,
             allowedModelIds: restrictions.length
                 ? restrictions.map((r) => r.modelId)
@@ -128,7 +240,18 @@ export async function chatCompletions(req: Request, res: Response): Promise<any>
             });
         }
 
-        const { provider, allowedModelIds } = target;
+        const { provider, allowedModelIds, resourceId, orgId } = target;
+
+        // Best-effort identity resolution - not yet enforced, but lets us
+        // start making per-user access decisions (e.g. model/role-based
+        // restrictions) without another round of plumbing later.
+        const requestUser = await resolveRequestUser(req, resourceId, orgId);
+        if (requestUser) {
+            logger.debug(
+                `AI gateway request from user ${requestUser.userId} (${requestUser.username})`
+            );
+        }
+
         const requestedModel =
             typeof req.body?.model === "string" ? req.body.model : undefined;
 
