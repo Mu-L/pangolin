@@ -50,6 +50,8 @@ export enum ActionsEnum {
     setResourceUsers = "setResourceUsers",
     setResourceRoles = "setResourceRoles",
     listResourceUsers = "listResourceUsers",
+    listResourceAiModels = "listResourceAiModels",
+    setResourceAiModels = "setResourceAiModels",
     // removeRoleSite = "removeRoleSite",
     // addRoleAction = "addRoleAction",
     // removeRoleAction = "removeRoleAction",

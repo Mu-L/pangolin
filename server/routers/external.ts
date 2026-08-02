@@ -407,6 +407,13 @@ authenticated.get(
     siteResource.listSiteResourceClients
 );
 
+authenticated.get(
+    "/site-resource/:siteResourceId/ai-models",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.listResourceAiModels),
+    siteResource.listSiteResourceAiModels
+);
+
 authenticated.post(
     "/site-resource/:siteResourceId/roles",
     verifySiteResourceAccess,
@@ -415,6 +422,14 @@ authenticated.post(
     verifyUserHasAction(ActionsEnum.setResourceRoles),
     logActionAudit(ActionsEnum.setResourceRoles),
     siteResource.setSiteResourceRoles
+);
+
+authenticated.post(
+    "/site-resource/:siteResourceId/ai-models",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.setSiteResourceAiModels
 );
 
 authenticated.post(
@@ -652,6 +667,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/resource/:resourceId/ai-models",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.listResourceAiModels),
+    resource.listResourceAiModels
+);
+
+authenticated.get(
     "/resource/:resourceId",
     verifyResourceAccess,
     verifyUserHasAction(ActionsEnum.getResource),
@@ -852,6 +874,14 @@ authenticated.post(
     verifyUserHasAction(ActionsEnum.setResourceUsers),
     logActionAudit(ActionsEnum.setResourceUsers),
     resource.setResourceUsers
+);
+
+authenticated.post(
+    "/resource/:resourceId/ai-models",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.setResourceAiModels
 );
 
 authenticated.put(

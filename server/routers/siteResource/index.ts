@@ -17,3 +17,7 @@ export * from "./setSiteResourceClients";
 export * from "./addClientToSiteResource";
 export * from "./batchAddClientToSiteResources";
 export * from "./removeClientFromSiteResource";
+export * from "./listSiteResourceAiModels";
+export * from "./setSiteResourceAiModels";
+export * from "./addAiModelToSiteResource";
+export * from "./removeAiModelFromSiteResource";

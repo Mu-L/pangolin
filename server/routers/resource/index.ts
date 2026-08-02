@@ -35,3 +35,7 @@ export * from "./removeEmailFromResourceWhitelist";
 export * from "./getStatusHistory";
 export * from "./getBatchedStatusHistory";
 export * from "./getResourcePolicies";
+export * from "./listResourceAiModels";
+export * from "./setResourceAiModels";
+export * from "./addAiModelToResource";
+export * from "./removeAiModelFromResource";
