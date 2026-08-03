@@ -31,6 +31,7 @@ import {
     TicketCheck,
     Unplug,
     User,
+    UserCheck,
     UserCog,
     Users,
     Waypoints
@@ -176,7 +177,7 @@ export const orgNavSections = (
                       {
                           title: "sidebarApprovals",
                           href: "/{orgId}/settings/access/approvals",
-                          icon: <UserCog className="size-4 flex-none" />
+                          icon: <UserCheck className="size-4 flex-none" />
                       }
                   ]
                 : []),
@@ -188,7 +189,7 @@ export const orgNavSections = (
         ]
     },
     {
-        heading: "sidebarAi",
+        heading: "sidebarAiGateway",
         items: [
             {
                 title: "sidebarAiProviders",
@@ -483,7 +484,7 @@ export const commandBarNavSections = (
         ]
     },
     {
-        heading: "sidebarAi",
+        heading: "sidebarAiGateway",
         items: [
             {
                 title: "commandAiProviders",

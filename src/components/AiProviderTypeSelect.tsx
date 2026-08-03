@@ -83,20 +83,14 @@ export function AiProviderTypeSelect({
                     aria-expanded={open}
                     disabled={disabled}
                     className={cn(
-                        "w-full justify-between font-normal h-auto min-h-10 py-2",
+                        "w-full justify-between",
+                        !selected && "text-muted-foreground",
                         className
                     )}
                 >
-                    <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left">
-                        <span className="truncate">
-                            {selected?.title ?? t("noneSelected")}
-                        </span>
-                        {selected?.description && (
-                            <span className="text-muted-foreground text-xs leading-snug truncate w-full">
-                                {selected.description}
-                            </span>
-                        )}
-                    </div>
+                    <span className="truncate text-left">
+                        {selected?.title ?? t("noneSelected")}
+                    </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>

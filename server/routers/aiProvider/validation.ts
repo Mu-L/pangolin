@@ -75,7 +75,7 @@ export function refineProviderUpstreamFields(
         });
     }
 
-    if (data.type === "custom" && routingMode === "url" && !data.authType) {
+    if (data.type === "custom" && !data.authType) {
         ctx.addIssue({
             code: "custom",
             message: "authType is required for custom providers",

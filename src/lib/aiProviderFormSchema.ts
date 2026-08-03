@@ -71,7 +71,7 @@ export const aiProviderFormSchema = z
             });
         }
 
-        if (data.type === "custom" && routingMode === "url" && !data.authType) {
+        if (data.type === "custom" && !data.authType) {
             ctx.addIssue({
                 code: "custom",
                 message: "authType is required for custom providers",
@@ -95,6 +95,18 @@ export const aiProviderFormSchema = z
     });
 
 export type AiProviderFormValues = z.infer<typeof aiProviderFormSchema>;
+
+export const aiProviderCreateFormSchema = aiProviderFormSchema.superRefine(
+    (data, ctx) => {
+        if (!data.apiKey?.trim()) {
+            ctx.addIssue({
+                code: "custom",
+                message: "API key is required",
+                path: ["apiKey"]
+            });
+        }
+    }
+);
 
 export function emptyUpstreamForType(type: AiProviderType): string {
     if (type === "custom") {
@@ -145,7 +157,7 @@ export function toAiProviderCreatePayload(values: AiProviderFormValues) {
         upstreamUrl,
         apiKey: values.apiKey?.trim() ? values.apiKey.trim() : undefined,
         authType:
-            values.type === "custom" && routingMode === "url"
+            values.type === "custom"
                 ? (values.authType ?? "bearer")
                 : (values.authType ?? undefined),
         skipTlsVerification: values.skipTlsVerification,
@@ -176,7 +188,7 @@ export function toAiProviderUpdatePayload(values: AiProviderFormValues) {
         routingMode: values.type === "custom" ? routingMode : "url",
         upstreamUrl,
         authType:
-            values.type === "custom" && routingMode === "url"
+            values.type === "custom"
                 ? (values.authType ?? "bearer")
                 : (values.authType ?? null),
         skipTlsVerification: values.skipTlsVerification ?? false,
@@ -190,6 +202,23 @@ export function toAiProviderUpdatePayload(values: AiProviderFormValues) {
     }
 
     return payload;
+}
+
+export function toAiProviderNetworkPayload(values: AiProviderFormValues) {
+    const full = toAiProviderUpdatePayload(values);
+    return {
+        routingMode: full.routingMode,
+        upstreamUrl: full.upstreamUrl,
+        skipTlsVerification: full.skipTlsVerification
+    };
+}
+
+export function toAiProviderAuthPayload(values: AiProviderFormValues) {
+    const full = toAiProviderUpdatePayload(values);
+    return {
+        authType: full.authType,
+        ...(values.apiKey !== undefined ? { apiKey: values.apiKey.trim() } : {})
+    };
 }
 
 export function toAiProviderConfigurationPayload(values: AiProviderFormValues) {

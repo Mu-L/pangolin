@@ -67,7 +67,9 @@ export async function getAiProvider(
         }
 
         return response<GetAiProviderResponse>(res, {
-            data: { provider: toPublicAiProvider(provider) },
+            data: {
+                provider: toPublicAiProvider(provider, { includeApiKey: true })
+            },
             success: true,
             error: false,
             message: "AI provider retrieved successfully",

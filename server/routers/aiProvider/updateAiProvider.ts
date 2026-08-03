@@ -125,7 +125,10 @@ export async function updateAiProvider(
                 ? body.upstreamUrl
                 : existing.upstreamUrl;
         const nextAuthType =
-            body.authType !== undefined ? body.authType : existing.authType;
+            body.authType !== undefined
+                ? body.authType
+                : (existing.authType ??
+                  (providerType === "custom" ? "bearer" : null));
 
         const validation = z
             .object({
@@ -178,6 +181,13 @@ export async function updateAiProvider(
         }
         if (body.authType !== undefined) {
             updateData.authType = body.authType;
+        } else if (
+            providerType === "custom" &&
+            !existing.authType &&
+            nextAuthType
+        ) {
+            // Backfill required authType for custom providers created without one
+            updateData.authType = nextAuthType;
         }
 
         if (body.apiKey !== undefined) {
@@ -193,7 +203,9 @@ export async function updateAiProvider(
             .returning();
 
         return response<CreateOrEditAiProviderResponse>(res, {
-            data: { provider: toPublicAiProvider(provider) },
+            data: {
+                provider: toPublicAiProvider(provider, { includeApiKey: true })
+            },
             success: true,
             error: false,
             message: "AI provider updated successfully",

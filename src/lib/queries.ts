@@ -1163,6 +1163,20 @@ export const logQueries = {
         })
 };
 
+export const aiProviderQueries = {
+    providerTargets: ({ providerId }: { providerId: number }) =>
+        queryOptions({
+            queryKey: ["AI_PROVIDERS", providerId, "TARGETS"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListTargetsResponse>
+                >(`/ai-provider/${providerId}/targets`, { signal });
+
+                return res.data.data.targets;
+            }
+        })
+};
+
 export const resourceQueries = {
     resourceUsers: ({ resourceId }: { resourceId: number }) =>
         queryOptions({

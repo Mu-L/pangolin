@@ -135,7 +135,9 @@ export async function createAiProvider(
             .returning();
 
         return response<CreateOrEditAiProviderResponse>(res, {
-            data: { provider: toPublicAiProvider(provider) },
+            data: {
+                provider: toPublicAiProvider(provider, { includeApiKey: true })
+            },
             success: true,
             error: false,
             message: "AI provider created successfully",
