@@ -25,6 +25,7 @@ import {
     Server,
     Settings,
     ShieldIcon,
+    Sparkles,
     SquareMousePointer,
     TagIcon,
     TicketCheck,
@@ -183,6 +184,16 @@ export const orgNavSections = (
                 title: "sidebarShareableLinks",
                 href: "/{orgId}/settings/share-links",
                 icon: <LinkIcon className="size-4 flex-none" />
+            }
+        ]
+    },
+    {
+        heading: "sidebarAi",
+        items: [
+            {
+                title: "sidebarAiProviders",
+                href: "/{orgId}/settings/ai-providers",
+                icon: <Sparkles className="size-4 flex-none" />
             }
         ]
     },
@@ -468,6 +479,16 @@ export const commandBarNavSections = (
                 title: "commandShareableLinks",
                 href: "/{orgId}/settings/share-links",
                 icon: <LinkIcon className="size-4 flex-none" />
+            }
+        ]
+    },
+    {
+        heading: "sidebarAi",
+        items: [
+            {
+                title: "commandAiProviders",
+                href: "/{orgId}/settings/ai-providers",
+                icon: <Sparkles className="size-4 flex-none" />
             }
         ]
     },
