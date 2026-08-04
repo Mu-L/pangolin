@@ -427,34 +427,26 @@ export async function getTraefikConfig(
             )
         );
 
-    let siteResourcesInference: {
-        siteResourceId: number;
-        alias: string | null;
-        ssl: boolean | null;
-        enabled: boolean | null;
-    }[] = [];
-    if (build == "enterprise") {
-        siteResourcesInference = await db
-            .select({
-                siteResourceId: siteResources.siteResourceId,
-                alias: siteResources.alias,
-                ssl: siteResources.ssl,
-                enabled: siteResources.enabled
-            })
-            .from(siteResources)
-            .innerJoin(
-                aiProviders,
-                eq(siteResources.aiProviderId, aiProviders.providerId)
+    const siteResourcesInference = await db
+        .select({
+            siteResourceId: siteResources.siteResourceId,
+            alias: siteResources.alias,
+            ssl: siteResources.ssl,
+            enabled: siteResources.enabled
+        })
+        .from(siteResources)
+        // .innerJoin(
+        //     aiProviders,
+        //     eq(siteResources.aiProviderId, aiProviders.providerId)
+        // )
+        .where(
+            and(
+                eq(siteResources.mode, "inference"),
+                eq(siteResources.enabled, true),
+                // eq(aiProviders.enabled, true),
+                isNotNull(siteResources.alias)
             )
-            .where(
-                and(
-                    eq(siteResources.mode, "inference"),
-                    eq(siteResources.enabled, true),
-                    eq(aiProviders.enabled, true),
-                    isNotNull(siteResources.alias)
-                )
-            );
-    }
+        );
 
     let validCerts: CertificateResult[] = [];
     if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
@@ -1586,9 +1578,7 @@ export async function getTraefikConfig(
 
                 tls = {
                     certResolver: resolverName,
-                    ...(preferWildcard
-                        ? { domains: [{ main: wildCard }] }
-                        : {})
+                    ...(preferWildcard ? { domains: [{ main: wildCard }] } : {})
                 };
             } else {
                 const matchingCert = validCerts.find(
