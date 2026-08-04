@@ -79,7 +79,7 @@ export const configSchema = z
                     .default(3001)
                     .transform(stoi)
                     .pipe(portSchema),
-                badger_override: z.string().optional(),
+                internal_api_override: z.string().optional(),
                 next_port: portSchema
                     .optional()
                     .default(3002)

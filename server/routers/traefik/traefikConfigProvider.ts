@@ -20,9 +20,13 @@ export async function traefikConfigProvider(
         const maintenancePort = config.getRawConfig().server.next_port;
         const maintenanceHost = config.getRawConfig().server.internal_hostname;
         const pangolinUIUrl = `http://${maintenanceHost}:${maintenancePort}`;
-        const aiGatewayUrl = `http://${maintenanceHost}:${
-            config.getRawConfig().server.internal_port
-        }/api/v1/ai-gateway`;
+        const aiGatewayUrl =
+            `${
+                config.getRawConfig().server.internal_api_override
+            }/ai-gateway` ||
+            `http://${maintenanceHost}:${
+                config.getRawConfig().server.internal_port
+            }/api/v1/ai-gateway`;
 
         const traefikConfig = await getTraefikConfig(
             currentExitNodeId,
@@ -41,7 +45,8 @@ export async function traefikConfigProvider(
                 plugin: {
                     [badgerMiddlewareName]: {
                         apiBaseUrl:
-                            config.getRawConfig().server.badger_override ||
+                            config.getRawConfig().server
+                                .internal_api_override ||
                             new URL(
                                 "/api/v1",
                                 `http://${
