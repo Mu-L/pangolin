@@ -55,20 +55,37 @@ export default async function PrivateResourceLayout(
         | "sshSettings"
         | "inferenceSettings";
 
-    const navItems = [
-        {
-            title: t("general"),
-            href: `/{orgId}/settings/resources/private/{niceId}/general`
-        },
-        {
-            title: t(modeSettingsKey),
-            href: `/{orgId}/settings/resources/private/{niceId}/${siteResource.mode}`
-        },
-        {
-            title: t("authentication"),
-            href: `/{orgId}/settings/resources/private/{niceId}/access`
-        }
-    ];
+    const isInference = siteResource.mode === "inference";
+
+    const navItems = isInference
+        ? [
+              {
+                  title: t("general"),
+                  href: `/{orgId}/settings/resources/private/{niceId}/general`
+              },
+              {
+                  title: t("aiResourceProviders"),
+                  href: `/{orgId}/settings/resources/private/{niceId}/providers`
+              },
+              {
+                  title: t("authentication"),
+                  href: `/{orgId}/settings/resources/private/{niceId}/access`
+              }
+          ]
+        : [
+              {
+                  title: t("general"),
+                  href: `/{orgId}/settings/resources/private/{niceId}/general`
+              },
+              {
+                  title: t(modeSettingsKey),
+                  href: `/{orgId}/settings/resources/private/{niceId}/${siteResource.mode}`
+              },
+              {
+                  title: t("authentication"),
+                  href: `/{orgId}/settings/resources/private/{niceId}/access`
+              }
+          ];
 
     return (
         <>

@@ -331,10 +331,6 @@ async function providerMatchesModel(
     requestedModel: string,
     allowedModelIds: number[]
 ): Promise<boolean> {
-    if (attachment.modelAccessMode === "passthrough") {
-        return true;
-    }
-
     const [matchedModel] = await db
         .select({
             modelId: aiModels.modelId,
@@ -366,26 +362,7 @@ async function selectProvider(
     allowedModelIds: number[],
     requestedModel: string | undefined
 ): Promise<ProviderSelection> {
-    const passthroughAttachments = attachments.filter(
-        (a) => a.modelAccessMode === "passthrough"
-    );
-    const hasRestricted = attachments.some(
-        (a) =>
-            a.modelAccessMode === "catalog" || a.modelAccessMode === "allowlist"
-    );
-
     if (!requestedModel) {
-        if (hasRestricted) {
-            return {
-                ok: false,
-                status: HttpCode.FORBIDDEN,
-                message:
-                    "This resource restricts access to specific models; a model must be specified"
-            };
-        }
-        if (passthroughAttachments.length === 1) {
-            return { ok: true, provider: passthroughAttachments[0].provider };
-        }
         return {
             ok: false,
             status: HttpCode.FORBIDDEN,
@@ -395,10 +372,6 @@ async function selectProvider(
 
     const candidates: ProviderAttachment[] = [];
     for (const attachment of attachments) {
-        if (attachment.modelAccessMode === "passthrough") {
-            candidates.push(attachment);
-            continue;
-        }
         if (
             await providerMatchesModel(
                 attachment,
@@ -420,11 +393,6 @@ async function selectProvider(
             status: HttpCode.FORBIDDEN,
             message: `Model "${requestedModel}" is ambiguous across multiple AI providers on this resource`
         };
-    }
-
-    // Zero candidates: fall back to a single passthrough attachment if present
-    if (passthroughAttachments.length === 1) {
-        return { ok: true, provider: passthroughAttachments[0].provider };
     }
 
     return {

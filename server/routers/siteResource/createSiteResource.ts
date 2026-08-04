@@ -90,7 +90,7 @@ const createSiteResourceSchema = z
             .array(resourceAiProviderAttachmentSchema)
             .optional()
             .describe(
-                "For inference-mode site resources: AI providers to attach. Each entry may set modelAccessMode (passthrough, catalog, or allowlist); defaults to passthrough. At most one passthrough provider is allowed."
+                "For inference-mode site resources: AI providers to attach. Each entry may set modelAccessMode (catalog or allowlist); defaults to catalog. Model keys must be unique across attached catalog providers."
             )
     })
     .strict()

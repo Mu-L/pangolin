@@ -109,7 +109,7 @@ const createHttpResourceSchema = z
             .array(resourceAiProviderAttachmentSchema)
             .optional()
             .describe(
-                "For inference-mode resources: AI providers to attach. Each entry may set modelAccessMode (passthrough, catalog, or allowlist); defaults to passthrough. At most one passthrough provider is allowed."
+                "For inference-mode resources: AI providers to attach. Each entry may set modelAccessMode (catalog or allowlist); defaults to catalog. Model keys must be unique across attached catalog providers."
             )
     })
     .refine(
@@ -397,9 +397,7 @@ async function createHttpResource(
             requireAtLeastOne: true
         });
         if (isInferenceFieldsError(resolved)) {
-            return next(
-                createHttpError(HttpCode.BAD_REQUEST, resolved.error)
-            );
+            return next(createHttpError(HttpCode.BAD_REQUEST, resolved.error));
         }
         providerAttachments = resolved;
     } else if (aiProviderInputs && aiProviderInputs.length > 0) {

@@ -13,11 +13,7 @@ import { z } from "zod";
 
 type DbOrTrx = Transaction | typeof db;
 
-export const modelAccessModeSchema = z.enum([
-    "passthrough",
-    "catalog",
-    "allowlist"
-]);
+export const modelAccessModeSchema = z.enum(["catalog", "allowlist"]);
 
 export type ModelAccessMode = z.infer<typeof modelAccessModeSchema>;
 
@@ -50,10 +46,7 @@ function normalizeAttachments(
 ): ResourceAiProviderAttachment[] {
     const byProvider = new Map<number, ModelAccessMode>();
     for (const input of inputs) {
-        byProvider.set(
-            input.providerId,
-            input.modelAccessMode ?? "passthrough"
-        );
+        byProvider.set(input.providerId, input.modelAccessMode ?? "catalog");
     }
     return [...byProvider.entries()].map(([providerId, modelAccessMode]) => ({
         providerId,
@@ -62,8 +55,60 @@ function normalizeAttachments(
 }
 
 /**
+ * Ensure enabled catalog modelKeys are unique across attached providers.
+ * Catalog attachments contribute all enabled models on the provider.
+ * Allowlist attachments contribute nothing until models are allowlisted
+ * (those are checked when the allowlist is set).
+ */
+export async function assertNoOverlappingModelKeys(
+    attachments: ResourceAiProviderAttachment[],
+    trx: DbOrTrx = db
+): Promise<InferenceFieldsError | null> {
+    const catalogProviderIds = attachments
+        .filter((a) => a.modelAccessMode === "catalog")
+        .map((a) => a.providerId);
+
+    if (catalogProviderIds.length < 2) {
+        return null;
+    }
+
+    const models = await trx
+        .select({
+            providerId: aiModels.providerId,
+            modelKey: aiModels.modelKey
+        })
+        .from(aiModels)
+        .where(
+            and(
+                inArray(aiModels.providerId, catalogProviderIds),
+                eq(aiModels.enabled, true)
+            )
+        );
+
+    const keyToProviders = new Map<string, number[]>();
+    for (const model of models) {
+        const existing = keyToProviders.get(model.modelKey) ?? [];
+        if (!existing.includes(model.providerId)) {
+            existing.push(model.providerId);
+        }
+        keyToProviders.set(model.modelKey, existing);
+    }
+
+    const overlaps = [...keyToProviders.entries()].filter(
+        ([, providerIds]) => providerIds.length > 1
+    );
+    if (overlaps.length === 0) {
+        return null;
+    }
+
+    const keys = overlaps.map(([key]) => key).sort();
+    return {
+        error: `Model keys must be unique across providers on a resource. Overlapping keys: ${keys.join(", ")}`
+    };
+}
+
+/**
  * Validate provider attachments for an org.
- * At most one passthrough provider is allowed per resource.
  */
 export async function resolveProviderAttachments(input: {
     orgId: string;
@@ -75,15 +120,6 @@ export async function resolveProviderAttachments(input: {
     if (input.requireAtLeastOne && attachments.length === 0) {
         return {
             error: "At least one AI provider is required for inference-mode resources"
-        };
-    }
-
-    const passthroughCount = attachments.filter(
-        (a) => a.modelAccessMode === "passthrough"
-    ).length;
-    if (passthroughCount > 1) {
-        return {
-            error: "A resource may have at most one AI provider in passthrough mode"
         };
     }
 
@@ -117,6 +153,11 @@ export async function resolveProviderAttachments(input: {
         return {
             error: `AI provider with ID ${disabled.providerId} is disabled`
         };
+    }
+
+    const overlapError = await assertNoOverlappingModelKeys(attachments);
+    if (overlapError) {
+        return overlapError;
     }
 
     return attachments;

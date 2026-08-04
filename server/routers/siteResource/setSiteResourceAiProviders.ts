@@ -27,7 +27,7 @@ registry.registerPath({
     method: "post",
     path: "/site-resource/{siteResourceId}/ai-providers",
     description:
-        "Replace the AI providers attached to an inference site resource. At least one provider is required. At most one may use passthrough mode.",
+        "Replace the AI providers attached to an inference site resource. At least one provider is required. Model keys must be unique across attached catalog providers.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: setSiteResourceAiProvidersParamsSchema,
@@ -118,7 +118,9 @@ export async function setSiteResourceAiProviders(
             requireAtLeastOne: true
         });
         if (isInferenceFieldsError(attachments)) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, attachments.error));
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, attachments.error)
+            );
         }
 
         await replaceAttachments(siteResourceId, attachments);

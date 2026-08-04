@@ -57,6 +57,10 @@ import type {
 } from "@server/routers/siteResource";
 import type { GetSiteResourceResponse } from "@server/routers/siteResource/getSiteResource";
 import type { ListTargetsResponse } from "@server/routers/target";
+import type {
+    ListAiModelsResponse,
+    ListAiProvidersResponse
+} from "@server/routers/aiProvider/types";
 import type { ListUsersResponse } from "@server/routers/user";
 import type ResponseT from "@server/types/Response";
 import {
@@ -1174,6 +1178,36 @@ export const aiProviderQueries = {
 
                 return res.data.data.targets;
             }
+        }),
+    providerModels: ({ providerId }: { providerId: number }) =>
+        queryOptions({
+            queryKey: ["AI_PROVIDERS", providerId, "MODELS"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAiModelsResponse>
+                >(`/ai-provider/${providerId}/models`, {
+                    params: { page: 1, pageSize: 1000 },
+                    signal
+                });
+                return res.data.data.models;
+            }
+        }),
+    orgProviders: ({ orgId, query }: { orgId: string; query?: string }) =>
+        queryOptions({
+            queryKey: ["AI_PROVIDERS", orgId, "LIST", query ?? ""] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAiProvidersResponse>
+                >(`/org/${orgId}/ai-providers`, {
+                    params: {
+                        page: 1,
+                        pageSize: 100,
+                        ...(query ? { query } : {})
+                    },
+                    signal
+                });
+                return res.data.data.providers;
+            }
         })
 };
 
@@ -1240,6 +1274,30 @@ export const resourceQueries = {
                 >(`/site-resource/${siteResourceId}/clients`, { signal });
 
                 return res.data.data.clients;
+            }
+        }),
+    siteResourceAiProviders: ({ siteResourceId }: { siteResourceId: number }) =>
+        queryOptions({
+            queryKey: [
+                "SITE_RESOURCES",
+                siteResourceId,
+                "AI_PROVIDERS"
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<{
+                        providers: Array<{
+                            providerId: number;
+                            modelAccessMode: "catalog" | "allowlist";
+                            name: string;
+                            type: string;
+                            enabled: boolean;
+                        }>;
+                    }>
+                >(`/site-resource/${siteResourceId}/ai-providers`, {
+                    signal
+                });
+                return res.data.data.providers;
             }
         }),
     resourceTargets: ({ resourceId }: { resourceId: number }) =>

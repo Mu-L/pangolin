@@ -42,6 +42,7 @@ export type PrivateResourceFormValues = {
     roles?: PrivateResourceAccessTag[];
     users?: PrivateResourceAccessTag[];
     clients?: PrivateResourceClient[];
+    providerIds?: number[];
 };
 
 export type SiteResourceAccess = {
@@ -220,7 +221,11 @@ export function buildCreateSiteResourcePayload(
                 typeof data.alias === "string" &&
                 data.alias.trim()
                     ? data.alias
-                    : undefined
+                    : undefined,
+            aiProviders: (data.providerIds ?? []).map((providerId) => ({
+                providerId,
+                modelAccessMode: "catalog" as const
+            }))
         }),
         ...((data.mode === "host" || data.mode === "cidr") && {
             tcpPortRangeString: data.tcpPortRangeString,
@@ -353,19 +358,33 @@ export function siteResourceToFormValues(
     };
 }
 
-export function createGeneralFormSchema(t: TranslateFn) {
-    return z.object({
-        name: z
-            .string()
-            .min(1, t("editInternalResourceDialogNameRequired"))
-            .max(255, t("editInternalResourceDialogNameMaxLength")),
-        niceId: z
-            .string()
-            .min(1)
-            .max(255)
-            .regex(/^[a-zA-Z0-9-]+$/),
-        enabled: z.boolean()
-    });
+export function createGeneralFormSchema(
+    t: TranslateFn,
+    options?: { requireAlias?: boolean }
+) {
+    return z
+        .object({
+            name: z
+                .string()
+                .min(1, t("editInternalResourceDialogNameRequired"))
+                .max(255, t("editInternalResourceDialogNameMaxLength")),
+            niceId: z
+                .string()
+                .min(1)
+                .max(255)
+                .regex(/^[a-zA-Z0-9-]+$/),
+            enabled: z.boolean(),
+            alias: z.string().nullish()
+        })
+        .superRefine((data, ctx) => {
+            if (options?.requireAlias && !data.alias?.trim()) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("aiResourceAliasRequired"),
+                    path: ["alias"]
+                });
+            }
+        });
 }
 
 export function createAccessFormSchema() {
@@ -422,7 +441,8 @@ export function createCreateFormSchema(t: TranslateFn) {
             pamMode: z.enum(["passthrough", "push"]).optional().nullable(),
             tcpPortRangeString: createPortRangeStringSchema(t),
             udpPortRangeString: createPortRangeStringSchema(t),
-            disableIcmp: z.boolean().optional()
+            disableIcmp: z.boolean().optional(),
+            providerIds: z.array(z.number().int().positive()).optional()
         })
         .superRefine((data, ctx) => {
             const isNativeSsh =
@@ -434,11 +454,26 @@ export function createCreateFormSchema(t: TranslateFn) {
             ) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    message: t(
-                        "createInternalResourceDialogPleaseSelectSite"
-                    ),
+                    message: t("createInternalResourceDialogPleaseSelectSite"),
                     path: ["siteIds"]
                 });
+            }
+            if (data.mode === "inference") {
+                const trimmedAlias = data.alias?.trim();
+                if (!trimmedAlias) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: t("aiResourceAliasRequired"),
+                        path: ["alias"]
+                    });
+                }
+                if (!data.providerIds || data.providerIds.length < 1) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: t("aiResourceProvidersRequired"),
+                        path: ["providerIds"]
+                    });
+                }
             }
             if (
                 data.mode !== "ssh" &&
@@ -592,9 +627,26 @@ export function createInferenceFormSchema(t: TranslateFn) {
     return z
         .object({
             mode: z.literal("inference"),
-            alias: z.string().nullish()
+            alias: z.string().nullish(),
+            providerIds: z.array(z.number().int().positive()).optional()
         })
-        .superRefine((data, ctx) => destinationRefine(data, ctx, t));
+        .superRefine((data, ctx) => {
+            const trimmedAlias = data.alias?.trim();
+            if (!trimmedAlias) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("aiResourceAliasRequired"),
+                    path: ["alias"]
+                });
+            }
+            if (!data.providerIds || data.providerIds.length < 1) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("aiResourceProvidersRequired"),
+                    path: ["providerIds"]
+                });
+            }
+        });
 }
 
 export function createCidrFormSchema(t: TranslateFn) {

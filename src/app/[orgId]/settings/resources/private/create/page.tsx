@@ -64,6 +64,10 @@ import {
     asAnySetValue,
     asAnyWatch
 } from "@app/lib/formControlUtils";
+import {
+    AiProvidersSelector,
+    type SelectedAiProvider
+} from "@app/components/AiProvidersSelector";
 
 export default function CreatePrivateResourcePage() {
     const params = useParams();
@@ -88,6 +92,9 @@ export default function CreatePrivateResourcePage() {
             : null;
 
     const [selectedSites, setSelectedSites] = useState<Selectedsite[]>([]);
+    const [selectedProviders, setSelectedProviders] = useState<
+        SelectedAiProvider[]
+    >([]);
 
     const formSchema = useMemo(() => createCreateFormSchema(t), [t]);
     type FormValues = z.infer<typeof formSchema>;
@@ -112,7 +119,8 @@ export default function CreatePrivateResourcePage() {
             pamMode: "passthrough",
             tcpPortRangeString: "*",
             udpPortRangeString: "*",
-            disableIcmp: false
+            disableIcmp: false,
+            providerIds: []
         }
     });
 
@@ -196,7 +204,9 @@ export default function CreatePrivateResourcePage() {
                 }
 
                 router.push(
-                    `/${orgId}/settings/resources/private/${created.niceId}/${created.mode}`
+                    created.mode === "inference"
+                        ? `/${orgId}/settings/resources/private/${created.niceId}/general`
+                        : `/${orgId}/settings/resources/private/${created.niceId}/${created.mode}`
                 );
             } catch (error) {
                 toast({
@@ -335,6 +345,13 @@ export default function CreatePrivateResourcePage() {
                                                                 form.setValue(
                                                                     "destinationPort",
                                                                     null
+                                                                );
+                                                                form.setValue(
+                                                                    "providerIds",
+                                                                    []
+                                                                );
+                                                                setSelectedProviders(
+                                                                    []
                                                                 );
                                                             } else {
                                                                 form.setValue(
@@ -634,6 +651,76 @@ export default function CreatePrivateResourcePage() {
                                     </SettingsSectionForm>
                                 </SettingsSectionBody>
                             </fieldset>
+                        </SettingsSection>
+                    )}
+
+                    {mode === "inference" && (
+                        <SettingsSection>
+                            <SettingsSectionHeader>
+                                <SettingsSectionTitle>
+                                    {t("aiResourceProviders")}
+                                </SettingsSectionTitle>
+                                <SettingsSectionDescription>
+                                    {t("aiResourceProvidersDescription")}
+                                </SettingsSectionDescription>
+                            </SettingsSectionHeader>
+                            <SettingsSectionBody>
+                                <SettingsSectionForm variant="half">
+                                    <SettingsFormGrid>
+                                        <SettingsFormCell span="full">
+                                            <FormField
+                                                control={form.control}
+                                                name="providerIds"
+                                                render={() => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t(
+                                                                "aiResourceProviders"
+                                                            )}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <AiProvidersSelector
+                                                                orgId={orgId}
+                                                                selectedProviders={
+                                                                    selectedProviders
+                                                                }
+                                                                onSelectProviders={(
+                                                                    providers
+                                                                ) => {
+                                                                    setSelectedProviders(
+                                                                        providers
+                                                                    );
+                                                                    form.setValue(
+                                                                        "providerIds",
+                                                                        providers.map(
+                                                                            (
+                                                                                p
+                                                                            ) =>
+                                                                                parseInt(
+                                                                                    p.id,
+                                                                                    10
+                                                                                )
+                                                                        ),
+                                                                        {
+                                                                            shouldValidate: true
+                                                                        }
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormDescription>
+                                                            {t(
+                                                                "aiResourceProvidersHelp"
+                                                            )}
+                                                        </FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </SettingsFormCell>
+                                    </SettingsFormGrid>
+                                </SettingsSectionForm>
+                            </SettingsSectionBody>
                         </SettingsSection>
                     )}
 

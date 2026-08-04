@@ -229,9 +229,9 @@ export const resourceAiProviders = sqliteTable(
             .notNull()
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
         modelAccessMode: text("modelAccessMode")
-            .$type<"passthrough" | "catalog" | "allowlist">()
+            .$type<"catalog" | "allowlist">()
             .notNull()
-            .default("passthrough")
+            .default("catalog")
     },
     (t) => [primaryKey({ columns: [t.resourceId, t.providerId] })]
 );
@@ -508,9 +508,9 @@ export const siteResourceAiProviders = sqliteTable(
             .notNull()
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
         modelAccessMode: text("modelAccessMode")
-            .$type<"passthrough" | "catalog" | "allowlist">()
+            .$type<"catalog" | "allowlist">()
             .notNull()
-            .default("passthrough")
+            .default("catalog")
     },
     (t) => [primaryKey({ columns: [t.siteResourceId, t.providerId] })]
 );
