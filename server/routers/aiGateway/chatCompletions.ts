@@ -36,14 +36,6 @@ type ResolvedTarget = {
     allowedModelIds: number[] | null;
 };
 
-// Fallback for clients that hit the endpoint directly (e.g. an AI tool's
-// "API key" field) instead of going through a browser session - badger
-// forwards whatever Authorization header the client sent untouched in that
-// case. This prefix lets us tell "this bearer value is a Pangolin resource
-// access token" apart from an arbitrary/opaque API key a user might paste
-// in, without guessing based on format alone.
-const USER_TOKEN_PREFIX = "pu_";
-
 export type RequestUser = {
     userId: string;
     username: string;
@@ -94,37 +86,7 @@ async function resolveRequestUser(
         }
     }
 
-    // User devices hitting the endpoint directly (no browser session to
-    // forward) fall back to a Pangolin resource access token passed as the
-    // client's "API key".
-    const authHeader = req.headers["authorization"];
-    if (typeof authHeader !== "string" || !resourceId) {
-        return null;
-    }
-
-    const bearer = authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!bearer || !bearer.startsWith(USER_TOKEN_PREFIX)) {
-        return null;
-    }
-
-    const [accessTokenId, accessToken] = bearer
-        .slice(USER_TOKEN_PREFIX.length)
-        .split(".");
-    if (!accessTokenId || !accessToken) {
-        return null;
-    }
-
-    const { valid, tokenItem } = await verifyResourceAccessToken({
-        accessToken,
-        accessTokenId,
-        resourceId
-    });
-
-    if (!valid || !tokenItem?.userId) {
-        return null;
-    }
-
-    return buildRequestUser(tokenItem.userId, tokenItem.orgId);
+    return null;
 }
 
 async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
@@ -222,7 +184,10 @@ function getCompletionsPath(type: AiProviderType): string {
     return "/chat/completions";
 }
 
-export async function chatCompletions(req: Request, res: Response): Promise<any> {
+export async function chatCompletions(
+    req: Request,
+    res: Response
+): Promise<any> {
     try {
         const host = (req.headers.host || "").split(":")[0];
         if (!host) {
