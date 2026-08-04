@@ -39,3 +39,7 @@ export * from "./listResourceAiModels";
 export * from "./setResourceAiModels";
 export * from "./addAiModelToResource";
 export * from "./removeAiModelFromResource";
+export * from "./listResourceAiProviders";
+export * from "./setResourceAiProviders";
+export * from "./addAiProviderToResource";
+export * from "./removeAiProviderFromResource";

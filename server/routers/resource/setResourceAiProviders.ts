@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, resources, resourceAiModels } from "@server/db";
+import { db, resources } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -9,30 +9,32 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import {
-    assertPublicAllowlistApiEligible,
-    assertModelsBelongToPublicAllowlistProviders
+    isInferenceFieldsError,
+    resolveProviderAttachments,
+    resourceAiProviderAttachmentSchema,
+    setPublicResourceAiProviders
 } from "@server/lib/aiInferenceResource";
 
-const setResourceAiModelsBodySchema = z.strictObject({
-    modelIds: z.array(z.int().positive())
+const setResourceAiProvidersBodySchema = z.strictObject({
+    providers: z.array(resourceAiProviderAttachmentSchema)
 });
 
-const setResourceAiModelsParamsSchema = z.strictObject({
+const setResourceAiProvidersParamsSchema = z.strictObject({
     resourceId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({
     method: "post",
-    path: "/resource/{resourceId}/ai-models",
+    path: "/resource/{resourceId}/ai-providers",
     description:
-        "Replace the allowlist of catalog models for an inference resource. Requires at least one attached AI provider in allowlist mode. Models must belong to a provider attached in allowlist mode. An empty array denies all models.",
+        "Replace the AI providers attached to an inference resource. At least one provider is required. At most one may use passthrough mode.",
     tags: [OpenAPITags.PublicResource],
     request: {
-        params: setResourceAiModelsParamsSchema,
+        params: setResourceAiProvidersParamsSchema,
         body: {
             content: {
                 "application/json": {
-                    schema: setResourceAiModelsBodySchema
+                    schema: setResourceAiProvidersBodySchema
                 }
             }
         }
@@ -55,13 +57,13 @@ registry.registerPath({
     }
 });
 
-export async function setResourceAiModels(
+export async function setResourceAiProviders(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedBody = setResourceAiModelsBodySchema.safeParse(req.body);
+        const parsedBody = setResourceAiProvidersBodySchema.safeParse(req.body);
         if (!parsedBody.success) {
             return next(
                 createHttpError(
@@ -71,9 +73,9 @@ export async function setResourceAiModels(
             );
         }
 
-        const { modelIds } = parsedBody.data;
+        const { providers } = parsedBody.data;
 
-        const parsedParams = setResourceAiModelsParamsSchema.safeParse(
+        const parsedParams = setResourceAiProvidersParamsSchema.safeParse(
             req.params
         );
         if (!parsedParams.success) {
@@ -99,39 +101,31 @@ export async function setResourceAiModels(
             );
         }
 
-        const eligibleError = await assertPublicAllowlistApiEligible(resource);
-        if (eligibleError) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
+        if (resource.mode !== "inference") {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "AI providers can only be attached to inference-mode resources"
+                )
+            );
         }
 
-        const modelError = await assertModelsBelongToPublicAllowlistProviders({
+        const attachments = await resolveProviderAttachments({
             orgId: resource.orgId,
-            resourceId,
-            modelIds
+            attachments: providers,
+            requireAtLeastOne: true
         });
-        if (modelError) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, modelError));
+        if (isInferenceFieldsError(attachments)) {
+            return next(createHttpError(HttpCode.BAD_REQUEST, attachments.error));
         }
 
-        await db.transaction(async (trx) => {
-            await trx
-                .delete(resourceAiModels)
-                .where(eq(resourceAiModels.resourceId, resourceId));
-
-            if (modelIds.length > 0) {
-                await trx
-                    .insert(resourceAiModels)
-                    .values(
-                        modelIds.map((modelId) => ({ resourceId, modelId }))
-                    );
-            }
-        });
+        await setPublicResourceAiProviders(resourceId, attachments);
 
         return response(res, {
             data: {},
             success: true,
             error: false,
-            message: "AI models set for resource successfully",
+            message: "AI providers set for resource successfully",
             status: HttpCode.CREATED
         });
     } catch (error) {

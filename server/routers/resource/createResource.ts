@@ -38,6 +38,13 @@ import {
 } from "@server/db/names";
 import { usageService } from "@server/lib/billing/usageService";
 import { LimitId } from "@server/lib/billing";
+import {
+    isInferenceFieldsError,
+    resolveProviderAttachments,
+    resourceAiProviderAttachmentSchema,
+    setPublicResourceAiProviders,
+    type ResourceAiProviderAttachment
+} from "@server/lib/aiInferenceResource";
 
 const createResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -98,13 +105,11 @@ const createHttpResourceSchema = z
         authDaemonPort: z.int().positive().optional(),
         authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         // Inference settings
-        aiProviderId: z
-            .number()
-            .int()
-            .positive()
+        aiProviders: z
+            .array(resourceAiProviderAttachmentSchema)
             .optional()
             .describe(
-                "For inference-mode resources: the AI provider this resource proxies chat completions to."
+                "For inference-mode resources: AI providers to attach. Each entry may set modelAccessMode (passthrough, catalog, or allowlist); defaults to passthrough. At most one passthrough provider is allowed."
             )
     })
     .refine(
@@ -377,10 +382,34 @@ async function createHttpResource(
         authDaemonPort,
         authDaemonMode,
         pamMode,
-        aiProviderId
+        aiProviders: aiProviderInputs
     } = parsedBody.data;
     const subdomain = parsedBody.data.subdomain;
     const stickySession = parsedBody.data.stickySession;
+
+    const effectiveMode = mode ?? "http";
+
+    let providerAttachments: ResourceAiProviderAttachment[] = [];
+    if (effectiveMode === "inference") {
+        const resolved = await resolveProviderAttachments({
+            orgId,
+            attachments: aiProviderInputs ?? [],
+            requireAtLeastOne: true
+        });
+        if (isInferenceFieldsError(resolved)) {
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, resolved.error)
+            );
+        }
+        providerAttachments = resolved;
+    } else if (aiProviderInputs && aiProviderInputs.length > 0) {
+        return next(
+            createHttpError(
+                HttpCode.BAD_REQUEST,
+                "AI providers can only be attached to inference-mode resources"
+            )
+        );
+    }
 
     // Wildcard subdomains are a paid feature
     if (subdomain && subdomain.includes("*")) {
@@ -422,7 +451,7 @@ async function createHttpResource(
     }
 
     if (
-        ["ssh", "rdp", "vnc"].includes(mode!) &&
+        ["ssh", "rdp", "vnc"].includes(effectiveMode) &&
         !isLicensedOrSubscribed(
             orgId!,
             tierMatrix[TierFeature.AdvancedPublicResources]
@@ -555,7 +584,7 @@ async function createHttpResource(
                 orgId,
                 name,
                 subdomain: finalSubdomain,
-                mode: mode,
+                mode: effectiveMode,
                 pamMode: pamMode,
                 authDaemonMode: authDaemonMode,
                 authDaemonPort: authDaemonPort,
@@ -564,10 +593,17 @@ async function createHttpResource(
                 postAuthPath: postAuthPath,
                 wildcard,
                 health: "unknown",
-                defaultResourcePolicyId: defaultPolicy.resourcePolicyId,
-                aiProviderId: aiProviderId ?? null
+                defaultResourcePolicyId: defaultPolicy.resourcePolicyId
             })
             .returning();
+
+        if (providerAttachments.length > 0) {
+            await setPublicResourceAiProviders(
+                newResource[0].resourceId,
+                providerAttachments,
+                trx
+            );
+        }
 
         await trx.insert(roleResources).values({
             roleId: adminRole[0].roleId,

@@ -21,3 +21,7 @@ export * from "./listSiteResourceAiModels";
 export * from "./setSiteResourceAiModels";
 export * from "./addAiModelToSiteResource";
 export * from "./removeAiModelFromSiteResource";
+export * from "./listSiteResourceAiProviders";
+export * from "./setSiteResourceAiProviders";
+export * from "./addAiProviderToSiteResource";
+export * from "./removeAiProviderFromSiteResource";

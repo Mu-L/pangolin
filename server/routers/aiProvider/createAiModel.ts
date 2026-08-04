@@ -9,26 +9,16 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
 import type { CreateOrEditAiModelResponse } from "@server/routers/aiProvider/types";
-import {
-    aiBudgetUnitSchema,
-    refineBudgetFields
-} from "@server/routers/aiProvider/validation";
 
 const paramsSchema = z.strictObject({
     providerId: z.coerce.number().int().positive()
 });
 
-const bodySchema = z
-    .strictObject({
-        modelKey: z.string().nonempty(),
-        name: z.string().nonempty(),
-        budgetAmount: z.number().positive().optional().nullable(),
-        budgetUnit: aiBudgetUnitSchema.optional().nullable(),
-        enabled: z.boolean().optional()
-    })
-    .superRefine((data, ctx) => {
-        refineBudgetFields(data, ctx);
-    });
+const bodySchema = z.strictObject({
+    modelKey: z.string().nonempty(),
+    name: z.string().nonempty(),
+    enabled: z.boolean().optional()
+});
 
 registry.registerPath({
     method: "put",
@@ -79,8 +69,7 @@ export async function createAiModel(
         }
 
         const { providerId } = parsedParams.data;
-        const { modelKey, name, budgetAmount, budgetUnit, enabled } =
-            parsedBody.data;
+        const { modelKey, name, enabled } = parsedBody.data;
 
         const [provider] =
             req.aiProvider && req.aiProvider.providerId === providerId
@@ -127,8 +116,6 @@ export async function createAiModel(
                 providerId,
                 modelKey,
                 name,
-                budgetAmount: budgetAmount ?? null,
-                budgetUnit: budgetUnit ?? null,
                 enabled: enabled ?? true,
                 createdAt: now,
                 updatedAt: now

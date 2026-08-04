@@ -42,7 +42,9 @@ import {
     siteResources,
     Target,
     targets,
-    aiProviders
+    aiProviders,
+    resourceAiProviders,
+    siteResourceAiProviders
 } from "@server/db";
 import {
     sanitize,
@@ -402,7 +404,7 @@ export async function getTraefikConfig(
     // so they can't be reached via the joins above - query them separately
     // and include them on every exit node.
     const inferenceResources = await db
-        .select({
+        .selectDistinct({
             resourceId: resources.resourceId,
             fullDomain: resources.fullDomain,
             ssl: resources.ssl,
@@ -415,8 +417,12 @@ export async function getTraefikConfig(
         })
         .from(resources)
         .innerJoin(
+            resourceAiProviders,
+            eq(resources.resourceId, resourceAiProviders.resourceId)
+        )
+        .innerJoin(
             aiProviders,
-            eq(resources.aiProviderId, aiProviders.providerId)
+            eq(resourceAiProviders.providerId, aiProviders.providerId)
         )
         .leftJoin(domains, eq(domains.domainId, resources.domainId))
         .where(
@@ -435,7 +441,7 @@ export async function getTraefikConfig(
     }[] = [];
     if (build == "enterprise") {
         siteResourcesInference = await db
-            .select({
+            .selectDistinct({
                 siteResourceId: siteResources.siteResourceId,
                 alias: siteResources.alias,
                 ssl: siteResources.ssl,
@@ -443,8 +449,15 @@ export async function getTraefikConfig(
             })
             .from(siteResources)
             .innerJoin(
+                siteResourceAiProviders,
+                eq(
+                    siteResources.siteResourceId,
+                    siteResourceAiProviders.siteResourceId
+                )
+            )
+            .innerJoin(
                 aiProviders,
-                eq(siteResources.aiProviderId, aiProviders.providerId)
+                eq(siteResourceAiProviders.providerId, aiProviders.providerId)
             )
             .where(
                 and(

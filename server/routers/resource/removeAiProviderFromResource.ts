@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, resources, resourceAiModels } from "@server/db";
+import { db, resources } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -9,30 +9,32 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import {
-    assertPublicAllowlistApiEligible,
-    assertModelsBelongToPublicAllowlistProviders
+    isInferenceFieldsError,
+    listPublicResourceAiProviders,
+    resolveProviderAttachments,
+    setPublicResourceAiProviders
 } from "@server/lib/aiInferenceResource";
 
-const setResourceAiModelsBodySchema = z.strictObject({
-    modelIds: z.array(z.int().positive())
+const removeAiProviderFromResourceBodySchema = z.strictObject({
+    providerId: z.number().int().positive()
 });
 
-const setResourceAiModelsParamsSchema = z.strictObject({
+const removeAiProviderFromResourceParamsSchema = z.strictObject({
     resourceId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({
     method: "post",
-    path: "/resource/{resourceId}/ai-models",
+    path: "/resource/{resourceId}/ai-providers/remove",
     description:
-        "Replace the allowlist of catalog models for an inference resource. Requires at least one attached AI provider in allowlist mode. Models must belong to a provider attached in allowlist mode. An empty array denies all models.",
+        "Remove an AI provider attachment from an inference resource. At least one provider must remain.",
     tags: [OpenAPITags.PublicResource],
     request: {
-        params: setResourceAiModelsParamsSchema,
+        params: removeAiProviderFromResourceParamsSchema,
         body: {
             content: {
                 "application/json": {
-                    schema: setResourceAiModelsBodySchema
+                    schema: removeAiProviderFromResourceBodySchema
                 }
             }
         }
@@ -55,13 +57,15 @@ registry.registerPath({
     }
 });
 
-export async function setResourceAiModels(
+export async function removeAiProviderFromResource(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedBody = setResourceAiModelsBodySchema.safeParse(req.body);
+        const parsedBody = removeAiProviderFromResourceBodySchema.safeParse(
+            req.body
+        );
         if (!parsedBody.success) {
             return next(
                 createHttpError(
@@ -71,11 +75,10 @@ export async function setResourceAiModels(
             );
         }
 
-        const { modelIds } = parsedBody.data;
+        const { providerId } = parsedBody.data;
 
-        const parsedParams = setResourceAiModelsParamsSchema.safeParse(
-            req.params
-        );
+        const parsedParams =
+            removeAiProviderFromResourceParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -99,40 +102,59 @@ export async function setResourceAiModels(
             );
         }
 
-        const eligibleError = await assertPublicAllowlistApiEligible(resource);
-        if (eligibleError) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
+        if (resource.mode !== "inference") {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "AI providers can only be attached to inference-mode resources"
+                )
+            );
         }
 
-        const modelError = await assertModelsBelongToPublicAllowlistProviders({
+        const existing = await listPublicResourceAiProviders(resourceId);
+        const found = existing.find((a) => a.providerId === providerId);
+        if (!found) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    "AI provider is not attached to this resource"
+                )
+            );
+        }
+
+        const remaining = existing
+            .filter((a) => a.providerId !== providerId)
+            .map((a) => ({
+                providerId: a.providerId,
+                modelAccessMode: a.modelAccessMode
+            }));
+
+        if (remaining.length === 0) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "At least one AI provider is required for inference-mode resources"
+                )
+            );
+        }
+
+        const attachments = await resolveProviderAttachments({
             orgId: resource.orgId,
-            resourceId,
-            modelIds
+            attachments: remaining,
+            requireAtLeastOne: true
         });
-        if (modelError) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, modelError));
+        if (isInferenceFieldsError(attachments)) {
+            return next(createHttpError(HttpCode.BAD_REQUEST, attachments.error));
         }
 
-        await db.transaction(async (trx) => {
-            await trx
-                .delete(resourceAiModels)
-                .where(eq(resourceAiModels.resourceId, resourceId));
-
-            if (modelIds.length > 0) {
-                await trx
-                    .insert(resourceAiModels)
-                    .values(
-                        modelIds.map((modelId) => ({ resourceId, modelId }))
-                    );
-            }
-        });
+        await setPublicResourceAiProviders(resourceId, attachments);
 
         return response(res, {
             data: {},
             success: true,
             error: false,
-            message: "AI models set for resource successfully",
-            status: HttpCode.CREATED
+            message: "AI provider removed from resource successfully",
+            status: HttpCode.OK
         });
     } catch (error) {
         logger.error(error);

@@ -414,6 +414,13 @@ authenticated.get(
     siteResource.listSiteResourceAiModels
 );
 
+authenticated.get(
+    "/site-resource/:siteResourceId/ai-providers",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.listResourceAiModels),
+    siteResource.listSiteResourceAiProviders
+);
+
 authenticated.post(
     "/site-resource/:siteResourceId/roles",
     verifySiteResourceAccess,
@@ -430,6 +437,46 @@ authenticated.post(
     verifyUserHasAction(ActionsEnum.setResourceAiModels),
     logActionAudit(ActionsEnum.setResourceAiModels),
     siteResource.setSiteResourceAiModels
+);
+
+authenticated.post(
+    "/site-resource/:siteResourceId/ai-models/add",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.addAiModelToSiteResource
+);
+
+authenticated.post(
+    "/site-resource/:siteResourceId/ai-models/remove",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.removeAiModelFromSiteResource
+);
+
+authenticated.post(
+    "/site-resource/:siteResourceId/ai-providers",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.setSiteResourceAiProviders
+);
+
+authenticated.post(
+    "/site-resource/:siteResourceId/ai-providers/add",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.addAiProviderToSiteResource
+);
+
+authenticated.post(
+    "/site-resource/:siteResourceId/ai-providers/remove",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.removeAiProviderFromSiteResource
 );
 
 authenticated.post(
@@ -674,6 +721,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/resource/:resourceId/ai-providers",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.listResourceAiModels),
+    resource.listResourceAiProviders
+);
+
+authenticated.get(
     "/resource/:resourceId",
     verifyResourceAccess,
     verifyUserHasAction(ActionsEnum.getResource),
@@ -882,6 +936,46 @@ authenticated.post(
     verifyUserHasAction(ActionsEnum.setResourceAiModels),
     logActionAudit(ActionsEnum.setResourceAiModels),
     resource.setResourceAiModels
+);
+
+authenticated.post(
+    "/resource/:resourceId/ai-models/add",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.addAiModelToResource
+);
+
+authenticated.post(
+    "/resource/:resourceId/ai-models/remove",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.removeAiModelFromResource
+);
+
+authenticated.post(
+    "/resource/:resourceId/ai-providers",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.setResourceAiProviders
+);
+
+authenticated.post(
+    "/resource/:resourceId/ai-providers/add",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.addAiProviderToResource
+);
+
+authenticated.post(
+    "/resource/:resourceId/ai-providers/remove",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.removeAiProviderFromResource
 );
 
 authenticated.put(

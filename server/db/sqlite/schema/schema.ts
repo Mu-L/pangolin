@@ -216,15 +216,25 @@ export const resources = sqliteTable("resources", {
         .$type<"site" | "remote" | "native">()
         .default("site"),
     authDaemonPort: integer("authDaemonPort").default(22123),
-    status: text("status").$type<"pending" | "approved">().default("approved"),
-    aiProviderId: integer("aiProviderId").references(
-        () => aiProviders.providerId,
-        { onDelete: "set null" }
-    ),
-    modelAccessMode: text("modelAccessMode").$type<
-        "passthrough" | "catalog" | "allowlist"
-    >()
+    status: text("status").$type<"pending" | "approved">().default("approved")
 });
+
+export const resourceAiProviders = sqliteTable(
+    "resourceAiProviders",
+    {
+        resourceId: integer("resourceId")
+            .notNull()
+            .references(() => resources.resourceId, { onDelete: "cascade" }),
+        providerId: integer("providerId")
+            .notNull()
+            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+        modelAccessMode: text("modelAccessMode")
+            .$type<"passthrough" | "catalog" | "allowlist">()
+            .notNull()
+            .default("passthrough")
+    },
+    (t) => [primaryKey({ columns: [t.resourceId, t.providerId] })]
+);
 
 export const resourceAiModels = sqliteTable(
     "resourceAiModels",
@@ -483,15 +493,27 @@ export const siteResources = sqliteTable("siteResources", {
     }),
     subdomain: text("subdomain"),
     fullDomain: text("fullDomain"),
-    status: text("status").$type<"pending" | "approved">().default("approved"),
-    aiProviderId: integer("aiProviderId").references(
-        () => aiProviders.providerId,
-        { onDelete: "set null" }
-    ),
-    modelAccessMode: text("modelAccessMode").$type<
-        "passthrough" | "catalog" | "allowlist"
-    >()
+    status: text("status").$type<"pending" | "approved">().default("approved")
 });
+
+export const siteResourceAiProviders = sqliteTable(
+    "siteResourceAiProviders",
+    {
+        siteResourceId: integer("siteResourceId")
+            .notNull()
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            }),
+        providerId: integer("providerId")
+            .notNull()
+            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+        modelAccessMode: text("modelAccessMode")
+            .$type<"passthrough" | "catalog" | "allowlist">()
+            .notNull()
+            .default("passthrough")
+    },
+    (t) => [primaryKey({ columns: [t.siteResourceId, t.providerId] })]
+);
 
 export const siteResourceAiModels = sqliteTable(
     "siteResourceAiModels",
@@ -1787,5 +1809,9 @@ export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
 export type AiBudget = InferSelectModel<typeof aiBudgets>;
 export type AiBudgetPeriod = InferSelectModel<typeof aiBudgetPeriods>;
+export type ResourceAiProvider = InferSelectModel<typeof resourceAiProviders>;
+export type SiteResourceAiProvider = InferSelectModel<
+    typeof siteResourceAiProviders
+>;
 export type ResourceAiModel = InferSelectModel<typeof resourceAiModels>;
 export type SiteResourceAiModel = InferSelectModel<typeof siteResourceAiModels>;

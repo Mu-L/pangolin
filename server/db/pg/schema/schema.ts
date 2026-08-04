@@ -211,14 +211,7 @@ export const resources = pgTable(
         authDaemonPort: integer("authDaemonPort").default(22123),
         status: varchar("status")
             .$type<"pending" | "approved">()
-            .default("approved"),
-        aiProviderId: integer("aiProviderId").references(
-            () => aiProviders.providerId,
-            { onDelete: "set null" }
-        ),
-        modelAccessMode: varchar("modelAccessMode").$type<
-            "passthrough" | "catalog" | "allowlist"
-        >()
+            .default("approved")
     },
     (t) => [
         index("idx_resources_fulldomain")
@@ -227,6 +220,23 @@ export const resources = pgTable(
         index("idx_resources_niceid").on(t.niceId),
         index("idx_resources_orgid_niceid").on(t.orgId, t.niceId)
     ]
+);
+
+export const resourceAiProviders = pgTable(
+    "resourceAiProviders",
+    {
+        resourceId: integer("resourceId")
+            .notNull()
+            .references(() => resources.resourceId, { onDelete: "cascade" }),
+        providerId: integer("providerId")
+            .notNull()
+            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+        modelAccessMode: varchar("modelAccessMode")
+            .$type<"passthrough" | "catalog" | "allowlist">()
+            .notNull()
+            .default("passthrough")
+    },
+    (t) => [primaryKey({ columns: [t.resourceId, t.providerId] })]
 );
 
 export const resourceAiModels = pgTable(
@@ -496,16 +506,28 @@ export const siteResources = pgTable(
         fullDomain: varchar("fullDomain"),
         status: varchar("status")
             .$type<"pending" | "approved">()
-            .default("approved"),
-        aiProviderId: integer("aiProviderId").references(
-            () => aiProviders.providerId,
-            { onDelete: "set null" }
-        ),
-        modelAccessMode: varchar("modelAccessMode").$type<
-            "passthrough" | "catalog" | "allowlist"
-        >()
+            .default("approved")
     },
     (t) => [index("idx_siteresources_orgid_niceid").on(t.orgId, t.niceId)]
+);
+
+export const siteResourceAiProviders = pgTable(
+    "siteResourceAiProviders",
+    {
+        siteResourceId: integer("siteResourceId")
+            .notNull()
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            }),
+        providerId: integer("providerId")
+            .notNull()
+            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+        modelAccessMode: varchar("modelAccessMode")
+            .$type<"passthrough" | "catalog" | "allowlist">()
+            .notNull()
+            .default("passthrough")
+    },
+    (t) => [primaryKey({ columns: [t.siteResourceId, t.providerId] })]
 );
 
 export const siteResourceAiModels = pgTable(
@@ -1806,5 +1828,9 @@ export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
 export type AiBudget = InferSelectModel<typeof aiBudgets>;
 export type AiBudgetPeriod = InferSelectModel<typeof aiBudgetPeriods>;
+export type ResourceAiProvider = InferSelectModel<typeof resourceAiProviders>;
+export type SiteResourceAiProvider = InferSelectModel<
+    typeof siteResourceAiProviders
+>;
 export type ResourceAiModel = InferSelectModel<typeof resourceAiModels>;
 export type SiteResourceAiModel = InferSelectModel<typeof siteResourceAiModels>;

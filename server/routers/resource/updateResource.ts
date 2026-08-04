@@ -120,15 +120,6 @@ const updateHttpResourceBodySchema = z
             .optional()
             .describe(
                 "ID of the resource policy to apply to this resource. Set to null to remove the resource policy and fall back to the inline policy settings."
-            ),
-        aiProviderId: z
-            .number()
-            .int()
-            .positive()
-            .nullable()
-            .optional()
-            .describe(
-                "For inference-mode resources: the AI provider this resource proxies chat completions to. Set to null to unlink."
             )
     })
     .refine((data) => Object.keys(data).length > 0, {
@@ -354,8 +345,10 @@ export async function updateResource(
             );
         }
 
-        if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
-            // HANDLE UPDATING HTTP RESOURCES
+        if (
+            ["http", "ssh", "rdp", "vnc", "inference"].includes(resource.mode)
+        ) {
+            // HANDLE UPDATING HTTP / BROWSER / INFERENCE RESOURCES
             return await updateHttpResource(
                 {
                     req,

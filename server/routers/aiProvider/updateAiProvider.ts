@@ -14,10 +14,8 @@ import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/
 import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 import {
     aiAuthTypeSchema,
-    aiBudgetUnitSchema,
     aiProviderTypeSchema,
     aiRoutingModeSchema,
-    refineBudgetFields,
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
 import type {
@@ -29,21 +27,15 @@ const paramsSchema = z.strictObject({
     providerId: z.coerce.number().int().positive()
 });
 
-const bodySchema = z
-    .strictObject({
-        name: z.string().nonempty().optional(),
-        upstreamUrl: z.url().optional().nullable(),
-        apiKey: z.string().optional(),
-        authType: aiAuthTypeSchema.optional().nullable(),
-        routingMode: aiRoutingModeSchema.optional(),
-        skipTlsVerification: z.boolean().optional(),
-        budgetAmount: z.number().positive().optional().nullable(),
-        budgetUnit: aiBudgetUnitSchema.optional().nullable(),
-        enabled: z.boolean().optional()
-    })
-    .superRefine((data, ctx) => {
-        refineBudgetFields(data, ctx);
-    });
+const bodySchema = z.strictObject({
+    name: z.string().nonempty().optional(),
+    upstreamUrl: z.url().optional().nullable(),
+    apiKey: z.string().optional(),
+    authType: aiAuthTypeSchema.optional().nullable(),
+    routingMode: aiRoutingModeSchema.optional(),
+    skipTlsVerification: z.boolean().optional(),
+    enabled: z.boolean().optional()
+});
 
 registry.registerPath({
     method: "post",
@@ -167,12 +159,6 @@ export async function updateAiProvider(
         }
         if (body.enabled !== undefined) {
             updateData.enabled = body.enabled;
-        }
-        if (body.budgetAmount !== undefined) {
-            updateData.budgetAmount = body.budgetAmount;
-        }
-        if (body.budgetUnit !== undefined) {
-            updateData.budgetUnit = body.budgetUnit;
         }
         if (nextRoutingMode === "target") {
             updateData.upstreamUrl = null;

@@ -13,10 +13,8 @@ import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/
 import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 import {
     aiAuthTypeSchema,
-    aiBudgetUnitSchema,
     aiProviderTypeSchema,
     aiRoutingModeSchema,
-    refineBudgetFields,
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
 
@@ -33,13 +31,10 @@ const bodySchema = z
         authType: aiAuthTypeSchema.optional().nullable(),
         routingMode: aiRoutingModeSchema.optional(),
         skipTlsVerification: z.boolean().optional(),
-        budgetAmount: z.number().positive().optional().nullable(),
-        budgetUnit: aiBudgetUnitSchema.optional().nullable(),
         enabled: z.boolean().optional()
     })
     .superRefine((data, ctx) => {
         refineProviderUpstreamFields(data, ctx);
-        refineBudgetFields(data, ctx);
     });
 
 registry.registerPath({
@@ -99,8 +94,6 @@ export async function createAiProvider(
             authType,
             routingMode,
             skipTlsVerification,
-            budgetAmount,
-            budgetUnit,
             enabled
         } = parsedBody.data;
 
@@ -126,8 +119,6 @@ export async function createAiProvider(
                 authType: authType ?? null,
                 routingMode: resolvedRoutingMode,
                 skipTlsVerification: skipTlsVerification ?? false,
-                budgetAmount: budgetAmount ?? null,
-                budgetUnit: budgetUnit ?? null,
                 enabled: enabled ?? true,
                 createdAt: now,
                 updatedAt: now

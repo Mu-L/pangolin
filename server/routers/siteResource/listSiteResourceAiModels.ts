@@ -1,11 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import {
-    db,
-    siteResources,
-    siteResourceAiModels,
-    aiModels
-} from "@server/db";
+import { db, siteResources, siteResourceAiModels, aiModels } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -27,10 +22,7 @@ async function query(siteResourceId: number) {
             enabled: aiModels.enabled
         })
         .from(siteResourceAiModels)
-        .innerJoin(
-            aiModels,
-            eq(siteResourceAiModels.modelId, aiModels.modelId)
-        )
+        .innerJoin(aiModels, eq(siteResourceAiModels.modelId, aiModels.modelId))
         .where(eq(siteResourceAiModels.siteResourceId, siteResourceId));
 }
 
@@ -42,7 +34,7 @@ registry.registerPath({
     method: "get",
     path: "/site-resource/{siteResourceId}/ai-models",
     description:
-        "List the AI models a site resource is restricted to. An empty list means the site resource is not restricted and every enabled model on its linked AI provider is allowed.",
+        "List catalog models on this site resource's allowlist. Only enforced when modelAccessMode=allowlist; an empty allowlist denies all models.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: listSiteResourceAiModelsParamsSchema

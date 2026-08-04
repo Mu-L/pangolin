@@ -9,26 +9,16 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq, ne } from "drizzle-orm";
 import type { CreateOrEditAiModelResponse } from "@server/routers/aiProvider/types";
-import {
-    aiBudgetUnitSchema,
-    refineBudgetFields
-} from "@server/routers/aiProvider/validation";
 
 const paramsSchema = z.strictObject({
     modelId: z.coerce.number().int().positive()
 });
 
-const bodySchema = z
-    .strictObject({
-        modelKey: z.string().nonempty().optional(),
-        name: z.string().nonempty().optional(),
-        budgetAmount: z.number().positive().optional().nullable(),
-        budgetUnit: aiBudgetUnitSchema.optional().nullable(),
-        enabled: z.boolean().optional()
-    })
-    .superRefine((data, ctx) => {
-        refineBudgetFields(data, ctx);
-    });
+const bodySchema = z.strictObject({
+    modelKey: z.string().nonempty().optional(),
+    name: z.string().nonempty().optional(),
+    enabled: z.boolean().optional()
+});
 
 registry.registerPath({
     method: "post",
@@ -134,12 +124,6 @@ export async function updateAiModel(
         }
         if (body.name !== undefined) {
             updateData.name = body.name;
-        }
-        if (body.budgetAmount !== undefined) {
-            updateData.budgetAmount = body.budgetAmount;
-        }
-        if (body.budgetUnit !== undefined) {
-            updateData.budgetUnit = body.budgetUnit;
         }
         if (body.enabled !== undefined) {
             updateData.enabled = body.enabled;

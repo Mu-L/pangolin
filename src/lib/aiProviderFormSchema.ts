@@ -26,8 +26,6 @@ export const aiProviderFormSchema = z
         authType: z.enum(["bearer"]).optional().nullable(),
         routingMode: z.enum(["url", "target"]).optional(),
         skipTlsVerification: z.boolean().optional(),
-        budgetAmount: z.number().positive().nullable().optional(),
-        budgetUnit: z.enum(["usd", "tokens"]).optional().nullable(),
         enabled: z.boolean().optional()
     })
     .superRefine((data, ctx) => {
@@ -76,20 +74,6 @@ export const aiProviderFormSchema = z
                 code: "custom",
                 message: "authType is required for custom providers",
                 path: ["authType"]
-            });
-        }
-
-        const hasAmount =
-            data.budgetAmount !== undefined && data.budgetAmount !== null;
-        const hasUnit =
-            data.budgetUnit !== undefined && data.budgetUnit !== null;
-
-        if (hasAmount !== hasUnit) {
-            ctx.addIssue({
-                code: "custom",
-                message:
-                    "budgetAmount and budgetUnit must both be set or both omitted",
-                path: hasAmount ? ["budgetUnit"] : ["budgetAmount"]
             });
         }
     });
@@ -145,11 +129,6 @@ export function toAiProviderCreatePayload(values: AiProviderFormValues) {
               ? upstreamRaw
               : null;
 
-    const hasBudget =
-        values.budgetAmount !== undefined &&
-        values.budgetAmount !== null &&
-        values.budgetUnit;
-
     return {
         name: values.name.trim(),
         type: values.type,
@@ -161,8 +140,6 @@ export function toAiProviderCreatePayload(values: AiProviderFormValues) {
                 ? (values.authType ?? "bearer")
                 : (values.authType ?? undefined),
         skipTlsVerification: values.skipTlsVerification,
-        budgetAmount: hasBudget ? values.budgetAmount : null,
-        budgetUnit: hasBudget ? values.budgetUnit : null,
         enabled: values.enabled ?? true
     };
 }
@@ -178,11 +155,6 @@ export function toAiProviderUpdatePayload(values: AiProviderFormValues) {
               ? upstreamRaw
               : null;
 
-    const hasBudget =
-        values.budgetAmount !== undefined &&
-        values.budgetAmount !== null &&
-        values.budgetUnit;
-
     const payload: Record<string, unknown> = {
         name: values.name.trim(),
         routingMode: values.type === "custom" ? routingMode : "url",
@@ -192,8 +164,6 @@ export function toAiProviderUpdatePayload(values: AiProviderFormValues) {
                 ? (values.authType ?? "bearer")
                 : (values.authType ?? null),
         skipTlsVerification: values.skipTlsVerification ?? false,
-        budgetAmount: hasBudget ? values.budgetAmount : null,
-        budgetUnit: hasBudget ? values.budgetUnit : null,
         enabled: values.enabled ?? true
     };
 

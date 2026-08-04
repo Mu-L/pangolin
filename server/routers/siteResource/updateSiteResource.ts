@@ -29,6 +29,7 @@ import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+import { clearSiteResourceAiConfig } from "@server/lib/aiInferenceResource";
 
 const updateSiteResourceParamsSchema = z.strictObject({
     siteResourceId: z.coerce.number().int().positive()
@@ -78,16 +79,7 @@ const updateSiteResourceSchema = z
         authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         pamMode: z.enum(["passthrough", "push"]).optional(),
         domainId: z.string().optional(),
-        subdomain: z.string().optional(),
-        aiProviderId: z
-            .number()
-            .int()
-            .positive()
-            .nullable()
-            .optional()
-            .describe(
-                "For inference-mode site resources: the AI provider this resource proxies chat completions to. Set to null to unlink."
-            )
+        subdomain: z.string().optional()
     })
     .strict()
     .refine(
@@ -341,8 +333,7 @@ export async function updateSiteResource(
             authDaemonMode,
             pamMode,
             domainId,
-            subdomain,
-            aiProviderId
+            subdomain
         } = parsedBody.data;
 
         // Backward compatibility: merge deprecated siteId into siteIds array
@@ -608,11 +599,18 @@ export async function updateSiteResource(
                     networkId: mode === "inference" ? null : undefined,
                     requiresExitNodeConnection:
                         mode !== undefined ? mode === "inference" : undefined,
-                    aiProviderId: aiProviderId,
                     ...sshPamSet
                 })
                 .where(and(eq(siteResources.siteResourceId, siteResourceId)))
                 .returning();
+
+            const effectiveMode = mode ?? existingSiteResource.mode;
+            if (
+                existingSiteResource.mode === "inference" &&
+                effectiveMode !== "inference"
+            ) {
+                await clearSiteResourceAiConfig(siteResourceId, trx);
+            }
 
             //////////////////// update the associations ////////////////////
 

@@ -8,8 +8,10 @@ import {
     db,
     exitNodes,
     resourceAiModels,
+    resourceAiProviders,
     resources,
     siteResourceAiModels,
+    siteResourceAiProviders,
     siteResources,
     users
 } from "@server/db";
@@ -21,7 +23,6 @@ import {
     AiProviderType,
     resolveAiProviderConfig
 } from "@server/lib/aiProviderDefaults";
-import { verifyResourceAccessToken } from "@server/auth/verifyResourceAccessToken";
 import {
     SESSION_COOKIE_NAME,
     validateSessionToken
@@ -31,6 +32,7 @@ import { isIpInCidr } from "@server/lib/ip";
 import { localCache } from "@server/lib/cache";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
+import type { ModelAccessMode } from "@server/lib/aiInferenceResource";
 
 // Short-lived local caches so a burst of requests from the same IP/user
 // doesn't hit the database on every single request. None of this is
@@ -85,13 +87,22 @@ async function findClientByIp(ip: string): Promise<CachedClient> {
     return result;
 }
 
+type ProviderAttachment = {
+    provider: AiProvider;
+    modelAccessMode: ModelAccessMode;
+};
+
 type ResolvedTarget = {
     resourceId: number | null;
     orgId: string | null;
-    provider: AiProvider;
-    // null = no restriction; every enabled model on the provider is allowed
-    allowedModelIds: number[] | null;
+    attachments: ProviderAttachment[];
+    // model IDs on this resource's allowlist (resource-wide)
+    allowedModelIds: number[];
 };
+
+type ProviderSelection =
+    | { ok: true; provider: AiProvider }
+    | { ok: false; status: number; message: string };
 
 export type RequestUser = {
     userId: string;
@@ -184,71 +195,119 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
     const [resourceRow] = await db
         .select({
             resourceId: resources.resourceId,
-            orgId: resources.orgId,
-            provider: aiProviders
+            orgId: resources.orgId
         })
         .from(resources)
-        .innerJoin(
-            aiProviders,
-            eq(resources.aiProviderId, aiProviders.providerId)
-        )
         .where(
             and(
                 eq(resources.fullDomain, host),
                 eq(resources.mode, "inference"),
-                eq(resources.enabled, true),
-                eq(aiProviders.enabled, true)
+                eq(resources.enabled, true)
             )
         )
         .limit(1);
 
     if (resourceRow) {
-        const restrictions = await db
-            .select({ modelId: resourceAiModels.modelId })
-            .from(resourceAiModels)
-            .where(eq(resourceAiModels.resourceId, resourceRow.resourceId));
+        const attachmentRows = await db
+            .select({
+                modelAccessMode: resourceAiProviders.modelAccessMode,
+                provider: aiProviders
+            })
+            .from(resourceAiProviders)
+            .innerJoin(
+                aiProviders,
+                eq(resourceAiProviders.providerId, aiProviders.providerId)
+            )
+            .where(
+                and(
+                    eq(resourceAiProviders.resourceId, resourceRow.resourceId),
+                    eq(aiProviders.enabled, true)
+                )
+            );
+
+        if (attachmentRows.length === 0) {
+            return null;
+        }
+
+        const hasAllowlist = attachmentRows.some(
+            (a) => a.modelAccessMode === "allowlist"
+        );
+        let allowedModelIds: number[] = [];
+        if (hasAllowlist) {
+            const restrictions = await db
+                .select({ modelId: resourceAiModels.modelId })
+                .from(resourceAiModels)
+                .where(eq(resourceAiModels.resourceId, resourceRow.resourceId));
+            allowedModelIds = restrictions.map((r) => r.modelId);
+        }
 
         return {
             resourceId: resourceRow.resourceId,
             orgId: resourceRow.orgId,
-            provider: resourceRow.provider,
-            allowedModelIds: restrictions.length
-                ? restrictions.map((r) => r.modelId)
-                : null
+            attachments: attachmentRows.map((a) => ({
+                provider: a.provider,
+                modelAccessMode: a.modelAccessMode as ModelAccessMode
+            })),
+            allowedModelIds
         };
     }
 
     const [siteResourceRow] = await db
         .select({
             siteResourceId: siteResources.siteResourceId,
-            orgId: siteResources.orgId,
-            provider: aiProviders
+            orgId: siteResources.orgId
         })
         .from(siteResources)
-        .innerJoin(
-            aiProviders,
-            eq(siteResources.aiProviderId, aiProviders.providerId)
-        )
         .where(
             and(
                 eq(siteResources.alias, host),
                 eq(siteResources.mode, "inference"),
-                eq(siteResources.enabled, true),
-                eq(aiProviders.enabled, true)
+                eq(siteResources.enabled, true)
             )
         )
         .limit(1);
 
     if (siteResourceRow) {
-        const restrictions = await db
-            .select({ modelId: siteResourceAiModels.modelId })
-            .from(siteResourceAiModels)
+        const attachmentRows = await db
+            .select({
+                modelAccessMode: siteResourceAiProviders.modelAccessMode,
+                provider: aiProviders
+            })
+            .from(siteResourceAiProviders)
+            .innerJoin(
+                aiProviders,
+                eq(siteResourceAiProviders.providerId, aiProviders.providerId)
+            )
             .where(
-                eq(
-                    siteResourceAiModels.siteResourceId,
-                    siteResourceRow.siteResourceId
+                and(
+                    eq(
+                        siteResourceAiProviders.siteResourceId,
+                        siteResourceRow.siteResourceId
+                    ),
+                    eq(aiProviders.enabled, true)
                 )
             );
+
+        if (attachmentRows.length === 0) {
+            return null;
+        }
+
+        const hasAllowlist = attachmentRows.some(
+            (a) => a.modelAccessMode === "allowlist"
+        );
+        let allowedModelIds: number[] = [];
+        if (hasAllowlist) {
+            const restrictions = await db
+                .select({ modelId: siteResourceAiModels.modelId })
+                .from(siteResourceAiModels)
+                .where(
+                    eq(
+                        siteResourceAiModels.siteResourceId,
+                        siteResourceRow.siteResourceId
+                    )
+                );
+            allowedModelIds = restrictions.map((r) => r.modelId);
+        }
 
         return {
             // siteResources have no per-user auth/policy stack today (see
@@ -256,14 +315,123 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
             // resource access token scope to validate a user token against.
             resourceId: null,
             orgId: siteResourceRow.orgId,
-            provider: siteResourceRow.provider,
-            allowedModelIds: restrictions.length
-                ? restrictions.map((r) => r.modelId)
-                : null
+            attachments: attachmentRows.map((a) => ({
+                provider: a.provider,
+                modelAccessMode: a.modelAccessMode as ModelAccessMode
+            })),
+            allowedModelIds
         };
     }
 
     return null;
+}
+
+async function providerMatchesModel(
+    attachment: ProviderAttachment,
+    requestedModel: string,
+    allowedModelIds: number[]
+): Promise<boolean> {
+    if (attachment.modelAccessMode === "passthrough") {
+        return true;
+    }
+
+    const [matchedModel] = await db
+        .select({
+            modelId: aiModels.modelId,
+            enabled: aiModels.enabled
+        })
+        .from(aiModels)
+        .where(
+            and(
+                eq(aiModels.providerId, attachment.provider.providerId),
+                eq(aiModels.modelKey, requestedModel)
+            )
+        )
+        .limit(1);
+
+    if (!matchedModel) {
+        return false;
+    }
+
+    if (attachment.modelAccessMode === "catalog") {
+        return matchedModel.enabled;
+    }
+
+    // allowlist
+    return allowedModelIds.includes(matchedModel.modelId);
+}
+
+async function selectProvider(
+    attachments: ProviderAttachment[],
+    allowedModelIds: number[],
+    requestedModel: string | undefined
+): Promise<ProviderSelection> {
+    const passthroughAttachments = attachments.filter(
+        (a) => a.modelAccessMode === "passthrough"
+    );
+    const hasRestricted = attachments.some(
+        (a) =>
+            a.modelAccessMode === "catalog" || a.modelAccessMode === "allowlist"
+    );
+
+    if (!requestedModel) {
+        if (hasRestricted) {
+            return {
+                ok: false,
+                status: HttpCode.FORBIDDEN,
+                message:
+                    "This resource restricts access to specific models; a model must be specified"
+            };
+        }
+        if (passthroughAttachments.length === 1) {
+            return { ok: true, provider: passthroughAttachments[0].provider };
+        }
+        return {
+            ok: false,
+            status: HttpCode.FORBIDDEN,
+            message: "A model must be specified for this resource"
+        };
+    }
+
+    const candidates: ProviderAttachment[] = [];
+    for (const attachment of attachments) {
+        if (attachment.modelAccessMode === "passthrough") {
+            candidates.push(attachment);
+            continue;
+        }
+        if (
+            await providerMatchesModel(
+                attachment,
+                requestedModel,
+                allowedModelIds
+            )
+        ) {
+            candidates.push(attachment);
+        }
+    }
+
+    if (candidates.length === 1) {
+        return { ok: true, provider: candidates[0].provider };
+    }
+
+    if (candidates.length > 1) {
+        return {
+            ok: false,
+            status: HttpCode.FORBIDDEN,
+            message: `Model "${requestedModel}" is ambiguous across multiple AI providers on this resource`
+        };
+    }
+
+    // Zero candidates: fall back to a single passthrough attachment if present
+    if (passthroughAttachments.length === 1) {
+        return { ok: true, provider: passthroughAttachments[0].provider };
+    }
+
+    return {
+        ok: false,
+        status: HttpCode.FORBIDDEN,
+        message: `Model "${requestedModel}" is not permitted on this resource`
+    };
 }
 
 // Generic OpenAI-wire-compatible passthrough. Anthropic's native API uses a
@@ -296,7 +464,7 @@ export async function chatCompletions(
             });
         }
 
-        const { provider, allowedModelIds, resourceId, orgId } = target;
+        const { attachments, allowedModelIds, resourceId, orgId } = target;
 
         // Best-effort identity resolution - not yet enforced, but lets us
         // start making per-user access decisions (e.g. model/role-based
@@ -311,38 +479,18 @@ export async function chatCompletions(
         const requestedModel =
             typeof req.body?.model === "string" ? req.body.model : undefined;
 
-        if (allowedModelIds) {
-            if (!requestedModel) {
-                return res.status(HttpCode.FORBIDDEN).json({
-                    error: {
-                        message:
-                            "This resource restricts access to specific models; a model must be specified"
-                    }
-                });
-            }
-
-            const [matchedModel] = await db
-                .select({ modelId: aiModels.modelId })
-                .from(aiModels)
-                .where(
-                    and(
-                        eq(aiModels.providerId, provider.providerId),
-                        eq(aiModels.modelKey, requestedModel)
-                    )
-                )
-                .limit(1);
-
-            if (
-                !matchedModel ||
-                !allowedModelIds.includes(matchedModel.modelId)
-            ) {
-                return res.status(HttpCode.FORBIDDEN).json({
-                    error: {
-                        message: `Model "${requestedModel}" is not permitted on this resource`
-                    }
-                });
-            }
+        const selection = await selectProvider(
+            attachments,
+            allowedModelIds,
+            requestedModel
+        );
+        if (!selection.ok) {
+            return res.status(selection.status).json({
+                error: { message: selection.message }
+            });
         }
+
+        const { provider } = selection;
 
         if (!provider.apiKey) {
             return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({

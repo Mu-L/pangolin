@@ -1,18 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import {
-    db,
-    siteResources,
-    siteResourceAiModels,
-    aiModels
-} from "@server/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { db, siteResources, siteResourceAiModels } from "@server/db";
+import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import {
+    assertSiteAllowlistApiEligible,
+    assertModelsBelongToSiteAllowlistProviders
+} from "@server/lib/aiInferenceResource";
 
 const setSiteResourceAiModelsBodySchema = z.strictObject({
     modelIds: z.array(z.int().positive())
@@ -26,7 +25,7 @@ registry.registerPath({
     method: "post",
     path: "/site-resource/{siteResourceId}/ai-models",
     description:
-        "Set the AI models a site resource is restricted to. This replaces all existing restrictions. Pass an empty array to remove the restriction (allow every enabled model on the linked provider).",
+        "Replace the allowlist of catalog models for an inference site resource. Requires at least one attached AI provider in allowlist mode. Models must belong to a provider attached in allowlist mode. An empty array denies all models.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: setSiteResourceAiModelsParamsSchema,
@@ -102,52 +101,33 @@ export async function setSiteResourceAiModels(
             );
         }
 
-        if (modelIds.length > 0) {
-            if (!siteResource.aiProviderId) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        "Site resource has no AI provider linked"
-                    )
-                );
-            }
+        const eligibleError =
+            await assertSiteAllowlistApiEligible(siteResource);
+        if (eligibleError) {
+            return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
+        }
 
-            const validModels = await db
-                .select({ modelId: aiModels.modelId })
-                .from(aiModels)
-                .where(
-                    and(
-                        inArray(aiModels.modelId, modelIds),
-                        eq(aiModels.providerId, siteResource.aiProviderId)
-                    )
-                );
-
-            if (validModels.length !== new Set(modelIds).size) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        "One or more model IDs do not exist or do not belong to this site resource's AI provider"
-                    )
-                );
-            }
+        const modelError = await assertModelsBelongToSiteAllowlistProviders({
+            orgId: siteResource.orgId,
+            siteResourceId,
+            modelIds
+        });
+        if (modelError) {
+            return next(createHttpError(HttpCode.BAD_REQUEST, modelError));
         }
 
         await db.transaction(async (trx) => {
             await trx
                 .delete(siteResourceAiModels)
-                .where(
-                    eq(siteResourceAiModels.siteResourceId, siteResourceId)
-                );
+                .where(eq(siteResourceAiModels.siteResourceId, siteResourceId));
 
             if (modelIds.length > 0) {
-                await trx
-                    .insert(siteResourceAiModels)
-                    .values(
-                        modelIds.map((modelId) => ({
-                            siteResourceId,
-                            modelId
-                        }))
-                    );
+                await trx.insert(siteResourceAiModels).values(
+                    modelIds.map((modelId) => ({
+                        siteResourceId,
+                        modelId
+                    }))
+                );
             }
         });
 

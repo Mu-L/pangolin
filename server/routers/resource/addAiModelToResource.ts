@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, resources, resourceAiModels, aiModels } from "@server/db";
+import { db, resources, resourceAiModels } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -8,7 +8,10 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-
+import {
+    assertPublicAllowlistApiEligible,
+    assertModelsBelongToPublicAllowlistProviders
+} from "@server/lib/aiInferenceResource";
 const addAiModelToResourceBodySchema = z.strictObject({
     modelId: z.int().positive()
 });
@@ -21,7 +24,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/ai-models/add",
     description:
-        "Add a single AI model to a resource's model restriction allow-list.",
+        "Add a single catalog model to an inference resource allowlist. Requires at least one attached AI provider in allowlist mode. The model must belong to a provider attached in allowlist mode.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: addAiModelToResourceParamsSchema,
@@ -95,33 +98,18 @@ export async function addAiModelToResource(
             );
         }
 
-        if (!resource.aiProviderId) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "Resource has no AI provider linked"
-                )
-            );
+        const eligibleError = await assertPublicAllowlistApiEligible(resource);
+        if (eligibleError) {
+            return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
         }
 
-        const [model] = await db
-            .select()
-            .from(aiModels)
-            .where(
-                and(
-                    eq(aiModels.modelId, modelId),
-                    eq(aiModels.providerId, resource.aiProviderId)
-                )
-            )
-            .limit(1);
-
-        if (!model) {
-            return next(
-                createHttpError(
-                    HttpCode.NOT_FOUND,
-                    "Model not found or does not belong to this resource's AI provider"
-                )
-            );
+        const modelError = await assertModelsBelongToPublicAllowlistProviders({
+            orgId: resource.orgId,
+            resourceId,
+            modelIds: [modelId]
+        });
+        if (modelError) {
+            return next(createHttpError(HttpCode.BAD_REQUEST, modelError));
         }
 
         const existingEntry = await db

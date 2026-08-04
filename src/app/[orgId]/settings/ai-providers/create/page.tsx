@@ -79,8 +79,6 @@ export default function CreateAiProviderPage() {
             authType: "bearer",
             routingMode: "url",
             skipTlsVerification: false,
-            budgetAmount: null,
-            budgetUnit: null,
             enabled: true
         }
     });

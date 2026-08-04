@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, resources, resourceAiModels, aiModels } from "@server/db";
+import { db, siteResources } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -8,36 +8,23 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import { listSiteResourceAiProviders as listAttachments } from "@server/lib/aiInferenceResource";
 
-const listResourceAiModelsParamsSchema = z.strictObject({
-    resourceId: z.coerce.number().int().positive()
+const listSiteResourceAiProvidersParamsSchema = z.strictObject({
+    siteResourceId: z.coerce.number().int().positive()
 });
 
-async function query(resourceId: number) {
-    return await db
-        .select({
-            modelId: aiModels.modelId,
-            modelKey: aiModels.modelKey,
-            name: aiModels.name,
-            enabled: aiModels.enabled
-        })
-        .from(resourceAiModels)
-        .innerJoin(aiModels, eq(resourceAiModels.modelId, aiModels.modelId))
-        .where(eq(resourceAiModels.resourceId, resourceId));
-}
-
-export type ListResourceAiModelsResponse = {
-    models: NonNullable<Awaited<ReturnType<typeof query>>>;
+export type ListSiteResourceAiProvidersResponse = {
+    providers: Awaited<ReturnType<typeof listAttachments>>;
 };
 
 registry.registerPath({
     method: "get",
-    path: "/resource/{resourceId}/ai-models",
-    description:
-        "List catalog models on this resource's allowlist. Only enforced when modelAccessMode=allowlist; an empty allowlist denies all models.",
-    tags: [OpenAPITags.PublicResource],
+    path: "/site-resource/{siteResourceId}/ai-providers",
+    description: "List AI providers attached to an inference site resource.",
+    tags: [OpenAPITags.PrivateResource],
     request: {
-        params: listResourceAiModelsParamsSchema
+        params: listSiteResourceAiProvidersParamsSchema
     },
     responses: {
         200: {
@@ -57,13 +44,13 @@ registry.registerPath({
     }
 });
 
-export async function listResourceAiModels(
+export async function listSiteResourceAiProviders(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedParams = listResourceAiModelsParamsSchema.safeParse(
+        const parsedParams = listSiteResourceAiProvidersParamsSchema.safeParse(
             req.params
         );
         if (!parsedParams.success) {
@@ -75,27 +62,27 @@ export async function listResourceAiModels(
             );
         }
 
-        const { resourceId } = parsedParams.data;
+        const { siteResourceId } = parsedParams.data;
 
-        const [resource] = await db
+        const [siteResource] = await db
             .select()
-            .from(resources)
-            .where(eq(resources.resourceId, resourceId))
+            .from(siteResources)
+            .where(eq(siteResources.siteResourceId, siteResourceId))
             .limit(1);
 
-        if (!resource) {
+        if (!siteResource) {
             return next(
-                createHttpError(HttpCode.NOT_FOUND, "Resource not found")
+                createHttpError(HttpCode.NOT_FOUND, "Site resource not found")
             );
         }
 
-        const models = await query(resourceId);
+        const providers = await listAttachments(siteResourceId);
 
-        return response<ListResourceAiModelsResponse>(res, {
-            data: { models },
+        return response<ListSiteResourceAiProvidersResponse>(res, {
+            data: { providers },
             success: true,
             error: false,
-            message: "Resource AI models retrieved successfully",
+            message: "Site resource AI providers retrieved successfully",
             status: HttpCode.OK
         });
     } catch (error) {

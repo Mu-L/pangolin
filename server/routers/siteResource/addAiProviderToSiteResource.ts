@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, siteResources, siteResourceAiModels } from "@server/db";
-import { eq, and } from "drizzle-orm";
+import { db, siteResources } from "@server/db";
+import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -9,30 +9,34 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import {
-    assertSiteAllowlistApiEligible,
-    assertModelsBelongToSiteAllowlistProviders
+    isInferenceFieldsError,
+    listSiteResourceAiProviders,
+    modelAccessModeSchema,
+    resolveProviderAttachments,
+    setSiteResourceAiProviders
 } from "@server/lib/aiInferenceResource";
 
-const addAiModelToSiteResourceBodySchema = z.strictObject({
-    modelId: z.int().positive()
+const addAiProviderToSiteResourceBodySchema = z.strictObject({
+    providerId: z.number().int().positive(),
+    modelAccessMode: modelAccessModeSchema.optional()
 });
 
-const addAiModelToSiteResourceParamsSchema = z.strictObject({
+const addAiProviderToSiteResourceParamsSchema = z.strictObject({
     siteResourceId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({
     method: "post",
-    path: "/site-resource/{siteResourceId}/ai-models/add",
+    path: "/site-resource/{siteResourceId}/ai-providers/add",
     description:
-        "Add a single catalog model to an inference site resource allowlist. Requires at least one attached AI provider in allowlist mode. The model must belong to a provider attached in allowlist mode.",
+        "Add or replace a single AI provider attachment on an inference site resource.",
     tags: [OpenAPITags.PrivateResource],
     request: {
-        params: addAiModelToSiteResourceParamsSchema,
+        params: addAiProviderToSiteResourceParamsSchema,
         body: {
             content: {
                 "application/json": {
-                    schema: addAiModelToSiteResourceBodySchema
+                    schema: addAiProviderToSiteResourceBodySchema
                 }
             }
         }
@@ -55,13 +59,13 @@ registry.registerPath({
     }
 });
 
-export async function addAiModelToSiteResource(
+export async function addAiProviderToSiteResource(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedBody = addAiModelToSiteResourceBodySchema.safeParse(
+        const parsedBody = addAiProviderToSiteResourceBodySchema.safeParse(
             req.body
         );
         if (!parsedBody.success) {
@@ -73,9 +77,9 @@ export async function addAiModelToSiteResource(
             );
         }
 
-        const { modelId } = parsedBody.data;
+        const { providerId, modelAccessMode } = parsedBody.data;
 
-        const parsedParams = addAiModelToSiteResourceParamsSchema.safeParse(
+        const parsedParams = addAiProviderToSiteResourceParamsSchema.safeParse(
             req.params
         );
         if (!parsedParams.success) {
@@ -101,49 +105,42 @@ export async function addAiModelToSiteResource(
             );
         }
 
-        const eligibleError =
-            await assertSiteAllowlistApiEligible(siteResource);
-        if (eligibleError) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
-        }
-
-        const modelError = await assertModelsBelongToSiteAllowlistProviders({
-            orgId: siteResource.orgId,
-            siteResourceId,
-            modelIds: [modelId]
-        });
-        if (modelError) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, modelError));
-        }
-
-        const existingEntry = await db
-            .select()
-            .from(siteResourceAiModels)
-            .where(
-                and(
-                    eq(siteResourceAiModels.siteResourceId, siteResourceId),
-                    eq(siteResourceAiModels.modelId, modelId)
-                )
-            );
-
-        if (existingEntry.length > 0) {
+        if (siteResource.mode !== "inference") {
             return next(
                 createHttpError(
-                    HttpCode.CONFLICT,
-                    "Model already assigned to site resource"
+                    HttpCode.BAD_REQUEST,
+                    "AI providers can only be attached to inference-mode resources"
                 )
             );
         }
 
-        await db
-            .insert(siteResourceAiModels)
-            .values({ siteResourceId, modelId });
+        const existing = await listSiteResourceAiProviders(siteResourceId);
+        const nextAttachments = [
+            ...existing
+                .filter((a) => a.providerId !== providerId)
+                .map((a) => ({
+                    providerId: a.providerId,
+                    modelAccessMode: a.modelAccessMode
+                })),
+            { providerId, modelAccessMode }
+        ];
+
+        const attachments = await resolveProviderAttachments({
+            orgId: siteResource.orgId,
+            attachments: nextAttachments,
+            requireAtLeastOne: true
+        });
+        if (isInferenceFieldsError(attachments)) {
+            return next(createHttpError(HttpCode.BAD_REQUEST, attachments.error));
+        }
+
+        await setSiteResourceAiProviders(siteResourceId, attachments);
 
         return response(res, {
             data: {},
             success: true,
             error: false,
-            message: "Model added to site resource successfully",
+            message: "AI provider added to site resource successfully",
             status: HttpCode.CREATED
         });
     } catch (error) {

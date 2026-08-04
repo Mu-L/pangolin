@@ -39,6 +39,13 @@ import { createCertificate } from "#dynamic/routers/certificates/createCertifica
 import { build } from "@server/build";
 import { usageService } from "@server/lib/billing/usageService";
 import { LimitId } from "@server/lib/billing";
+import {
+    isInferenceFieldsError,
+    resolveProviderAttachments,
+    resourceAiProviderAttachmentSchema,
+    setSiteResourceAiProviders,
+    type ResourceAiProviderAttachment
+} from "@server/lib/aiInferenceResource";
 
 const createSiteResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -79,13 +86,11 @@ const createSiteResourceSchema = z
         pamMode: z.enum(["passthrough", "push"]).optional(),
         domainId: z.string().optional(), // only used for http mode, we need this to verify the alias is unique within the org
         subdomain: z.string().optional(), // only used for http mode, we need this to verify the alias is unique within the org
-        aiProviderId: z
-            .number()
-            .int()
-            .positive()
+        aiProviders: z
+            .array(resourceAiProviderAttachmentSchema)
             .optional()
             .describe(
-                "For inference-mode site resources: the AI provider this resource proxies chat completions to."
+                "For inference-mode site resources: AI providers to attach. Each entry may set modelAccessMode (passthrough, catalog, or allowlist); defaults to passthrough. At most one passthrough provider is allowed."
             )
     })
     .strict()
@@ -334,13 +339,35 @@ export async function createSiteResource(
             pamMode,
             domainId,
             subdomain,
-            aiProviderId
+            aiProviders: aiProviderInputs
         } = parsedBody.data;
 
         // Backward compatibility: merge deprecated siteId into siteIds array
         const siteIds = [...siteIdsInput];
         if (siteId !== undefined && !siteIds.includes(siteId)) {
             siteIds.push(siteId);
+        }
+
+        let providerAttachments: ResourceAiProviderAttachment[] = [];
+        if (mode === "inference") {
+            const resolved = await resolveProviderAttachments({
+                orgId,
+                attachments: aiProviderInputs ?? [],
+                requireAtLeastOne: true
+            });
+            if (isInferenceFieldsError(resolved)) {
+                return next(
+                    createHttpError(HttpCode.BAD_REQUEST, resolved.error)
+                );
+            }
+            providerAttachments = resolved;
+        } else if (aiProviderInputs && aiProviderInputs.length > 0) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "AI providers can only be attached to inference-mode resources"
+                )
+            );
         }
 
         if (build == "saas") {
@@ -608,8 +635,7 @@ export async function createSiteResource(
                     domainId,
                     subdomain: finalSubdomain,
                     fullDomain,
-                    requiresExitNodeConnection: mode === "inference", // in the future we might want to have different modes that do this
-                    aiProviderId: aiProviderId ?? null
+                    requiresExitNodeConnection: mode === "inference" // in the future we might want to have different modes that do this
                 };
                 if (isLicensedSshPam) {
                     if (authDaemonPort !== undefined)
@@ -624,6 +650,14 @@ export async function createSiteResource(
                     .returning();
 
                 const siteResourceId = newSiteResource.siteResourceId;
+
+                if (providerAttachments.length > 0) {
+                    await setSiteResourceAiProviders(
+                        siteResourceId,
+                        providerAttachments,
+                        trx
+                    );
+                }
 
                 //////////////////// update the associations ////////////////////
 

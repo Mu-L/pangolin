@@ -1,4 +1,4 @@
-import { db, targetHealthCheck, domains, aiProviders } from "@server/db";
+import { db, targetHealthCheck, domains, aiProviders, resourceAiProviders } from "@server/db";
 import {
     and,
     eq,
@@ -214,7 +214,7 @@ export async function getTraefikConfig(
     // central AI gateway), so they can't be reached via the targets->sites
     // join above - query them separately and include them on every exit node.
     const inferenceResources = await db
-        .select({
+        .selectDistinct({
             resourceId: resources.resourceId,
             resourceName: resources.name,
             fullDomain: resources.fullDomain,
@@ -227,8 +227,12 @@ export async function getTraefikConfig(
         })
         .from(resources)
         .innerJoin(
+            resourceAiProviders,
+            eq(resources.resourceId, resourceAiProviders.resourceId)
+        )
+        .innerJoin(
             aiProviders,
-            eq(resources.aiProviderId, aiProviders.providerId)
+            eq(resourceAiProviders.providerId, aiProviders.providerId)
         )
         .leftJoin(domains, eq(domains.domainId, resources.domainId))
         .where(

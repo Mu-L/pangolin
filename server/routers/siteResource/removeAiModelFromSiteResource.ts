@@ -8,6 +8,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import { assertSiteAllowlistApiEligible } from "@server/lib/aiInferenceResource";
 
 const removeAiModelFromSiteResourceBodySchema = z.strictObject({
     modelId: z.int().positive()
@@ -21,7 +22,7 @@ registry.registerPath({
     method: "post",
     path: "/site-resource/{siteResourceId}/ai-models/remove",
     description:
-        "Remove a single AI model from a site resource's model restriction allow-list.",
+        "Remove a single catalog model from an inference site resource allowlist. Requires at least one attached AI provider in allowlist mode.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: removeAiModelFromSiteResourceParamsSchema,
@@ -94,6 +95,12 @@ export async function removeAiModelFromSiteResource(
             return next(
                 createHttpError(HttpCode.NOT_FOUND, "Site resource not found")
             );
+        }
+
+        const eligibleError =
+            await assertSiteAllowlistApiEligible(siteResource);
+        if (eligibleError) {
+            return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
         }
 
         const existingEntry = await db
