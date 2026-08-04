@@ -433,41 +433,21 @@ export async function getTraefikConfig(
             )
         );
 
-    let siteResourcesInference: {
-        siteResourceId: number;
-        alias: string | null;
-        ssl: boolean | null;
-        enabled: boolean | null;
-    }[] = [];
-    if (build == "enterprise") {
-        siteResourcesInference = await db
-            .selectDistinct({
-                siteResourceId: siteResources.siteResourceId,
-                alias: siteResources.alias,
-                ssl: siteResources.ssl,
-                enabled: siteResources.enabled
-            })
-            .from(siteResources)
-            .innerJoin(
-                siteResourceAiProviders,
-                eq(
-                    siteResources.siteResourceId,
-                    siteResourceAiProviders.siteResourceId
-                )
+    const siteResourcesInference = await db
+        .selectDistinct({
+            siteResourceId: siteResources.siteResourceId,
+            alias: siteResources.alias,
+            ssl: siteResources.ssl,
+            enabled: siteResources.enabled
+        })
+        .from(siteResources)
+        .where(
+            and(
+                eq(siteResources.mode, "inference"),
+                eq(siteResources.enabled, true),
+                isNotNull(siteResources.alias)
             )
-            .innerJoin(
-                aiProviders,
-                eq(siteResourceAiProviders.providerId, aiProviders.providerId)
-            )
-            .where(
-                and(
-                    eq(siteResources.mode, "inference"),
-                    eq(siteResources.enabled, true),
-                    eq(aiProviders.enabled, true),
-                    isNotNull(siteResources.alias)
-                )
-            );
-    }
+        );
 
     let validCerts: CertificateResult[] = [];
     if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
