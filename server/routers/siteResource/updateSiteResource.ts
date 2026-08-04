@@ -554,7 +554,7 @@ export async function updateSiteResource(
                     : {};
 
             let tcpPortRangeStringAdjusted = tcpPortRangeString;
-            if (mode === "http" || mode == "inference") {
+            if (mode === "http") {
                 tcpPortRangeStringAdjusted = "443,80";
             } else if (mode === "ssh") {
                 tcpPortRangeStringAdjusted = destinationPort
@@ -581,17 +581,13 @@ export async function updateSiteResource(
                             : undefined,
                     tcpPortRangeString: tcpPortRangeStringAdjusted,
                     udpPortRangeString:
-                        mode == "http" || mode == "ssh" || mode == "inference"
+                        mode == "http" || mode == "ssh"
                             ? ""
                             : udpPortRangeString,
                     disableIcmp:
                         mode !== undefined
                             ? disableIcmp ||
-                              (mode == "http" ||
-                              mode == "ssh" ||
-                              mode == "inference"
-                                  ? true
-                                  : false)
+                              (mode == "http" || mode == "ssh" ? true : false)
                             : disableIcmp,
                     domainId,
                     subdomain: finalSubdomain,
