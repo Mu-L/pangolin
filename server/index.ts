@@ -5,6 +5,7 @@ import { runSetupFunctions } from "./setup";
 import { createApiServer } from "./apiServer";
 import { createNextServer } from "./nextServer";
 import { createInternalServer } from "./internalServer";
+import { createAiGatewayServer } from "./aiGatewayServer";
 import { createIntegrationApiServer } from "./integrationApiServer";
 import {
     ApiKey,
@@ -49,6 +50,7 @@ async function startServers() {
     // Start all servers
     const apiServer = createApiServer();
     const internalServer = createInternalServer();
+    const aiGatewayServer = createAiGatewayServer();
 
     const nextServer = await createNextServer();
     if (config.getRawConfig().traefik.file_mode) {
@@ -67,6 +69,7 @@ async function startServers() {
         apiServer,
         nextServer,
         internalServer,
+        aiGatewayServer,
         integrationServer
     };
 }

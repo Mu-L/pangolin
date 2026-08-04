@@ -516,9 +516,11 @@ export class TraefikConfigManager {
             const maintenanceHost =
                 config.getRawConfig().server.internal_hostname;
             const pangolinUIUrl = `http://${maintenanceHost}:${maintenancePort}`;
-            const aiGatewayUrl = `http://${maintenanceHost}:${
-                config.getRawConfig().server.internal_port
-            }/api/v1/ai-gateway`;
+            const aiGatewayUrl =
+                config.getRawConfig().server.ai_gateway_override ||
+                `http://${maintenanceHost}:${
+                    config.getRawConfig().server.ai_gateway_port
+                }`;
 
             // logger.debug(`Fetching traefik config for exit node: ${currentExitNode}`);
             traefikConfig = await getTraefikConfig(

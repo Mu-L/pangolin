@@ -433,41 +433,21 @@ export async function getTraefikConfig(
             )
         );
 
-    let siteResourcesInference: {
-        siteResourceId: number;
-        alias: string | null;
-        ssl: boolean | null;
-        enabled: boolean | null;
-    }[] = [];
-    if (build == "enterprise") {
-        siteResourcesInference = await db
-            .selectDistinct({
-                siteResourceId: siteResources.siteResourceId,
-                alias: siteResources.alias,
-                ssl: siteResources.ssl,
-                enabled: siteResources.enabled
-            })
-            .from(siteResources)
-            .innerJoin(
-                siteResourceAiProviders,
-                eq(
-                    siteResources.siteResourceId,
-                    siteResourceAiProviders.siteResourceId
-                )
+    const siteResourcesInference = await db
+        .selectDistinct({
+            siteResourceId: siteResources.siteResourceId,
+            alias: siteResources.alias,
+            ssl: siteResources.ssl,
+            enabled: siteResources.enabled
+        })
+        .from(siteResources)
+        .where(
+            and(
+                eq(siteResources.mode, "inference"),
+                eq(siteResources.enabled, true),
+                isNotNull(siteResources.alias)
             )
-            .innerJoin(
-                aiProviders,
-                eq(siteResourceAiProviders.providerId, aiProviders.providerId)
-            )
-            .where(
-                and(
-                    eq(siteResources.mode, "inference"),
-                    eq(siteResources.enabled, true),
-                    eq(aiProviders.enabled, true),
-                    isNotNull(siteResources.alias)
-                )
-            );
-    }
+        );
 
     let validCerts: CertificateResult[] = [];
     if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
@@ -1548,6 +1528,20 @@ export async function getTraefikConfig(
     }
 
     if (aiGatewayUrl) {
+        // The AI gateway may live on a different host than the inference
+        // resource itself (e.g. a remote exit node forwarding to the
+        // central dashboard over a tunnel). passHostHeader would forward
+        // the resource's own Host, which that external host won't
+        // recognize, so we pin the Host header to the gateway's own host
+        // and smuggle the original resource host through in "p-host"
+        // instead (same pattern as the maintenance-page routes above).
+        let aiGatewayHost: string | undefined;
+        try {
+            aiGatewayHost = new URL(aiGatewayUrl).host;
+        } catch {
+            aiGatewayHost = undefined;
+        }
+
         // Public inference resources: same TLS/cert-resolver handling as
         // plain http-mode resources, but the service points at the AI
         // gateway instead of any real backend targets.
@@ -1613,10 +1607,21 @@ export async function getTraefikConfig(
                 }
             }
 
+            const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
+            config_output.http.middlewares[irHeadersMiddlewareName] = {
+                headers: {
+                    customRequestHeaders: {
+                        ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
+                        "p-host": fullDomain
+                    }
+                }
+            };
+
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [
                 badgerMiddlewareName,
+                irHeadersMiddlewareName,
                 ...additionalMiddlewares
             ];
 
@@ -1647,8 +1652,7 @@ export async function getTraefikConfig(
 
             config_output.http.services[serviceName] = {
                 loadBalancer: {
-                    servers: [{ url: `${aiGatewayUrl}/chat/completions` }],
-                    passHostHeader: true
+                    servers: [{ url: aiGatewayUrl }]
                 }
             };
         }
@@ -1701,8 +1705,22 @@ export async function getTraefikConfig(
                 }
             }
 
+            const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
+            config_output.http.middlewares[srHeadersMiddlewareName] = {
+                headers: {
+                    customRequestHeaders: {
+                        ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
+                        "p-host": alias
+                    }
+                }
+            };
+
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
+            const routerMiddlewares = [
+                srHeadersMiddlewareName,
+                ...additionalMiddlewares
+            ];
 
             if (sr.ssl) {
                 config_output.http.routers[routerName + "-redirect"] = {
@@ -1722,7 +1740,7 @@ export async function getTraefikConfig(
                         ? config.getRawConfig().traefik.https_entrypoint
                         : config.getRawConfig().traefik.http_entrypoint
                 ],
-                middlewares: additionalMiddlewares,
+                middlewares: routerMiddlewares,
                 service: serviceName,
                 rule,
                 priority: 100,
@@ -1731,8 +1749,7 @@ export async function getTraefikConfig(
 
             config_output.http.services[serviceName] = {
                 loadBalancer: {
-                    servers: [{ url: `${aiGatewayUrl}/chat/completions` }],
-                    passHostHeader: true
+                    servers: [{ url: aiGatewayUrl }]
                 }
             };
         }
