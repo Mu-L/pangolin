@@ -1599,9 +1599,7 @@ export async function getTraefikConfig(
 
                 tls = {
                     certResolver: resolverName,
-                    ...(preferWildcard
-                        ? { domains: [{ main: wildCard }] }
-                        : {})
+                    ...(preferWildcard ? { domains: [{ main: wildCard }] } : {})
                 };
             } else {
                 const matchingCert = validCerts.find(

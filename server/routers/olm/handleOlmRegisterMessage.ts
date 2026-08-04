@@ -28,6 +28,7 @@ import {
     verifyExitNodeOrgAccess
 } from "#dynamic/lib/exitNodes";
 import { getUniqueSubnetForExitNode } from "@server/lib/exitNodes";
+import { addPeer, deletePeer } from "../gerbil/peers";
 
 const HOLEPUNCH_STALE_CHAIN_THRESHOLD = 18;
 const HOLEPUNCH_STALE_CHAIN_TTL_SECONDS = 1800;
@@ -393,6 +394,24 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             );
     }
 
+    if (client.pubKey && client.pubKey !== publicKey && client.exitNodeId) {
+        // test the old client to see if its different then remove
+        logger.info("Public key mismatch. Deleting old peer...");
+        await deletePeer(client.exitNodeId, client.pubKey);
+    }
+
+    if (clientSubnet && exitNodeId) {
+        try {
+            // add the peer to the exit node so it can connect
+            await addPeer(exitNodeId, {
+                publicKey: publicKey,
+                allowedIps: [clientSubnet]
+            });
+        } catch (error) {
+            logger.error(`Failed to add peer to exit node: ${error}`);
+        }
+    }
+
     let staleHolePunchChainCount: number | undefined;
     const hasChainId =
         chainId !== undefined && chainId !== null && String(chainId) !== "";
@@ -490,7 +509,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                               endpoint: `${exitNode.endpoint}:${exitNode.listenPort}`,
                               publicKey: exitNode.publicKey,
                               serverIP: exitNode.address.split("/")[0],
-                              tunnelIP: client.exitNodeSubnet.split("/")[0]
+                              tunnelIP: `${client.exitNodeSubnet.split("/")[0]}/${exitNode.address.split("/")[1]}` // we need to use the exit node's subnet mask here because the client will be using the exit node's subnet mask for its routing table so we can address it
                           }
                         : undefined,
                 chainId: chainId
