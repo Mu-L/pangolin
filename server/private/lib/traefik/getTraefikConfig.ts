@@ -1672,7 +1672,7 @@ export async function getTraefikConfig(
 
             config_output.http.services[serviceName] = {
                 loadBalancer: {
-                    servers: [{ url: `${aiGatewayUrl}/chat/completions` }]
+                    servers: [{ url: aiGatewayUrl }]
                 }
             };
         }
@@ -1769,7 +1769,7 @@ export async function getTraefikConfig(
 
             config_output.http.services[serviceName] = {
                 loadBalancer: {
-                    servers: [{ url: `${aiGatewayUrl}/chat/completions` }]
+                    servers: [{ url: aiGatewayUrl }]
                 }
             };
         }
