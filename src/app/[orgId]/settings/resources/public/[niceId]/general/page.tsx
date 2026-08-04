@@ -114,14 +114,20 @@ export default function GeneralForm() {
         .refine(
             (data) => {
                 // For non-HTTP resources, proxyPort should be defined
-                if (!["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
+                if (
+                    !["http", "ssh", "rdp", "vnc", "inference"].includes(
+                        resource.mode
+                    )
+                ) {
                     return data.proxyPort !== undefined;
                 }
                 // For HTTP resources, proxyPort should be undefined
                 return data.proxyPort === undefined;
             },
             {
-                message: !["http", "ssh", "rdp", "vnc"].includes(resource.mode)
+                message: !["http", "ssh", "rdp", "vnc", "inference"].includes(
+                    resource.mode
+                )
                     ? "Port number is required for non-HTTP resources"
                     : "Port number should not be set for HTTP resources",
                 path: ["proxyPort"]
@@ -153,7 +159,7 @@ export default function GeneralForm() {
 
         let resourcePolicyId: number | null | undefined;
 
-        if (!["tcp", "udp"].includes(resource.mode)) {
+        if (!["tcp", "udp", "inference"].includes(resource.mode)) {
             if (hasResourcePolicies || selectedSharedPolicyId === null) {
                 resourcePolicyId = selectedSharedPolicyId;
             }
@@ -339,7 +345,7 @@ export default function GeneralForm() {
                                             />
                                         </SettingsFormCell>
 
-                                        {!["http", "ssh", "rdp", "vnc"].includes(
+                                        {!["http", "ssh", "rdp", "vnc", "inference"].includes(
                                             resource.mode
                                         ) && (
                                             <SettingsFormCell span="half">
@@ -393,7 +399,7 @@ export default function GeneralForm() {
                                             </SettingsFormCell>
                                         )}
 
-                                        {["http", "ssh", "rdp", "vnc"].includes(
+                                        {["http", "ssh", "rdp", "vnc", "inference"].includes(
                                             resource.mode
                                         ) && (
                                             <SettingsFormCell span="full">
@@ -453,9 +459,11 @@ export default function GeneralForm() {
                                                 </div>
                                             </SettingsFormCell>
                                         )}
-                                        { !["tcp", "udp"].includes(
-                                                resource.mode
-                                            ) && !env.flags.disableEnterpriseFeatures && (
+                                        {!["tcp", "udp", "inference"].includes(
+                                            resource.mode
+                                        ) &&
+                                            !env.flags
+                                                .disableEnterpriseFeatures && (
                                             <>
                                                 <SettingsFormCell span="full">
                                                     <SettingsSubsectionHeader>

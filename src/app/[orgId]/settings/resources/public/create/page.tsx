@@ -72,6 +72,10 @@ import {
     LocalTarget,
     ProxyResourceTargetsForm
 } from "@app/app/[orgId]/settings/resources/public/ProxyResourceTargetsForm";
+import {
+    AiProvidersSelector,
+    type SelectedAiProvider
+} from "@app/components/AiProvidersSelector";
 import { AxiosResponse } from "axios";
 import { ChevronsUpDown, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -245,6 +249,10 @@ export default function Page() {
 
     // Target management state (managed by ProxyResourceTargetsForm; mirrored here for onSubmit)
     const [targets, setTargets] = useState<LocalTarget[]>([]);
+    const [selectedProviders, setSelectedProviders] = useState<
+        SelectedAiProvider[]
+    >([]);
+    const [showProvidersError, setShowProvidersError] = useState(false);
 
     // SSH-specific state
     const [sshServerMode, setSshServerMode] = useState<"standard" | "native">(
@@ -333,7 +341,7 @@ export default function Page() {
         !env.flags.disableEnterpriseFeatures;
 
     const availableTypes = useMemo((): NewResourceType[] => {
-        const base: NewResourceType[] = ["http"];
+        const base: NewResourceType[] = ["http", "inference"];
         if (enterpriseModesAllowed) {
             base.push("ssh", "rdp", "vnc");
         }
@@ -346,6 +354,9 @@ export default function Page() {
     useEffect(() => {
         if (!availableTypes.includes(resourceType)) {
             setResourceType("http");
+        }
+        if (resourceType !== "inference") {
+            setShowProvidersError(false);
         }
     }, [availableTypes, resourceType]);
 
@@ -478,29 +489,42 @@ export default function Page() {
                     ? finalizeSubdomainSanitize(httpData.subdomain, true)
                     : undefined;
 
-                const effectiveMode = isNative
-                    ? "native"
-                    : standardDaemonLocation;
-                const portVal = sshDaemonPortForm.getValues().authDaemonPort;
-                const effectivePort =
-                    !isNative &&
-                    standardDaemonLocation === "remote" &&
-                    pamMode === "push" &&
-                    portVal
-                        ? Number(portVal)
-                        : undefined;
-
                 Object.assign(payload, {
                     subdomain: sanitizedSubdomain
                         ? toASCII(sanitizedSubdomain)
                         : undefined,
                     domainId: httpData.domainId,
                     protocol: "tcp",
-                    mode: resourceType,
-                    pamMode,
-                    authDaemonMode: effectiveMode,
-                    authDaemonPort: effectivePort || undefined
+                    mode: resourceType
                 });
+
+                if (resourceType === "inference") {
+                    Object.assign(payload, {
+                        aiProviders: selectedProviders.map((provider) => ({
+                            providerId: parseInt(provider.id, 10),
+                            modelAccessMode: "catalog"
+                        }))
+                    });
+                } else if (resourceType === "ssh") {
+                    const effectiveMode = isNative
+                        ? "native"
+                        : standardDaemonLocation;
+                    const portVal =
+                        sshDaemonPortForm.getValues().authDaemonPort;
+                    const effectivePort =
+                        !isNative &&
+                        standardDaemonLocation === "remote" &&
+                        pamMode === "push" &&
+                        portVal
+                            ? Number(portVal)
+                            : undefined;
+
+                    Object.assign(payload, {
+                        pamMode,
+                        authDaemonMode: effectiveMode,
+                        authDaemonPort: effectivePort || undefined
+                    });
+                }
             } else {
                 const tcpUdpData = tcpUdpForm.getValues();
                 Object.assign(payload, {
@@ -529,7 +553,11 @@ export default function Page() {
                 const newNiceId = res.data.data.niceId;
                 setNiceId(newNiceId);
 
-                if (resourceType === "http") {
+                if (resourceType === "inference") {
+                    router.push(
+                        `/${orgId}/settings/resources/public/${newNiceId}/general`
+                    );
+                } else if (resourceType === "http") {
                     if (targets.length > 0) {
                         try {
                             for (const target of targets) {
@@ -754,16 +782,17 @@ export default function Page() {
 
     let typeLabels: Partial<Record<NewResourceType, string>> = {
         http: "HTTP",
+        inference: t("createInternalResourceDialogModeInference"),
         tcp: "TCP",
         udp: "UDP"
     };
 
     if (enterpriseModesAllowed) {
-        typeLabels = {  
+        typeLabels = {
             ...typeLabels,
             ssh: "SSH",
             rdp: "RDP",
-            vnc: "VNC",
+            vnc: "VNC"
         };
     }
 
@@ -1376,6 +1405,71 @@ export default function Page() {
                                 />
                             )}
 
+                            {resourceType === "inference" && (
+                                <SettingsSection>
+                                    <SettingsSectionHeader>
+                                        <SettingsSectionTitle>
+                                            {t("aiResourceProviders")}
+                                        </SettingsSectionTitle>
+                                        <SettingsSectionDescription>
+                                            {t(
+                                                "aiResourceProvidersDescription"
+                                            )}
+                                        </SettingsSectionDescription>
+                                    </SettingsSectionHeader>
+                                    <SettingsSectionBody>
+                                        <SettingsSectionForm variant="half">
+                                            <SettingsFormGrid>
+                                                <SettingsFormCell span="full">
+                                                    <div className="space-y-2">
+                                                        <Label>
+                                                            {t(
+                                                                "aiResourceProviders"
+                                                            )}
+                                                        </Label>
+                                                        <AiProvidersSelector
+                                                            orgId={
+                                                                orgId as string
+                                                            }
+                                                            selectedProviders={
+                                                                selectedProviders
+                                                            }
+                                                            onSelectProviders={(
+                                                                providers
+                                                            ) => {
+                                                                setSelectedProviders(
+                                                                    providers
+                                                                );
+                                                                if (
+                                                                    providers.length >
+                                                                    0
+                                                                ) {
+                                                                    setShowProvidersError(
+                                                                        false
+                                                                    );
+                                                                }
+                                                            }}
+                                                        />
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {t(
+                                                                "aiResourceProvidersHelp"
+                                                            )}
+                                                        </p>
+                                                        {showProvidersError && (
+                                                            <p className="text-sm text-destructive">
+                                                                {t(
+                                                                    "aiResourceProvidersRequired"
+                                                                )}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </SettingsFormCell>
+                                            </SettingsFormGrid>
+                                        </SettingsSectionForm>
+                                    </SettingsSectionBody>
+                                </SettingsSection>
+                            )}
+
                             <div className="flex justify-end space-x-2 mt-8">
                                 <Button
                                     type="button"
@@ -1399,6 +1493,16 @@ export default function Page() {
                                         const tcpValid = !isHttpResource
                                             ? await tcpUdpForm.trigger()
                                             : true;
+                                        const providersValid =
+                                            resourceType !== "inference" ||
+                                            selectedProviders.length > 0;
+
+                                        if (
+                                            resourceType === "inference" &&
+                                            !providersValid
+                                        ) {
+                                            setShowProvidersError(true);
+                                        }
 
                                         if (
                                             resourceType === "ssh" &&
@@ -1423,13 +1527,18 @@ export default function Page() {
                                             baseValid &&
                                             domainValid &&
                                             tcpValid &&
-                                            bgValid
+                                            bgValid &&
+                                            providersValid
                                         ) {
                                             onSubmit();
                                         }
                                     }}
                                     loading={createLoading}
-                                    disabled={!areAllTargetsValid() || browserGatewayDisabled || createLoading}
+                                    disabled={
+                                        !areAllTargetsValid() ||
+                                        browserGatewayDisabled ||
+                                        createLoading
+                                    }
                                 >
                                     {t("resourceCreate")}
                                 </Button>

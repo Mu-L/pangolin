@@ -1689,7 +1689,7 @@
     "aiProviderRoutingModeUrl": "Upstream URL",
     "aiProviderRoutingModeUrlDescription": "Call a public or private API base URL",
     "aiProviderRoutingModeTarget": "Site Targets",
-    "aiProviderRoutingModeTargetDescription": "Route through HTTPS targets on your sites",
+    "aiProviderRoutingModeTargetDescription": "Route through targets on your sites",
     "aiProviderRoutingModeTargetNote": "After creating this provider, configure site targets on the Network Settings tab.",
     "aiProviderTargetNoOne": "This provider doesn't have any targets. Add a target to route requests through your sites.",
     "aiProviderSkipTlsVerification": "Skip TLS Verification",

@@ -82,16 +82,29 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
         redirect(`/${params.orgId}/settings/resources`);
     }
 
-    const navItems = [
-        {
-            title: t("general"),
-            href: `/{orgId}/settings/resources/public/{niceId}/general`
-        },
-        {
-            title: t(`${resource.mode}Settings`),
-            href: `/{orgId}/settings/resources/public/{niceId}/${resource.mode}`
-        }
-    ];
+    const isInference = resource.mode === "inference";
+
+    const navItems = isInference
+        ? [
+              {
+                  title: t("general"),
+                  href: `/{orgId}/settings/resources/public/{niceId}/general`
+              },
+              {
+                  title: t("aiResourceProviders"),
+                  href: `/{orgId}/settings/resources/public/{niceId}/providers`
+              }
+          ]
+        : [
+              {
+                  title: t("general"),
+                  href: `/{orgId}/settings/resources/public/{niceId}/general`
+              },
+              {
+                  title: t(`${resource.mode}Settings`),
+                  href: `/{orgId}/settings/resources/public/{niceId}/${resource.mode}`
+              }
+          ];
 
     if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
         navItems.push(

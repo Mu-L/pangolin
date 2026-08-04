@@ -1300,6 +1300,26 @@ export const resourceQueries = {
                 return res.data.data.providers;
             }
         }),
+    resourceAiProviders: ({ resourceId }: { resourceId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCES", resourceId, "AI_PROVIDERS"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<{
+                        providers: Array<{
+                            providerId: number;
+                            modelAccessMode: "catalog" | "allowlist";
+                            name: string;
+                            type: string;
+                            enabled: boolean;
+                        }>;
+                    }>
+                >(`/resource/${resourceId}/ai-providers`, {
+                    signal
+                });
+                return res.data.data.providers;
+            }
+        }),
     resourceTargets: ({ resourceId }: { resourceId: number }) =>
         queryOptions({
             queryKey: ["RESOURCES", resourceId, "TARGETS"] as const,

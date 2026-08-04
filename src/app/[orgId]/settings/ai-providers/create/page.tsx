@@ -371,17 +371,42 @@ export default function CreateAiProviderPage() {
                                                                 }}
                                                             />
                                                         </FormControl>
-                                                        <FormDescription>
-                                                            {t(
-                                                                "aiProviderRoutingModeDescription"
-                                                            )}
-                                                        </FormDescription>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
                                         </SettingsFormCell>
                                     )}
+
+                                    <SettingsFormCell span="full">
+                                        <FormField
+                                            control={form.control}
+                                            name="skipTlsVerification"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <SwitchInput
+                                                            id="skip-tls"
+                                                            label={t(
+                                                                "aiProviderSkipTlsVerification"
+                                                            )}
+                                                            description={t(
+                                                                "aiProviderSkipTlsVerificationDescription"
+                                                            )}
+                                                            checked={
+                                                                field.value ??
+                                                                false
+                                                            }
+                                                            onCheckedChange={
+                                                                field.onChange
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
 
                                     {showUpstream && (
                                         <SettingsFormCell span="half">
@@ -426,36 +451,6 @@ export default function CreateAiProviderPage() {
                                             />
                                         </SettingsFormCell>
                                     )}
-
-                                    <SettingsFormCell span="half">
-                                        <FormField
-                                            control={form.control}
-                                            name="skipTlsVerification"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormControl>
-                                                        <SwitchInput
-                                                            id="skip-tls"
-                                                            label={t(
-                                                                "aiProviderSkipTlsVerification"
-                                                            )}
-                                                            description={t(
-                                                                "aiProviderSkipTlsVerificationDescription"
-                                                            )}
-                                                            checked={
-                                                                field.value ??
-                                                                false
-                                                            }
-                                                            onCheckedChange={
-                                                                field.onChange
-                                                            }
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </SettingsFormCell>
                                 </SettingsFormGrid>
                             </SettingsSectionForm>
 
