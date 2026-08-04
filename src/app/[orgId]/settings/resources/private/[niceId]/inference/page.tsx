@@ -20,9 +20,7 @@ import { useTranslations } from "next-intl";
 import { useActionState, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { PrivateResourceSitesField } from "@app/components/PrivateResourceSitesField";
 import { PrivateResourceInferenceDestinationFields } from "@app/components/PrivateResourceDestinationFields";
-import { PrivateResourcePortRanges } from "@app/components/PrivateResourcePortRanges";
 import { useSaveSiteResource } from "@app/hooks/useSaveSiteResource";
 import {
     asAnyControl,

@@ -166,8 +166,11 @@ const updateSiteResourceSchema = z
             if (data.mode === undefined && data.destination === undefined) {
                 return true;
             }
-            // destination is only optional for ssh mode with native authDaemonMode
-            if (data.mode === "ssh" && data.authDaemonMode === "native") {
+            // destination is only optional for ssh mode with native authDaemonMode or inference
+            if (
+                (data.mode === "ssh" && data.authDaemonMode === "native") ||
+                data.mode == "inference"
+            ) {
                 return true;
             }
             return (
@@ -558,8 +561,9 @@ export async function updateSiteResource(
                           })
                       }
                     : {};
+
             let tcpPortRangeStringAdjusted = tcpPortRangeString;
-            if (mode === "http") {
+            if (mode === "http" || mode == "inference") {
                 tcpPortRangeStringAdjusted = "443,80";
             } else if (mode === "ssh") {
                 tcpPortRangeStringAdjusted = destinationPort
@@ -583,20 +587,20 @@ export async function updateSiteResource(
                             ? alias
                                 ? alias.trim()
                                 : null
-                            : mode !== undefined &&
-                                mode !== "host" &&
-                                mode !== "ssh"
-                              ? null
-                              : undefined,
+                            : undefined,
                     tcpPortRangeString: tcpPortRangeStringAdjusted,
                     udpPortRangeString:
-                        mode == "http" || mode == "ssh"
+                        mode == "http" || mode == "ssh" || mode == "inference"
                             ? ""
                             : udpPortRangeString,
                     disableIcmp:
                         mode !== undefined
                             ? disableIcmp ||
-                              (mode == "http" || mode == "ssh" ? true : false)
+                              (mode == "http" ||
+                              mode == "ssh" ||
+                              mode == "inference"
+                                  ? true
+                                  : false)
                             : disableIcmp,
                     domainId,
                     subdomain: finalSubdomain,

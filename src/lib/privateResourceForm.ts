@@ -211,6 +211,14 @@ export function buildCreateSiteResourcePayload(
                     authDaemonPort: data.authDaemonPort
                 })
         }),
+        ...(data.mode === "inference" && {
+            alias:
+                data.alias &&
+                typeof data.alias === "string" &&
+                data.alias.trim()
+                    ? data.alias
+                    : undefined
+        }),
         ...((data.mode === "host" || data.mode === "cidr") && {
             tcpPortRangeString: data.tcpPortRangeString,
             udpPortRangeString: data.udpPortRangeString,
@@ -237,7 +245,9 @@ export function buildUpdateSiteResourcePayload(
         enabled: data.enabled,
         ...(isNativeSsh
             ? { destination: null, destinationPort: null }
-            : { destination: data.destination ?? undefined }),
+            : data.mode !== "inference"
+              ? { destination: data.destination ?? undefined }
+              : {}),
         ...(data.mode === "http" && {
             scheme: data.scheme,
             ssl: data.ssl ?? false,
@@ -280,6 +290,14 @@ export function buildUpdateSiteResourcePayload(
             ...(data.authDaemonMode === "remote" && {
                 authDaemonPort: data.authDaemonPort || null
             })
+        }),
+        ...(data.mode === "inference" && {
+            alias:
+                data.alias &&
+                typeof data.alias === "string" &&
+                data.alias.trim()
+                    ? data.alias
+                    : null
         }),
         ...((data.mode === "host" || data.mode === "cidr") && {
             tcpPortRangeString: data.tcpPortRangeString,

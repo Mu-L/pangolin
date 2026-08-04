@@ -1177,12 +1177,12 @@ async function syncClientExitNodeConnections(
     const connectPayloads: {
         clientId: string;
         message: { type: string; data: any };
-        options: { compress: boolean };
+        options: { compress: boolean; incrementConfigVersion: boolean };
     }[] = [];
     const disconnectPayloads: {
         clientId: string;
         message: { type: string; data: any };
-        options: { compress: boolean };
+        options: { compress: boolean; incrementConfigVersion: boolean };
     }[] = [];
 
     for (const client of clientsData) {
@@ -1218,7 +1218,10 @@ async function syncClientExitNodeConnections(
                         tunnelIP: client.exitNodeSubnet.split("/")[0]
                     }
                 },
-                options: { compress: canCompress(olm.version, "olm") }
+                options: {
+                    compress: canCompress(olm.version, "olm"),
+                    incrementConfigVersion: true
+                }
             });
         } else {
             disconnectPayloads.push({
@@ -1227,7 +1230,10 @@ async function syncClientExitNodeConnections(
                     type: "olm/wg/exitnode/disconnect",
                     data: {}
                 },
-                options: { compress: canCompress(olm.version, "olm") }
+                options: {
+                    compress: canCompress(olm.version, "olm"),
+                    incrementConfigVersion: true
+                }
             });
         }
     }
@@ -1293,7 +1299,10 @@ async function syncClientExitNodeAliasUpdate(
                     newAliases
                 }
             },
-            options: { compress: canCompress(olm.version, "olm") }
+            options: {
+                compress: canCompress(olm.version, "olm"),
+                incrementConfigVersion: true // this is important information we would need to sync
+            }
         }));
 
     if (updatePayloads.length > 0) {

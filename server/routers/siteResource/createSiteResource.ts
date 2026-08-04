@@ -571,7 +571,7 @@ export async function createSiteResource(
                 }
 
                 let tcpPortRangeStringAdjusted = tcpPortRangeString;
-                if (mode === "http") {
+                if (mode === "http" || mode === "inference") {
                     tcpPortRangeStringAdjusted = "443,80";
                 } else if (mode === "ssh") {
                     tcpPortRangeStringAdjusted = destinationPort
@@ -594,12 +594,14 @@ export async function createSiteResource(
                     aliasAddress,
                     tcpPortRangeString: tcpPortRangeStringAdjusted,
                     udpPortRangeString:
-                        mode == "http" || mode == "ssh"
+                        mode == "http" || mode == "ssh" || mode == "inference"
                             ? ""
                             : udpPortRangeString,
                     disableIcmp:
                         disableIcmp ||
-                        (mode == "http" || mode == "ssh" ? true : false), // default to true for http resources, otherwise false
+                        (mode == "http" || mode == "ssh" || mode == "inference"
+                            ? true
+                            : false), // default to true for http resources, otherwise false
                     domainId,
                     subdomain: finalSubdomain,
                     fullDomain,
