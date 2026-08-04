@@ -99,7 +99,7 @@ export const sites = pgTable(
         name: varchar("name").notNull(),
         pubKey: varchar("pubKey"),
         subnet: varchar("subnet"),
-        exitNodeSubnet: text("exitNodeSubnet"), // this is the subnet when connecting to an exit node
+        exitNodeSubnet: text("exitNodeSubnet"), // this is the subnet when connecting to an exit node and INCLUDES THE CIDR
         megabytesIn: real("bytesIn").default(0),
         megabytesOut: real("bytesOut").default(0),
         lastBandwidthUpdate: varchar("lastBandwidthUpdate"),
@@ -1234,7 +1234,7 @@ export const clients = pgTable(
         olmId: text("olmId"), // to lock it to a specific olm optionally
         name: varchar("name").notNull(),
         pubKey: varchar("pubKey"),
-        exitNodeSubnet: varchar("exitNodeSubnet").notNull(),
+        exitNodeSubnet: varchar("exitNodeSubnet").notNull(), // INCLUDES THE CIDR
         megabytesIn: real("bytesIn"),
         megabytesOut: real("bytesOut"),
         lastBandwidthUpdate: varchar("lastBandwidthUpdate"),

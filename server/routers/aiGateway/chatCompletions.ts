@@ -4,7 +4,9 @@ import {
     AiProvider,
     aiModels,
     aiProviders,
+    clients,
     db,
+    exitNodes,
     resourceAiModels,
     resources,
     siteResourceAiModels,
@@ -25,8 +27,63 @@ import {
     validateSessionToken
 } from "@server/auth/sessions/app";
 import { getUserOrgRoles } from "@server/lib/userOrgRoles";
+import { isIpInCidr } from "@server/lib/ip";
+import { localCache } from "@server/lib/cache";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
+
+// Short-lived local caches so a burst of requests from the same IP/user
+// doesn't hit the database on every single request. None of this is
+// security-critical to cache aggressively (identity is re-derived from the
+// session cookie or from a client's exit-node-scoped subnet each time), so
+// a small TTL is just an efficiency win, not a trust boundary.
+const EXIT_NODE_RANGES_CACHE_KEY = "aiGateway:exitNodeRanges";
+const EXIT_NODE_RANGES_TTL_SEC = 6000;
+const CLIENT_BY_IP_TTL_SEC = 30;
+const REQUEST_USER_TTL_SEC = 30;
+
+type CachedClient = { clientId: number; userId: string | null } | null;
+
+// The set of CIDRs an exit node manages; client exitNodeSubnets are always
+// /32s carved out of one of these ranges. Checking against this small,
+// cacheable list lets us skip the (much more frequent) per-IP client lookup
+// entirely for traffic that could never match a client anyway.
+async function getExitNodeRanges(): Promise<string[]> {
+    const cached = localCache.get<string[]>(EXIT_NODE_RANGES_CACHE_KEY);
+    if (cached) {
+        return cached;
+    }
+
+    const rows = await db
+        .select({ address: exitNodes.address })
+        .from(exitNodes);
+    const ranges = rows.map((r) => r.address);
+
+    localCache.set(
+        EXIT_NODE_RANGES_CACHE_KEY,
+        ranges,
+        EXIT_NODE_RANGES_TTL_SEC
+    );
+    return ranges;
+}
+
+async function findClientByIp(ip: string): Promise<CachedClient> {
+    const cacheKey = `aiGateway:clientByIp:${ip}`;
+    const cached = localCache.get<CachedClient>(cacheKey);
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const [client] = await db
+        .select({ clientId: clients.clientId, userId: clients.userId })
+        .from(clients)
+        .where(eq(clients.exitNodeSubnet, `${ip}/32`))
+        .limit(1);
+
+    const result: CachedClient = client || null;
+    localCache.set(cacheKey, result, CLIENT_BY_IP_TTL_SEC);
+    return result;
+}
 
 type ResolvedTarget = {
     resourceId: number | null;
@@ -48,6 +105,12 @@ async function buildRequestUser(
     userId: string,
     orgId: string | null
 ): Promise<RequestUser | null> {
+    const cacheKey = `aiGateway:requestUser:${userId}:${orgId || ""}`;
+    const cached = localCache.get<RequestUser | null>(cacheKey);
+    if (cached !== undefined) {
+        return cached;
+    }
+
     const [user] = await db
         .select()
         .from(users)
@@ -55,18 +118,22 @@ async function buildRequestUser(
         .limit(1);
 
     if (!user) {
+        localCache.set(cacheKey, null, REQUEST_USER_TTL_SEC);
         return null;
     }
 
     const orgRoles = orgId ? await getUserOrgRoles(user.userId, orgId) : [];
 
-    return {
+    const requestUser: RequestUser = {
         userId: user.userId,
         username: user.username,
         email: user.email,
         name: user.name,
         role: orgRoles.map((r) => r.roleName).join(", ") || null
     };
+
+    localCache.set(cacheKey, requestUser, REQUEST_USER_TTL_SEC);
+    return requestUser;
 }
 
 async function resolveRequestUser(
@@ -86,7 +153,31 @@ async function resolveRequestUser(
         }
     }
 
-    return null;
+    // TODO: MAKE SURE THIS CAN NOT BE SPOOFED AND CAN BE TRUSTED AS AN INTERNAL ADDRESS FROM A NODE
+
+    // No session cookie - fall back to identifying the caller by source IP.
+    // A client's exitNodeSubnet is a /32 handed out from one of our exit
+    // node's address ranges, so an IP that isn't inside any of those ranges
+    // can never belong to a client and we can skip the DB entirely.
+    const ip = req.ip;
+    if (!ip) {
+        return null;
+    }
+
+    const exitNodeRanges = await getExitNodeRanges();
+    const inExitNodeRange = exitNodeRanges.some((range) =>
+        isIpInCidr(ip, range)
+    );
+    if (!inExitNodeRange) {
+        return null;
+    }
+
+    const client = await findClientByIp(ip);
+    if (!client || !client.userId) {
+        return null;
+    }
+
+    return buildRequestUser(client.userId, orgId);
 }
 
 async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
