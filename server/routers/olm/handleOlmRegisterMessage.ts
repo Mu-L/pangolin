@@ -28,7 +28,7 @@ import {
     verifyExitNodeOrgAccess
 } from "#dynamic/lib/exitNodes";
 import { getUniqueSubnetForExitNode } from "@server/lib/exitNodes";
-import { addPeer } from "../gerbil/peers";
+import { addPeer, deletePeer } from "../gerbil/peers";
 
 const HOLEPUNCH_STALE_CHAIN_THRESHOLD = 18;
 const HOLEPUNCH_STALE_CHAIN_TTL_SECONDS = 1800;
@@ -392,6 +392,12 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                     )
                 )
             );
+    }
+
+    if (client.pubKey && client.pubKey !== publicKey && client.exitNodeId) {
+        // test the old client to see if its different then remove
+        logger.info("Public key mismatch. Deleting old peer...");
+        await deletePeer(client.exitNodeId, client.pubKey);
     }
 
     if (clientSubnet && exitNodeId) {
