@@ -1116,7 +1116,8 @@ async function syncClientExitNodeConnections(
 
     const requiresExitNodeRows = await trx
         .select({
-            clientId: clientSiteResourcesAssociationsCache.clientId
+            clientId: clientSiteResourcesAssociationsCache.clientId,
+            alias: siteResources.alias
         })
         .from(clientSiteResourcesAssociationsCache)
         .innerJoin(
@@ -1140,6 +1141,20 @@ async function syncClientExitNodeConnections(
     const needsConnectSet = new Set(
         requiresExitNodeRows.map((r) => r.clientId)
     );
+
+    // Aliases for every exit-node-backed resource this client can reach, so
+    // the live connect push carries the same alias list the register/reconnect
+    // path (buildSiteConfigurationForOlmClient) would compute.
+    const exitNodeAliasesByClientId = new Map<number, string[]>();
+    for (const row of requiresExitNodeRows) {
+        if (row.alias == null) continue;
+        const existing = exitNodeAliasesByClientId.get(row.clientId);
+        if (existing) {
+            existing.push(row.alias);
+        } else {
+            exitNodeAliasesByClientId.set(row.clientId, [row.alias]);
+        }
+    }
 
     const exitNodeIds = Array.from(
         new Set(
@@ -1215,7 +1230,10 @@ async function syncClientExitNodeConnections(
                         relayPort,
                         publicKey: exitNode.publicKey,
                         serverIP: exitNode.address.split("/")[0],
-                        tunnelIP: client.exitNodeSubnet.split("/")[0]
+                        tunnelIP: client.exitNodeSubnet.split("/")[0],
+                        aliases: exitNodeAliasesByClientId.get(
+                            client.clientId
+                        ) ?? []
                     }
                 },
                 options: {
