@@ -416,7 +416,11 @@ export async function chatCompletions(
     res: Response
 ): Promise<any> {
     try {
-        const host = (req.headers.host || "").split(":")[0];
+        const host = (
+            (req.headers["p-host"] as string | undefined) ||
+            req.headers.host ||
+            ""
+        ).split(":")[0];
         if (!host) {
             return res
                 .status(HttpCode.BAD_REQUEST)
