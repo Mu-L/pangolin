@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
-import { InferSelectModel } from "drizzle-orm";
+import { InferSelectModel, sql } from "drizzle-orm";
 import {
+    check,
     index,
     integer,
     primaryKey,
@@ -219,7 +220,10 @@ export const resources = sqliteTable("resources", {
     aiProviderId: integer("aiProviderId").references(
         () => aiProviders.providerId,
         { onDelete: "set null" }
-    )
+    ),
+    modelAccessMode: text("modelAccessMode").$type<
+        "passthrough" | "catalog" | "allowlist"
+    >()
 });
 
 export const resourceAiModels = sqliteTable(
@@ -483,7 +487,10 @@ export const siteResources = sqliteTable("siteResources", {
     aiProviderId: integer("aiProviderId").references(
         () => aiProviders.providerId,
         { onDelete: "set null" }
-    )
+    ),
+    modelAccessMode: text("modelAccessMode").$type<
+        "passthrough" | "catalog" | "allowlist"
+    >()
 });
 
 export const siteResourceAiModels = sqliteTable(
@@ -1605,8 +1612,6 @@ export const aiProviders = sqliteTable("aiProviders", {
     skipTlsVerification: integer("skipTlsVerification", { mode: "boolean" })
         .notNull()
         .default(false),
-    budgetAmount: real("budgetAmount"),
-    budgetUnit: text("budgetUnit").$type<"usd" | "tokens">(),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     createdAt: integer("createdAt").notNull(),
     updatedAt: integer("updatedAt").notNull()
@@ -1621,8 +1626,6 @@ export const aiModels = sqliteTable(
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
         modelKey: text("modelKey").notNull(),
         name: text("name").notNull(),
-        budgetAmount: real("budgetAmount"),
-        budgetUnit: text("budgetUnit").$type<"usd" | "tokens">(),
         enabled: integer("enabled", { mode: "boolean" })
             .notNull()
             .default(true),
@@ -1630,6 +1633,72 @@ export const aiModels = sqliteTable(
         updatedAt: integer("updatedAt").notNull()
     },
     (t) => [unique("ai_model_provider_key_uniq").on(t.providerId, t.modelKey)]
+);
+
+export const aiBudgets = sqliteTable(
+    "aiBudgets",
+    {
+        budgetId: integer("budgetId").primaryKey({ autoIncrement: true }),
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            { onDelete: "cascade" }
+        ),
+        modelId: integer("modelId").references(() => aiModels.modelId, {
+            onDelete: "cascade"
+        }),
+        resourceId: integer("resourceId").references(
+            () => resources.resourceId,
+            { onDelete: "cascade" }
+        ),
+        siteResourceId: integer("siteResourceId").references(
+            () => siteResources.siteResourceId,
+            { onDelete: "cascade" }
+        ),
+        amount: real("amount").notNull(),
+        unit: text("unit").$type<"usd" | "tokens">().notNull(),
+        period: text("period").$type<"monthly">().notNull().default("monthly"),
+        enforcement: text("enforcement")
+            .$type<"hard" | "soft">()
+            .notNull()
+            .default("hard"),
+        enabled: integer("enabled", { mode: "boolean" })
+            .notNull()
+            .default(true),
+        createdAt: integer("createdAt").notNull(),
+        updatedAt: integer("updatedAt").notNull()
+    },
+    (t) => [
+        check(
+            "ai_budget_one_scope",
+            sql`(
+                (CASE WHEN ${t.providerId} IS NOT NULL THEN 1 ELSE 0 END) +
+                (CASE WHEN ${t.modelId} IS NOT NULL THEN 1 ELSE 0 END) +
+                (CASE WHEN ${t.resourceId} IS NOT NULL THEN 1 ELSE 0 END) +
+                (CASE WHEN ${t.siteResourceId} IS NOT NULL THEN 1 ELSE 0 END)
+            ) = 1`
+        ),
+        unique("ai_budget_provider_uniq").on(t.providerId),
+        unique("ai_budget_model_uniq").on(t.modelId),
+        unique("ai_budget_resource_uniq").on(t.resourceId),
+        unique("ai_budget_site_resource_uniq").on(t.siteResourceId)
+    ]
+);
+
+export const aiBudgetPeriods = sqliteTable(
+    "aiBudgetPeriods",
+    {
+        periodId: integer("periodId").primaryKey({ autoIncrement: true }),
+        budgetId: integer("budgetId")
+            .notNull()
+            .references(() => aiBudgets.budgetId, { onDelete: "cascade" }),
+        periodStart: integer("periodStart").notNull(),
+        periodEnd: integer("periodEnd").notNull(),
+        usedAmount: real("usedAmount").notNull().default(0)
+    },
+    (t) => [unique("ai_budget_period_start_uniq").on(t.budgetId, t.periodStart)]
 );
 
 export type Org = InferSelectModel<typeof orgs>;
@@ -1716,5 +1785,7 @@ export type RolePolicy = InferSelectModel<typeof rolePolicies>;
 export type UserPolicy = InferSelectModel<typeof userPolicies>;
 export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
+export type AiBudget = InferSelectModel<typeof aiBudgets>;
+export type AiBudgetPeriod = InferSelectModel<typeof aiBudgetPeriods>;
 export type ResourceAiModel = InferSelectModel<typeof resourceAiModels>;
 export type SiteResourceAiModel = InferSelectModel<typeof siteResourceAiModels>;

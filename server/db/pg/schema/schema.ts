@@ -3,6 +3,7 @@ import { InferSelectModel, sql } from "drizzle-orm";
 import {
     bigint,
     boolean,
+    check,
     index,
     integer,
     pgTable,
@@ -214,7 +215,10 @@ export const resources = pgTable(
         aiProviderId: integer("aiProviderId").references(
             () => aiProviders.providerId,
             { onDelete: "set null" }
-        )
+        ),
+        modelAccessMode: varchar("modelAccessMode").$type<
+            "passthrough" | "catalog" | "allowlist"
+        >()
     },
     (t) => [
         index("idx_resources_fulldomain")
@@ -496,7 +500,10 @@ export const siteResources = pgTable(
         aiProviderId: integer("aiProviderId").references(
             () => aiProviders.providerId,
             { onDelete: "set null" }
-        )
+        ),
+        modelAccessMode: varchar("modelAccessMode").$type<
+            "passthrough" | "catalog" | "allowlist"
+        >()
     },
     (t) => [index("idx_siteresources_orgid_niceid").on(t.orgId, t.niceId)]
 );
@@ -1623,8 +1630,6 @@ export const aiProviders = pgTable("aiProviders", {
     skipTlsVerification: boolean("skipTlsVerification")
         .notNull()
         .default(false),
-    budgetAmount: real("budgetAmount"),
-    budgetUnit: varchar("budgetUnit").$type<"usd" | "tokens">(),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: bigint("createdAt", { mode: "number" }).notNull(),
     updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
@@ -1639,13 +1644,78 @@ export const aiModels = pgTable(
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
         modelKey: varchar("modelKey").notNull(),
         name: varchar("name").notNull(),
-        budgetAmount: real("budgetAmount"),
-        budgetUnit: varchar("budgetUnit").$type<"usd" | "tokens">(),
         enabled: boolean("enabled").notNull().default(true),
         createdAt: bigint("createdAt", { mode: "number" }).notNull(),
         updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
     },
     (t) => [unique("ai_model_provider_key_uniq").on(t.providerId, t.modelKey)]
+);
+
+export const aiBudgets = pgTable(
+    "aiBudgets",
+    {
+        budgetId: serial("budgetId").primaryKey(),
+        orgId: varchar("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            { onDelete: "cascade" }
+        ),
+        modelId: integer("modelId").references(() => aiModels.modelId, {
+            onDelete: "cascade"
+        }),
+        resourceId: integer("resourceId").references(
+            () => resources.resourceId,
+            { onDelete: "cascade" }
+        ),
+        siteResourceId: integer("siteResourceId").references(
+            () => siteResources.siteResourceId,
+            { onDelete: "cascade" }
+        ),
+        amount: real("amount").notNull(),
+        unit: varchar("unit").$type<"usd" | "tokens">().notNull(),
+        period: varchar("period")
+            .$type<"monthly">()
+            .notNull()
+            .default("monthly"),
+        enforcement: varchar("enforcement")
+            .$type<"hard" | "soft">()
+            .notNull()
+            .default("hard"),
+        enabled: boolean("enabled").notNull().default(true),
+        createdAt: bigint("createdAt", { mode: "number" }).notNull(),
+        updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
+    },
+    (t) => [
+        check(
+            "ai_budget_one_scope",
+            sql`(
+                (CASE WHEN ${t.providerId} IS NOT NULL THEN 1 ELSE 0 END) +
+                (CASE WHEN ${t.modelId} IS NOT NULL THEN 1 ELSE 0 END) +
+                (CASE WHEN ${t.resourceId} IS NOT NULL THEN 1 ELSE 0 END) +
+                (CASE WHEN ${t.siteResourceId} IS NOT NULL THEN 1 ELSE 0 END)
+            ) = 1`
+        ),
+        unique("ai_budget_provider_uniq").on(t.providerId),
+        unique("ai_budget_model_uniq").on(t.modelId),
+        unique("ai_budget_resource_uniq").on(t.resourceId),
+        unique("ai_budget_site_resource_uniq").on(t.siteResourceId)
+    ]
+);
+
+export const aiBudgetPeriods = pgTable(
+    "aiBudgetPeriods",
+    {
+        periodId: serial("periodId").primaryKey(),
+        budgetId: integer("budgetId")
+            .notNull()
+            .references(() => aiBudgets.budgetId, { onDelete: "cascade" }),
+        periodStart: bigint("periodStart", { mode: "number" }).notNull(),
+        periodEnd: bigint("periodEnd", { mode: "number" }).notNull(),
+        usedAmount: real("usedAmount").notNull().default(0)
+    },
+    (t) => [unique("ai_budget_period_start_uniq").on(t.budgetId, t.periodStart)]
 );
 
 export type Org = InferSelectModel<typeof orgs>;
@@ -1734,5 +1804,7 @@ export type UserPolicy = InferSelectModel<typeof userPolicies>;
 export type ResourcePolicyRule = InferSelectModel<typeof resourcePolicyRules>;
 export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
+export type AiBudget = InferSelectModel<typeof aiBudgets>;
+export type AiBudgetPeriod = InferSelectModel<typeof aiBudgetPeriods>;
 export type ResourceAiModel = InferSelectModel<typeof resourceAiModels>;
 export type SiteResourceAiModel = InferSelectModel<typeof siteResourceAiModels>;
