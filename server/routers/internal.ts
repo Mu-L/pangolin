@@ -3,7 +3,6 @@ import * as gerbil from "@server/routers/gerbil";
 import * as traefik from "@server/routers/traefik";
 import * as resource from "./resource";
 import * as badger from "./badger";
-import * as aiGateway from "@server/routers/aiGateway";
 import * as auth from "@server/routers/auth";
 import * as supporterKey from "@server/routers/supporterKey";
 import * as idp from "@server/routers/idp";
@@ -65,9 +64,3 @@ badgerRouter.post("/verify-session", badger.verifyResourceSession);
 
 badgerRouter.post("/exchange-session", badger.exchangeSession);
 
-// AI inference gateway - minimal chat-completions proxy for inference-mode
-// resources/siteResources
-internalRouter.post(
-    "/ai-gateway/chat/completions",
-    aiGateway.chatCompletions
-);

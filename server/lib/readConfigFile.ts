@@ -79,7 +79,13 @@ export const configSchema = z
                     .default(3001)
                     .transform(stoi)
                     .pipe(portSchema),
-                internal_api_override: z.string().optional(),
+                ai_gateway_port: portSchema
+                    .optional()
+                    .default(3005)
+                    .transform(stoi)
+                    .pipe(portSchema),
+                badger_override: z.string().optional(),
+                ai_gateway_override: z.string().optional(),
                 next_port: portSchema
                     .optional()
                     .default(3002)
@@ -139,6 +145,7 @@ export const configSchema = z
                 integration_port: 3003,
                 external_port: 3000,
                 internal_port: 3001,
+                ai_gateway_port: 3005,
                 next_port: 3002,
                 internal_hostname: "pangolin",
                 session_cookie_name: "p_session_token",
