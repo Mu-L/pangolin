@@ -164,7 +164,10 @@ const createSiteResourceSchema = z
     .refine(
         (data) => {
             // destination is only optional for ssh mode with native authDaemonMode
-            if (data.mode === "ssh" && data.authDaemonMode === "native") {
+            if (
+                (data.mode === "ssh" && data.authDaemonMode === "native") ||
+                data.mode == "inference"
+            ) {
                 return true;
             }
             return (

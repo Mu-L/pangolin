@@ -2554,6 +2554,7 @@
     "createInternalResourceDialogModeHttp": "HTTP",
     "createInternalResourceDialogModeHttps": "HTTPS",
     "createInternalResourceDialogModeSsh": "SSH",
+    "createInternalResourceDialogModeInference": "Inference",
     "scheme": "Scheme",
     "createInternalResourceDialogScheme": "Scheme",
     "createInternalResourceDialogEnableSsl": "Enable TLS",

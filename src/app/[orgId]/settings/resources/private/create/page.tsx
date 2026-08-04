@@ -153,7 +153,11 @@ export default function CreatePrivateResourcePage() {
                       label: t("createInternalResourceDialogModeSsh")
                   }
               ]
-            : [])
+            : []),
+        {
+            value: "inference" as const,
+            label: t("createInternalResourceDialogModeInference")
+        }
     ];
 
     const submitDisabled =
@@ -313,6 +317,25 @@ export default function CreatePrivateResourcePage() {
                                                                     "destinationPort",
                                                                     443
                                                                 );
+                                                            } else if (
+                                                                newMode ===
+                                                                "inference"
+                                                            ) {
+                                                                form.setValue(
+                                                                    "siteIds",
+                                                                    []
+                                                                );
+                                                                setSelectedSites(
+                                                                    []
+                                                                );
+                                                                form.setValue(
+                                                                    "destination",
+                                                                    null
+                                                                );
+                                                                form.setValue(
+                                                                    "destinationPort",
+                                                                    null
+                                                                );
                                                             } else {
                                                                 form.setValue(
                                                                     "destinationPort",
@@ -377,6 +400,7 @@ export default function CreatePrivateResourcePage() {
                                     )}
 
                                     {(mode === "host" ||
+                                        mode === "inference" ||
                                         (mode === "ssh" && !isNativeSsh)) && (
                                         <SettingsFormCell span="half">
                                             <PrivateResourceAliasField

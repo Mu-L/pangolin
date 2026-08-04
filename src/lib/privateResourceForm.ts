@@ -21,7 +21,7 @@ export type PrivateResourceClient = {
 
 export type PrivateResourceFormValues = {
     name: string;
-    siteIds: number[];
+    siteIds?: number[];
     mode: PrivateResourceMode;
     destination: string | null;
     alias?: string | null;
@@ -163,9 +163,12 @@ export function buildCreateSiteResourcePayload(
 
     return {
         name: data.name,
-        siteIds: data.siteIds,
+        siteIds: data.siteIds ?? [],
         mode: data.mode,
-        destination: isNativeSsh ? undefined : (data.destination ?? undefined),
+        destination:
+            isNativeSsh || data.mode === "inference"
+                ? undefined
+                : (data.destination ?? undefined),
         ...(data.mode === "http" && {
             scheme: data.scheme,
             ssl: data.ssl ?? false,
@@ -391,10 +394,8 @@ export function createCreateFormSchema(t: TranslateFn) {
                 .string()
                 .min(1, t("createInternalResourceDialogNameRequired"))
                 .max(255, t("createInternalResourceDialogNameMaxLength")),
-            siteIds: z
-                .array(z.number().int().positive())
-                .min(1, t("createInternalResourceDialogPleaseSelectSite")),
-            mode: z.enum(["host", "cidr", "http", "ssh"]),
+            siteIds: z.array(z.number().int().positive()).optional(),
+            mode: z.enum(["host", "cidr", "http", "ssh", "inference"]),
             destination: z.string().nullish(),
             alias: z.string().nullish(),
             destinationPort: z
@@ -428,7 +429,20 @@ export function createCreateFormSchema(t: TranslateFn) {
                 data.mode === "ssh" && data.authDaemonMode === "native";
             const trimmedDestination = data.destination?.trim();
             if (
+                data.mode !== "inference" &&
+                (!data.siteIds || data.siteIds.length < 1)
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t(
+                        "createInternalResourceDialogPleaseSelectSite"
+                    ),
+                    path: ["siteIds"]
+                });
+            }
+            if (
                 data.mode !== "ssh" &&
+                data.mode !== "inference" &&
                 (!trimmedDestination || trimmedDestination.length < 1)
             ) {
                 ctx.addIssue({
