@@ -427,7 +427,7 @@ export async function chatCompletions(
                 .json({ error: { message: "Missing Host header" } });
         }
 
-        logger.info(`++++++++++++++AI gateway request for host: ${host}`);
+        logger.info(`AI gateway request for host: ${host}`);
 
         const target = await resolveTarget(host);
         if (!target) {

@@ -489,9 +489,9 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             jitMode
         );
 
-    logger.info(
-        `+++++++++++++++++++++++++++++++ ExitNode Aliases: ${exitNodeAliases}`
-    );
+    // logger.info(
+    //     `ExitNode Aliases: ${exitNodeAliases}`
+    // );
 
     // Return connect message with all site configurations
     return {
