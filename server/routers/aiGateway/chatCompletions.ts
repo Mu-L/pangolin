@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
     AiProvider,
     aiModels,
@@ -94,10 +94,12 @@ type ProviderAttachment = {
 
 type ResolvedTarget = {
     resourceId: number | null;
+    siteResourceId: number | null;
     orgId: string | null;
     attachments: ProviderAttachment[];
-    // model IDs on this resource's allowlist (resource-wide)
-    allowedModelIds: number[];
+    // Model IDs on the resource allowlist that belong to allowlist-mode
+    // providers. Empty when no attached provider uses allowlist mode.
+    allowlistedModelIds: Set<number>;
 };
 
 type ProviderSelection =
@@ -192,6 +194,9 @@ async function resolveRequestUser(
 }
 
 async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
+    // TODO: eventually we need to know if it's a private or public resource
+    // and not just simply check the fullDomain in case there is a private resource with the same fullDomain
+
     const [resourceRow] = await db
         .select({
             resourceId: resources.resourceId,
@@ -229,26 +234,40 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
             return null;
         }
 
-        const hasAllowlist = attachmentRows.some(
-            (a) => a.modelAccessMode === "allowlist"
-        );
-        let allowedModelIds: number[] = [];
-        if (hasAllowlist) {
+        const attachments: ProviderAttachment[] = attachmentRows.map((a) => ({
+            provider: a.provider,
+            modelAccessMode: a.modelAccessMode as ModelAccessMode
+        }));
+
+        const allowlistProviderIds = attachments
+            .filter((a) => a.modelAccessMode === "allowlist")
+            .map((a) => a.provider.providerId);
+        const allowlistedModelIds = new Set<number>();
+        if (allowlistProviderIds.length > 0) {
             const restrictions = await db
                 .select({ modelId: resourceAiModels.modelId })
                 .from(resourceAiModels)
-                .where(eq(resourceAiModels.resourceId, resourceRow.resourceId));
-            allowedModelIds = restrictions.map((r) => r.modelId);
+                .innerJoin(
+                    aiModels,
+                    eq(resourceAiModels.modelId, aiModels.modelId)
+                )
+                .where(
+                    and(
+                        eq(resourceAiModels.resourceId, resourceRow.resourceId),
+                        inArray(aiModels.providerId, allowlistProviderIds)
+                    )
+                );
+            for (const row of restrictions) {
+                allowlistedModelIds.add(row.modelId);
+            }
         }
 
         return {
             resourceId: resourceRow.resourceId,
+            siteResourceId: null,
             orgId: resourceRow.orgId,
-            attachments: attachmentRows.map((a) => ({
-                provider: a.provider,
-                modelAccessMode: a.modelAccessMode as ModelAccessMode
-            })),
-            allowedModelIds
+            attachments,
+            allowlistedModelIds
         };
     }
 
@@ -292,74 +311,52 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
             return null;
         }
 
-        const hasAllowlist = attachmentRows.some(
-            (a) => a.modelAccessMode === "allowlist"
-        );
-        let allowedModelIds: number[] = [];
-        if (hasAllowlist) {
+        const attachments: ProviderAttachment[] = attachmentRows.map((a) => ({
+            provider: a.provider,
+            modelAccessMode: a.modelAccessMode as ModelAccessMode
+        }));
+
+        const allowlistProviderIds = attachments
+            .filter((a) => a.modelAccessMode === "allowlist")
+            .map((a) => a.provider.providerId);
+        const allowlistedModelIds = new Set<number>();
+        if (allowlistProviderIds.length > 0) {
             const restrictions = await db
                 .select({ modelId: siteResourceAiModels.modelId })
                 .from(siteResourceAiModels)
+                .innerJoin(
+                    aiModels,
+                    eq(siteResourceAiModels.modelId, aiModels.modelId)
+                )
                 .where(
-                    eq(
-                        siteResourceAiModels.siteResourceId,
-                        siteResourceRow.siteResourceId
+                    and(
+                        eq(
+                            siteResourceAiModels.siteResourceId,
+                            siteResourceRow.siteResourceId
+                        ),
+                        inArray(aiModels.providerId, allowlistProviderIds)
                     )
                 );
-            allowedModelIds = restrictions.map((r) => r.modelId);
+            for (const row of restrictions) {
+                allowlistedModelIds.add(row.modelId);
+            }
         }
 
         return {
-            // siteResources have no per-user auth/policy stack today (see
-            // the routing comment in getTraefikConfig.ts), so there's no
-            // resource access token scope to validate a user token against.
             resourceId: null,
+            siteResourceId: siteResourceRow.siteResourceId,
             orgId: siteResourceRow.orgId,
-            attachments: attachmentRows.map((a) => ({
-                provider: a.provider,
-                modelAccessMode: a.modelAccessMode as ModelAccessMode
-            })),
-            allowedModelIds
+            attachments,
+            allowlistedModelIds
         };
     }
 
     return null;
 }
 
-async function providerMatchesModel(
-    attachment: ProviderAttachment,
-    requestedModel: string,
-    allowedModelIds: number[]
-): Promise<boolean> {
-    const [matchedModel] = await db
-        .select({
-            modelId: aiModels.modelId,
-            enabled: aiModels.enabled
-        })
-        .from(aiModels)
-        .where(
-            and(
-                eq(aiModels.providerId, attachment.provider.providerId),
-                eq(aiModels.modelKey, requestedModel)
-            )
-        )
-        .limit(1);
-
-    if (!matchedModel) {
-        return false;
-    }
-
-    if (attachment.modelAccessMode === "catalog") {
-        return matchedModel.enabled;
-    }
-
-    // allowlist
-    return allowedModelIds.includes(matchedModel.modelId);
-}
-
 async function selectProvider(
     attachments: ProviderAttachment[],
-    allowedModelIds: number[],
+    allowlistedModelIds: Set<number>,
     requestedModel: string | undefined
 ): Promise<ProviderSelection> {
     if (!requestedModel) {
@@ -370,21 +367,55 @@ async function selectProvider(
         };
     }
 
-    const candidates: ProviderAttachment[] = [];
-    for (const attachment of attachments) {
-        if (
-            await providerMatchesModel(
-                attachment,
-                requestedModel,
-                allowedModelIds
+    const providerById = new Map(
+        attachments.map((a) => [a.provider.providerId, a])
+    );
+    const providerIds = [...providerById.keys()];
+    if (providerIds.length === 0) {
+        return {
+            ok: false,
+            status: HttpCode.FORBIDDEN,
+            message: `Model "${requestedModel}" is not permitted on this resource`
+        };
+    }
+
+    // One lookup for the requested model key across all attached providers.
+    const matchingModels = await db
+        .select({
+            modelId: aiModels.modelId,
+            providerId: aiModels.providerId,
+            enabled: aiModels.enabled
+        })
+        .from(aiModels)
+        .where(
+            and(
+                inArray(aiModels.providerId, providerIds),
+                eq(aiModels.modelKey, requestedModel)
             )
-        ) {
-            candidates.push(attachment);
+        );
+
+    const candidates: AiProvider[] = [];
+    for (const model of matchingModels) {
+        const attachment = providerById.get(model.providerId);
+        if (!attachment) {
+            continue;
+        }
+
+        if (attachment.modelAccessMode === "catalog") {
+            if (model.enabled) {
+                candidates.push(attachment.provider);
+            }
+            continue;
+        }
+
+        // allowlist: only models explicitly attached to the resource
+        if (allowlistedModelIds.has(model.modelId)) {
+            candidates.push(attachment.provider);
         }
     }
 
     if (candidates.length === 1) {
-        return { ok: true, provider: candidates[0].provider };
+        return { ok: true, provider: candidates[0] };
     }
 
     if (candidates.length > 1) {
@@ -400,15 +431,6 @@ async function selectProvider(
         status: HttpCode.FORBIDDEN,
         message: `Model "${requestedModel}" is not permitted on this resource`
     };
-}
-
-// Generic OpenAI-wire-compatible passthrough. Anthropic's native API uses a
-// different path/schema; everything else here is OpenAI-compatible today.
-function getCompletionsPath(type: AiProviderType): string {
-    if (type === "anthropic") {
-        return "/v1/messages";
-    }
-    return "/chat/completions";
 }
 
 export async function chatCompletions(
@@ -438,7 +460,9 @@ export async function chatCompletions(
             });
         }
 
-        const { attachments, allowedModelIds, resourceId, orgId } = target;
+        const { attachments, allowlistedModelIds, resourceId, orgId } = target;
+
+        logger.debug("+++++ gateway target: ", target);
 
         // Best-effort identity resolution - not yet enforced, but lets us
         // start making per-user access decisions (e.g. model/role-based
@@ -455,7 +479,7 @@ export async function chatCompletions(
 
         const selection = await selectProvider(
             attachments,
-            allowedModelIds,
+            allowlistedModelIds,
             requestedModel
         );
         if (!selection.ok) {
@@ -490,16 +514,35 @@ export async function chatCompletions(
             });
         }
 
-        const targetUrl = `${upstreamUrl.replace(/\/$/, "")}${getCompletionsPath(
-            provider.type as AiProviderType
-        )}`;
+        const targetUrl = `${upstreamUrl.replace(/\/$/, "")}`;
 
-        const headers: Record<string, string> = {
-            "Content-Type": "application/json"
-        };
-        if (authType === "bearer") {
-            headers["Authorization"] = `Bearer ${apiKey}`;
+        // Drop hop-by-hop / proxy-only headers. Forwarding Host especially
+        // breaks Node fetch (TLS/SNI targets the upstream URL while Host
+        // still says localhost).
+        const skipHeaders = new Set([
+            "p-host",
+            "host",
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailers",
+            "transfer-encoding",
+            "upgrade",
+            "content-length",
+            "accept-encoding"
+        ]);
+
+        const headers: Record<string, string> = {};
+        for (const [key, value] of Object.entries(req.headers)) {
+            if (skipHeaders.has(key.toLowerCase()) || value === undefined) {
+                continue;
+            }
+            headers[key] = Array.isArray(value) ? value.join(", ") : value;
         }
+        // TODO: temporary hardcoded auth for testing; restore bearer from authType
+        headers["x-api-key"] = apiKey;
 
         // No dedicated per-request TLS agent is wired up (no extra deps for
         // this v1 gateway) - toggle the process-wide Node TLS check instead.
@@ -510,13 +553,33 @@ export async function chatCompletions(
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
         }
 
+        const body = JSON.stringify(req.body);
+
+        logger.debug("AI gateway upstream request", {
+            url: targetUrl,
+            method: "POST",
+            headers,
+            body: req.body
+        });
+
         let upstreamRes: globalThis.Response;
         try {
             upstreamRes = await fetch(targetUrl, {
                 method: "POST",
                 headers,
-                body: JSON.stringify(req.body)
+                body
             });
+        } catch (fetchError) {
+            logger.error({
+                message: "AI gateway upstream fetch failed",
+                url: targetUrl,
+                error: fetchError,
+                cause:
+                    fetchError instanceof Error
+                        ? (fetchError as Error & { cause?: unknown }).cause
+                        : undefined
+            });
+            throw fetchError;
         } finally {
             if (provider.skipTlsVerification) {
                 if (restoreTlsReject === undefined) {
