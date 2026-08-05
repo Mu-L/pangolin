@@ -58,11 +58,9 @@ export default function PublicResourceProvidersPage() {
     const formSchema = useMemo(
         () =>
             z.object({
-                providerIds: z
-                    .array(z.number().int().positive())
-                    .min(1, t("aiResourceProvidersRequired"))
+                providerIds: z.array(z.number().int().positive())
             }),
-        [t]
+        []
     );
     type FormValues = z.infer<typeof formSchema>;
 

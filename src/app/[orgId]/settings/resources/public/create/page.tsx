@@ -252,7 +252,6 @@ export default function Page() {
     const [selectedProviders, setSelectedProviders] = useState<
         SelectedAiProvider[]
     >([]);
-    const [showProvidersError, setShowProvidersError] = useState(false);
 
     // SSH-specific state
     const [sshServerMode, setSshServerMode] = useState<"standard" | "native">(
@@ -354,9 +353,6 @@ export default function Page() {
     useEffect(() => {
         if (!availableTypes.includes(resourceType)) {
             setResourceType("http");
-        }
-        if (resourceType !== "inference") {
-            setShowProvidersError(false);
         }
     }, [availableTypes, resourceType]);
 
@@ -1440,14 +1436,6 @@ export default function Page() {
                                                                 setSelectedProviders(
                                                                     providers
                                                                 );
-                                                                if (
-                                                                    providers.length >
-                                                                    0
-                                                                ) {
-                                                                    setShowProvidersError(
-                                                                        false
-                                                                    );
-                                                                }
                                                             }}
                                                         />
                                                         <p className="text-sm text-muted-foreground">
@@ -1455,13 +1443,6 @@ export default function Page() {
                                                                 "aiResourceProvidersHelp"
                                                             )}
                                                         </p>
-                                                        {showProvidersError && (
-                                                            <p className="text-sm text-destructive">
-                                                                {t(
-                                                                    "aiResourceProvidersRequired"
-                                                                )}
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 </SettingsFormCell>
                                             </SettingsFormGrid>
@@ -1493,16 +1474,6 @@ export default function Page() {
                                         const tcpValid = !isHttpResource
                                             ? await tcpUdpForm.trigger()
                                             : true;
-                                        const providersValid =
-                                            resourceType !== "inference" ||
-                                            selectedProviders.length > 0;
-
-                                        if (
-                                            resourceType === "inference" &&
-                                            !providersValid
-                                        ) {
-                                            setShowProvidersError(true);
-                                        }
 
                                         if (
                                             resourceType === "ssh" &&
@@ -1527,8 +1498,7 @@ export default function Page() {
                                             baseValid &&
                                             domainValid &&
                                             tcpValid &&
-                                            bgValid &&
-                                            providersValid
+                                            bgValid
                                         ) {
                                             onSubmit();
                                         }

@@ -77,8 +77,9 @@ export async function removeAiProviderFromResource(
 
         const { providerId } = parsedBody.data;
 
-        const parsedParams =
-            removeAiProviderFromResourceParamsSchema.safeParse(req.params);
+        const parsedParams = removeAiProviderFromResourceParamsSchema.safeParse(
+            req.params
+        );
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -129,22 +130,15 @@ export async function removeAiProviderFromResource(
                 modelAccessMode: a.modelAccessMode
             }));
 
-        if (remaining.length === 0) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "At least one AI provider is required for inference-mode resources"
-                )
-            );
-        }
-
         const attachments = await resolveProviderAttachments({
             orgId: resource.orgId,
             attachments: remaining,
-            requireAtLeastOne: true
+            requireAtLeastOne: false
         });
         if (isInferenceFieldsError(attachments)) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, attachments.error));
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, attachments.error)
+            );
         }
 
         await setPublicResourceAiProviders(resourceId, attachments);

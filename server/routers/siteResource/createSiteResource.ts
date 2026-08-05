@@ -353,7 +353,7 @@ export async function createSiteResource(
             const resolved = await resolveProviderAttachments({
                 orgId,
                 attachments: aiProviderInputs ?? [],
-                requireAtLeastOne: true
+                requireAtLeastOne: false
             });
             if (isInferenceFieldsError(resolved)) {
                 return next(

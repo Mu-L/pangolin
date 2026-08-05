@@ -467,13 +467,6 @@ export function createCreateFormSchema(t: TranslateFn) {
                         path: ["alias"]
                     });
                 }
-                if (!data.providerIds || data.providerIds.length < 1) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: t("aiResourceProvidersRequired"),
-                        path: ["providerIds"]
-                    });
-                }
             }
             if (
                 data.mode !== "ssh" &&
@@ -637,13 +630,6 @@ export function createInferenceFormSchema(t: TranslateFn) {
                     code: z.ZodIssueCode.custom,
                     message: t("aiResourceAliasRequired"),
                     path: ["alias"]
-                });
-            }
-            if (!data.providerIds || data.providerIds.length < 1) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: t("aiResourceProvidersRequired"),
-                    path: ["providerIds"]
                 });
             }
         });

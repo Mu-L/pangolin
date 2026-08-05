@@ -394,7 +394,7 @@ async function createHttpResource(
         const resolved = await resolveProviderAttachments({
             orgId,
             attachments: aiProviderInputs ?? [],
-            requireAtLeastOne: true
+            requireAtLeastOne: false
         });
         if (isInferenceFieldsError(resolved)) {
             return next(createHttpError(HttpCode.BAD_REQUEST, resolved.error));

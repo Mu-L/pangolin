@@ -27,7 +27,7 @@ registry.registerPath({
     method: "post",
     path: "/site-resource/{siteResourceId}/ai-providers",
     description:
-        "Replace the AI providers attached to an inference site resource. At least one provider is required. Model keys must be unique across attached catalog providers.",
+        "Replace the AI providers attached to an inference site resource. An empty list clears all providers. Model keys must be unique across attached catalog providers.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: setSiteResourceAiProvidersParamsSchema,
@@ -115,7 +115,7 @@ export async function setSiteResourceAiProviders(
         const attachments = await resolveProviderAttachments({
             orgId: siteResource.orgId,
             attachments: providers,
-            requireAtLeastOne: true
+            requireAtLeastOne: false
         });
         if (isInferenceFieldsError(attachments)) {
             return next(

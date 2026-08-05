@@ -1739,7 +1739,6 @@
     "aiResourceProvidersHelp": "Models must be defined on each provider. Model names cannot overlap across selected providers.",
     "aiResourceProvidersSelect": "Select providers",
     "aiResourceProvidersEmpty": "No AI providers found",
-    "aiResourceProvidersRequired": "Select at least one AI provider",
     "aiResourceProvidersUpdated": "Providers updated",
     "aiResourceProvidersErrorUpdate": "Failed to update providers",
     "aiResourceAliasRequired": "Alias is required for inference resources",

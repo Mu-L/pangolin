@@ -63,8 +63,9 @@ export async function removeAiProviderFromSiteResource(
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedBody =
-            removeAiProviderFromSiteResourceBodySchema.safeParse(req.body);
+        const parsedBody = removeAiProviderFromSiteResourceBodySchema.safeParse(
+            req.body
+        );
         if (!parsedBody.success) {
             return next(
                 createHttpError(
@@ -128,22 +129,15 @@ export async function removeAiProviderFromSiteResource(
                 modelAccessMode: a.modelAccessMode
             }));
 
-        if (remaining.length === 0) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "At least one AI provider is required for inference-mode resources"
-                )
-            );
-        }
-
         const attachments = await resolveProviderAttachments({
             orgId: siteResource.orgId,
             attachments: remaining,
-            requireAtLeastOne: true
+            requireAtLeastOne: false
         });
         if (isInferenceFieldsError(attachments)) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, attachments.error));
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, attachments.error)
+            );
         }
 
         await setSiteResourceAiProviders(siteResourceId, attachments);
