@@ -1693,15 +1693,6 @@ export const aiBudgets = sqliteTable(
         updatedAt: integer("updatedAt").notNull()
     },
     (t) => [
-        check(
-            "ai_budget_one_scope",
-            sql`(
-                (CASE WHEN ${t.providerId} IS NOT NULL THEN 1 ELSE 0 END) +
-                (CASE WHEN ${t.modelId} IS NOT NULL THEN 1 ELSE 0 END) +
-                (CASE WHEN ${t.resourceId} IS NOT NULL THEN 1 ELSE 0 END) +
-                (CASE WHEN ${t.siteResourceId} IS NOT NULL THEN 1 ELSE 0 END)
-            ) = 1`
-        ),
         unique("ai_budget_provider_uniq").on(t.providerId),
         unique("ai_budget_model_uniq").on(t.modelId),
         unique("ai_budget_resource_uniq").on(t.resourceId),
