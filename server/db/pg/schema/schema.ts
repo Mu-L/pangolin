@@ -1644,7 +1644,15 @@ export const aiProviders = pgTable("aiProviders", {
     upstreamUrl: text("upstreamUrl"),
     apiKey: text("apiKey"),
     apiKeyLastChars: varchar("apiKeyLastChars"),
-    authType: varchar("authType").$type<"bearer">(),
+    authType: varchar("authType")
+        .$type<
+            | "bearer"
+            | "x-api-key"
+            | "x-goog-api-key"
+            | "hec"
+            | "cf-aig-authorization"
+        >()
+        .notNull(),
     routingMode: varchar("routingMode")
         .$type<"url" | "target">()
         .notNull()

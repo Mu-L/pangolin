@@ -19,6 +19,7 @@ import {
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
 import type {
+    AiProviderAuthType,
     AiProviderRoutingMode,
     AiProviderType
 } from "@server/lib/aiProviderDefaults";
@@ -31,7 +32,7 @@ const bodySchema = z.strictObject({
     name: z.string().nonempty().optional(),
     upstreamUrl: z.url().optional().nullable(),
     apiKey: z.string().optional(),
-    authType: aiAuthTypeSchema.optional().nullable(),
+    authType: aiAuthTypeSchema.optional(),
     routingMode: aiRoutingModeSchema.optional(),
     skipTlsVerification: z.boolean().optional(),
     enabled: z.boolean().optional()
@@ -116,17 +117,16 @@ export async function updateAiProvider(
             body.upstreamUrl !== undefined
                 ? body.upstreamUrl
                 : existing.upstreamUrl;
-        const nextAuthType =
+        const nextAuthType: AiProviderAuthType =
             body.authType !== undefined
                 ? body.authType
-                : (existing.authType ??
-                  (providerType === "custom" ? "bearer" : null));
+                : (existing.authType as AiProviderAuthType);
 
         const validation = z
             .object({
                 type: aiProviderTypeSchema,
                 upstreamUrl: z.string().nullable().optional(),
-                authType: aiAuthTypeSchema.nullable().optional(),
+                authType: aiAuthTypeSchema,
                 routingMode: aiRoutingModeSchema.optional()
             })
             .superRefine((data, ctx) => refineProviderUpstreamFields(data, ctx))
@@ -167,13 +167,6 @@ export async function updateAiProvider(
         }
         if (body.authType !== undefined) {
             updateData.authType = body.authType;
-        } else if (
-            providerType === "custom" &&
-            !existing.authType &&
-            nextAuthType
-        ) {
-            // Backfill required authType for custom providers created without one
-            updateData.authType = nextAuthType;
         }
 
         if (body.apiKey !== undefined) {

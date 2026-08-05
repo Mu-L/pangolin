@@ -9,6 +9,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
+import { resolveAiProviderCreateFields } from "@server/lib/aiProviderDefaults";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 import {
@@ -28,7 +29,7 @@ const bodySchema = z
         type: aiProviderTypeSchema,
         upstreamUrl: z.url().optional().nullable(),
         apiKey: z.string().optional(),
-        authType: aiAuthTypeSchema.optional().nullable(),
+        authType: aiAuthTypeSchema.optional(),
         routingMode: aiRoutingModeSchema.optional(),
         skipTlsVerification: z.boolean().optional(),
         enabled: z.boolean().optional()
@@ -101,8 +102,12 @@ export async function createAiProvider(
         const encryptedApiKey = apiKey ? encrypt(apiKey, key) : null;
         const apiKeyLastChars = apiKey ? apiKey.slice(-4) : null;
         const now = Date.now();
-        const resolvedRoutingMode =
-            type === "custom" ? (routingMode ?? "url") : "url";
+        const resolved = resolveAiProviderCreateFields({
+            type,
+            upstreamUrl,
+            authType,
+            routingMode
+        });
 
         const [provider] = await db
             .insert(aiProviders)
@@ -110,14 +115,11 @@ export async function createAiProvider(
                 orgId,
                 name,
                 type,
-                upstreamUrl:
-                    resolvedRoutingMode === "target"
-                        ? null
-                        : (upstreamUrl ?? null),
+                upstreamUrl: resolved.upstreamUrl,
                 apiKey: encryptedApiKey,
                 apiKeyLastChars,
-                authType: authType ?? null,
-                routingMode: resolvedRoutingMode,
+                authType: resolved.authType,
+                routingMode: resolved.routingMode,
                 skipTlsVerification: skipTlsVerification ?? false,
                 enabled: enabled ?? true,
                 createdAt: now,

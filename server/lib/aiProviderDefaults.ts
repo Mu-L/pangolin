@@ -9,7 +9,15 @@ export type AiProviderType =
     | "vercelAiGateway"
     | "custom";
 
-export type AiProviderAuthType = "bearer";
+export const AI_PROVIDER_AUTH_TYPES = [
+    "bearer",
+    "x-api-key",
+    "x-goog-api-key",
+    "hec",
+    "cf-aig-authorization"
+] as const;
+
+export type AiProviderAuthType = (typeof AI_PROVIDER_AUTH_TYPES)[number];
 export type AiBudgetUnit = "usd" | "tokens";
 export type AiProviderRoutingMode = "url" | "target";
 
@@ -28,11 +36,11 @@ export const AI_PROVIDER_DEFAULTS: Record<
     },
     anthropic: {
         upstreamUrl: "https://api.anthropic.com",
-        authType: "bearer"
+        authType: "x-api-key"
     },
     googleGemini: {
         upstreamUrl: "https://generativelanguage.googleapis.com/v1beta/openai/",
-        authType: "bearer"
+        authType: "x-goog-api-key"
     },
     vertexAi: {
         upstreamUrl: null,
@@ -56,6 +64,13 @@ export const AI_PROVIDER_DEFAULTS: Record<
     }
 };
 
+const CONFLICTING_AUTH_HEADERS = [
+    "authorization",
+    "x-api-key",
+    "x-goog-api-key",
+    "cf-aig-authorization"
+] as const;
+
 export function providerRequiresUpstreamUrl(
     type: AiProviderType,
     routingMode: AiProviderRoutingMode = "url"
@@ -69,17 +84,18 @@ export function providerRequiresUpstreamUrl(
     return AI_PROVIDER_DEFAULTS[type].upstreamUrl === null;
 }
 
-export function resolveAiProviderConfig(input: {
+export function resolveAiProviderCreateFields(input: {
     type: AiProviderType;
-    upstreamUrl: string | null;
-    authType: AiProviderAuthType | null;
+    upstreamUrl?: string | null;
+    authType?: AiProviderAuthType | null;
     routingMode?: AiProviderRoutingMode | null;
 }): {
     upstreamUrl: string | null;
-    authType: AiProviderAuthType | null;
+    authType: AiProviderAuthType;
     routingMode: AiProviderRoutingMode;
 } {
-    const routingMode = input.routingMode ?? "url";
+    const routingMode =
+        input.type === "custom" ? (input.routingMode ?? "url") : "url";
 
     if (routingMode === "target") {
         return {
@@ -91,8 +107,8 @@ export function resolveAiProviderConfig(input: {
 
     if (input.type === "custom") {
         return {
-            upstreamUrl: input.upstreamUrl,
-            authType: input.authType,
+            upstreamUrl: input.upstreamUrl ?? null,
+            authType: input.authType ?? "bearer",
             routingMode
         };
     }
@@ -100,7 +116,43 @@ export function resolveAiProviderConfig(input: {
     const defaults = AI_PROVIDER_DEFAULTS[input.type];
     return {
         upstreamUrl: input.upstreamUrl ?? defaults.upstreamUrl,
-        authType: input.authType ?? defaults.authType,
+        authType: defaults.authType,
         routingMode
     };
+}
+
+/**
+ * Strip inbound client auth headers, then set the provider auth header
+ * for the given authType.
+ */
+export function applyAiProviderAuthHeaders(
+    headers: Record<string, string>,
+    authType: AiProviderAuthType,
+    apiKey: string
+): void {
+    for (const name of CONFLICTING_AUTH_HEADERS) {
+        for (const key of Object.keys(headers)) {
+            if (key.toLowerCase() === name) {
+                delete headers[key];
+            }
+        }
+    }
+
+    switch (authType) {
+        case "bearer":
+            headers["Authorization"] = `Bearer ${apiKey}`;
+            break;
+        case "x-api-key":
+            headers["x-api-key"] = apiKey;
+            break;
+        case "x-goog-api-key":
+            headers["x-goog-api-key"] = apiKey;
+            break;
+        case "hec":
+            headers["Authorization"] = `Splunk ${apiKey}`;
+            break;
+        case "cf-aig-authorization":
+            headers["cf-aig-authorization"] = `Bearer ${apiKey}`;
+            break;
+    }
 }

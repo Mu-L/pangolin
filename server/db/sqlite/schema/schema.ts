@@ -1626,7 +1626,15 @@ export const aiProviders = sqliteTable("aiProviders", {
     upstreamUrl: text("upstreamUrl"),
     apiKey: text("apiKey"),
     apiKeyLastChars: text("apiKeyLastChars"),
-    authType: text("authType").$type<"bearer">(),
+    authType: text("authType")
+        .$type<
+            | "bearer"
+            | "x-api-key"
+            | "x-goog-api-key"
+            | "hec"
+            | "cf-aig-authorization"
+        >()
+        .notNull(),
     routingMode: text("routingMode")
         .$type<"url" | "target">()
         .notNull()

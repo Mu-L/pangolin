@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+    AI_PROVIDER_AUTH_TYPES,
     AI_PROVIDER_DEFAULTS,
     providerRequiresUpstreamUrl,
     type AiProviderType
@@ -23,7 +24,7 @@ export const aiProviderFormSchema = z
         type: z.enum(aiProviderTypeValues),
         upstreamUrl: z.string().optional().nullable(),
         apiKey: z.string().optional(),
-        authType: z.enum(["bearer"]).optional().nullable(),
+        authType: z.enum(AI_PROVIDER_AUTH_TYPES).optional().nullable(),
         routingMode: z.enum(["url", "target"]).optional(),
         skipTlsVerification: z.boolean().optional(),
         enabled: z.boolean().optional()
@@ -138,7 +139,7 @@ export function toAiProviderCreatePayload(values: AiProviderFormValues) {
         authType:
             values.type === "custom"
                 ? (values.authType ?? "bearer")
-                : (values.authType ?? undefined),
+                : undefined,
         skipTlsVerification: values.skipTlsVerification,
         enabled: values.enabled ?? true
     };
@@ -159,13 +160,13 @@ export function toAiProviderUpdatePayload(values: AiProviderFormValues) {
         name: values.name.trim(),
         routingMode: values.type === "custom" ? routingMode : "url",
         upstreamUrl,
-        authType:
-            values.type === "custom"
-                ? (values.authType ?? "bearer")
-                : (values.authType ?? null),
         skipTlsVerification: values.skipTlsVerification ?? false,
         enabled: values.enabled ?? true
     };
+
+    if (values.type === "custom") {
+        payload.authType = values.authType ?? "bearer";
+    }
 
     if (values.apiKey?.trim()) {
         payload.apiKey = values.apiKey.trim();
@@ -184,11 +185,13 @@ export function toAiProviderNetworkPayload(values: AiProviderFormValues) {
 }
 
 export function toAiProviderAuthPayload(values: AiProviderFormValues) {
-    const full = toAiProviderUpdatePayload(values);
-    return {
-        authType: full.authType,
+    const payload: Record<string, unknown> = {
         ...(values.apiKey !== undefined ? { apiKey: values.apiKey.trim() } : {})
     };
+    if (values.type === "custom") {
+        payload.authType = values.authType ?? "bearer";
+    }
+    return payload;
 }
 
 export function toAiProviderConfigurationPayload(values: AiProviderFormValues) {

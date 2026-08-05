@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
+    AI_PROVIDER_AUTH_TYPES,
     providerRequiresUpstreamUrl,
+    type AiProviderAuthType,
     type AiProviderRoutingMode,
     type AiProviderType
 } from "@server/lib/aiProviderDefaults";
@@ -17,7 +19,7 @@ export const aiProviderTypeSchema = z.enum([
     "custom"
 ]);
 
-export const aiAuthTypeSchema = z.enum(["bearer"]);
+export const aiAuthTypeSchema = z.enum(AI_PROVIDER_AUTH_TYPES);
 
 export const aiRoutingModeSchema = z.enum(["url", "target"]);
 
@@ -25,7 +27,7 @@ export function refineProviderUpstreamFields(
     data: {
         type: AiProviderType;
         upstreamUrl?: string | null;
-        authType?: "bearer" | null;
+        authType?: AiProviderAuthType | null;
         routingMode?: AiProviderRoutingMode | null;
     },
     ctx: z.RefinementCtx

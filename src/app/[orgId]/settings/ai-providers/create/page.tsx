@@ -527,6 +527,26 @@ export default function CreateAiProviderPage() {
                                                                         "aiProviderAuthTypeBearer"
                                                                     )}
                                                                 </SelectItem>
+                                                                <SelectItem value="x-api-key">
+                                                                    {t(
+                                                                        "aiProviderAuthTypeXApiKey"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="x-goog-api-key">
+                                                                    {t(
+                                                                        "aiProviderAuthTypeXGoogApiKey"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="hec">
+                                                                    {t(
+                                                                        "aiProviderAuthTypeHec"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="cf-aig-authorization">
+                                                                    {t(
+                                                                        "aiProviderAuthTypeCfAigAuthorization"
+                                                                    )}
+                                                                </SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                         <FormDescription>

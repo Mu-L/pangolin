@@ -40,7 +40,10 @@ import {
     type AiProviderFormValues
 } from "@app/lib/aiProviderFormSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { AiProviderType } from "@server/lib/aiProviderDefaults";
+import type {
+    AiProviderAuthType,
+    AiProviderType
+} from "@server/lib/aiProviderDefaults";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
@@ -63,7 +66,7 @@ export default function AiProviderAuthenticationPage() {
             type: provider.type as AiProviderType,
             upstreamUrl: provider.upstreamUrl ?? "",
             apiKey: provider.apiKey ?? "",
-            authType: (provider.authType as "bearer" | null) ?? "bearer",
+            authType: (provider.authType as AiProviderAuthType) ?? "bearer",
             routingMode: (provider.routingMode as "url" | "target") ?? "url",
             skipTlsVerification: provider.skipTlsVerification,
             enabled: provider.enabled
@@ -91,7 +94,7 @@ export default function AiProviderAuthenticationPage() {
                 type: updated.type as AiProviderType,
                 upstreamUrl: updated.upstreamUrl ?? "",
                 apiKey: updated.apiKey ?? "",
-                authType: (updated.authType as "bearer" | null) ?? "bearer",
+                authType: (updated.authType as AiProviderAuthType) ?? "bearer",
                 routingMode: (updated.routingMode as "url" | "target") ?? "url",
                 skipTlsVerification: updated.skipTlsVerification,
                 enabled: updated.enabled
@@ -162,6 +165,26 @@ export default function AiProviderAuthenticationPage() {
                                                                 <SelectItem value="bearer">
                                                                     {t(
                                                                         "aiProviderAuthTypeBearer"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="x-api-key">
+                                                                    {t(
+                                                                        "aiProviderAuthTypeXApiKey"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="x-goog-api-key">
+                                                                    {t(
+                                                                        "aiProviderAuthTypeXGoogApiKey"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="hec">
+                                                                    {t(
+                                                                        "aiProviderAuthTypeHec"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="cf-aig-authorization">
+                                                                    {t(
+                                                                        "aiProviderAuthTypeCfAigAuthorization"
                                                                     )}
                                                                 </SelectItem>
                                                             </SelectContent>

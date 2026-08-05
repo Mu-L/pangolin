@@ -19,9 +19,7 @@ import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import {
     AiProviderAuthType,
-    AiProviderRoutingMode,
-    AiProviderType,
-    resolveAiProviderConfig
+    applyAiProviderAuthHeaders
 } from "@server/lib/aiProviderDefaults";
 import {
     SESSION_COOKIE_NAME,
@@ -499,12 +497,8 @@ export async function chatCompletions(
         const secret = config.getRawConfig().server.secret!;
         const apiKey = decrypt(provider.apiKey, secret);
 
-        const { upstreamUrl, authType } = resolveAiProviderConfig({
-            type: provider.type as AiProviderType,
-            upstreamUrl: provider.upstreamUrl,
-            authType: provider.authType as AiProviderAuthType | null,
-            routingMode: provider.routingMode as AiProviderRoutingMode | null
-        });
+        const upstreamUrl = provider.upstreamUrl;
+        const authType = provider.authType as AiProviderAuthType;
 
         if (!upstreamUrl) {
             return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
@@ -541,8 +535,7 @@ export async function chatCompletions(
             }
             headers[key] = Array.isArray(value) ? value.join(", ") : value;
         }
-        // TODO: temporary hardcoded auth for testing; restore bearer from authType
-        headers["x-api-key"] = apiKey;
+        applyAiProviderAuthHeaders(headers, authType, apiKey);
 
         // No dedicated per-request TLS agent is wired up (no extra deps for
         // this v1 gateway) - toggle the process-wide Node TLS check instead.

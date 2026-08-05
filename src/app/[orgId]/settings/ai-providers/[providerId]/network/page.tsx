@@ -45,7 +45,10 @@ import {
 } from "@app/lib/aiProviderFormSchema";
 import { aiProviderQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { AiProviderType } from "@server/lib/aiProviderDefaults";
+import type {
+    AiProviderAuthType,
+    AiProviderType
+} from "@server/lib/aiProviderDefaults";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
@@ -72,7 +75,7 @@ export default function AiProviderNetworkPage() {
             type: provider.type as AiProviderType,
             upstreamUrl: provider.upstreamUrl ?? "",
             apiKey: "",
-            authType: (provider.authType as "bearer" | null) ?? "bearer",
+            authType: (provider.authType as AiProviderAuthType) ?? "bearer",
             routingMode: (provider.routingMode as "url" | "target") ?? "url",
             skipTlsVerification: provider.skipTlsVerification,
             enabled: provider.enabled
@@ -115,7 +118,7 @@ export default function AiProviderNetworkPage() {
                 type: updated.type as AiProviderType,
                 upstreamUrl: updated.upstreamUrl ?? "",
                 apiKey: "",
-                authType: (updated.authType as "bearer" | null) ?? "bearer",
+                authType: (updated.authType as AiProviderAuthType) ?? "bearer",
                 routingMode: (updated.routingMode as "url" | "target") ?? "url",
                 skipTlsVerification: updated.skipTlsVerification,
                 enabled: updated.enabled
