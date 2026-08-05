@@ -38,6 +38,7 @@ import { localCache } from "@server/lib/cache";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import type { ModelAccessMode } from "@server/lib/aiInferenceResource";
+import { aiGatewayUpstreamFetch } from "@server/lib/aiGatewayUpstreamFetch";
 
 // Short-lived local caches so a burst of requests from the same IP/user
 // doesn't hit the database on every single request. None of this is
@@ -544,15 +545,6 @@ export async function handleAiGatewayProxy(
         );
         applyAiProviderAuthHeaders(headers, authType, apiKey);
 
-        // No dedicated per-request TLS agent is wired up (no extra deps for
-        // this v1 gateway) - toggle the process-wide Node TLS check instead.
-        // Known limitation: this is not safe under concurrent requests mixing
-        // skipTlsVerification providers with strict ones.
-        const restoreTlsReject = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-        if (provider.skipTlsVerification) {
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-        }
-
         const body = JSON.stringify(req.body);
 
         logger.debug("AI gateway upstream request", {
@@ -560,15 +552,17 @@ export async function handleAiGatewayProxy(
             url: targetUrl,
             method: "POST",
             headers,
-            body: req.body
+            body: req.body,
+            skipTlsVerification: provider.skipTlsVerification
         });
 
         let upstreamRes: globalThis.Response;
         try {
-            upstreamRes = await fetch(targetUrl, {
+            upstreamRes = await aiGatewayUpstreamFetch(targetUrl, {
                 method: "POST",
                 headers,
-                body
+                body,
+                skipTlsVerification: provider.skipTlsVerification
             });
         } catch (fetchError) {
             logger.error({
@@ -581,14 +575,6 @@ export async function handleAiGatewayProxy(
                         : undefined
             });
             throw fetchError;
-        } finally {
-            if (provider.skipTlsVerification) {
-                if (restoreTlsReject === undefined) {
-                    delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-                } else {
-                    process.env.NODE_TLS_REJECT_UNAUTHORIZED = restoreTlsReject;
-                }
-            }
         }
 
         const contentType = upstreamRes.headers.get("content-type") || "";
