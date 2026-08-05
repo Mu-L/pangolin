@@ -6,13 +6,48 @@ import fs from "fs";
 import { APP_PATH } from "@server/lib/consts";
 import { existsSync, mkdirSync } from "fs";
 
+// Temporary diagnostic trace for the random better-sqlite3 native aborts
+// (Statement::~Statement -> RemoveEnvironmentCleanupHook assertion). That
+// abort is a hard SIGABRT from native code, so it bypasses uncaughtException/
+// unhandledRejection and can outrun winston's async file transport. This
+// writes every statement text synchronously (fsync'd via appendFileSync) so
+// the statements immediately preceding a crash survive it. better-sqlite3's
+// `verbose` hook fires for BEGIN/SAVEPOINT/RELEASE/COMMIT/ROLLBACK too, since
+// those are just prepared statements under the hood - so this also lets us
+// see if two "transactions" ever overlap on the shared connection.
+// Enable with SQL_TRACE=true; remove once the crash is root-caused.
+function sqlTraceVerbose():
+    | ((message: unknown, ...args: unknown[]) => void)
+    | undefined {
+    if (process.env.SQL_TRACE !== "true") {
+        return undefined;
+    }
+    const traceLogDir = path.join(APP_PATH, "logs");
+    if (!existsSync(traceLogDir)) {
+        mkdirSync(traceLogDir, { recursive: true });
+    }
+    const traceLogPath = path.join(traceLogDir, "sql-trace.log");
+    let seq = 0;
+    return (message: unknown) => {
+        seq += 1;
+        const line = `${new Date().toISOString()} pid=${process.pid} #${seq} ${String(message).replace(/\s+/g, " ").trim()}\n`;
+        try {
+            fs.appendFileSync(traceLogPath, line);
+        } catch {
+            // best-effort diagnostic logging only
+        }
+    };
+}
+
 export const location = path.join(APP_PATH, "db", "db.sqlite");
 export const exists = checkFileExists(location);
 
 bootstrapVolume();
 
 function createDb() {
-    const sqlite = new Database(location);
+    const verbose =
+        process.env.QUERY_LOGGING == "true" ? sqlTraceVerbose() : undefined;
+    const sqlite = new Database(location, { verbose });
 
     if (process.env.ENABLE_SQLITE_WAL_MODE == "true") {
         // Enable WAL mode — allows concurrent readers + single writer, preventing

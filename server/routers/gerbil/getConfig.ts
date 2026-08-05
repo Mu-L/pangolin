@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { sites, exitNodes, ExitNode } from "@server/db";
+import { sites, exitNodes, ExitNode, clients } from "@server/db";
 import { db } from "@server/db";
 import { eq, isNotNull, and } from "drizzle-orm";
 import HttpCode from "@server/types/HttpCode";
@@ -93,7 +93,23 @@ export async function generateGerbilConfig(exitNode: ExitNode) {
             )
         );
 
-    const peers = await Promise.all(
+    const clientsRes = await db
+        .select()
+        .from(clients)
+        .where(
+            and(
+                eq(clients.exitNodeId, exitNode.exitNodeId),
+                isNotNull(clients.pubKey),
+                isNotNull(clients.exitNodeSubnet)
+            )
+        );
+
+    let peers: {
+        publicKey: string | null;
+        allowedIps: string[];
+    }[] = [];
+
+    const sitePeers = await Promise.all(
         sitesRes.map(async (site) => {
             if (site.type === "wireguard") {
                 return {
@@ -112,6 +128,15 @@ export async function generateGerbilConfig(exitNode: ExitNode) {
             };
         })
     );
+
+    const clientPeers = clientsRes.map((client) => {
+        return {
+            publicKey: client.pubKey,
+            allowedIps: [client.exitNodeSubnet!]
+        };
+    });
+
+    peers = [...sitePeers, ...clientPeers];
 
     const configResponse: GetConfigResponse = {
         listenPort: exitNode.listenPort || 51820,
