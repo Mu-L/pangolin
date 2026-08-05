@@ -28,6 +28,7 @@ import {
     providerHasCapability,
     type AiCapability
 } from "@server/lib/aiCapabilities";
+import { proxyAiGatewayToSiteTarget } from "@server/routers/aiGateway/targetRouting";
 import {
     SESSION_COOKIE_NAME,
     validateSessionToken
@@ -485,6 +486,10 @@ export async function handleAiGatewayProxy(
         }
 
         const { provider } = selection;
+
+        if (provider.type === "custom" && provider.routingMode === "target") {
+            return await proxyAiGatewayToSiteTarget(req, res, provider);
+        }
 
         const upstreamUrl = provider.upstreamUrl;
         const authType = provider.authType as AiProviderAuthType;
