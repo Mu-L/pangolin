@@ -1633,6 +1633,8 @@ export const aiProviders = sqliteTable("aiProviders", {
             | "x-goog-api-key"
             | "hec"
             | "cf-aig-authorization"
+            | "none"
+            | "passthrough"
         >()
         .notNull(),
     routingMode: text("routingMode")

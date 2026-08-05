@@ -52,12 +52,4 @@ export function refineProviderUpstreamFields(
             path: ["upstreamUrl"]
         });
     }
-
-    if (data.type === "custom" && !data.authType) {
-        ctx.addIssue({
-            code: "custom",
-            message: "authType is required for custom providers",
-            path: ["authType"]
-        });
-    }
 }

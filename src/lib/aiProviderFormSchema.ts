@@ -2,7 +2,9 @@ import { z } from "zod";
 import {
     AI_PROVIDER_AUTH_TYPES,
     AI_PROVIDER_DEFAULTS,
+    authTypeRequiresApiKey,
     providerRequiresUpstreamUrl,
+    type AiProviderAuthType,
     type AiProviderType
 } from "@server/lib/aiProviderDefaults";
 
@@ -70,10 +72,10 @@ export const aiProviderFormSchema = z
             });
         }
 
-        if (data.type === "custom" && !data.authType) {
+        if (!data.authType) {
             ctx.addIssue({
                 code: "custom",
-                message: "authType is required for custom providers",
+                message: "authType is required",
                 path: ["authType"]
             });
         }
@@ -83,7 +85,9 @@ export type AiProviderFormValues = z.infer<typeof aiProviderFormSchema>;
 
 export const aiProviderCreateFormSchema = aiProviderFormSchema.superRefine(
     (data, ctx) => {
-        if (!data.apiKey?.trim()) {
+        const authType: AiProviderAuthType = data.authType ?? "bearer";
+
+        if (authTypeRequiresApiKey(authType) && !data.apiKey?.trim()) {
             ctx.addIssue({
                 code: "custom",
                 message: "API key is required",
@@ -92,6 +96,15 @@ export const aiProviderCreateFormSchema = aiProviderFormSchema.superRefine(
         }
     }
 );
+
+export function defaultAuthTypeForProvider(
+    type: AiProviderType
+): AiProviderAuthType {
+    if (type === "custom") {
+        return "bearer";
+    }
+    return AI_PROVIDER_DEFAULTS[type].authType;
+}
 
 export function emptyUpstreamForType(type: AiProviderType): string {
     if (type === "custom") {
@@ -136,10 +149,7 @@ export function toAiProviderCreatePayload(values: AiProviderFormValues) {
         routingMode: values.type === "custom" ? routingMode : undefined,
         upstreamUrl,
         apiKey: values.apiKey?.trim() ? values.apiKey.trim() : undefined,
-        authType:
-            values.type === "custom"
-                ? (values.authType ?? "bearer")
-                : undefined,
+        authType: values.authType ?? "bearer",
         skipTlsVerification: values.skipTlsVerification,
         enabled: values.enabled ?? true
     };
@@ -160,13 +170,10 @@ export function toAiProviderUpdatePayload(values: AiProviderFormValues) {
         name: values.name.trim(),
         routingMode: values.type === "custom" ? routingMode : "url",
         upstreamUrl,
+        authType: values.authType ?? "bearer",
         skipTlsVerification: values.skipTlsVerification ?? false,
         enabled: values.enabled ?? true
     };
-
-    if (values.type === "custom") {
-        payload.authType = values.authType ?? "bearer";
-    }
 
     if (values.apiKey?.trim()) {
         payload.apiKey = values.apiKey.trim();
@@ -185,13 +192,10 @@ export function toAiProviderNetworkPayload(values: AiProviderFormValues) {
 }
 
 export function toAiProviderAuthPayload(values: AiProviderFormValues) {
-    const payload: Record<string, unknown> = {
+    return {
+        authType: values.authType ?? "bearer",
         ...(values.apiKey !== undefined ? { apiKey: values.apiKey.trim() } : {})
     };
-    if (values.type === "custom") {
-        payload.authType = values.authType ?? "bearer";
-    }
-    return payload;
 }
 
 export function toAiProviderConfigurationPayload(values: AiProviderFormValues) {

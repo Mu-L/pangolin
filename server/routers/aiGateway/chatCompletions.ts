@@ -19,7 +19,8 @@ import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import {
     AiProviderAuthType,
-    applyAiProviderAuthHeaders
+    applyAiProviderAuthHeaders,
+    authTypeRequiresApiKey
 } from "@server/lib/aiProviderDefaults";
 import {
     SESSION_COOKIE_NAME,
@@ -488,15 +489,6 @@ export async function chatCompletions(
 
         const { provider } = selection;
 
-        if (!provider.apiKey) {
-            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
-                error: { message: "AI provider has no API key configured" }
-            });
-        }
-
-        const secret = config.getRawConfig().server.secret!;
-        const apiKey = decrypt(provider.apiKey, secret);
-
         const upstreamUrl = provider.upstreamUrl;
         const authType = provider.authType as AiProviderAuthType;
 
@@ -506,6 +498,19 @@ export async function chatCompletions(
                     message: "AI provider has no upstream URL configured"
                 }
             });
+        }
+
+        let apiKey: string | null = null;
+        if (authTypeRequiresApiKey(authType)) {
+            if (!provider.apiKey) {
+                return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
+                    error: {
+                        message: "AI provider has no API key configured"
+                    }
+                });
+            }
+            const secret = config.getRawConfig().server.secret!;
+            apiKey = decrypt(provider.apiKey, secret);
         }
 
         const targetUrl = `${upstreamUrl.replace(/\/$/, "")}`;

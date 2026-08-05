@@ -1651,6 +1651,8 @@ export const aiProviders = pgTable("aiProviders", {
             | "x-goog-api-key"
             | "hec"
             | "cf-aig-authorization"
+            | "none"
+            | "passthrough"
         >()
         .notNull(),
     routingMode: varchar("routingMode")

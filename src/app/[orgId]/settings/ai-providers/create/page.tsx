@@ -19,6 +19,7 @@ import {
     SettingsSubsectionTitle
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
+import { AiProviderAuthTypeSelect } from "@app/components/AiProviderAuthTypeSelect";
 import { AiProviderTypeSelect } from "@app/components/AiProviderTypeSelect";
 import { StrategySelect } from "@app/components/StrategySelect";
 import { SwitchInput } from "@app/components/SwitchInput";
@@ -33,18 +34,12 @@ import {
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@app/components/ui/select";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import {
     aiProviderCreateFormSchema,
+    defaultAuthTypeForProvider,
     emptyUpstreamForType,
     showsUpstreamUrlField,
     toAiProviderCreatePayload,
@@ -52,6 +47,7 @@ import {
     type AiProviderFormValues
 } from "@app/lib/aiProviderFormSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { authTypeRequiresApiKey } from "@server/lib/aiProviderDefaults";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
@@ -76,7 +72,7 @@ export default function CreateAiProviderPage() {
             type: "openai",
             upstreamUrl: emptyUpstreamForType("openai"),
             apiKey: "",
-            authType: "bearer",
+            authType: defaultAuthTypeForProvider("openai"),
             routingMode: "url",
             skipTlsVerification: false,
             enabled: true
@@ -85,12 +81,13 @@ export default function CreateAiProviderPage() {
 
     const providerType = form.watch("type");
     const routingMode = form.watch("routingMode");
+    const authType = form.watch("authType");
 
     const showUpstream = showsUpstreamUrlField(providerType, routingMode);
     const requireUpstream = upstreamUrlRequired(providerType, routingMode);
     const showRoutingMode = providerType === "custom";
-    const showAuthType = providerType === "custom";
     const showTargets = providerType === "custom" && routingMode === "target";
+    const showApiKey = authTypeRequiresApiKey(authType ?? "bearer");
 
     async function createTargets(
         providerId: number,
@@ -269,6 +266,12 @@ export default function CreateAiProviderPage() {
                                                                 form.setValue(
                                                                     "upstreamUrl",
                                                                     emptyUpstreamForType(
+                                                                        value
+                                                                    )
+                                                                );
+                                                                form.setValue(
+                                                                    "authType",
+                                                                    defaultAuthTypeForProvider(
                                                                         value
                                                                     )
                                                                 );
@@ -495,88 +498,22 @@ export default function CreateAiProviderPage() {
                         <SettingsSectionBody>
                             <SettingsSectionForm variant="half">
                                 <SettingsFormGrid>
-                                    {showAuthType && (
-                                        <SettingsFormCell span="half">
-                                            <FormField
-                                                control={form.control}
-                                                name="authType"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>
-                                                            {t(
-                                                                "aiProviderAuthType"
-                                                            )}
-                                                        </FormLabel>
-                                                        <Select
-                                                            value={
-                                                                field.value ??
-                                                                "bearer"
-                                                            }
-                                                            onValueChange={
-                                                                field.onChange
-                                                            }
-                                                        >
-                                                            <FormControl>
-                                                                <SelectTrigger>
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="bearer">
-                                                                    {t(
-                                                                        "aiProviderAuthTypeBearer"
-                                                                    )}
-                                                                </SelectItem>
-                                                                <SelectItem value="x-api-key">
-                                                                    {t(
-                                                                        "aiProviderAuthTypeXApiKey"
-                                                                    )}
-                                                                </SelectItem>
-                                                                <SelectItem value="x-goog-api-key">
-                                                                    {t(
-                                                                        "aiProviderAuthTypeXGoogApiKey"
-                                                                    )}
-                                                                </SelectItem>
-                                                                <SelectItem value="hec">
-                                                                    {t(
-                                                                        "aiProviderAuthTypeHec"
-                                                                    )}
-                                                                </SelectItem>
-                                                                <SelectItem value="cf-aig-authorization">
-                                                                    {t(
-                                                                        "aiProviderAuthTypeCfAigAuthorization"
-                                                                    )}
-                                                                </SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormDescription>
-                                                            {t(
-                                                                "aiProviderAuthTypeDescription"
-                                                            )}
-                                                        </FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </SettingsFormCell>
-                                    )}
-
                                     <SettingsFormCell span="half">
                                         <FormField
                                             control={form.control}
-                                            name="apiKey"
+                                            name="authType"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>
-                                                        {t("aiProviderApiKey")}
+                                                        {t(
+                                                            "aiProviderAuthType"
+                                                        )}
                                                     </FormLabel>
                                                     <FormControl>
-                                                        <Input
-                                                            type="password"
-                                                            autoComplete="new-password"
+                                                        <AiProviderAuthTypeSelect
                                                             value={
                                                                 field.value ??
-                                                                ""
+                                                                "bearer"
                                                             }
                                                             onChange={
                                                                 field.onChange
@@ -585,7 +522,7 @@ export default function CreateAiProviderPage() {
                                                     </FormControl>
                                                     <FormDescription>
                                                         {t(
-                                                            "aiProviderApiKeyDescription"
+                                                            "aiProviderAuthTypeDescription"
                                                         )}
                                                     </FormDescription>
                                                     <FormMessage />
@@ -593,6 +530,43 @@ export default function CreateAiProviderPage() {
                                             )}
                                         />
                                     </SettingsFormCell>
+
+                                    {showApiKey && (
+                                        <SettingsFormCell span="half">
+                                            <FormField
+                                                control={form.control}
+                                                name="apiKey"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t(
+                                                                "aiProviderApiKey"
+                                                            )}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="password"
+                                                                autoComplete="new-password"
+                                                                value={
+                                                                    field.value ??
+                                                                    ""
+                                                                }
+                                                                onChange={
+                                                                    field.onChange
+                                                                }
+                                                            />
+                                                        </FormControl>
+                                                        <FormDescription>
+                                                            {t(
+                                                                "aiProviderApiKeyDescription"
+                                                            )}
+                                                        </FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </SettingsFormCell>
+                                    )}
                                 </SettingsFormGrid>
                             </SettingsSectionForm>
                         </SettingsSectionBody>

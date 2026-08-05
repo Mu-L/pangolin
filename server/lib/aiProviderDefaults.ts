@@ -14,7 +14,9 @@ export const AI_PROVIDER_AUTH_TYPES = [
     "x-api-key",
     "x-goog-api-key",
     "hec",
-    "cf-aig-authorization"
+    "cf-aig-authorization",
+    "none",
+    "passthrough"
 ] as const;
 
 export type AiProviderAuthType = (typeof AI_PROVIDER_AUTH_TYPES)[number];
@@ -71,6 +73,10 @@ const CONFLICTING_AUTH_HEADERS = [
     "cf-aig-authorization"
 ] as const;
 
+export function authTypeRequiresApiKey(authType: AiProviderAuthType): boolean {
+    return authType !== "none" && authType !== "passthrough";
+}
+
 export function providerRequiresUpstreamUrl(
     type: AiProviderType,
     routingMode: AiProviderRoutingMode = "url"
@@ -116,26 +122,40 @@ export function resolveAiProviderCreateFields(input: {
     const defaults = AI_PROVIDER_DEFAULTS[input.type];
     return {
         upstreamUrl: input.upstreamUrl ?? defaults.upstreamUrl,
-        authType: defaults.authType,
+        authType: input.authType ?? defaults.authType,
         routingMode
     };
 }
 
 /**
- * Strip inbound client auth headers, then set the provider auth header
- * for the given authType.
+ * Apply provider auth to upstream headers.
+ * - Injected modes: strip client auth headers, then set the provider key.
+ * - none: strip client auth headers, send no auth.
+ * - passthrough: leave client auth headers as-is.
  */
 export function applyAiProviderAuthHeaders(
     headers: Record<string, string>,
     authType: AiProviderAuthType,
-    apiKey: string
+    apiKey: string | null
 ): void {
+    if (authType === "passthrough") {
+        return;
+    }
+
     for (const name of CONFLICTING_AUTH_HEADERS) {
         for (const key of Object.keys(headers)) {
             if (key.toLowerCase() === name) {
                 delete headers[key];
             }
         }
+    }
+
+    if (authType === "none") {
+        return;
+    }
+
+    if (!apiKey) {
+        throw new Error(`API key required for authType ${authType}`);
     }
 
     switch (authType) {
