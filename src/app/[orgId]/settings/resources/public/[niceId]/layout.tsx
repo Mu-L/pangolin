@@ -106,7 +106,7 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
               }
           ];
 
-    if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
+    if (["http", "ssh", "rdp", "vnc", "inference"].includes(resource.mode)) {
         navItems.push(
             {
                 title: t("authentication"),
