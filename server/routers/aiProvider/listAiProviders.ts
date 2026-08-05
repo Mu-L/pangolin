@@ -131,7 +131,7 @@ export async function listAiProviders(
 
         return response<ListAiProvidersResponse>(res, {
             data: {
-                providers: rows.map(toPublicAiProvider),
+                providers: rows.map((row) => toPublicAiProvider(row)),
                 pagination: {
                     total: totalCount,
                     pageSize,
