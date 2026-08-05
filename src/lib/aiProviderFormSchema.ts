@@ -8,6 +8,8 @@ import {
     type AiProviderType
 } from "@server/lib/aiProviderDefaults";
 
+type TranslateFn = (key: string) => string;
+
 export const aiProviderTypeValues = [
     "openai",
     "anthropic",
@@ -20,82 +22,88 @@ export const aiProviderTypeValues = [
     "custom"
 ] as const satisfies readonly AiProviderType[];
 
-export const aiProviderFormSchema = z
-    .object({
-        name: z.string().trim().min(1),
-        type: z.enum(aiProviderTypeValues),
-        upstreamUrl: z.string().optional().nullable(),
-        apiKey: z.string().optional(),
-        authType: z.enum(AI_PROVIDER_AUTH_TYPES).optional().nullable(),
-        routingMode: z.enum(["url", "target"]).optional(),
-        skipTlsVerification: z.boolean().optional(),
-        enabled: z.boolean().optional()
-    })
-    .superRefine((data, ctx) => {
-        const routingMode =
-            data.type === "custom" ? (data.routingMode ?? "url") : "url";
+export function createAiProviderFormSchema(t: TranslateFn) {
+    return z
+        .object({
+            name: z
+                .string()
+                .trim()
+                .min(1, { message: t("nameRequired") }),
+            type: z.enum(aiProviderTypeValues),
+            upstreamUrl: z.string().optional().nullable(),
+            apiKey: z.string().optional(),
+            authType: z.enum(AI_PROVIDER_AUTH_TYPES).optional().nullable(),
+            routingMode: z.enum(["url", "target"]).optional(),
+            skipTlsVerification: z.boolean().optional(),
+            enabled: z.boolean().optional()
+        })
+        .superRefine((data, ctx) => {
+            const routingMode =
+                data.type === "custom" ? (data.routingMode ?? "url") : "url";
 
-        if (data.type !== "custom" && data.routingMode === "target") {
-            ctx.addIssue({
-                code: "custom",
-                message:
-                    "routingMode target is only allowed for custom providers",
-                path: ["routingMode"]
-            });
-        }
-
-        const upstreamUrl =
-            data.upstreamUrl && data.upstreamUrl.trim().length > 0
-                ? data.upstreamUrl.trim()
-                : null;
-
-        if (upstreamUrl) {
-            try {
-                new URL(upstreamUrl);
-            } catch {
+            if (data.type !== "custom" && data.routingMode === "target") {
                 ctx.addIssue({
                     code: "custom",
-                    message: "Invalid URL",
+                    message: t("aiProviderErrorRoutingModeTarget"),
+                    path: ["routingMode"]
+                });
+            }
+
+            const upstreamUrl =
+                data.upstreamUrl && data.upstreamUrl.trim().length > 0
+                    ? data.upstreamUrl.trim()
+                    : null;
+
+            if (upstreamUrl) {
+                try {
+                    new URL(upstreamUrl);
+                } catch {
+                    ctx.addIssue({
+                        code: "custom",
+                        message: t("aiProviderErrorUpstreamUrlInvalid"),
+                        path: ["upstreamUrl"]
+                    });
+                }
+            }
+
+            if (
+                providerRequiresUpstreamUrl(data.type, routingMode) &&
+                !upstreamUrl
+            ) {
+                ctx.addIssue({
+                    code: "custom",
+                    message: t("aiProviderErrorUpstreamUrlRequired"),
                     path: ["upstreamUrl"]
                 });
             }
-        }
 
-        if (
-            providerRequiresUpstreamUrl(data.type, routingMode) &&
-            !upstreamUrl
-        ) {
-            ctx.addIssue({
-                code: "custom",
-                message: `upstreamUrl is required for ${data.type} providers`,
-                path: ["upstreamUrl"]
-            });
-        }
+            if (!data.authType) {
+                ctx.addIssue({
+                    code: "custom",
+                    message: t("aiProviderErrorAuthTypeRequired"),
+                    path: ["authType"]
+                });
+            }
+        });
+}
 
-        if (!data.authType) {
-            ctx.addIssue({
-                code: "custom",
-                message: "authType is required",
-                path: ["authType"]
-            });
-        }
-    });
-
-export type AiProviderFormValues = z.infer<typeof aiProviderFormSchema>;
-
-export const aiProviderCreateFormSchema = aiProviderFormSchema.superRefine(
-    (data, ctx) => {
+export function createAiProviderCreateFormSchema(t: TranslateFn) {
+    return createAiProviderFormSchema(t).superRefine((data, ctx) => {
         const authType: AiProviderAuthType = data.authType ?? "bearer";
 
         if (authTypeRequiresApiKey(authType) && !data.apiKey?.trim()) {
             ctx.addIssue({
                 code: "custom",
-                message: "API key is required",
+                message: t("aiProviderErrorApiKeyRequired"),
                 path: ["apiKey"]
             });
         }
-    }
-);
+    });
+}
+
+export type AiProviderFormValues = z.infer<
+    ReturnType<typeof createAiProviderFormSchema>
+>;
 
 export function defaultAuthTypeForProvider(
     type: AiProviderType

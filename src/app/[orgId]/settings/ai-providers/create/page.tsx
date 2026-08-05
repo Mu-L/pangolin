@@ -38,7 +38,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import {
-    aiProviderCreateFormSchema,
+    createAiProviderCreateFormSchema,
     defaultAuthTypeForProvider,
     emptyUpstreamForType,
     showsUpstreamUrlField,
@@ -52,7 +52,7 @@ import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export default function CreateAiProviderPage() {
@@ -65,8 +65,10 @@ export default function CreateAiProviderPage() {
     const [loading, setLoading] = useState(false);
     const targetsRef = useRef<LocalTarget[]>([]);
 
+    const formSchema = useMemo(() => createAiProviderCreateFormSchema(t), [t]);
+
     const form = useForm<AiProviderFormValues>({
-        resolver: zodResolver(aiProviderCreateFormSchema),
+        resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
             type: "openai",

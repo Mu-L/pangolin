@@ -37,7 +37,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import {
-    aiProviderFormSchema,
+    createAiProviderFormSchema,
     showsUpstreamUrlField,
     toAiProviderNetworkPayload,
     upstreamUrlRequired,
@@ -54,7 +54,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export default function AiProviderNetworkPage() {
@@ -68,8 +68,10 @@ export default function AiProviderNetworkPage() {
     const [saveLoading, setSaveLoading] = useState(false);
     const targetsFormRef = useRef<ProxyResourceTargetsFormHandle>(null);
 
+    const formSchema = useMemo(() => createAiProviderFormSchema(t), [t]);
+
     const form = useForm<AiProviderFormValues>({
-        resolver: zodResolver(aiProviderFormSchema),
+        resolver: zodResolver(formSchema),
         defaultValues: {
             name: provider.name,
             type: provider.type as AiProviderType,

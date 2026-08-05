@@ -32,16 +32,9 @@ import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
-const generalSchema = z.object({
-    name: z.string().trim().min(1),
-    enabled: z.boolean()
-});
-
-type GeneralFormValues = z.infer<typeof generalSchema>;
 
 export default function AiProviderGeneralPage() {
     const { provider, updateProvider } = useAiProviderContext();
@@ -50,6 +43,20 @@ export default function AiProviderGeneralPage() {
     const router = useRouter();
     const t = useTranslations();
     const [saveLoading, setSaveLoading] = useState(false);
+
+    const generalSchema = useMemo(
+        () =>
+            z.object({
+                name: z
+                    .string()
+                    .trim()
+                    .min(1, { message: t("nameRequired") }),
+                enabled: z.boolean()
+            }),
+        [t]
+    );
+
+    type GeneralFormValues = z.infer<typeof generalSchema>;
 
     const form = useForm<GeneralFormValues>({
         resolver: zodResolver(generalSchema),
