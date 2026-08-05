@@ -1659,6 +1659,7 @@ export const aiProviders = pgTable("aiProviders", {
         .$type<"url" | "target">()
         .notNull()
         .default("url"),
+    capabilities: text("capabilities").notNull().default("[]"),
     skipTlsVerification: boolean("skipTlsVerification")
         .notNull()
         .default(false),

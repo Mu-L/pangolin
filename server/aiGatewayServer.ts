@@ -7,7 +7,7 @@ import {
     errorHandlerMiddleware,
     notFoundMiddleware
 } from "@server/middlewares";
-import * as aiGateway from "@server/routers/aiGateway";
+import { createAiGatewayRouter } from "@server/routers/aiGateway";
 
 const aiGatewayPort = config.getRawConfig().server.ai_gateway_port;
 
@@ -23,7 +23,7 @@ export function createAiGatewayServer() {
     aiGatewayServer.use(cors());
     aiGatewayServer.use(express.json());
 
-    aiGatewayServer.post("/chat/completions", aiGateway.chatCompletions);
+    aiGatewayServer.use(createAiGatewayRouter());
 
     aiGatewayServer.use(notFoundMiddleware);
     aiGatewayServer.use(errorHandlerMiddleware);

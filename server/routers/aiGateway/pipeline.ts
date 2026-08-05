@@ -23,6 +23,11 @@ import {
     authTypeRequiresApiKey
 } from "@server/lib/aiProviderDefaults";
 import {
+    AI_CAPABILITY_DEFS,
+    providerHasCapability,
+    type AiCapability
+} from "@server/lib/aiCapabilities";
+import {
     SESSION_COOKIE_NAME,
     validateSessionToken
 } from "@server/auth/sessions/app";
@@ -45,10 +50,6 @@ const REQUEST_USER_TTL_SEC = 30;
 
 type CachedClient = { clientId: number; userId: string | null } | null;
 
-// The set of CIDRs an exit node manages; client exitNodeSubnets are always
-// /32s carved out of one of these ranges. Checking against this small,
-// cacheable list lets us skip the (much more frequent) per-IP client lookup
-// entirely for traffic that could never match a client anyway.
 async function getExitNodeRanges(): Promise<string[]> {
     const cached = localCache.get<string[]>(EXIT_NODE_RANGES_CACHE_KEY);
     if (cached) {
@@ -96,8 +97,6 @@ type ResolvedTarget = {
     siteResourceId: number | null;
     orgId: string | null;
     attachments: ProviderAttachment[];
-    // Model IDs on the resource allowlist that belong to allowlist-mode
-    // providers. Empty when no attached provider uses allowlist mode.
     allowlistedModelIds: Set<number>;
 };
 
@@ -150,13 +149,9 @@ async function buildRequestUser(
 
 async function resolveRequestUser(
     req: Request,
-    resourceId: number | null,
+    _resourceId: number | null,
     orgId: string | null
 ): Promise<RequestUser | null> {
-    // Public resources behind badger: badger passes the resource session
-    // cookie through to the backend (same mechanism the browser gateway,
-    // e.g. the SSH page, relies on), so we can validate it exactly like
-    // verifySessionUserMiddleware does for the dashboard.
     const sessionToken = req.cookies?.[SESSION_COOKIE_NAME];
     if (sessionToken) {
         const { session, user } = await validateSessionToken(sessionToken);
@@ -167,10 +162,6 @@ async function resolveRequestUser(
 
     // TODO: MAKE SURE THIS CAN NOT BE SPOOFED AND CAN BE TRUSTED AS AN INTERNAL ADDRESS FROM A NODE
 
-    // No session cookie - fall back to identifying the caller by source IP.
-    // A client's exitNodeSubnet is a /32 handed out from one of our exit
-    // node's address ranges, so an IP that isn't inside any of those ranges
-    // can never belong to a client and we can skip the DB entirely.
     const ip = req.ip;
     if (!ip) {
         return null;
@@ -193,9 +184,6 @@ async function resolveRequestUser(
 }
 
 async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
-    // TODO: eventually we need to know if it's a private or public resource
-    // and not just simply check the fullDomain in case there is a private resource with the same fullDomain
-
     const [resourceRow] = await db
         .select({
             resourceId: resources.resourceId,
@@ -378,7 +366,6 @@ async function selectProvider(
         };
     }
 
-    // One lookup for the requested model key across all attached providers.
     const matchingModels = await db
         .select({
             modelId: aiModels.modelId,
@@ -407,7 +394,6 @@ async function selectProvider(
             continue;
         }
 
-        // allowlist: only models explicitly attached to the resource
         if (allowlistedModelIds.has(model.modelId)) {
             candidates.push(attachment.provider);
         }
@@ -432,11 +418,14 @@ async function selectProvider(
     };
 }
 
-export async function chatCompletions(
+export async function handleAiGatewayProxy(
     req: Request,
-    res: Response
+    res: Response,
+    capability: AiCapability
 ): Promise<any> {
     try {
+        const def = AI_CAPABILITY_DEFS[capability];
+
         const host = (
             (req.headers["p-host"] as string | undefined) ||
             req.headers.host ||
@@ -448,7 +437,7 @@ export async function chatCompletions(
                 .json({ error: { message: "Missing Host header" } });
         }
 
-        logger.info(`AI gateway request for host: ${host}`);
+        logger.info(`AI gateway ${capability} request for host: ${host}`);
 
         const target = await resolveTarget(host);
         if (!target) {
@@ -461,11 +450,6 @@ export async function chatCompletions(
 
         const { attachments, allowlistedModelIds, resourceId, orgId } = target;
 
-        logger.debug("+++++ gateway target: ", target);
-
-        // Best-effort identity resolution - not yet enforced, but lets us
-        // start making per-user access decisions (e.g. model/role-based
-        // restrictions) without another round of plumbing later.
         const requestUser = await resolveRequestUser(req, resourceId, orgId);
         if (requestUser) {
             logger.debug(
@@ -473,11 +457,22 @@ export async function chatCompletions(
             );
         }
 
-        const requestedModel =
-            typeof req.body?.model === "string" ? req.body.model : undefined;
+        const capableAttachments = attachments.filter((a) =>
+            providerHasCapability(a.provider.capabilities, capability)
+        );
+
+        if (capableAttachments.length === 0) {
+            return res.status(HttpCode.FORBIDDEN).json({
+                error: {
+                    message: `No AI provider on this resource supports ${capability}`
+                }
+            });
+        }
+
+        const requestedModel = def.extractModel(req);
 
         const selection = await selectProvider(
-            attachments,
+            capableAttachments,
             allowlistedModelIds,
             requestedModel
         );
@@ -513,11 +508,12 @@ export async function chatCompletions(
             apiKey = decrypt(provider.apiKey, secret);
         }
 
-        const targetUrl = `${upstreamUrl.replace(/\/$/, "")}`;
+        const targetUrl = def.resolveUpstreamUrl(
+            upstreamUrl,
+            req,
+            requestedModel!
+        );
 
-        // Drop hop-by-hop / proxy-only headers. Forwarding Host especially
-        // breaks Node fetch (TLS/SNI targets the upstream URL while Host
-        // still says localhost).
         const skipHeaders = new Set([
             "p-host",
             "host",
@@ -554,6 +550,7 @@ export async function chatCompletions(
         const body = JSON.stringify(req.body);
 
         logger.debug("AI gateway upstream request", {
+            capability,
             url: targetUrl,
             method: "POST",
             headers,
@@ -591,7 +588,11 @@ export async function chatCompletions(
         const contentType = upstreamRes.headers.get("content-type") || "";
         const isStream =
             req.body?.stream === true ||
-            contentType.includes("text/event-stream");
+            contentType.includes("text/event-stream") ||
+            req.path.includes("streamGenerateContent") ||
+            req.path.includes("streamRawPredict") ||
+            req.path.includes("converse-stream") ||
+            req.path.includes("invoke-with-response-stream");
 
         res.status(upstreamRes.status);
         res.setHeader("Content-Type", contentType || "application/json");

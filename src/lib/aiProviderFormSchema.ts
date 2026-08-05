@@ -7,6 +7,11 @@ import {
     type AiProviderAuthType,
     type AiProviderType
 } from "@server/lib/aiProviderDefaults";
+import {
+    AI_CAPABILITIES,
+    defaultsForProviderType,
+    type AiCapability
+} from "@server/lib/aiCapabilities";
 
 type TranslateFn = (key: string) => string;
 
@@ -22,6 +27,8 @@ export const aiProviderTypeValues = [
     "custom"
 ] as const satisfies readonly AiProviderType[];
 
+export const aiCapabilityValues = AI_CAPABILITIES;
+
 export function createAiProviderFormSchema(t: TranslateFn) {
     return z
         .object({
@@ -34,6 +41,7 @@ export function createAiProviderFormSchema(t: TranslateFn) {
             apiKey: z.string().optional(),
             authType: z.enum(AI_PROVIDER_AUTH_TYPES).optional().nullable(),
             routingMode: z.enum(["url", "target"]).optional(),
+            capabilities: z.array(z.enum(AI_CAPABILITIES)).optional(),
             skipTlsVerification: z.boolean().optional(),
             enabled: z.boolean().optional()
         })
@@ -84,6 +92,17 @@ export function createAiProviderFormSchema(t: TranslateFn) {
                     path: ["authType"]
                 });
             }
+
+            if (
+                data.type === "custom" &&
+                (!data.capabilities || data.capabilities.length === 0)
+            ) {
+                ctx.addIssue({
+                    code: "custom",
+                    message: t("aiProviderErrorCapabilitiesRequired"),
+                    path: ["capabilities"]
+                });
+            }
         });
 }
 
@@ -112,6 +131,12 @@ export function defaultAuthTypeForProvider(
         return "bearer";
     }
     return AI_PROVIDER_DEFAULTS[type].authType;
+}
+
+export function defaultCapabilitiesForProvider(
+    type: AiProviderType
+): AiCapability[] {
+    return [...defaultsForProviderType(type)];
 }
 
 export function emptyUpstreamForType(type: AiProviderType): string {
@@ -158,6 +183,8 @@ export function toAiProviderCreatePayload(values: AiProviderFormValues) {
         upstreamUrl,
         apiKey: values.apiKey?.trim() ? values.apiKey.trim() : undefined,
         authType: values.authType ?? "bearer",
+        capabilities:
+            values.type === "custom" ? (values.capabilities ?? []) : undefined,
         skipTlsVerification: values.skipTlsVerification,
         enabled: values.enabled ?? true
     };
@@ -182,6 +209,10 @@ export function toAiProviderUpdatePayload(values: AiProviderFormValues) {
         skipTlsVerification: values.skipTlsVerification ?? false,
         enabled: values.enabled ?? true
     };
+
+    if (values.type === "custom" && values.capabilities) {
+        payload.capabilities = values.capabilities;
+    }
 
     if (values.apiKey?.trim()) {
         payload.apiKey = values.apiKey.trim();

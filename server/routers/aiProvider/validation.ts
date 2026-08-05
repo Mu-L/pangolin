@@ -6,6 +6,7 @@ import {
     type AiProviderRoutingMode,
     type AiProviderType
 } from "@server/lib/aiProviderDefaults";
+import { AI_CAPABILITIES } from "@server/lib/aiCapabilities";
 
 export const aiProviderTypeSchema = z.enum([
     "openai",
@@ -23,12 +24,17 @@ export const aiAuthTypeSchema = z.enum(AI_PROVIDER_AUTH_TYPES);
 
 export const aiRoutingModeSchema = z.enum(["url", "target"]);
 
+export const aiCapabilitySchema = z.enum(AI_CAPABILITIES);
+
+export const aiCapabilitiesSchema = z.array(aiCapabilitySchema);
+
 export function refineProviderUpstreamFields(
     data: {
         type: AiProviderType;
         upstreamUrl?: string | null;
         authType?: AiProviderAuthType | null;
         routingMode?: AiProviderRoutingMode | null;
+        capabilities?: z.infer<typeof aiCapabilitiesSchema> | null;
     },
     ctx: z.RefinementCtx
 ) {
@@ -51,5 +57,17 @@ export function refineProviderUpstreamFields(
             message: `upstreamUrl is required for ${data.type} providers`,
             path: ["upstreamUrl"]
         });
+    }
+
+    if (data.type === "custom") {
+        const caps = data.capabilities;
+        if (!caps || caps.length === 0) {
+            ctx.addIssue({
+                code: "custom",
+                message:
+                    "At least one capability is required for custom providers",
+                path: ["capabilities"]
+            });
+        }
     }
 }

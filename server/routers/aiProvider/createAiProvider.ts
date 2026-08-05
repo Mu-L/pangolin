@@ -14,10 +14,15 @@ import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/
 import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 import {
     aiAuthTypeSchema,
+    aiCapabilitiesSchema,
     aiProviderTypeSchema,
     aiRoutingModeSchema,
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
+import {
+    resolveCapabilitiesForCreate,
+    serializeCapabilities
+} from "@server/lib/aiCapabilities";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -31,6 +36,7 @@ const bodySchema = z
         apiKey: z.string().optional(),
         authType: aiAuthTypeSchema.optional(),
         routingMode: aiRoutingModeSchema.optional(),
+        capabilities: aiCapabilitiesSchema.optional(),
         skipTlsVerification: z.boolean().optional(),
         enabled: z.boolean().optional()
     })
@@ -94,6 +100,7 @@ export async function createAiProvider(
             apiKey,
             authType,
             routingMode,
+            capabilities,
             skipTlsVerification,
             enabled
         } = parsedBody.data;
@@ -108,6 +115,10 @@ export async function createAiProvider(
             authType,
             routingMode
         });
+        const resolvedCapabilities = resolveCapabilitiesForCreate({
+            type,
+            capabilities
+        });
 
         const [provider] = await db
             .insert(aiProviders)
@@ -120,6 +131,7 @@ export async function createAiProvider(
                 apiKeyLastChars,
                 authType: resolved.authType,
                 routingMode: resolved.routingMode,
+                capabilities: serializeCapabilities(resolvedCapabilities),
                 skipTlsVerification: skipTlsVerification ?? false,
                 enabled: enabled ?? true,
                 createdAt: now,

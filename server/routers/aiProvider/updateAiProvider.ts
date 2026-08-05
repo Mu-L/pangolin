@@ -14,6 +14,7 @@ import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/
 import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 import {
     aiAuthTypeSchema,
+    aiCapabilitiesSchema,
     aiProviderTypeSchema,
     aiRoutingModeSchema,
     refineProviderUpstreamFields
@@ -23,6 +24,10 @@ import type {
     AiProviderRoutingMode,
     AiProviderType
 } from "@server/lib/aiProviderDefaults";
+import {
+    parseCapabilities,
+    serializeCapabilities
+} from "@server/lib/aiCapabilities";
 
 const paramsSchema = z.strictObject({
     providerId: z.coerce.number().int().positive()
@@ -34,6 +39,7 @@ const bodySchema = z.strictObject({
     apiKey: z.string().optional(),
     authType: aiAuthTypeSchema.optional(),
     routingMode: aiRoutingModeSchema.optional(),
+    capabilities: aiCapabilitiesSchema.optional(),
     skipTlsVerification: z.boolean().optional(),
     enabled: z.boolean().optional()
 });
@@ -122,19 +128,37 @@ export async function updateAiProvider(
                 ? body.authType
                 : (existing.authType as AiProviderAuthType);
 
+        if (body.capabilities !== undefined && providerType !== "custom") {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Capabilities can only be updated for custom providers"
+                )
+            );
+        }
+
+        const nextCapabilities =
+            providerType === "custom"
+                ? body.capabilities !== undefined
+                    ? body.capabilities
+                    : parseCapabilities(existing.capabilities)
+                : parseCapabilities(existing.capabilities);
+
         const validation = z
             .object({
                 type: aiProviderTypeSchema,
                 upstreamUrl: z.string().nullable().optional(),
                 authType: aiAuthTypeSchema,
-                routingMode: aiRoutingModeSchema.optional()
+                routingMode: aiRoutingModeSchema.optional(),
+                capabilities: aiCapabilitiesSchema.optional()
             })
             .superRefine((data, ctx) => refineProviderUpstreamFields(data, ctx))
             .safeParse({
                 type: providerType,
                 upstreamUrl: nextUpstreamUrl,
                 authType: nextAuthType,
-                routingMode: nextRoutingMode
+                routingMode: nextRoutingMode,
+                capabilities: nextCapabilities
             });
 
         if (!validation.success) {
@@ -167,6 +191,9 @@ export async function updateAiProvider(
         }
         if (body.authType !== undefined) {
             updateData.authType = body.authType;
+        }
+        if (providerType === "custom" && body.capabilities !== undefined) {
+            updateData.capabilities = serializeCapabilities(body.capabilities);
         }
 
         if (body.apiKey !== undefined) {

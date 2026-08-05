@@ -1641,6 +1641,7 @@ export const aiProviders = sqliteTable("aiProviders", {
         .$type<"url" | "target">()
         .notNull()
         .default("url"),
+    capabilities: text("capabilities").notNull().default("[]"),
     skipTlsVerification: integer("skipTlsVerification", { mode: "boolean" })
         .notNull()
         .default(false),

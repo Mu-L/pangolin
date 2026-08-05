@@ -20,6 +20,10 @@ import {
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { AiProviderAuthTypeSelect } from "@app/components/AiProviderAuthTypeSelect";
+import {
+    AiProviderCapabilitiesSelect,
+    capabilityLabelKey
+} from "@app/components/AiProviderCapabilitiesSelect";
 import { AiProviderTypeSelect } from "@app/components/AiProviderTypeSelect";
 import { StrategySelect } from "@app/components/StrategySelect";
 import { SwitchInput } from "@app/components/SwitchInput";
@@ -40,6 +44,7 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import {
     createAiProviderCreateFormSchema,
     defaultAuthTypeForProvider,
+    defaultCapabilitiesForProvider,
     emptyUpstreamForType,
     showsUpstreamUrlField,
     toAiProviderCreatePayload,
@@ -76,6 +81,7 @@ export default function CreateAiProviderPage() {
             apiKey: "",
             authType: defaultAuthTypeForProvider("openai"),
             routingMode: "url",
+            capabilities: defaultCapabilitiesForProvider("openai"),
             skipTlsVerification: false,
             enabled: true
         }
@@ -84,12 +90,14 @@ export default function CreateAiProviderPage() {
     const providerType = form.watch("type");
     const routingMode = form.watch("routingMode");
     const authType = form.watch("authType");
+    const capabilities = form.watch("capabilities");
 
     const showUpstream = showsUpstreamUrlField(providerType, routingMode);
     const requireUpstream = upstreamUrlRequired(providerType, routingMode);
     const showRoutingMode = providerType === "custom";
     const showTargets = providerType === "custom" && routingMode === "target";
     const showApiKey = authTypeRequiresApiKey(authType ?? "bearer");
+    const showCapabilitiesSelect = providerType === "custom";
 
     async function createTargets(
         providerId: number,
@@ -277,6 +285,12 @@ export default function CreateAiProviderPage() {
                                                                         value
                                                                     )
                                                                 );
+                                                                form.setValue(
+                                                                    "capabilities",
+                                                                    defaultCapabilitiesForProvider(
+                                                                        value
+                                                                    )
+                                                                );
                                                                 if (
                                                                     value !==
                                                                     "custom"
@@ -291,6 +305,67 @@ export default function CreateAiProviderPage() {
                                                             }}
                                                         />
                                                     </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
+
+                                    <SettingsFormCell span="full">
+                                        <FormField
+                                            control={form.control}
+                                            name="capabilities"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(
+                                                            "aiProviderCapabilities"
+                                                        )}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        {showCapabilitiesSelect ? (
+                                                            <AiProviderCapabilitiesSelect
+                                                                value={
+                                                                    field.value ??
+                                                                    []
+                                                                }
+                                                                onChange={
+                                                                    field.onChange
+                                                                }
+                                                            />
+                                                        ) : (
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {(
+                                                                    capabilities ??
+                                                                    defaultCapabilitiesForProvider(
+                                                                        providerType
+                                                                    )
+                                                                ).map((cap) => (
+                                                                    <span
+                                                                        key={
+                                                                            cap
+                                                                        }
+                                                                        className="inline-flex items-center rounded-md border border-input bg-muted/40 px-2.5 py-1 text-sm"
+                                                                    >
+                                                                        {t(
+                                                                            capabilityLabelKey(
+                                                                                cap
+                                                                            )
+                                                                        )}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {showCapabilitiesSelect
+                                                            ? t(
+                                                                  "aiProviderCapabilitiesCustomDescription"
+                                                              )
+                                                            : t(
+                                                                  "aiProviderCapabilitiesDescription"
+                                                              )}
+                                                    </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
