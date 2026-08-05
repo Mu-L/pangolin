@@ -1542,6 +1542,12 @@ export async function getTraefikConfig(
             aiGatewayHost = undefined;
         }
 
+        // The p-host smuggling above is only necessary when the AI gateway
+        // is overridden to a different host than the resource's own. In the
+        // default case, leave the Host header untouched so it's visible on
+        // the other end.
+        const aiGatewayOverride = config.getRawConfig().server.ai_gateway_override;
+
         // Public inference resources: same TLS/cert-resolver handling as
         // plain http-mode resources, but the service points at the AI
         // gateway instead of any real backend targets.
@@ -1607,23 +1613,24 @@ export async function getTraefikConfig(
                 }
             }
 
-            const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
-            config_output.http.middlewares[irHeadersMiddlewareName] = {
-                headers: {
-                    customRequestHeaders: {
-                        ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                        "p-host": fullDomain
-                    }
-                }
-            };
-
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
-            const routerMiddlewares = [
-                badgerMiddlewareName,
-                irHeadersMiddlewareName,
-                ...additionalMiddlewares
-            ];
+            const routerMiddlewares = [badgerMiddlewareName];
+
+            if (aiGatewayOverride) {
+                const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
+                config_output.http.middlewares[irHeadersMiddlewareName] = {
+                    headers: {
+                        customRequestHeaders: {
+                            ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
+                            "p-host": fullDomain
+                        }
+                    }
+                };
+                routerMiddlewares.push(irHeadersMiddlewareName);
+            }
+
+            routerMiddlewares.push(...additionalMiddlewares);
 
             if (ir.ssl) {
                 config_output.http.routers[routerName + "-redirect"] = {
@@ -1705,22 +1712,24 @@ export async function getTraefikConfig(
                 }
             }
 
-            const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
-            config_output.http.middlewares[srHeadersMiddlewareName] = {
-                headers: {
-                    customRequestHeaders: {
-                        ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                        "p-host": alias
-                    }
-                }
-            };
-
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
-            const routerMiddlewares = [
-                srHeadersMiddlewareName,
-                ...additionalMiddlewares
-            ];
+            const routerMiddlewares: string[] = [];
+
+            if (aiGatewayOverride) {
+                const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
+                config_output.http.middlewares[srHeadersMiddlewareName] = {
+                    headers: {
+                        customRequestHeaders: {
+                            ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
+                            "p-host": alias
+                        }
+                    }
+                };
+                routerMiddlewares.push(srHeadersMiddlewareName);
+            }
+
+            routerMiddlewares.push(...additionalMiddlewares);
 
             if (sr.ssl) {
                 config_output.http.routers[routerName + "-redirect"] = {
