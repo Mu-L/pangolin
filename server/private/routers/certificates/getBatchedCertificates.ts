@@ -10,12 +10,12 @@
  *
  * This file is not licensed under the AGPLv3.
  */
-import { certificates, db, domains, orgDomains } from "@server/db";
+import { certificates, db, domainNamespaces, domains, orgDomains } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { type GetBatchedCertificateResponse } from "@server/routers/certificates/types";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -63,14 +63,28 @@ async function query(orgId: string, domainList: string[]) {
         })
         .from(certificates)
         .innerJoin(domains, eq(certificates.domainId, domains.domainId))
-        .innerJoin(
+        .leftJoin(
             orgDomains,
             and(
                 eq(domains.domainId, orgDomains.domainId),
                 eq(orgDomains.orgId, orgId)
             )
         )
-        .where(and(inArray(certificates.domain, domainList)));
+        .leftJoin(
+            domainNamespaces,
+            eq(domains.domainId, domainNamespaces.domainId)
+        )
+        .where(
+            and(
+                inArray(certificates.domain, domainList),
+                // Namespace domains are shared across all orgs, so they skip
+                // the org-ownership check (mirrors verifyCertificateAccess).
+                or(
+                    isNotNull(orgDomains.orgId),
+                    isNotNull(domainNamespaces.domainNamespaceId)
+                )
+            )
+        );
 
     // All non resolved domain certificates might be `ns` or `wildcard`,
     // which means exact domain certificates do not exist
@@ -110,12 +124,16 @@ async function query(orgId: string, domainList: string[]) {
             })
             .from(certificates)
             .innerJoin(domains, eq(certificates.domainId, domains.domainId))
-            .innerJoin(
+            .leftJoin(
                 orgDomains,
                 and(
                     eq(domains.domainId, orgDomains.domainId),
                     eq(orgDomains.orgId, orgId)
                 )
+            )
+            .leftJoin(
+                domainNamespaces,
+                eq(domains.domainId, domainNamespaces.domainId)
             )
             .where(
                 and(
@@ -123,6 +141,10 @@ async function query(orgId: string, domainList: string[]) {
                     or(
                         inArray(certificates.domain, [...domainLevelDownSet]),
                         inArray(certificates.domain, [...wildcardDomainSet])
+                    ),
+                    or(
+                        isNotNull(orgDomains.orgId),
+                        isNotNull(domainNamespaces.domainNamespaceId)
                     )
                 )
             );
