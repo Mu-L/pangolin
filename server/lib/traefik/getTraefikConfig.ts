@@ -1,4 +1,11 @@
-import { db, targetHealthCheck, domains, aiProviders, resourceAiProviders } from "@server/db";
+import {
+    db,
+    targetHealthCheck,
+    domains,
+    aiProviders,
+    resourceAiProviders,
+    siteResources
+} from "@server/db";
 import {
     and,
     eq,
@@ -222,24 +229,25 @@ export async function getTraefikConfig(
             subdomain: resources.subdomain,
             domainId: resources.domainId,
             enabled: resources.enabled,
+            wildcard: resources.wildcard,
             domainCertResolver: domains.certResolver,
             preferWildcardCert: domains.preferWildcardCert
         })
         .from(resources)
-        .innerJoin(
-            resourceAiProviders,
-            eq(resources.resourceId, resourceAiProviders.resourceId)
-        )
-        .innerJoin(
-            aiProviders,
-            eq(resourceAiProviders.providerId, aiProviders.providerId)
-        )
+        // .innerJoin(
+        //     resourceAiProviders,
+        //     eq(resources.resourceId, resourceAiProviders.resourceId)
+        // )
+        // .innerJoin(
+        //     aiProviders,
+        //     eq(resourceAiProviders.providerId, aiProviders.providerId)
+        // )
         .leftJoin(domains, eq(domains.domainId, resources.domainId))
         .where(
             and(
                 eq(resources.mode, "inference"),
-                eq(resources.enabled, true),
-                eq(aiProviders.enabled, true)
+                eq(resources.enabled, true)
+                // eq(aiProviders.enabled, true)
             )
         );
 
@@ -709,6 +717,23 @@ export async function getTraefikConfig(
     }
 
     if (aiGatewayUrl) {
+        // The AI gateway may live on a different host than the inference
+        // resource itself (e.g. a remote exit node forwarding to the
+        // central dashboard over a tunnel). passHostHeader would forward
+        // the resource's own Host, which that external host won't
+        // recognize, so we pin the Host header to the gateway's own host
+        // and smuggle the original resource host through in "p-host"
+        // instead.
+        let aiGatewayHost: string | undefined;
+        try {
+            aiGatewayHost = new URL(aiGatewayUrl).host;
+        } catch {
+            aiGatewayHost = undefined;
+        }
+
+        // Public inference resources: same TLS/cert-resolver handling as
+        // plain http-mode resources, but the service points at the AI
+        // gateway instead of any real backend targets.
         for (const ir of inferenceResources) {
             if (!ir.enabled) continue;
             if (!ir.domainId || !ir.fullDomain) continue;
@@ -720,7 +745,14 @@ export async function getTraefikConfig(
             const irKey = `inference-r${ir.resourceId}`;
             const routerName = `${irKey}-router`;
             const serviceName = `${irKey}-service`;
-            const rule = `Host(\`${fullDomain}\`)`;
+
+            let rule: string;
+            if (ir.wildcard && fullDomain.startsWith("*.")) {
+                const escaped = fullDomain.slice(2).replace(/\./g, "\\.");
+                rule = `HostRegexp(\`^[^.]+\\.${escaped}$\`)`;
+            } else {
+                rule = `Host(\`${fullDomain}\`)`;
+            }
 
             const domainParts = fullDomain.split(".");
             let wildCard;
@@ -751,12 +783,38 @@ export async function getTraefikConfig(
                 ...(preferWildcard ? { domains: [{ main: wildCard }] } : {})
             };
 
+            const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
+            if (!config_output.http.middlewares) {
+                config_output.http.middlewares = {};
+            }
+            config_output.http.middlewares[irHeadersMiddlewareName] = {
+                headers: {
+                    customRequestHeaders: {
+                        ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
+                        "p-host": fullDomain
+                    }
+                }
+            };
+
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [
                 badgerMiddlewareName,
+                irHeadersMiddlewareName,
                 ...additionalMiddlewares
             ];
+
+            if (ir.ssl) {
+                config_output.http.routers[routerName + "-redirect"] = {
+                    entryPoints: [
+                        config.getRawConfig().traefik.http_entrypoint
+                    ],
+                    middlewares: [redirectHttpsMiddlewareName],
+                    service: serviceName,
+                    rule,
+                    priority: 100
+                };
+            }
 
             config_output.http.routers[routerName] = {
                 entryPoints: [
@@ -771,7 +829,84 @@ export async function getTraefikConfig(
                 ...(ir.ssl ? { tls } : {})
             };
 
-            if (ir.ssl) {
+            config_output.http.services[serviceName] = {
+                loadBalancer: {
+                    servers: [{ url: aiGatewayUrl }]
+                }
+            };
+        }
+
+        // Private (siteResource) inference resources: routed by their alias
+        // instead of a public fullDomain, and deliberately WITHOUT the
+        // badger middleware - no per-user auth/policy stack exists for
+        // siteResources today, so gating here is reachability-only for now.
+        const siteResourcesInference = await db
+            .selectDistinct({
+                siteResourceId: siteResources.siteResourceId,
+                alias: siteResources.alias,
+                ssl: siteResources.ssl,
+                enabled: siteResources.enabled
+            })
+            .from(siteResources)
+            .where(
+                and(
+                    eq(siteResources.mode, "inference"),
+                    eq(siteResources.enabled, true),
+                    isNotNull(siteResources.alias)
+                )
+            );
+
+        for (const sr of siteResourcesInference) {
+            if (!sr.enabled || !sr.alias) continue;
+
+            if (!config_output.http.routers) config_output.http.routers = {};
+            if (!config_output.http.services) config_output.http.services = {};
+
+            const alias = sr.alias;
+            const srKey = `inference-sr${sr.siteResourceId}`;
+            const routerName = `${srKey}-router`;
+            const serviceName = `${srKey}-service`;
+            const rule = `Host(\`${alias}\`)`;
+
+            const domainParts = alias.split(".");
+            const wildCard =
+                domainParts.length <= 2
+                    ? `*.${domainParts.join(".")}`
+                    : `*.${domainParts.slice(1).join(".")}`;
+
+            const globalDefaultResolver =
+                config.getRawConfig().traefik.cert_resolver;
+            const globalDefaultPreferWildcard =
+                config.getRawConfig().traefik.prefer_wildcard_cert;
+
+            const tls = {
+                certResolver: globalDefaultResolver,
+                ...(globalDefaultPreferWildcard
+                    ? { domains: [{ main: wildCard }] }
+                    : {})
+            };
+
+            const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
+            if (!config_output.http.middlewares) {
+                config_output.http.middlewares = {};
+            }
+            config_output.http.middlewares[srHeadersMiddlewareName] = {
+                headers: {
+                    customRequestHeaders: {
+                        ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
+                        "p-host": alias
+                    }
+                }
+            };
+
+            const additionalMiddlewares =
+                config.getRawConfig().traefik.additional_middlewares || [];
+            const routerMiddlewares = [
+                srHeadersMiddlewareName,
+                ...additionalMiddlewares
+            ];
+
+            if (sr.ssl) {
                 config_output.http.routers[routerName + "-redirect"] = {
                     entryPoints: [
                         config.getRawConfig().traefik.http_entrypoint
@@ -783,10 +918,22 @@ export async function getTraefikConfig(
                 };
             }
 
+            config_output.http.routers[routerName] = {
+                entryPoints: [
+                    sr.ssl
+                        ? config.getRawConfig().traefik.https_entrypoint
+                        : config.getRawConfig().traefik.http_entrypoint
+                ],
+                middlewares: routerMiddlewares,
+                service: serviceName,
+                rule,
+                priority: 100,
+                ...(sr.ssl ? { tls } : {})
+            };
+
             config_output.http.services[serviceName] = {
                 loadBalancer: {
-                    servers: [{ url: aiGatewayUrl }],
-                    passHostHeader: true
+                    servers: [{ url: aiGatewayUrl }]
                 }
             };
         }
