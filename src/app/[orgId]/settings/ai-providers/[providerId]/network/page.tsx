@@ -21,6 +21,7 @@ import {
 } from "@app/components/Settings";
 import { StrategySelect } from "@app/components/StrategySelect";
 import { SwitchInput } from "@app/components/SwitchInput";
+import { HeadersInput } from "@app/components/HeadersInput";
 import { Button } from "@app/components/ui/button";
 import {
     Form,
@@ -66,6 +67,7 @@ export default function AiProviderNetworkPage() {
     const router = useRouter();
     const t = useTranslations();
     const [saveLoading, setSaveLoading] = useState(false);
+    const [headersValid, setHeadersValid] = useState(true);
     const targetsFormRef = useRef<ProxyResourceTargetsFormHandle>(null);
 
     const formSchema = useMemo(() => createAiProviderFormSchema(t), [t]);
@@ -79,6 +81,7 @@ export default function AiProviderNetworkPage() {
             apiKey: "",
             authType: (provider.authType as AiProviderAuthType) ?? "bearer",
             routingMode: (provider.routingMode as "url" | "target") ?? "url",
+            headers: provider.headers ?? [],
             skipTlsVerification: provider.skipTlsVerification,
             enabled: provider.enabled
         }
@@ -122,6 +125,7 @@ export default function AiProviderNetworkPage() {
                 apiKey: "",
                 authType: (updated.authType as AiProviderAuthType) ?? "bearer",
                 routingMode: (updated.routingMode as "url" | "target") ?? "url",
+                headers: updated.headers ?? [],
                 skipTlsVerification: updated.skipTlsVerification,
                 enabled: updated.enabled
             });
@@ -310,6 +314,38 @@ export default function AiProviderNetworkPage() {
                                             />
                                         </SettingsFormCell>
                                     )}
+
+                                    <SettingsFormCell span="full">
+                                        <FormField
+                                            control={form.control}
+                                            name="headers"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("customHeaders")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <HeadersInput
+                                                            value={field.value}
+                                                            onChange={
+                                                                field.onChange
+                                                            }
+                                                            onValidityChange={
+                                                                setHeadersValid
+                                                            }
+                                                            rows={4}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "aiProviderCustomHeadersDescription"
+                                                        )}
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
                                 </SettingsFormGrid>
                             </form>
                         </Form>
@@ -346,7 +382,7 @@ export default function AiProviderNetworkPage() {
                     <Button
                         type="submit"
                         loading={saveLoading}
-                        disabled={saveLoading}
+                        disabled={saveLoading || !headersValid}
                         form="ai-provider-network-form"
                     >
                         {t("saveSettings")}

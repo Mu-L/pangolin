@@ -25,6 +25,7 @@ import {
     capabilityLabelKey
 } from "@app/components/AiProviderCapabilitiesSelect";
 import { AiProviderTypeSelect } from "@app/components/AiProviderTypeSelect";
+import { HeadersInput } from "@app/components/HeadersInput";
 import { StrategySelect } from "@app/components/StrategySelect";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
@@ -68,6 +69,7 @@ export default function CreateAiProviderPage() {
     const router = useRouter();
     const t = useTranslations();
     const [loading, setLoading] = useState(false);
+    const [headersValid, setHeadersValid] = useState(true);
     const targetsRef = useRef<LocalTarget[]>([]);
 
     const formSchema = useMemo(() => createAiProviderCreateFormSchema(t), [t]);
@@ -82,6 +84,7 @@ export default function CreateAiProviderPage() {
             authType: defaultAuthTypeForProvider("openai"),
             routingMode: "url",
             capabilities: defaultCapabilitiesForProvider("openai"),
+            headers: [],
             skipTlsVerification: false,
             enabled: true
         }
@@ -531,6 +534,38 @@ export default function CreateAiProviderPage() {
                                             />
                                         </SettingsFormCell>
                                     )}
+
+                                    <SettingsFormCell span="full">
+                                        <FormField
+                                            control={form.control}
+                                            name="headers"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("customHeaders")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <HeadersInput
+                                                            value={field.value}
+                                                            onChange={
+                                                                field.onChange
+                                                            }
+                                                            onValidityChange={
+                                                                setHeadersValid
+                                                            }
+                                                            rows={4}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "aiProviderCustomHeadersDescription"
+                                                        )}
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
                                 </SettingsFormGrid>
                             </SettingsSectionForm>
 
@@ -663,7 +698,7 @@ export default function CreateAiProviderPage() {
                     <Button
                         type="button"
                         loading={loading}
-                        disabled={loading}
+                        disabled={loading || !headersValid}
                         onClick={() => {
                             form.handleSubmit(onSubmit)();
                         }}

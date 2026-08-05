@@ -1680,6 +1680,7 @@
     "aiProviderEffectiveUpstreamUrl": "Effective Upstream URL",
     "aiProviderApiKey": "API Key",
     "aiProviderApiKeyDescription": "API key used to authenticate requests to this provider",
+    "aiProviderCustomHeadersDescription": "Headers sent on every request to this provider. Newline separated: Header-Name: value",
     "aiProviderApiKeyLastChars": "API Key",
     "aiProviderAuthType": "Auth Type",
     "aiProviderAuthTypeSearch": "Search auth types...",

@@ -15,10 +15,12 @@ import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 import {
     aiAuthTypeSchema,
     aiCapabilitiesSchema,
+    aiProviderHeadersSchema,
     aiProviderTypeSchema,
     aiRoutingModeSchema,
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
+import { serializeAiProviderHeaders } from "@server/lib/aiProviderDefaults";
 import {
     resolveCapabilitiesForCreate,
     serializeCapabilities
@@ -37,6 +39,7 @@ const bodySchema = z
         authType: aiAuthTypeSchema.optional(),
         routingMode: aiRoutingModeSchema.optional(),
         capabilities: aiCapabilitiesSchema.optional(),
+        headers: aiProviderHeadersSchema,
         skipTlsVerification: z.boolean().optional(),
         enabled: z.boolean().optional()
     })
@@ -101,6 +104,7 @@ export async function createAiProvider(
             authType,
             routingMode,
             capabilities,
+            headers,
             skipTlsVerification,
             enabled
         } = parsedBody.data;
@@ -132,6 +136,7 @@ export async function createAiProvider(
                 authType: resolved.authType,
                 routingMode: resolved.routingMode,
                 capabilities: serializeCapabilities(resolvedCapabilities),
+                headers: serializeAiProviderHeaders(headers, key),
                 skipTlsVerification: skipTlsVerification ?? false,
                 enabled: enabled ?? true,
                 createdAt: now,

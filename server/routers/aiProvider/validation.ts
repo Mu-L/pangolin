@@ -28,6 +28,49 @@ export const aiCapabilitySchema = z.enum(AI_CAPABILITIES);
 
 export const aiCapabilitiesSchema = z.array(aiCapabilitySchema);
 
+const validHeaderName = /^[a-zA-Z0-9!#$%&'*+\-.^_`|~]+$/;
+const validHeaderValue = /^[\t\x20-\x7E]*$/;
+const templatePattern = /\{\{[^}]+\}\}/;
+
+export const aiProviderHeadersSchema = z
+    .array(z.strictObject({ name: z.string(), value: z.string() }))
+    .nullable()
+    .optional()
+    .superRefine((headers, ctx) => {
+        if (!headers) {
+            return;
+        }
+        for (const [index, header] of headers.entries()) {
+            if (!validHeaderName.test(header.name)) {
+                ctx.addIssue({
+                    code: "custom",
+                    message:
+                        "Header names may only contain valid HTTP token characters (letters, digits, and !#$%&'*+-.^_`|~).",
+                    path: [index, "name"]
+                });
+            }
+            if (!validHeaderValue.test(header.value)) {
+                ctx.addIssue({
+                    code: "custom",
+                    message:
+                        "Header values may only contain printable ASCII characters and horizontal whitespace.",
+                    path: [index, "value"]
+                });
+            }
+            if (
+                templatePattern.test(header.name) ||
+                templatePattern.test(header.value)
+            ) {
+                ctx.addIssue({
+                    code: "custom",
+                    message:
+                        "Header names and values must not contain template expressions such as {{value}}.",
+                    path: [index]
+                });
+            }
+        }
+    });
+
 export function refineProviderUpstreamFields(
     data: {
         type: AiProviderType;

@@ -1660,6 +1660,7 @@ export const aiProviders = pgTable("aiProviders", {
         .notNull()
         .default("url"),
     capabilities: text("capabilities").notNull().default("[]"),
+    headers: text("headers"), // JSON array of { name, value }
     skipTlsVerification: boolean("skipTlsVerification")
         .notNull()
         .default(false),

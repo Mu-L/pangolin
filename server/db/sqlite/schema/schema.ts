@@ -1642,6 +1642,7 @@ export const aiProviders = sqliteTable("aiProviders", {
         .notNull()
         .default("url"),
     capabilities: text("capabilities").notNull().default("[]"),
+    headers: text("headers"), // JSON array of { name, value }
     skipTlsVerification: integer("skipTlsVerification", { mode: "boolean" })
         .notNull()
         .default(false),

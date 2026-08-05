@@ -1,6 +1,10 @@
 import type { AiModel, AiProvider } from "@server/db";
 import type { PaginatedResponse } from "@server/types/Pagination";
-import type { AiProviderAuthType } from "@server/lib/aiProviderDefaults";
+import {
+    parseAiProviderHeaders,
+    type AiProviderAuthType,
+    type AiProviderHeader
+} from "@server/lib/aiProviderDefaults";
 import {
     parseCapabilities,
     type AiCapability
@@ -8,10 +12,13 @@ import {
 import { decrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 
-export type AiProviderPublic = Omit<AiProvider, "apiKey" | "capabilities"> & {
-    /** Decrypted API key. Only included on get/create/update of a single provider. */
+export type AiProviderPublic = Omit<
+    AiProvider,
+    "apiKey" | "capabilities" | "headers"
+> & {
     apiKey?: string | null;
     capabilities: AiCapability[];
+    headers: AiProviderHeader[] | null;
     effectiveUpstreamUrl: string | null;
     effectiveAuthType: AiProviderAuthType;
 };
@@ -47,6 +54,7 @@ export function toPublicAiProvider(
     const {
         apiKey: encryptedApiKey,
         capabilities: rawCapabilities,
+        headers: rawHeaders,
         ...rest
     } = provider;
 
@@ -62,10 +70,16 @@ export function toPublicAiProvider(
         }
     }
 
+    const parsedHeaders = parseAiProviderHeaders(
+        rawHeaders,
+        config.getRawConfig().server.secret!
+    );
+
     return {
         ...rest,
         ...(options?.includeApiKey ? { apiKey } : {}),
         capabilities: parseCapabilities(rawCapabilities),
+        headers: parsedHeaders.length > 0 ? parsedHeaders : null,
         effectiveUpstreamUrl: provider.upstreamUrl,
         effectiveAuthType: provider.authType as AiProviderAuthType
     };

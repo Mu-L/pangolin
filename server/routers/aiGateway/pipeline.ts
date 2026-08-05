@@ -20,6 +20,7 @@ import { decrypt } from "@server/lib/crypto";
 import {
     AiProviderAuthType,
     applyAiProviderAuthHeaders,
+    applyAiProviderCustomHeaders,
     authTypeRequiresApiKey
 } from "@server/lib/aiProviderDefaults";
 import {
@@ -536,6 +537,11 @@ export async function handleAiGatewayProxy(
             }
             headers[key] = Array.isArray(value) ? value.join(", ") : value;
         }
+        applyAiProviderCustomHeaders(
+            headers,
+            provider.headers,
+            config.getRawConfig().server.secret!
+        );
         applyAiProviderAuthHeaders(headers, authType, apiKey);
 
         // No dedicated per-request TLS agent is wired up (no extra deps for

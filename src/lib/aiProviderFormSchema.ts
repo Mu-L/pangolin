@@ -42,6 +42,10 @@ export function createAiProviderFormSchema(t: TranslateFn) {
             authType: z.enum(AI_PROVIDER_AUTH_TYPES).optional().nullable(),
             routingMode: z.enum(["url", "target"]).optional(),
             capabilities: z.array(z.enum(AI_CAPABILITIES)).optional(),
+            headers: z
+                .array(z.object({ name: z.string(), value: z.string() }))
+                .nullable()
+                .optional(),
             skipTlsVerification: z.boolean().optional(),
             enabled: z.boolean().optional()
         })
@@ -185,6 +189,8 @@ export function toAiProviderCreatePayload(values: AiProviderFormValues) {
         authType: values.authType ?? "bearer",
         capabilities:
             values.type === "custom" ? (values.capabilities ?? []) : undefined,
+        headers:
+            values.headers && values.headers.length > 0 ? values.headers : null,
         skipTlsVerification: values.skipTlsVerification,
         enabled: values.enabled ?? true
     };
@@ -226,7 +232,9 @@ export function toAiProviderNetworkPayload(values: AiProviderFormValues) {
     return {
         routingMode: full.routingMode,
         upstreamUrl: full.upstreamUrl,
-        skipTlsVerification: full.skipTlsVerification
+        skipTlsVerification: full.skipTlsVerification,
+        headers:
+            values.headers && values.headers.length > 0 ? values.headers : null
     };
 }
 

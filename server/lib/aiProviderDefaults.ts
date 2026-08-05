@@ -1,3 +1,5 @@
+import { decrypt, encrypt } from "@server/lib/crypto";
+
 export type AiProviderType =
     | "openai"
     | "anthropic"
@@ -125,6 +127,53 @@ export function resolveAiProviderCreateFields(input: {
         authType: input.authType ?? defaults.authType,
         routingMode
     };
+}
+
+export type AiProviderHeader = { name: string; value: string };
+
+export function serializeAiProviderHeaders(
+    headers: AiProviderHeader[] | null | undefined,
+    secret: string
+): string | null {
+    if (!headers || headers.length === 0) {
+        return null;
+    }
+    return encrypt(JSON.stringify(headers), secret);
+}
+
+export function parseAiProviderHeaders(
+    raw: string | null | undefined,
+    secret: string
+): AiProviderHeader[] {
+    if (!raw) {
+        return [];
+    }
+    try {
+        const decrypted = decrypt(raw, secret);
+        const parsed = JSON.parse(decrypted);
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+        return parsed.filter(
+            (h): h is AiProviderHeader =>
+                h != null &&
+                typeof h === "object" &&
+                typeof h.name === "string" &&
+                typeof h.value === "string"
+        );
+    } catch {
+        return [];
+    }
+}
+
+export function applyAiProviderCustomHeaders(
+    headers: Record<string, string>,
+    raw: string | null | undefined,
+    secret: string
+): void {
+    for (const { name, value } of parseAiProviderHeaders(raw, secret)) {
+        headers[name] = value;
+    }
 }
 
 /**

@@ -15,14 +15,16 @@ import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 import {
     aiAuthTypeSchema,
     aiCapabilitiesSchema,
+    aiProviderHeadersSchema,
     aiProviderTypeSchema,
     aiRoutingModeSchema,
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
-import type {
-    AiProviderAuthType,
-    AiProviderRoutingMode,
-    AiProviderType
+import {
+    serializeAiProviderHeaders,
+    type AiProviderAuthType,
+    type AiProviderRoutingMode,
+    type AiProviderType
 } from "@server/lib/aiProviderDefaults";
 import {
     parseCapabilities,
@@ -40,6 +42,7 @@ const bodySchema = z.strictObject({
     authType: aiAuthTypeSchema.optional(),
     routingMode: aiRoutingModeSchema.optional(),
     capabilities: aiCapabilitiesSchema.optional(),
+    headers: aiProviderHeadersSchema,
     skipTlsVerification: z.boolean().optional(),
     enabled: z.boolean().optional()
 });
@@ -200,6 +203,11 @@ export async function updateAiProvider(
             const key = config.getRawConfig().server.secret!;
             updateData.apiKey = encrypt(body.apiKey, key);
             updateData.apiKeyLastChars = body.apiKey.slice(-4);
+        }
+
+        if (body.headers !== undefined) {
+            const key = config.getRawConfig().server.secret!;
+            updateData.headers = serializeAiProviderHeaders(body.headers, key);
         }
 
         const [provider] = await db
