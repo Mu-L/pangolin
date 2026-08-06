@@ -10,6 +10,7 @@ import {
     type Transaction
 } from "@server/db";
 import { z } from "zod";
+import { modelKeysConflict } from "@server/lib/aiModelKeyMatch";
 
 type DbOrTrx = Transaction | typeof db;
 
@@ -55,10 +56,13 @@ function normalizeAttachments(
 }
 
 /**
- * Ensure enabled catalog modelKeys are unique across attached providers.
+ * Ensure enabled catalog modelKeys do not conflict across attached providers.
  * Catalog attachments contribute all enabled models on the provider.
  * Allowlist attachments contribute nothing until models are allowlisted
  * (those are checked when the allowlist is set).
+ *
+ * Conflicts: identical keys, or an exact key that matches another provider's
+ * pattern. Full glob intersections are left to runtime ambiguity errors.
  */
 export async function assertNoOverlappingModelKeys(
     attachments: ResourceAiProviderAttachment[],
@@ -85,25 +89,31 @@ export async function assertNoOverlappingModelKeys(
             )
         );
 
-    const keyToProviders = new Map<string, number[]>();
-    for (const model of models) {
-        const existing = keyToProviders.get(model.modelKey) ?? [];
-        if (!existing.includes(model.providerId)) {
-            existing.push(model.providerId);
+    const conflictPairs: string[] = [];
+    for (let i = 0; i < models.length; i++) {
+        for (let j = i + 1; j < models.length; j++) {
+            const left = models[i];
+            const right = models[j];
+            if (left.providerId === right.providerId) {
+                continue;
+            }
+            if (!modelKeysConflict(left.modelKey, right.modelKey)) {
+                continue;
+            }
+            const pair = [left.modelKey, right.modelKey].sort().join(" vs ");
+            if (!conflictPairs.includes(pair)) {
+                conflictPairs.push(pair);
+            }
         }
-        keyToProviders.set(model.modelKey, existing);
     }
 
-    const overlaps = [...keyToProviders.entries()].filter(
-        ([, providerIds]) => providerIds.length > 1
-    );
-    if (overlaps.length === 0) {
+    if (conflictPairs.length === 0) {
         return null;
     }
 
-    const keys = overlaps.map(([key]) => key).sort();
+    conflictPairs.sort();
     return {
-        error: `Model keys must be unique across providers on a resource. Overlapping keys: ${keys.join(", ")}`
+        error: `Model keys must be unique across providers on a resource. Overlapping keys: ${conflictPairs.join(", ")}`
     };
 }
 

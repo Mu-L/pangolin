@@ -39,6 +39,10 @@ import { localCache } from "@server/lib/cache";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import type { ModelAccessMode } from "@server/lib/aiInferenceResource";
+import {
+    compareModelKeySpecificity,
+    modelKeyMatches
+} from "@server/lib/aiModelKeyMatch";
 import { aiGatewayUpstreamFetch } from "@server/lib/aiGatewayUpstreamFetch";
 
 // Short-lived local caches so a burst of requests from the same IP/user
@@ -369,55 +373,82 @@ async function selectProvider(
         };
     }
 
-    const matchingModels = await db
+    const providerModels = await db
         .select({
             modelId: aiModels.modelId,
             providerId: aiModels.providerId,
+            modelKey: aiModels.modelKey,
             enabled: aiModels.enabled
         })
         .from(aiModels)
-        .where(
-            and(
-                inArray(aiModels.providerId, providerIds),
-                eq(aiModels.modelKey, requestedModel)
-            )
-        );
+        .where(inArray(aiModels.providerId, providerIds));
 
-    const candidates: AiProvider[] = [];
-    for (const model of matchingModels) {
+    type ModelCandidate = {
+        provider: AiProvider;
+        modelKey: string;
+    };
+
+    const candidates: ModelCandidate[] = [];
+    for (const model of providerModels) {
+        if (!model.enabled) {
+            continue;
+        }
+
+        if (!modelKeyMatches(model.modelKey, requestedModel)) {
+            continue;
+        }
+
         const attachment = providerById.get(model.providerId);
         if (!attachment) {
             continue;
         }
 
         if (attachment.modelAccessMode === "catalog") {
-            if (model.enabled) {
-                candidates.push(attachment.provider);
-            }
+            candidates.push({
+                provider: attachment.provider,
+                modelKey: model.modelKey
+            });
             continue;
         }
 
         if (allowlistedModelIds.has(model.modelId)) {
-            candidates.push(attachment.provider);
+            candidates.push({
+                provider: attachment.provider,
+                modelKey: model.modelKey
+            });
         }
     }
 
-    if (candidates.length === 1) {
-        return { ok: true, provider: candidates[0] };
-    }
-
-    if (candidates.length > 1) {
+    if (candidates.length === 0) {
         return {
             ok: false,
             status: HttpCode.FORBIDDEN,
-            message: `Model "${requestedModel}" is ambiguous across multiple AI providers on this resource`
+            message: `Model "${requestedModel}" is not permitted on this resource`
         };
+    }
+
+    candidates.sort((a, b) =>
+        compareModelKeySpecificity(a.modelKey, b.modelKey)
+    );
+
+    const bestSpecificity = candidates[0].modelKey;
+    const topCandidates = candidates.filter(
+        (c) => compareModelKeySpecificity(c.modelKey, bestSpecificity) === 0
+    );
+
+    const uniqueProviders = new Map<number, AiProvider>();
+    for (const candidate of topCandidates) {
+        uniqueProviders.set(candidate.provider.providerId, candidate.provider);
+    }
+
+    if (uniqueProviders.size === 1) {
+        return { ok: true, provider: [...uniqueProviders.values()][0] };
     }
 
     return {
         ok: false,
         status: HttpCode.FORBIDDEN,
-        message: `Model "${requestedModel}" is not permitted on this resource`
+        message: `Model "${requestedModel}" is ambiguous across multiple AI providers on this resource`
     };
 }
 
