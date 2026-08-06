@@ -1,7 +1,15 @@
 import { Request, Response } from "express";
 import { and, eq } from "drizzle-orm";
 import { AiProvider, db, exitNodes, sites, targets } from "@server/db";
+import config from "@server/lib/config";
+import { decrypt } from "@server/lib/crypto";
 import { localCache } from "@server/lib/cache";
+import {
+    AiProviderAuthType,
+    applyAiProviderAuthHeaders,
+    applyAiProviderCustomHeaders,
+    authTypeRequiresApiKey
+} from "@server/lib/aiProviderDefaults";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 
@@ -14,6 +22,12 @@ const PROVIDER_TARGETS_TTL_SEC = 7;
 // WireGuard network) to rewrite an incoming /router/* request to. Must
 // match gerbil's `pangolinDestHeader` constant.
 const PANGOLIN_DEST_HEADER = "p-dest-header";
+
+// Header gerbil reads for the Host header value to send to the destination,
+// when it should differ from PANGOLIN_DEST_HEADER (the target's configured
+// ip rather than the WireGuard routing address). Must match gerbil's
+// `pangolinHostHeader` constant.
+const PANGOLIN_HOST_HEADER = "p-dest-host-header";
 
 const SKIP_HEADERS = new Set([
     "p-host",
@@ -36,6 +50,10 @@ type ResolvedProviderTarget = {
     // gerbil as the destination to proxy the request to over the WireGuard
     // tunnel.
     destination: string;
+    // The target's configured ip, passed to gerbil as the Host header to
+    // send to the destination (which may differ from the WireGuard routing
+    // address above, e.g. for vhost-based targets).
+    hostHeader: string;
     // The target's site's exit node HTTP API base URL (gerbil's /router/*).
     gerbilBaseUrl: string;
 };
@@ -46,6 +64,7 @@ async function fetchProviderTargets(
     const rows = await db
         .select({
             targetId: targets.targetId,
+            ip: targets.ip,
             internalPort: targets.internalPort,
             port: targets.port,
             method: targets.method,
@@ -72,6 +91,7 @@ async function fetchProviderTargets(
         resolved.push({
             targetId: row.targetId,
             destination: `${scheme}://${host}:${port}`,
+            hostHeader: row.ip,
             gerbilBaseUrl: row.reachableAt
         });
     }
@@ -117,9 +137,10 @@ function pathFromRequest(req: Request): string {
  * Proxies an AI gateway request to one of a "custom" / "target" routing-mode
  * provider's site targets, via that site's gerbil sidecar. Gerbil's
  * /router/* endpoint forwards the request (untouched body, same path minus
- * the /router prefix, and all headers besides PANGOLIN_DEST_HEADER) over the
- * WireGuard tunnel to the destination named in that header. Always writes a
- * response to `res`, including on failure.
+ * the /router prefix, and all headers besides PANGOLIN_DEST_HEADER and
+ * PANGOLIN_HOST_HEADER) over the WireGuard tunnel to the destination named
+ * in PANGOLIN_DEST_HEADER, sending PANGOLIN_HOST_HEADER as the Host header.
+ * Always writes a response to `res`, including on failure.
  */
 export async function proxyAiGatewayToSiteTarget(
     req: Request,
@@ -147,7 +168,30 @@ export async function proxyAiGatewayToSiteTarget(
         }
         headers[key] = Array.isArray(value) ? value.join(", ") : value;
     }
+
+    const authType = provider.authType as AiProviderAuthType;
+    let apiKey: string | null = null;
+    if (authTypeRequiresApiKey(authType)) {
+        if (!provider.apiKey) {
+            res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
+                error: {
+                    message: "AI provider has no API key configured"
+                }
+            });
+            return;
+        }
+        const secret = config.getRawConfig().server.secret!;
+        apiKey = decrypt(provider.apiKey, secret);
+    }
+    applyAiProviderCustomHeaders(
+        headers,
+        provider.headers,
+        config.getRawConfig().server.secret!
+    );
+    applyAiProviderAuthHeaders(headers, authType, apiKey);
+
     headers[PANGOLIN_DEST_HEADER] = target.destination;
+    headers[PANGOLIN_HOST_HEADER] = target.hostHeader;
 
     const body = JSON.stringify(req.body);
 
@@ -155,7 +199,10 @@ export async function proxyAiGatewayToSiteTarget(
         providerId: provider.providerId,
         targetId: target.targetId,
         destination: target.destination,
-        url: gerbilUrl
+        hostHeader: target.hostHeader,
+        url: gerbilUrl,
+        headers,
+        body: req.body
     });
 
     let upstreamRes: globalThis.Response;
