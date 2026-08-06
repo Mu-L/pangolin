@@ -62,9 +62,10 @@ export function joinUpstreamUrl(baseUrl: string, path: string): string {
 }
 
 function pathFromRequest(req: Request): string {
-    // Prefer originalUrl path (includes mounted path) over req.path when available.
-    const raw =
-        req.originalUrl?.split("?")[0] || req.url?.split("?")[0] || req.path;
+    // Prefer originalUrl (includes mounted path) over req.url when available.
+    // Query string is preserved - some providers use it to select the
+    // streaming response format (e.g. Gemini's `?alt=sse`).
+    const raw = req.originalUrl || req.url || req.path;
     return raw.startsWith("/") ? raw : `/${raw}`;
 }
 

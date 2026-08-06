@@ -128,8 +128,10 @@ function pickTarget(
 }
 
 function pathFromRequest(req: Request): string {
-    const raw =
-        req.originalUrl?.split("?")[0] || req.url?.split("?")[0] || req.path;
+    // Query string is preserved - some providers use it to select the
+    // streaming response format (e.g. Gemini's `?alt=sse`), and gerbil's
+    // /router/* forwards it through untouched.
+    const raw = req.originalUrl || req.url || req.path;
     return raw.startsWith("/") ? raw : `/${raw}`;
 }
 
@@ -205,14 +207,32 @@ export async function proxyAiGatewayToSiteTarget(
         body: req.body
     });
 
+    // Cancel the request to gerbil (which cascades to gerbil cancelling its
+    // proxied request to the actual site target, since gerbil's reverse
+    // proxy derives the outbound request's context from the inbound one) if
+    // the client goes away before we're done.
+    const abortController = new AbortController();
+    const onClientClose = () => {
+        if (!res.writableEnded) {
+            abortController.abort();
+        }
+    };
+    res.on("close", onClientClose);
+
     let upstreamRes: globalThis.Response;
     try {
         upstreamRes = await fetch(gerbilUrl, {
             method: "POST",
             headers,
-            body
+            body,
+            signal: abortController.signal
         });
     } catch (fetchError) {
+        res.off("close", onClientClose);
+        if (abortController.signal.aborted) {
+            // Client already disconnected; nothing left to respond to.
+            return;
+        }
         logger.error({
             message: "AI gateway target proxy request failed",
             url: gerbilUrl,
@@ -232,7 +252,11 @@ export async function proxyAiGatewayToSiteTarget(
     const contentType = upstreamRes.headers.get("content-type") || "";
     const isStream =
         req.body?.stream === true ||
-        contentType.includes("text/event-stream");
+        contentType.includes("text/event-stream") ||
+        pathFromRequest(req).includes("streamGenerateContent") ||
+        pathFromRequest(req).includes("streamRawPredict") ||
+        pathFromRequest(req).includes("converse-stream") ||
+        pathFromRequest(req).includes("invoke-with-response-stream");
 
     res.status(upstreamRes.status);
     res.setHeader("Content-Type", contentType || "application/json");
@@ -240,15 +264,23 @@ export async function proxyAiGatewayToSiteTarget(
     if (isStream && upstreamRes.body) {
         res.flushHeaders();
         const reader = upstreamRes.body.getReader();
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            res.write(value);
+        try {
+            while (!abortController.signal.aborted) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                res.write(value);
+            }
+        } finally {
+            await reader.cancel().catch(() => {});
+            res.off("close", onClientClose);
         }
-        res.end();
+        if (!res.writableEnded) {
+            res.end();
+        }
         return;
     }
 
+    res.off("close", onClientClose);
     const text = await upstreamRes.text();
     res.send(text);
 }

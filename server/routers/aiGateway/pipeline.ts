@@ -592,15 +592,33 @@ export async function handleAiGatewayProxy(
             skipTlsVerification: provider.skipTlsVerification
         });
 
+        // Cancel the upstream request (and, transitively, anything it fans
+        // out to) if the client goes away before we're done - otherwise a
+        // client-cancelled streaming chat completion keeps running upstream
+        // to completion, wasting the connection and any per-token billing.
+        const abortController = new AbortController();
+        const onClientClose = () => {
+            if (!res.writableEnded) {
+                abortController.abort();
+            }
+        };
+        res.on("close", onClientClose);
+
         let upstreamRes: globalThis.Response;
         try {
             upstreamRes = await aiGatewayUpstreamFetch(targetUrl, {
                 method: "POST",
                 headers,
                 body,
-                skipTlsVerification: provider.skipTlsVerification
+                skipTlsVerification: provider.skipTlsVerification,
+                signal: abortController.signal
             });
         } catch (fetchError) {
+            res.off("close", onClientClose);
+            if (abortController.signal.aborted) {
+                // Client already disconnected; nothing left to respond to.
+                return;
+            }
             logger.error({
                 message: "AI gateway upstream fetch failed",
                 url: targetUrl,
@@ -628,14 +646,23 @@ export async function handleAiGatewayProxy(
         if (isStream && upstreamRes.body) {
             res.flushHeaders();
             const reader = upstreamRes.body.getReader();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                res.write(value);
+            try {
+                while (!abortController.signal.aborted) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    res.write(value);
+                }
+            } finally {
+                await reader.cancel().catch(() => {});
+                res.off("close", onClientClose);
             }
-            return res.end();
+            if (!res.writableEnded) {
+                res.end();
+            }
+            return;
         }
 
+        res.off("close", onClientClose);
         const text = await upstreamRes.text();
         return res.send(text);
     } catch (error) {

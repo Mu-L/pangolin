@@ -7,6 +7,7 @@ type UpstreamFetchInit = {
     headers: Record<string, string>;
     body?: string;
     skipTlsVerification?: boolean;
+    signal?: AbortSignal;
 };
 
 const insecureHttpsAgent = new https.Agent({
@@ -25,6 +26,11 @@ export function aiGatewayUpstreamFetch(
         isHttps && init.skipTlsVerification ? insecureHttpsAgent : undefined;
 
     return new Promise((resolve, reject) => {
+        if (init.signal?.aborted) {
+            reject(init.signal.reason ?? new Error("Request aborted"));
+            return;
+        }
+
         const req = lib.request(
             url,
             {
@@ -59,6 +65,14 @@ export function aiGatewayUpstreamFetch(
         );
 
         req.on("error", reject);
+
+        if (init.signal) {
+            const onAbort = () => req.destroy(init.signal!.reason);
+            init.signal.addEventListener("abort", onAbort, { once: true });
+            req.on("close", () =>
+                init.signal!.removeEventListener("abort", onAbort)
+            );
+        }
 
         if (init.body !== undefined) {
             req.write(init.body);
