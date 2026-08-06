@@ -4,7 +4,7 @@ import { fetchSiteResourceByNiceId } from "@app/lib/fetchSiteResourceByNiceId";
 import { getCachedOrg } from "@app/lib/api/getCachedOrg";
 import OrgProvider from "@app/providers/OrgProvider";
 import SiteResourceProvider from "@app/providers/SiteResourceProvider";
-import SiteResourceInfoBox from "@app/components/SiteResourceInfoBox";
+import SiteResourceInfoBox from "@app/components/PrivateResourceInfoBox";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";

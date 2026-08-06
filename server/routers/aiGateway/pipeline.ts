@@ -461,7 +461,7 @@ export async function handleAiGatewayProxy(
         const def = AI_CAPABILITY_DEFS[capability];
 
         const host = (
-            (req.headers["p-host"] as string | undefined) ||
+            (req.headers["p-host"] as string | undefined) || // p-host is only used sometimes when overriding the host header for some middleware proxy
             req.headers.host ||
             ""
         ).split(":")[0];

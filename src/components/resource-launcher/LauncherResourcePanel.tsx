@@ -7,7 +7,7 @@ import {
     InfoSections,
     InfoSectionTitle
 } from "@app/components/InfoSection";
-import { SiteResourceInfoSections } from "@app/components/SiteResourceInfoBox";
+import { PrivateResourceInfoSections } from "@app/components/PrivateResourceInfoBox";
 import {
     SettingsSection,
     SettingsSectionBody,
@@ -353,7 +353,7 @@ function PrivateResourceDetails({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    <SiteResourceInfoSections
+                    <PrivateResourceInfoSections
                         siteResource={resource}
                         access={{
                             accessDisplay: launcherResource.accessDisplay,

@@ -105,7 +105,7 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
             }
         );
 
-        if (!env.flags.disableEnterpriseFeatures) {
+        if (!env.flags.disableEnterpriseFeatures && resource.mode !== "inference") {
             navItems.push({
                 title: t("maintenanceMode"),
                 href: `/{orgId}/settings/resources/public/{niceId}/maintenance`

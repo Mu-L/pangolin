@@ -80,7 +80,7 @@ function AccessMethodContent({
     );
 }
 
-export function SiteResourceInfoSections({
+export function PrivateResourceInfoSections({
     siteResource,
     access,
     variant,
@@ -109,12 +109,16 @@ export function SiteResourceInfoSections({
         udpPortRangeString: siteResource.udpPortRangeString ?? "*"
     });
     const showAlias =
-        siteResource.mode !== "cidr" && siteResource.mode !== "http";
-    const showDestination = !(
-        siteResource.mode === "ssh" && siteResource.authDaemonMode === "native"
-    );
+        siteResource.mode !== "cidr" &&
+        siteResource.mode !== "http" &&
+        siteResource.mode !== "inference";
+    const showDestination =
+        !(
+            siteResource.mode === "ssh" &&
+            siteResource.authDaemonMode === "native"
+        ) && siteResource.mode !== "inference";
     const showCertificate = !!(
-        siteResource.mode === "http" &&
+        (siteResource.mode === "http" || siteResource.mode === "inference") &&
         siteResource.ssl &&
         siteResource.domainId &&
         siteResource.fullDomain &&
@@ -258,7 +262,7 @@ export default function SiteResourceInfoBox({
     });
 
     return (
-        <SiteResourceInfoSections
+        <PrivateResourceInfoSections
             siteResource={siteResource}
             access={access}
             variant={variant}

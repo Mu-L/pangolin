@@ -74,7 +74,10 @@ export function formatSiteResourceAccess(
         };
     }
 
-    if (resource.mode === "http" && resource.fullDomain) {
+    if (
+        (resource.mode === "http" || resource.mode == "inference") &&
+        resource.fullDomain
+    ) {
         const url = `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`;
         return {
             accessDisplay: url,
