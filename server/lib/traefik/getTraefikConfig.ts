@@ -4,7 +4,8 @@ import {
     domains,
     aiProviders,
     resourceAiProviders,
-    siteResources
+    siteResources,
+    exitNodes
 } from "@server/db";
 import {
     and,
@@ -22,6 +23,7 @@ import config from "@server/lib/config";
 import { resources, sites, Target, targets } from "@server/db";
 import createPathRewriteMiddleware from "./middleware";
 import { sanitize, encodePath, validatePathRewriteConfig } from "./utils";
+import regionalCache from "@server/lib/cache";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const badgerMiddlewareName = "badger";
@@ -55,6 +57,21 @@ export async function getTraefikConfig(
     browserGatewayUiUrl: string | null = null, // UNUSED BUT USED IN PRIVATE
     aiGatewayUrl: string | null = null
 ): Promise<any> {
+    // Get the exit node but cache it for 5 minutes to avoid hitting the DB too often
+    const exitNodeCacheKey = `exitNode:${exitNodeId}`;
+    let exitNode =
+        await regionalCache.get<typeof exitNodes.$inferSelect>(
+            exitNodeCacheKey
+        );
+    if (!exitNode) {
+        [exitNode] = await db
+            .select()
+            .from(exitNodes)
+            .where(eq(exitNodes.exitNodeId, exitNodeId))
+            .limit(1);
+        await regionalCache.set(exitNodeCacheKey, exitNode, 300);
+    }
+
     // Get resources with their targets and sites in a single optimized query
     // Start from sites on this exit node, then join to targets and resources
     const resourcesWithTargetsAndSites = await db
@@ -866,7 +883,7 @@ export async function getTraefikConfig(
             const srKey = `inference-sr${sr.siteResourceId}`;
             const routerName = `${srKey}-router`;
             const serviceName = `${srKey}-service`;
-            const rule = `Host(\`${alias}\`)`;
+            const rule = `Host(\`${alias}\`) && ClientIP(${exitNode.address})`; // restrict to coming from the exit node ip range that the client is connected to
 
             const domainParts = alias.split(".");
             const wildCard =

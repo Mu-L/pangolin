@@ -58,6 +58,7 @@ import {
     getValidCertificatesForDomains
 } from "#private/lib/certificates";
 import { build } from "@server/build";
+import regionalCache from "#private/lib/cache";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const redirectToRootMiddlewareName = "redirect-to-root";
@@ -94,6 +95,21 @@ export async function getTraefikConfig(
     browserGatewayUiUrl: string | null = null,
     aiGatewayUrl: string | null = null
 ): Promise<any> {
+    // Get the exit node but cache it for 5 minutes to avoid hitting the DB too often
+    const exitNodeCacheKey = `exitNode:${exitNodeId}`;
+    let exitNode =
+        await regionalCache.get<typeof exitNodes.$inferSelect>(
+            exitNodeCacheKey
+        );
+    if (!exitNode) {
+        [exitNode] = await db
+            .select()
+            .from(exitNodes)
+            .where(eq(exitNodes.exitNodeId, exitNodeId))
+            .limit(1);
+        await regionalCache.set(exitNodeCacheKey, exitNode, 300);
+    }
+
     // Get resources with their targets and sites in a single optimized query
     // Start from sites on this exit node, then join to targets and resources
     const resourcesWithTargetsAndSites = await db
@@ -1546,7 +1562,8 @@ export async function getTraefikConfig(
         // is overridden to a different host than the resource's own. In the
         // default case, leave the Host header untouched so it's visible on
         // the other end.
-        const aiGatewayOverride = config.getRawConfig().server.ai_gateway_override;
+        const aiGatewayOverride =
+            config.getRawConfig().server.ai_gateway_override;
 
         // Public inference resources: same TLS/cert-resolver handling as
         // plain http-mode resources, but the service points at the AI
@@ -1679,7 +1696,7 @@ export async function getTraefikConfig(
             const srKey = `inference-sr${sr.siteResourceId}`;
             const routerName = `${srKey}-router`;
             const serviceName = `${srKey}-service`;
-            const rule = `Host(\`${alias}\`)`;
+            const rule = `Host(\`${alias}\`) && ClientIP(${exitNode.address})`; // restrict to coming from the exit node ip range that the client is connected to
 
             let tls: any = {};
             if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
