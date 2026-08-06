@@ -20,6 +20,7 @@ import {
     type SelectedAiProvider
 } from "@app/components/AiProvidersSelector";
 import DomainPicker from "@app/components/DomainPicker";
+import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
 import {
     Form,
@@ -67,7 +68,8 @@ export default function PrivateResourceInferencePage() {
                 providerIds: z.array(z.number().int().positive()),
                 httpConfigSubdomain: z.string().nullish(),
                 httpConfigDomainId: z.string().nullish(),
-                httpConfigFullDomain: z.string().nullish()
+                httpConfigFullDomain: z.string().nullish(),
+                ssl: z.boolean().optional()
             }),
         []
     );
@@ -90,7 +92,8 @@ export default function PrivateResourceInferencePage() {
             providerIds: [],
             httpConfigSubdomain: siteResource.subdomain ?? null,
             httpConfigDomainId: siteResource.domainId ?? null,
-            httpConfigFullDomain: siteResource.fullDomain ?? null
+            httpConfigFullDomain: siteResource.fullDomain ?? null,
+            ssl: siteResource.ssl ?? false
         }
     });
 
@@ -121,7 +124,8 @@ export default function PrivateResourceInferencePage() {
                 mode: "inference",
                 httpConfigSubdomain: data.httpConfigSubdomain,
                 httpConfigDomainId: data.httpConfigDomainId,
-                httpConfigFullDomain: data.httpConfigFullDomain
+                httpConfigFullDomain: data.httpConfigFullDomain,
+                ssl: data.ssl
             });
 
             await api.post(`/site-resource/${siteResource.id}/ai-providers`, {
@@ -294,6 +298,33 @@ export default function PrivateResourceInferencePage() {
                                                     res.fullDomain
                                                 );
                                             }}
+                                        />
+                                    </SettingsFormCell>
+                                    <SettingsFormCell span="half">
+                                        <FormField
+                                            control={form.control}
+                                            name="ssl"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <SwitchInput
+                                                            id="private-resource-inference-ssl"
+                                                            label={t(
+                                                                "editInternalResourceDialogEnableSsl"
+                                                            )}
+                                                            description={t(
+                                                                "editInternalResourceDialogEnableSslDescription"
+                                                            )}
+                                                            checked={
+                                                                !!field.value
+                                                            }
+                                                            onCheckedChange={
+                                                                field.onChange
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
                                         />
                                     </SettingsFormCell>
                                 </SettingsFormGrid>

@@ -216,16 +216,17 @@ export function buildCreateSiteResourcePayload(
                 })
         }),
         ...(data.mode === "inference" && {
-            alias:
-                data.alias &&
-                typeof data.alias === "string" &&
-                data.alias.trim()
-                    ? data.alias
-                    : undefined,
             aiProviders: (data.providerIds ?? []).map((providerId) => ({
                 providerId,
                 modelAccessMode: "catalog" as const
-            }))
+            })),
+            ssl: data.ssl ?? false,
+            domainId: data.httpConfigDomainId
+                ? data.httpConfigDomainId
+                : undefined,
+            subdomain: data.httpConfigSubdomain
+                ? data.httpConfigSubdomain
+                : undefined
         }),
         ...((data.mode === "host" || data.mode === "cidr") && {
             tcpPortRangeString: data.tcpPortRangeString,
@@ -306,6 +307,7 @@ export function buildUpdateSiteResourcePayload(
                 data.alias.trim()
                     ? data.alias
                     : null,
+            ssl: data.ssl ?? false,
             domainId: data.httpConfigDomainId
                 ? data.httpConfigDomainId
                 : undefined,
@@ -463,16 +465,6 @@ export function createCreateFormSchema(t: TranslateFn) {
                     message: t("createInternalResourceDialogPleaseSelectSite"),
                     path: ["siteIds"]
                 });
-            }
-            if (data.mode === "inference") {
-                const trimmedAlias = data.alias?.trim();
-                if (!trimmedAlias) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: t("aiResourceAliasRequired"),
-                        path: ["alias"]
-                    });
-                }
             }
             if (
                 data.mode !== "ssh" &&

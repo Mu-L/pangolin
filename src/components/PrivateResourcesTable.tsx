@@ -332,7 +332,7 @@ export default function PrivateResourcesTable({
             },
             {
                 accessorKey: "mode",
-                friendlyName: t("editInternalResourceDialogMode"),
+                friendlyName: t("type"),
                 header: () => (
                     <ColumnFilterButton
                         options={[
@@ -351,6 +351,12 @@ export default function PrivateResourcesTable({
                             {
                                 value: "ssh",
                                 label: t("editInternalResourceDialogModeSsh")
+                            },
+                            {
+                                value: "inference",
+                                label: t(
+                                    "editInternalResourceDialogModeInference"
+                                )
                             }
                         ]}
                         selectedValue={searchParams.get("mode") ?? undefined}
@@ -359,7 +365,7 @@ export default function PrivateResourcesTable({
                         }
                         searchPlaceholder={t("searchPlaceholder")}
                         emptyMessage={t("emptySearchOptions")}
-                        label={t("editInternalResourceDialogMode")}
+                        label={t("type")}
                         className="p-3"
                     />
                 ),

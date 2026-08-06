@@ -280,7 +280,7 @@ export default function PublicResourcesTable({
             },
             {
                 accessorKey: "protocol",
-                friendlyName: t("protocol"),
+                friendlyName: t("type"),
                 enableHiding: true,
                 header: () => (
                     <ColumnFilterButton
@@ -328,7 +328,7 @@ export default function PublicResourcesTable({
                         }
                         searchPlaceholder={t("searchPlaceholder")}
                         emptyMessage={t("emptySearchOptions")}
-                        label={t("protocol")}
+                        label={t("type")}
                         className="p-3"
                     />
                 ),
@@ -747,7 +747,6 @@ export default function PublicResourcesTable({
                 enableColumnVisibility
                 columnVisibility={{
                     niceId: false,
-                    protocol: false,
                     labels: true
                 }}
                 stickyLeftColumn="name"
