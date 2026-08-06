@@ -374,6 +374,7 @@ export default function AiProviderNetworkPage() {
                                     emptyMessage={t("aiProviderTargetNoOne")}
                                     embedded
                                     hideSaveButton
+                                    disableAdvancedMode
                                 />
                             </div>
                         )}

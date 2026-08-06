@@ -591,6 +591,7 @@ export default function CreateAiProviderPage() {
                                         )}
                                         embedded
                                         hideSaveButton
+                                        disableAdvancedMode
                                     />
                                 </div>
                             )}

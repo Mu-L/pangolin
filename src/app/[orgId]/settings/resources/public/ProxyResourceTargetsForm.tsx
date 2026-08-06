@@ -104,6 +104,8 @@ type ProxyResourceTargetsFormProps = {
     embedded?: boolean;
     /** Hide the built-in save button (use ref.save from parent) */
     hideSaveButton?: boolean;
+    /** Hide the advanced mode toggle and always use non-advanced mode (e.g. AI providers) */
+    disableAdvancedMode?: boolean;
 };
 
 export const ProxyResourceTargetsForm = forwardRef<
@@ -121,7 +123,8 @@ export const ProxyResourceTargetsForm = forwardRef<
         allowedMethods = ["http", "https", "h2c"],
         emptyMessage,
         embedded = false,
-        hideSaveButton = false
+        hideSaveButton = false,
+        disableAdvancedMode = false
     },
     ref
 ) {
@@ -221,6 +224,9 @@ export const ProxyResourceTargetsForm = forwardRef<
     );
 
     const [isAdvancedMode, setIsAdvancedMode] = useState(() => {
+        if (disableAdvancedMode) {
+            return false;
+        }
         if (typeof window !== "undefined") {
             const saved = localStorage.getItem("proxy-advanced-mode");
             return saved === "true";
@@ -709,13 +715,14 @@ export const ProxyResourceTargetsForm = forwardRef<
     }, [sites]);
 
     useEffect(() => {
+        if (disableAdvancedMode) return;
         if (typeof window !== "undefined") {
             localStorage.setItem(
                 "proxy-advanced-mode",
                 isAdvancedMode.toString()
             );
         }
-    }, [isAdvancedMode]);
+    }, [isAdvancedMode, disableAdvancedMode]);
 
     const [, formAction, isSubmitting] = useActionState(
         async () => {
@@ -940,19 +947,21 @@ export const ProxyResourceTargetsForm = forwardRef<
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center justify-between w-full gap-2">
                         {addTargetButton}
-                        <div className="flex items-center gap-2">
-                            <Switch
-                                id={advancedModeToggleId}
-                                checked={isAdvancedMode}
-                                onCheckedChange={setIsAdvancedMode}
-                            />
-                            <label
-                                htmlFor={advancedModeToggleId}
-                                className="text-sm"
-                            >
-                                {t("advancedMode")}
-                            </label>
-                        </div>
+                        {!disableAdvancedMode && (
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={advancedModeToggleId}
+                                    checked={isAdvancedMode}
+                                    onCheckedChange={setIsAdvancedMode}
+                                />
+                                <label
+                                    htmlFor={advancedModeToggleId}
+                                    className="text-sm"
+                                >
+                                    {t("advancedMode")}
+                                </label>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
