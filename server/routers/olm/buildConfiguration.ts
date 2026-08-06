@@ -98,7 +98,7 @@ export async function buildSiteConfigurationForOlmClient(
     }
 
     exitNodeAliases = siteResourcesForExitNode
-        .map((sr) => sr.alias)
+        .map((sr) => sr.fullDomain || sr.alias) // take either in case we introduce different resource types that don't have a fullDomain
         .filter((a) => a != null);
 
     if (sitesData.length == 0) {

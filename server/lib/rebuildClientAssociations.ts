@@ -1117,7 +1117,8 @@ async function syncClientExitNodeConnections(
     const requiresExitNodeRows = await trx
         .select({
             clientId: clientSiteResourcesAssociationsCache.clientId,
-            alias: siteResources.alias
+            alias: siteResources.alias,
+            fullDomain: siteResources.fullDomain
         })
         .from(clientSiteResourcesAssociationsCache)
         .innerJoin(
@@ -1145,14 +1146,16 @@ async function syncClientExitNodeConnections(
     // Aliases for every exit-node-backed resource this client can reach, so
     // the live connect push carries the same alias list the register/reconnect
     // path (buildSiteConfigurationForOlmClient) would compute.
-    const exitNodeAliasesByClientId = new Map<number, string[]>();
+    const exitNodeAliasesByClientId = new Map<number, (string | null)[]>();
     for (const row of requiresExitNodeRows) {
-        if (row.alias == null) continue;
+        if (row.alias == null && row.fullDomain == null) continue;
         const existing = exitNodeAliasesByClientId.get(row.clientId);
         if (existing) {
-            existing.push(row.alias);
+            existing.push(row.fullDomain || row.alias); // accept both for now in case we have other resource types that dont use the full domain
         } else {
-            exitNodeAliasesByClientId.set(row.clientId, [row.alias]);
+            exitNodeAliasesByClientId.set(row.clientId, [
+                row.fullDomain || row.alias
+            ]);
         }
     }
 
@@ -1231,9 +1234,8 @@ async function syncClientExitNodeConnections(
                         publicKey: exitNode.publicKey,
                         serverIP: exitNode.address.split("/")[0],
                         tunnelIP: client.exitNodeSubnet.split("/")[0],
-                        aliases: exitNodeAliasesByClientId.get(
-                            client.clientId
-                        ) ?? []
+                        aliases:
+                            exitNodeAliasesByClientId.get(client.clientId) ?? []
                     }
                 },
                 options: {

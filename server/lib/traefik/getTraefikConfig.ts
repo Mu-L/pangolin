@@ -860,7 +860,7 @@ export async function getTraefikConfig(
         const siteResourcesInference = await db
             .selectDistinct({
                 siteResourceId: siteResources.siteResourceId,
-                alias: siteResources.alias,
+                fullDomain: siteResources.fullDomain,
                 ssl: siteResources.ssl,
                 enabled: siteResources.enabled
             })
@@ -869,23 +869,23 @@ export async function getTraefikConfig(
                 and(
                     eq(siteResources.mode, "inference"),
                     eq(siteResources.enabled, true),
-                    isNotNull(siteResources.alias)
+                    isNotNull(siteResources.fullDomain)
                 )
             );
 
         for (const sr of siteResourcesInference) {
-            if (!sr.enabled || !sr.alias) continue;
+            if (!sr.enabled || !sr.fullDomain) continue;
 
             if (!config_output.http.routers) config_output.http.routers = {};
             if (!config_output.http.services) config_output.http.services = {};
 
-            const alias = sr.alias;
+            const fullDomain = sr.fullDomain;
             const srKey = `inference-sr${sr.siteResourceId}`;
             const routerName = `${srKey}-router`;
             const serviceName = `${srKey}-service`;
-            const rule = `Host(\`${alias}\`) && ClientIP(${exitNode.address})`; // restrict to coming from the exit node ip range that the client is connected to
+            const rule = `Host(\`${fullDomain}\`) && ClientIP(${exitNode.address})`; // restrict to coming from the exit node ip range that the client is connected to
 
-            const domainParts = alias.split(".");
+            const domainParts = fullDomain.split(".");
             const wildCard =
                 domainParts.length <= 2
                     ? `*.${domainParts.join(".")}`
@@ -911,7 +911,7 @@ export async function getTraefikConfig(
                 headers: {
                     customRequestHeaders: {
                         ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                        "p-host": alias
+                        "p-host": fullDomain
                     }
                 }
             };

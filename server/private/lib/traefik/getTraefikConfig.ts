@@ -407,7 +407,7 @@ export async function getTraefikConfig(
                 and(
                     eq(siteResources.enabled, true),
                     isNotNull(siteResources.fullDomain),
-                    eq(siteResources.mode, "http"),
+                    eq(siteResources.mode, "http"), // important so we dont double get the inference siteResources below
                     eq(siteResources.ssl, true),
                     eq(sites.exitNodeId, exitNodeId),
                     inArray(sites.type, siteTypes)
@@ -452,7 +452,7 @@ export async function getTraefikConfig(
     const siteResourcesInference = await db
         .selectDistinct({
             siteResourceId: siteResources.siteResourceId,
-            alias: siteResources.alias,
+            fullDomain: siteResources.fullDomain,
             ssl: siteResources.ssl,
             enabled: siteResources.enabled
         })
@@ -461,7 +461,7 @@ export async function getTraefikConfig(
             and(
                 eq(siteResources.mode, "inference"),
                 eq(siteResources.enabled, true),
-                isNotNull(siteResources.alias)
+                isNotNull(siteResources.fullDomain)
             )
         );
 
@@ -493,8 +493,8 @@ export async function getTraefikConfig(
             }
         }
         for (const sr of siteResourcesInference) {
-            if (sr.enabled && sr.ssl && sr.alias) {
-                domains.add(sr.alias);
+            if (sr.enabled && sr.ssl && sr.fullDomain) {
+                domains.add(sr.fullDomain);
             }
         }
         // get the valid certs for these domains
@@ -1687,20 +1687,20 @@ export async function getTraefikConfig(
         // siteResources today (see plan doc), so gating here is
         // reachability-only for now.
         for (const sr of siteResourcesInference) {
-            if (!sr.enabled || !sr.alias) continue;
+            if (!sr.enabled || !sr.fullDomain) continue;
 
             if (!config_output.http.routers) config_output.http.routers = {};
             if (!config_output.http.services) config_output.http.services = {};
 
-            const alias = sr.alias;
+            const fullDomain = sr.fullDomain;
             const srKey = `inference-sr${sr.siteResourceId}`;
             const routerName = `${srKey}-router`;
             const serviceName = `${srKey}-service`;
-            const rule = `Host(\`${alias}\`) && ClientIP(${exitNode.address})`; // restrict to coming from the exit node ip range that the client is connected to
+            const rule = `Host(\`${fullDomain}\`) && ClientIP(${exitNode.address})`; // restrict to coming from the exit node ip range that the client is connected to
 
             let tls: any = {};
             if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
-                const domainParts = alias.split(".");
+                const domainParts = fullDomain.split(".");
                 const wildCard =
                     domainParts.length <= 2
                         ? `*.${domainParts.join(".")}`
@@ -1719,11 +1719,11 @@ export async function getTraefikConfig(
                 };
             } else {
                 const matchingCert = validCerts.find(
-                    (cert) => cert.queriedDomain === alias
+                    (cert) => cert.queriedDomain === fullDomain
                 );
                 if (!matchingCert) {
                     logger.debug(
-                        `No matching certificate found for inference siteResource alias: ${alias}`
+                        `No matching certificate found for inference siteResource fullDomain: ${fullDomain}`
                     );
                     continue;
                 }
@@ -1739,7 +1739,7 @@ export async function getTraefikConfig(
                     headers: {
                         customRequestHeaders: {
                             ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                            "p-host": alias
+                            "p-host": fullDomain
                         }
                     }
                 };
