@@ -10,7 +10,7 @@ import HttpCode from "@server/types/HttpCode";
 // almost immediately without needing explicit cache invalidation.
 const PROVIDER_TARGETS_TTL_SEC = 7;
 
-// Header gerbil reads to know which host:port (reachable over the
+// Header gerbil reads to know which scheme://host:port (reachable over the
 // WireGuard network) to rewrite an incoming /router/* request to. Must
 // match gerbil's `pangolinDestHeader` constant.
 const PANGOLIN_DEST_HEADER = "p-dest-header";
@@ -32,8 +32,9 @@ const SKIP_HEADERS = new Set([
 
 type ResolvedProviderTarget = {
     targetId: number;
-    // "<site exitNodeSubnet host>:<internalPort>", passed to gerbil as the
-    // destination to proxy the request to over the WireGuard tunnel.
+    // "<scheme>://<site exitNodeSubnet host>:<internalPort>", passed to
+    // gerbil as the destination to proxy the request to over the WireGuard
+    // tunnel.
     destination: string;
     // The target's site's exit node HTTP API base URL (gerbil's /router/*).
     gerbilBaseUrl: string;
@@ -47,6 +48,7 @@ async function fetchProviderTargets(
             targetId: targets.targetId,
             internalPort: targets.internalPort,
             port: targets.port,
+            method: targets.method,
             exitNodeSubnet: sites.exitNodeSubnet,
             reachableAt: exitNodes.reachableAt
         })
@@ -66,9 +68,10 @@ async function fetchProviderTargets(
         }
         const host = row.exitNodeSubnet.split("/")[0];
         const port = row.internalPort ?? row.port;
+        const scheme = row.method?.toLowerCase() ?? "https";
         resolved.push({
             targetId: row.targetId,
-            destination: `${host}:${port}`,
+            destination: `${scheme}://${host}:${port}`,
             gerbilBaseUrl: row.reachableAt
         });
     }
