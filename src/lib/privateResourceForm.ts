@@ -305,7 +305,13 @@ export function buildUpdateSiteResourcePayload(
                 typeof data.alias === "string" &&
                 data.alias.trim()
                     ? data.alias
-                    : null
+                    : null,
+            domainId: data.httpConfigDomainId
+                ? data.httpConfigDomainId
+                : undefined,
+            subdomain: data.httpConfigSubdomain
+                ? data.httpConfigSubdomain
+                : undefined
         }),
         ...((data.mode === "host" || data.mode === "cidr") && {
             tcpPortRangeString: data.tcpPortRangeString,

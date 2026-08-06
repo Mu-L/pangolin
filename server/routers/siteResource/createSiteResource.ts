@@ -168,7 +168,7 @@ const createSiteResourceSchema = z
     )
     .refine(
         (data) => {
-            // destination is only optional for ssh mode with native authDaemonMode
+            // destination is only optional for ssh mode with native authDaemonMode or inference
             if (
                 (data.mode === "ssh" && data.authDaemonMode === "native") ||
                 data.mode == "inference"
@@ -182,7 +182,7 @@ const createSiteResourceSchema = z
         },
         {
             message:
-                "Destination is required unless mode is ssh with authDaemonMode native"
+                "Destination is required unless mode is ssh with authDaemonMode native or inference"
         }
     )
     .refine(
@@ -509,7 +509,15 @@ export async function createSiteResource(
             const existingResource = await db
                 .select()
                 .from(siteResources)
-                .where(eq(siteResources.fullDomain, fullDomain));
+                .where(
+                    and(
+                        eq(siteResources.fullDomain, fullDomain),
+                        ne(
+                            siteResources.requiresExitNodeConnection,
+                            mode == "inference"
+                        )
+                    )
+                ); // exclude looking at the ones on exit nodes if this is an inference resource
 
             if (existingResource.length > 0) {
                 return next(
@@ -529,11 +537,7 @@ export async function createSiteResource(
                 .where(
                     and(
                         eq(siteResources.orgId, orgId),
-                        eq(siteResources.alias, alias.trim()),
-                        ne(
-                            siteResources.requiresExitNodeConnection,
-                            mode == "inference"
-                        ) // exclude looking at the ones on exit nodes if this is an inference resource
+                        eq(siteResources.alias, alias.trim())
                     )
                 )
                 .limit(1);

@@ -1771,6 +1771,8 @@
     "aiResourceProvidersUpdated": "Providers updated",
     "aiResourceProvidersErrorUpdate": "Failed to update providers",
     "aiResourceAliasRequired": "Alias is required for inference resources",
+    "aiResourceDomainConfiguration": "Domain configuration",
+    "aiResourceDomainConfigurationDescription": "Choose the domain clients will use to reach this inference resource.",
     "sidebarApiKeys": "API Keys",
     "sidebarProvisioning": "Provisioning",
     "sidebarSettings": "Settings",

@@ -82,20 +82,7 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
         redirect(`/${params.orgId}/settings/resources`);
     }
 
-    const isInference = resource.mode === "inference";
-
-    const navItems = isInference
-        ? [
-              {
-                  title: t("general"),
-                  href: `/{orgId}/settings/resources/public/{niceId}/general`
-              },
-              {
-                  title: t("aiResourceProviders"),
-                  href: `/{orgId}/settings/resources/public/{niceId}/providers`
-              }
-          ]
-        : [
+        const navItems = [
               {
                   title: t("general"),
                   href: `/{orgId}/settings/resources/public/{niceId}/general`

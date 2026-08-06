@@ -172,7 +172,7 @@ const updateSiteResourceSchema = z
         },
         {
             message:
-                "Destination is required unless mode is ssh with authDaemonMode native"
+                "Destination is required unless mode is ssh with authDaemonMode native or inference"
         }
     )
     .refine(
@@ -481,7 +481,15 @@ export async function updateSiteResource(
             const [existingDomain] = await db
                 .select()
                 .from(siteResources)
-                .where(eq(siteResources.fullDomain, fullDomain));
+                .where(
+                    and(
+                        eq(siteResources.fullDomain, fullDomain),
+                        ne(
+                            siteResources.requiresExitNodeConnection,
+                            mode == "inference"
+                        )
+                    )
+                ); // exclude looking at the ones on exit nodes if this is an inference resource
 
             if (
                 existingDomain &&
@@ -511,11 +519,7 @@ export async function updateSiteResource(
                     and(
                         eq(siteResources.orgId, existingSiteResource.orgId),
                         eq(siteResources.alias, alias.trim()),
-                        ne(siteResources.siteResourceId, siteResourceId), // exclude self
-                        ne(
-                            siteResources.requiresExitNodeConnection,
-                            mode == "inference"
-                        ) // exclude looking at the ones on exit nodes if this is an inference resource
+                        ne(siteResources.siteResourceId, siteResourceId) // exclude self
                     )
                 )
                 .limit(1);

@@ -24,9 +24,7 @@ import {
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
 import { SwitchInput } from "@app/components/SwitchInput";
-import { PrivateResourceAliasField } from "@app/components/PrivateResourceDestinationFields";
 import { createGeneralFormSchema } from "@app/lib/privateResourceForm";
-import { asAnyControl, asAnyWatch } from "@app/lib/formControlUtils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useActionState, useMemo } from "react";
@@ -37,12 +35,8 @@ import { useSaveSiteResource } from "@app/hooks/useSaveSiteResource";
 export default function PrivateResourceGeneralPage() {
     const t = useTranslations();
     const { save, siteResource } = useSaveSiteResource();
-    const isInference = siteResource.mode === "inference";
 
-    const formSchema = useMemo(
-        () => createGeneralFormSchema(t, { requireAlias: isInference }),
-        [t, isInference]
-    );
+    const formSchema = useMemo(() => createGeneralFormSchema(t), [t]);
     type FormValues = z.infer<typeof formSchema>;
 
     const form = useForm<FormValues>({
@@ -50,8 +44,7 @@ export default function PrivateResourceGeneralPage() {
         defaultValues: {
             name: siteResource.name,
             niceId: siteResource.niceId,
-            enabled: siteResource.enabled,
-            alias: siteResource.alias ?? null
+            enabled: siteResource.enabled
         }
     });
 
@@ -63,13 +56,7 @@ export default function PrivateResourceGeneralPage() {
         await save({
             name: data.name,
             niceId: data.niceId,
-            enabled: data.enabled,
-            ...(isInference
-                ? {
-                      mode: "inference" as const,
-                      alias: data.alias
-                  }
-                : {})
+            enabled: data.enabled
         });
     }, null);
 
@@ -165,17 +152,6 @@ export default function PrivateResourceGeneralPage() {
                                             )}
                                         />
                                     </SettingsFormCell>
-                                    {isInference && (
-                                        <SettingsFormCell span="half">
-                                            <PrivateResourceAliasField
-                                                control={asAnyControl(
-                                                    form.control
-                                                )}
-                                                watch={asAnyWatch(form.watch)}
-                                                labelPrefix="edit"
-                                            />
-                                        </SettingsFormCell>
-                                    )}
                                 </SettingsFormGrid>
                             </form>
                         </Form>
