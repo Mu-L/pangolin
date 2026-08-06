@@ -3,11 +3,13 @@ import {
     DB_TYPE,
     Label,
     SiteResource,
+    roleSiteResources,
     siteNetworks,
     siteResourceLabels,
     siteResources,
     sites,
-    labels
+    labels,
+    userSiteResources
 } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
@@ -323,7 +325,48 @@ export async function listAllSiteResourcesByOrg(
             labels: labelFilter
         } = parsedQuery.data;
 
-        const conditions = [and(eq(siteResources.orgId, orgId))];
+        let accessibleSiteResourceIds: number[];
+        if (req.user) {
+            const accessibleSiteResources = await db
+                .select({
+                    siteResourceId: sql<number>`COALESCE(${userSiteResources.siteResourceId}, ${roleSiteResources.siteResourceId})`
+                })
+                .from(userSiteResources)
+                .fullJoin(
+                    roleSiteResources,
+                    eq(
+                        userSiteResources.siteResourceId,
+                        roleSiteResources.siteResourceId
+                    )
+                )
+                .where(
+                    or(
+                        eq(userSiteResources.userId, req.user.userId),
+                        inArray(
+                            roleSiteResources.roleId,
+                            req.userOrgRoleIds ?? []
+                        )
+                    )
+                );
+            accessibleSiteResourceIds = accessibleSiteResources.map(
+                (row) => row.siteResourceId
+            );
+        } else {
+            const allOrgSiteResources = await db
+                .select({ siteResourceId: siteResources.siteResourceId })
+                .from(siteResources)
+                .where(eq(siteResources.orgId, orgId));
+            accessibleSiteResourceIds = allOrgSiteResources.map(
+                (row) => row.siteResourceId
+            );
+        }
+
+        const conditions = [
+            and(
+                eq(siteResources.orgId, orgId),
+                inArray(siteResources.siteResourceId, accessibleSiteResourceIds)
+            )
+        ];
 
         if (siteId != null) {
             // Keep inner joins here: filtering by a specific site implies the

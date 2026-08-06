@@ -34,7 +34,9 @@ const createRoleSchema = z.strictObject({
 export const defaultRoleAllowedActions: ActionsEnum[] = [
     ActionsEnum.getOrg,
     ActionsEnum.getResource,
-    ActionsEnum.listResources
+    ActionsEnum.listResources,
+    ActionsEnum.getSiteResource,
+    ActionsEnum.listSiteResources
 ];
 
 export type CreateRoleBody = z.infer<typeof createRoleSchema>;
