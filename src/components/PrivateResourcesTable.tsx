@@ -421,7 +421,10 @@ export default function PrivateResourcesTable({
                             />
                         );
                     }
-                    if (resourceRow.mode === "http") {
+                    if (
+                        resourceRow.mode === "http" ||
+                        resourceRow.mode === "inference"
+                    ) {
                         const domainId = resourceRow.domainId;
                         const fullDomain = resourceRow.fullDomain;
                         const url = `${resourceRow.ssl ? "https" : "http"}://${fullDomain}`;

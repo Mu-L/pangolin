@@ -273,7 +273,7 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
         .from(siteResources)
         .where(
             and(
-                eq(siteResources.alias, host),
+                eq(siteResources.fullDomain, host),
                 eq(siteResources.mode, "inference"),
                 eq(siteResources.enabled, true)
             )

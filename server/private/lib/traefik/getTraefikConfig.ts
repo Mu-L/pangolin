@@ -1696,7 +1696,7 @@ export async function getTraefikConfig(
             const srKey = `inference-sr${sr.siteResourceId}`;
             const routerName = `${srKey}-router`;
             const serviceName = `${srKey}-service`;
-            const rule = `Host(\`${fullDomain}\`) && ClientIP(${exitNode.address})`; // restrict to coming from the exit node ip range that the client is connected to
+            const rule = `Host(\`${fullDomain}\`) && ClientIP(\`${exitNode.address}\`)`; // restrict to coming from the exit node ip range that the client is connected to
 
             let tls: any = {};
             if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
