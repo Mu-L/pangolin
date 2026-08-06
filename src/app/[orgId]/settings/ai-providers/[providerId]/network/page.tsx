@@ -83,7 +83,8 @@ export default function AiProviderNetworkPage() {
             routingMode: (provider.routingMode as "url" | "target") ?? "url",
             headers: provider.headers ?? [],
             skipTlsVerification: provider.skipTlsVerification,
-            enabled: provider.enabled
+            enabled: provider.enabled,
+            capabilities: provider.capabilities ?? []
         }
     });
 
@@ -127,7 +128,8 @@ export default function AiProviderNetworkPage() {
                 routingMode: (updated.routingMode as "url" | "target") ?? "url",
                 headers: updated.headers ?? [],
                 skipTlsVerification: updated.skipTlsVerification,
-                enabled: updated.enabled
+                enabled: updated.enabled,
+                capabilities: updated.capabilities ?? []
             });
 
             if (values.routingMode === "target" && targetsFormRef.current) {

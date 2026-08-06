@@ -66,7 +66,8 @@ export default function AiProviderAuthenticationPage() {
             authType: (provider.authType as AiProviderAuthType) ?? "bearer",
             routingMode: (provider.routingMode as "url" | "target") ?? "url",
             skipTlsVerification: provider.skipTlsVerification,
-            enabled: provider.enabled
+            enabled: provider.enabled,
+            capabilities: provider.capabilities ?? []
         }
     });
 
@@ -97,7 +98,8 @@ export default function AiProviderAuthenticationPage() {
                 authType: (updated.authType as AiProviderAuthType) ?? "bearer",
                 routingMode: (updated.routingMode as "url" | "target") ?? "url",
                 skipTlsVerification: updated.skipTlsVerification,
-                enabled: updated.enabled
+                enabled: updated.enabled,
+                capabilities: updated.capabilities ?? []
             });
             toast({
                 title: t("success"),
