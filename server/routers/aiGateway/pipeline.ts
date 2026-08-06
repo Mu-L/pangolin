@@ -119,6 +119,28 @@ export type RequestUser = {
     role: string | null;
 };
 
+// Identity headers forwarded to the upstream inference endpoint when the
+// requesting user is known. Omitted entirely (not sent empty) when we
+// couldn't resolve a user for the request.
+export function applyRequestUserHeaders(
+    headers: Record<string, string>,
+    requestUser: RequestUser | null
+): void {
+    if (!requestUser) {
+        return;
+    }
+    headers["Remote-User"] = requestUser.username;
+    if (requestUser.email) {
+        headers["Remote-Email"] = requestUser.email;
+    }
+    if (requestUser.name) {
+        headers["Remote-Name"] = requestUser.name;
+    }
+    if (requestUser.role) {
+        headers["Remote-Role"] = requestUser.role;
+    }
+}
+
 async function buildRequestUser(
     userId: string,
     orgId: string | null
@@ -519,7 +541,12 @@ export async function handleAiGatewayProxy(
         const { provider } = selection;
 
         if (provider.type === "custom" && provider.routingMode === "target") {
-            return await proxyAiGatewayToSiteTarget(req, res, provider);
+            return await proxyAiGatewayToSiteTarget(
+                req,
+                res,
+                provider,
+                requestUser
+            );
         }
 
         const upstreamUrl = provider.upstreamUrl;
@@ -580,6 +607,7 @@ export async function handleAiGatewayProxy(
             config.getRawConfig().server.secret!
         );
         applyAiProviderAuthHeaders(headers, authType, apiKey);
+        applyRequestUserHeaders(headers, requestUser);
 
         const body = JSON.stringify(req.body);
 

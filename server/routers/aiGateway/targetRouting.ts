@@ -12,6 +12,10 @@ import {
 } from "@server/lib/aiProviderDefaults";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
+import {
+    applyRequestUserHeaders,
+    type RequestUser
+} from "@server/routers/aiGateway/pipeline";
 
 // Short TTL: long enough to spare the DB on a burst of requests, short
 // enough that target/site changes (added, removed, exit node moved) show up
@@ -147,7 +151,8 @@ function pathFromRequest(req: Request): string {
 export async function proxyAiGatewayToSiteTarget(
     req: Request,
     res: Response,
-    provider: AiProvider
+    provider: AiProvider,
+    requestUser: RequestUser | null
 ): Promise<void> {
     const providerTargets = await getProviderTargets(provider.providerId);
     if (providerTargets.length === 0) {
@@ -191,6 +196,7 @@ export async function proxyAiGatewayToSiteTarget(
         config.getRawConfig().server.secret!
     );
     applyAiProviderAuthHeaders(headers, authType, apiKey);
+    applyRequestUserHeaders(headers, requestUser);
 
     headers[PANGOLIN_DEST_HEADER] = target.destination;
     headers[PANGOLIN_HOST_HEADER] = target.hostHeader;
