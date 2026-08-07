@@ -125,14 +125,14 @@ export interface AlertContext {
     data: Record<string, unknown>;
 }
 
-type EmailAlertAction = {
+export type EmailAlertAction = {
     type: "email";
     userIds?: string[];
     roleIds?: string[];
     emails?: string[];
 };
 
-type WebhookAlertAction = {
+export type WebhookAlertAction = {
     type: "webhook";
     webhookUrl: string;
     enabled: boolean;
@@ -143,6 +143,7 @@ type AlertAction = EmailAlertAction | WebhookAlertAction;
 export interface TestAlertContext {
     eventType: AlertEventType;
     actions: AlertAction[];
+    orgId: string;
     /** Human-readable context data included in emails and webhook payloads */
     data: Record<string, unknown>;
 }
