@@ -33,9 +33,9 @@
     },
     "dependencies": {
         "@asteasolutions/zod-to-openapi": "8.5.0",
+        "@aws-sdk/client-s3": "3.1056.0",
         "@devolutions/iron-remote-desktop": "https://static.pangolin.net/packages/devolutions-iron-remote-desktop-0.0.0.tgz",
         "@devolutions/iron-remote-desktop-rdp": "https://static.pangolin.net/packages/devolutions-iron-remote-desktop-rdp-0.0.1.tgz",
-        "@aws-sdk/client-s3": "3.1056.0",
         "@headlessui/react": "2.2.10",
         "@hookform/resolvers": "5.4.0",
         "@monaco-editor/react": "4.7.0",
@@ -88,6 +88,7 @@
         "express": "5.2.1",
         "express-rate-limit": "8.5.2",
         "glob": "13.0.6",
+        "gpt-tokenizer": "^3.4.0",
         "helmet": "8.2.0",
         "http-errors": "2.0.1",
         "input-otp": "1.4.2",

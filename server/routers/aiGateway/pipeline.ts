@@ -19,6 +19,7 @@ import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import {
     AiProviderAuthType,
+    AiProviderType,
     applyAiProviderAuthHeaders,
     applyAiProviderCustomHeaders,
     authTypeRequiresApiKey
@@ -49,6 +50,17 @@ import {
     mostSpecificMatchingAllow
 } from "@server/lib/aiModelKeyMatch";
 import { aiGatewayUpstreamFetch } from "@server/lib/aiGatewayUpstreamFetch";
+import { getModelPricing, calculateAiCost } from "@server/lib/aiModelPricing";
+import {
+    extractUsage,
+    estimateUsage,
+    isUsageEmpty,
+    needsStreamUsageInjection,
+    withStreamUsageOption,
+    stripInjectedUsageFrame,
+    extractResponseModel,
+    type AiUsage
+} from "@server/lib/aiUsageExtraction";
 
 // Short-lived local caches so a burst of requests from the same IP/user
 // doesn't hit the database on every single request. None of this is
@@ -500,6 +512,48 @@ async function selectProvider(
     };
 }
 
+function logAiUsageAndCost(args: {
+    capability: AiCapability;
+    provider: AiProvider;
+    requestedModel: string | undefined;
+    requestBody: unknown;
+    responseText: string;
+    isStream: boolean;
+    headers: Headers;
+}): void {
+    const { capability, provider, requestedModel, requestBody, responseText, isStream, headers } =
+        args;
+
+    let usage: AiUsage | null = extractUsage(
+        capability,
+        responseText,
+        isStream,
+        headers
+    );
+    if (!usage || isUsageEmpty(usage)) {
+        usage = estimateUsage(JSON.stringify(requestBody ?? ""), responseText);
+    }
+
+    const model = extractResponseModel(responseText) ?? requestedModel;
+    const pricing = getModelPricing(provider.type as AiProviderType, model);
+    const cost = calculateAiCost(pricing, usage);
+
+    logger.info("AI gateway request usage", {
+        capability,
+        providerId: provider.providerId,
+        providerType: provider.type,
+        model,
+        estimated: usage.estimated,
+        promptTokens: usage.promptTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheWriteTokens: usage.cacheWriteTokens,
+        completionTokens: usage.completionTokens,
+        reasoningTokens: usage.reasoningTokens,
+        pricingApproximate: pricing?.approximate ?? null,
+        totalCostUsd: cost?.totalCost ?? null
+    });
+}
+
 export async function handleAiGatewayProxy(
     req: Request,
     res: Response,
@@ -636,14 +690,25 @@ export async function handleAiGatewayProxy(
         applyAiProviderAuthHeaders(headers, authType, apiKey);
         applyRequestUserHeaders(headers, requestUser);
 
-        const body = JSON.stringify(req.body);
+        // OpenAI's Chat Completions API only reports usage in a streaming
+        // response when asked to via stream_options.include_usage - inject
+        // it ourselves when the caller didn't, so we can still track cost,
+        // and strip the extra frame it adds back out of what we forward.
+        const injectedUsageOurselves = needsStreamUsageInjection(
+            capability,
+            req.body
+        );
+        const outboundBody = injectedUsageOurselves
+            ? withStreamUsageOption(req.body)
+            : req.body;
+        const body = JSON.stringify(outboundBody);
 
         logger.debug("AI gateway upstream request", {
             capability,
             url: targetUrl,
             method: "POST",
             headers,
-            body: req.body,
+            body: outboundBody,
             skipTlsVerification: provider.skipTlsVerification
         });
 
@@ -701,11 +766,31 @@ export async function handleAiGatewayProxy(
         if (isStream && upstreamRes.body) {
             res.flushHeaders();
             const reader = upstreamRes.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = "";
+            // Frame-boundary buffer, only used when we need to filter the
+            // usage-only frame we injected out of what reaches the client.
+            let sseCarry = "";
             try {
                 while (!abortController.signal.aborted) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    res.write(value);
+                    const chunkText = decoder.decode(value, { stream: true });
+                    fullText += chunkText;
+                    if (injectedUsageOurselves) {
+                        sseCarry += chunkText;
+                        const lastBoundary = sseCarry.lastIndexOf("\n\n");
+                        if (lastBoundary !== -1) {
+                            const toEmit = sseCarry.slice(0, lastBoundary + 2);
+                            sseCarry = sseCarry.slice(lastBoundary + 2);
+                            res.write(stripInjectedUsageFrame(toEmit));
+                        }
+                    } else {
+                        res.write(value);
+                    }
+                }
+                if (injectedUsageOurselves && sseCarry) {
+                    res.write(stripInjectedUsageFrame(sseCarry));
                 }
             } finally {
                 await reader.cancel().catch(() => {});
@@ -714,11 +799,31 @@ export async function handleAiGatewayProxy(
             if (!res.writableEnded) {
                 res.end();
             }
+            if (!abortController.signal.aborted) {
+                logAiUsageAndCost({
+                    capability,
+                    provider,
+                    requestedModel,
+                    requestBody: req.body,
+                    responseText: fullText,
+                    isStream: true,
+                    headers: upstreamRes.headers
+                });
+            }
             return;
         }
 
         res.off("close", onClientClose);
         const text = await upstreamRes.text();
+        logAiUsageAndCost({
+            capability,
+            provider,
+            requestedModel,
+            requestBody: req.body,
+            responseText: text,
+            isStream: false,
+            headers: upstreamRes.headers
+        });
         return res.send(text);
     } catch (error) {
         logger.error(error);
