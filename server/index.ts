@@ -28,6 +28,7 @@ import { initLogCleanupInterval } from "@server/lib/cleanupLogs";
 import { initAcmeCertSync } from "#dynamic/lib/acmeCertSync";
 import { fetchServerIp } from "@server/lib/serverIpService";
 import { startRebuildQueueProcessor } from "@server/lib/rebuildClientAssociations";
+import { initAiModelCatalog } from "@server/lib/aiModelCatalog";
 
 async function startServers() {
     await setHostMeta();
@@ -46,6 +47,7 @@ async function startServers() {
     initLogCleanupInterval();
     initAcmeCertSync();
     startRebuildQueueProcessor();
+    await initAiModelCatalog();
 
     // Start all servers
     const apiServer = createApiServer();

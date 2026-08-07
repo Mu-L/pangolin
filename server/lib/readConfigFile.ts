@@ -401,6 +401,36 @@ export const configSchema = z
                 disable_enterprise_features: z.boolean().optional()
             })
             .optional(),
+        ai: z
+            .object({
+                model_catalog: z
+                    .object({
+                        upstream_url: z
+                            .url()
+                            .optional()
+                            .default("https://api.fossorial.io/api/v1/models"),
+                        // No default - only used when an operator wants to
+                        // pin the catalog to a local file instead of
+                        // fetching it from upstream_url.
+                        file: z.string().optional(),
+                        refresh_interval_min_hours: z
+                            .number()
+                            .positive()
+                            .gt(0)
+                            .optional()
+                            .default(6),
+                        refresh_interval_max_hours: z
+                            .number()
+                            .positive()
+                            .gt(0)
+                            .optional()
+                            .default(12)
+                    })
+                    .optional()
+                    .prefault({})
+            })
+            .optional()
+            .prefault({}),
         dns: z
             .object({
                 nameservers: z

@@ -1,30 +1,10 @@
-import fs from "node:fs";
-import path from "node:path";
-import { APP_PATH } from "@server/lib/consts";
 import type { AiProviderType } from "@server/lib/aiProviderDefaults";
 import type { AiUsage } from "@server/lib/aiUsageExtraction";
-import logger from "@server/logger";
-
-const MODELS_JSON_PATH = path.join(APP_PATH, "models.json");
-
-export type CatalogProvider =
-    | "openai"
-    | "anthropic"
-    | "gemini"
-    | "vertex"
-    | "azure"
-    | "bedrock";
-
-export type AiModelCatalogEntry = {
-    provider: CatalogProvider;
-    model: string;
-    pricing: {
-        input: number | null;
-        output: number | null;
-        cacheRead: number | null;
-        reasoningOutput: number | null;
-    };
-};
+import {
+    getAiModelCatalog,
+    type AiModelCatalogEntry,
+    type CatalogProvider
+} from "@server/lib/aiModelCatalog";
 
 export type AiModelPricing = {
     inputCostPerToken: number | null;
@@ -56,34 +36,28 @@ const PROVIDER_CATALOG_MAP: Record<
     vercelAiGateway: null
 };
 
-let modelsByName: Map<string, AiModelCatalogEntry[]> | null = null;
+// Indexed view over the in-memory catalog, rebuilt only when
+// getAiModelCatalog() returns a different array instance (i.e. after a
+// background refresh swaps it out), not on every lookup.
+let indexedCatalog: AiModelCatalogEntry[] | null = null;
+let indexedByName: Map<string, AiModelCatalogEntry[]> = new Map();
 
-function loadModels(): Map<string, AiModelCatalogEntry[]> {
-    if (modelsByName) {
-        return modelsByName;
+function getIndexedCatalog(): Map<string, AiModelCatalogEntry[]> {
+    const catalog = getAiModelCatalog();
+    if (catalog === indexedCatalog) {
+        return indexedByName;
     }
 
     const byName = new Map<string, AiModelCatalogEntry[]>();
-    try {
-        if (fs.existsSync(MODELS_JSON_PATH)) {
-            const raw = fs.readFileSync(MODELS_JSON_PATH, "utf-8");
-            const parsed = JSON.parse(raw) as { data: AiModelCatalogEntry[] };
-            for (const entry of parsed.data ?? []) {
-                if (!entry.model) continue;
-                const list = byName.get(entry.model) ?? [];
-                list.push(entry);
-                byName.set(entry.model, list);
-            }
-        } else {
-            logger.debug(
-                `AI model pricing file not found at ${MODELS_JSON_PATH}; cost calculation will fall back to unknown pricing`
-            );
-        }
-    } catch (error) {
-        logger.warn("Failed to load AI model pricing file", { error });
+    for (const entry of catalog) {
+        if (!entry.model) continue;
+        const list = byName.get(entry.model) ?? [];
+        list.push(entry);
+        byName.set(entry.model, list);
     }
 
-    modelsByName = byName;
+    indexedCatalog = catalog;
+    indexedByName = byName;
     return byName;
 }
 
@@ -144,7 +118,7 @@ export function getModelPricing(
         return null;
     }
 
-    const byName = loadModels();
+    const byName = getIndexedCatalog();
     const catalogProvider =
         providerType === "custom" ? null : PROVIDER_CATALOG_MAP[providerType];
 
