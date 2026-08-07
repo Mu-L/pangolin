@@ -62,11 +62,6 @@ import {
     type AiUsage
 } from "@server/lib/aiUsageExtraction";
 
-// Short-lived local caches so a burst of requests from the same IP/user
-// doesn't hit the database on every single request. None of this is
-// security-critical to cache aggressively (identity is re-derived from the
-// session cookie or from a client's exit-node-scoped subnet each time), so
-// a small TTL is just an efficiency win, not a trust boundary.
 const EXIT_NODE_RANGES_CACHE_KEY = "aiGateway:exitNodeRanges";
 const EXIT_NODE_RANGES_TTL_SEC = 6000;
 const CLIENT_BY_IP_TTL_SEC = 30;
@@ -638,7 +633,8 @@ export async function handleAiGatewayProxy(
                 req,
                 res,
                 provider,
-                requestUser
+                requestUser,
+                capability
             );
         }
 
@@ -724,10 +720,6 @@ export async function handleAiGatewayProxy(
             skipTlsVerification: provider.skipTlsVerification
         });
 
-        // Cancel the upstream request (and, transitively, anything it fans
-        // out to) if the client goes away before we're done - otherwise a
-        // client-cancelled streaming chat completion keeps running upstream
-        // to completion, wasting the connection and any per-token billing.
         const abortController = new AbortController();
         const onClientClose = () => {
             if (!res.writableEnded) {
@@ -764,13 +756,7 @@ export async function handleAiGatewayProxy(
         }
 
         const contentType = upstreamRes.headers.get("content-type") || "";
-        const isStream =
-            req.body?.stream === true ||
-            contentType.includes("text/event-stream") ||
-            req.path.includes("streamGenerateContent") ||
-            req.path.includes("streamRawPredict") ||
-            req.path.includes("converse-stream") ||
-            req.path.includes("invoke-with-response-stream");
+        const isStream = def.isStreaming(req, contentType);
 
         res.status(upstreamRes.status);
         res.setHeader("Content-Type", contentType || "application/json");

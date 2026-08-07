@@ -10,6 +10,10 @@ import {
     applyAiProviderCustomHeaders,
     authTypeRequiresApiKey
 } from "@server/lib/aiProviderDefaults";
+import {
+    AI_CAPABILITY_DEFS,
+    type AiCapability
+} from "@server/lib/aiCapabilities";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import {
@@ -152,14 +156,14 @@ export async function proxyAiGatewayToSiteTarget(
     req: Request,
     res: Response,
     provider: AiProvider,
-    requestUser: RequestUser | null
+    requestUser: RequestUser | null,
+    capability: AiCapability
 ): Promise<void> {
     const providerTargets = await getProviderTargets(provider.providerId);
     if (providerTargets.length === 0) {
         res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
             error: {
-                message:
-                    "AI provider has no reachable site targets configured"
+                message: "AI provider has no reachable site targets configured"
             }
         });
         return;
@@ -256,13 +260,10 @@ export async function proxyAiGatewayToSiteTarget(
     }
 
     const contentType = upstreamRes.headers.get("content-type") || "";
-    const isStream =
-        req.body?.stream === true ||
-        contentType.includes("text/event-stream") ||
-        pathFromRequest(req).includes("streamGenerateContent") ||
-        pathFromRequest(req).includes("streamRawPredict") ||
-        pathFromRequest(req).includes("converse-stream") ||
-        pathFromRequest(req).includes("invoke-with-response-stream");
+    const isStream = AI_CAPABILITY_DEFS[capability].isStreaming(
+        req,
+        contentType
+    );
 
     res.status(upstreamRes.status);
     res.setHeader("Content-Type", contentType || "application/json");

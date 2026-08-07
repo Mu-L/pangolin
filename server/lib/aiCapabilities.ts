@@ -27,6 +27,7 @@ export type AiCapabilityDefinition = {
         req: Request,
         model: string
     ) => string;
+    isStreaming: (req: Request, contentType: string) => boolean;
 };
 
 function bodyModel(req: Request): string | undefined {
@@ -38,9 +39,6 @@ function paramModel(req: Request): string | undefined {
     return typeof model === "string" && model.length > 0 ? model : undefined;
 }
 
-/**
- * Join a provider base URL with an inbound request path.
- */
 export function joinUpstreamUrl(baseUrl: string, path: string): string {
     const base = baseUrl.replace(/\/+$/, "");
     let suffix = path.startsWith("/") ? path : `/${path}`;
@@ -80,11 +78,36 @@ export function joinUpstreamUrl(baseUrl: string, path: string): string {
 }
 
 function pathFromRequest(req: Request): string {
-    // Prefer originalUrl (includes mounted path) over req.url when available.
-    // Query string is preserved - some providers use it to select the
-    // streaming response format (e.g. Gemini's `?alt=sse`).
     const raw = req.originalUrl || req.url || req.path;
     return raw.startsWith("/") ? raw : `/${raw}`;
+}
+
+function bodyRequestsStream(req: Request): boolean {
+    return req.body?.stream === true;
+}
+
+function contentTypeIsSse(contentType: string): boolean {
+    return contentType.includes("text/event-stream");
+}
+
+function contentTypeIsAmazonEventStream(contentType: string): boolean {
+    return contentType.includes("application/vnd.amazon.eventstream");
+}
+
+function pathIncludes(req: Request, fragment: string): boolean {
+    return pathFromRequest(req).includes(fragment);
+}
+
+function isBodyOrSseStreaming(req: Request, contentType: string): boolean {
+    return bodyRequestsStream(req) || contentTypeIsSse(contentType);
+}
+
+function isGeminiStyleStreaming(req: Request, contentType: string): boolean {
+    return (
+        pathIncludes(req, "streamGenerateContent") ||
+        pathIncludes(req, "alt=sse") ||
+        contentTypeIsSse(contentType)
+    );
 }
 
 export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
@@ -97,21 +120,24 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             ],
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
-                joinUpstreamUrl(base, pathFromRequest(req))
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            isStreaming: isBodyOrSseStreaming
         },
         openai_responses: {
             id: "openai_responses",
             routes: [{ method: "POST", path: "/v1/responses" }],
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
-                joinUpstreamUrl(base, pathFromRequest(req))
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            isStreaming: isBodyOrSseStreaming
         },
         anthropic_messages: {
             id: "anthropic_messages",
             routes: [{ method: "POST", path: "/v1/messages" }],
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
-                joinUpstreamUrl(base, pathFromRequest(req))
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            isStreaming: isBodyOrSseStreaming
         },
         gemini_generate_content: {
             id: "gemini_generate_content",
@@ -127,7 +153,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             ],
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
-                joinUpstreamUrl(base, pathFromRequest(req))
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            isStreaming: isGeminiStyleStreaming
         },
         google_generate_content: {
             id: "google_generate_content",
@@ -144,7 +171,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             ],
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
-                joinUpstreamUrl(base, pathFromRequest(req))
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            isStreaming: isGeminiStyleStreaming
         },
         google_raw_predict: {
             id: "google_raw_predict",
@@ -160,7 +188,11 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             ],
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
-                joinUpstreamUrl(base, pathFromRequest(req))
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            isStreaming: (req, contentType) =>
+                pathIncludes(req, "streamRawPredict") ||
+                pathIncludes(req, "alt=sse") ||
+                contentTypeIsSse(contentType)
         },
         bedrock_model_invoke: {
             id: "bedrock_model_invoke",
@@ -173,7 +205,11 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             ],
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
-                joinUpstreamUrl(base, pathFromRequest(req))
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            isStreaming: (req, contentType) =>
+                pathIncludes(req, "invoke-with-response-stream") ||
+                contentTypeIsAmazonEventStream(contentType) ||
+                contentTypeIsSse(contentType)
         },
         bedrock_converse: {
             id: "bedrock_converse",
@@ -183,7 +219,11 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             ],
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
-                joinUpstreamUrl(base, pathFromRequest(req))
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            isStreaming: (req, contentType) =>
+                pathIncludes(req, "converse-stream") ||
+                contentTypeIsAmazonEventStream(contentType) ||
+                contentTypeIsSse(contentType)
         }
     };
 
