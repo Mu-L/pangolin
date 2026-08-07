@@ -20,10 +20,7 @@ import {
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { AiProviderAuthTypeSelect } from "@app/components/AiProviderAuthTypeSelect";
-import {
-    AiProviderCapabilitiesSelect,
-    capabilityLabelKey
-} from "@app/components/AiProviderCapabilitiesSelect";
+import { AiProviderCapabilitiesSelect } from "@app/components/AiProviderCapabilitiesSelect";
 import { AiProviderTypeSelect } from "@app/components/AiProviderTypeSelect";
 import { HeadersInput } from "@app/components/HeadersInput";
 import { StrategySelect } from "@app/components/StrategySelect";
@@ -93,14 +90,12 @@ export default function CreateAiProviderPage() {
     const providerType = form.watch("type");
     const routingMode = form.watch("routingMode");
     const authType = form.watch("authType");
-    const capabilities = form.watch("capabilities");
 
     const showUpstream = showsUpstreamUrlField(providerType, routingMode);
     const requireUpstream = upstreamUrlRequired(providerType, routingMode);
     const showRoutingMode = providerType === "custom";
     const showTargets = providerType === "custom" && routingMode === "target";
     const showApiKey = authTypeRequiresApiKey(authType ?? "bearer");
-    const showCapabilitiesSelect = providerType === "custom";
 
     async function createTargets(
         providerId: number,
@@ -326,48 +321,20 @@ export default function CreateAiProviderPage() {
                                                         )}
                                                     </FormLabel>
                                                     <FormControl>
-                                                        {showCapabilitiesSelect ? (
-                                                            <AiProviderCapabilitiesSelect
-                                                                value={
-                                                                    field.value ??
-                                                                    []
-                                                                }
-                                                                onChange={
-                                                                    field.onChange
-                                                                }
-                                                            />
-                                                        ) : (
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {(
-                                                                    capabilities ??
-                                                                    defaultCapabilitiesForProvider(
-                                                                        providerType
-                                                                    )
-                                                                ).map((cap) => (
-                                                                    <span
-                                                                        key={
-                                                                            cap
-                                                                        }
-                                                                        className="inline-flex items-center rounded-md border border-input bg-muted/40 px-2.5 py-1 text-sm"
-                                                                    >
-                                                                        {t(
-                                                                            capabilityLabelKey(
-                                                                                cap
-                                                                            )
-                                                                        )}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                                        <AiProviderCapabilitiesSelect
+                                                            value={
+                                                                field.value ??
+                                                                []
+                                                            }
+                                                            onChange={
+                                                                field.onChange
+                                                            }
+                                                        />
                                                     </FormControl>
                                                     <FormDescription>
-                                                        {showCapabilitiesSelect
-                                                            ? t(
-                                                                  "aiProviderCapabilitiesCustomDescription"
-                                                              )
-                                                            : t(
-                                                                  "aiProviderCapabilitiesDescription"
-                                                              )}
+                                                        {t(
+                                                            "aiProviderCapabilitiesDescription"
+                                                        )}
                                                     </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>

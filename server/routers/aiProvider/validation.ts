@@ -112,5 +112,15 @@ export function refineProviderUpstreamFields(
                 path: ["capabilities"]
             });
         }
+    } else if (
+        data.capabilities !== undefined &&
+        data.capabilities !== null &&
+        data.capabilities.length === 0
+    ) {
+        ctx.addIssue({
+            code: "custom",
+            message: "At least one capability is required",
+            path: ["capabilities"]
+        });
     }
 }

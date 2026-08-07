@@ -131,20 +131,9 @@ export async function updateAiProvider(
                 ? body.authType
                 : (existing.authType as AiProviderAuthType);
 
-        if (body.capabilities !== undefined && providerType !== "custom") {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "Capabilities can only be updated for custom providers"
-                )
-            );
-        }
-
         const nextCapabilities =
-            providerType === "custom"
-                ? body.capabilities !== undefined
-                    ? body.capabilities
-                    : parseCapabilities(existing.capabilities)
+            body.capabilities !== undefined
+                ? body.capabilities
                 : parseCapabilities(existing.capabilities);
 
         const validation = z
@@ -195,7 +184,7 @@ export async function updateAiProvider(
         if (body.authType !== undefined) {
             updateData.authType = body.authType;
         }
-        if (providerType === "custom" && body.capabilities !== undefined) {
+        if (body.capabilities !== undefined) {
             updateData.capabilities = serializeCapabilities(body.capabilities);
         }
 

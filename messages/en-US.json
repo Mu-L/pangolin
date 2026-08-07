@@ -1729,7 +1729,7 @@
     "aiProviderErrorRoutingModeTarget": "Site targets routing is only available for custom providers",
     "aiProviderErrorCapabilitiesRequired": "Select at least one API capability",
     "aiProviderCapabilities": "API Capabilities",
-    "aiProviderCapabilitiesDescription": "Which API formats this provider accepts. Built-in providers use fixed capabilities.",
+    "aiProviderCapabilitiesDescription": "Select which API formats this provider can handle. Known providers start with recommended defaults.",
     "aiProviderCapabilitiesCustomDescription": "Select which API formats this custom provider can handle",
     "aiProviderCapabilitiesSelect": "Select capabilities",
     "aiProviderCapabilitiesEmpty": "No capabilities found",

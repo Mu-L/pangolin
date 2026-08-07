@@ -261,8 +261,11 @@ export function resolveCapabilitiesForCreate(input: {
     type: AiProviderType;
     capabilities?: AiCapability[] | null;
 }): AiCapability[] {
+    if (input.capabilities != null) {
+        return parseCapabilities(input.capabilities);
+    }
     if (input.type === "custom") {
-        return parseCapabilities(input.capabilities ?? []);
+        return [];
     }
     return [...AI_PROVIDER_CAPABILITY_DEFAULTS[input.type]];
 }

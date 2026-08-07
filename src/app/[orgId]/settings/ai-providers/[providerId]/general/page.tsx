@@ -12,10 +12,7 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
-import {
-    AiProviderCapabilitiesSelect,
-    capabilityLabelKey
-} from "@app/components/AiProviderCapabilitiesSelect";
+import { AiProviderCapabilitiesSelect } from "@app/components/AiProviderCapabilitiesSelect";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
 import {
@@ -49,7 +46,6 @@ export default function AiProviderGeneralPage() {
     const router = useRouter();
     const t = useTranslations();
     const [saveLoading, setSaveLoading] = useState(false);
-    const isCustom = provider.type === "custom";
 
     const generalSchema = useMemo(
         () =>
@@ -63,10 +59,7 @@ export default function AiProviderGeneralPage() {
                     capabilities: z.array(z.enum(AI_CAPABILITIES)).optional()
                 })
                 .superRefine((data, ctx) => {
-                    if (
-                        isCustom &&
-                        (!data.capabilities || data.capabilities.length === 0)
-                    ) {
+                    if (!data.capabilities || data.capabilities.length === 0) {
                         ctx.addIssue({
                             code: "custom",
                             message: t("aiProviderErrorCapabilitiesRequired"),
@@ -74,7 +67,7 @@ export default function AiProviderGeneralPage() {
                         });
                     }
                 }),
-        [t, isCustom]
+        [t]
     );
 
     type GeneralFormValues = z.infer<typeof generalSchema>;
@@ -97,11 +90,9 @@ export default function AiProviderGeneralPage() {
                 capabilities?: AiCapability[];
             } = {
                 name: values.name.trim(),
-                enabled: values.enabled
+                enabled: values.enabled,
+                capabilities: values.capabilities ?? []
             };
-            if (isCustom) {
-                body.capabilities = values.capabilities ?? [];
-            }
 
             const res = await api.post<
                 AxiosResponse<CreateOrEditAiProviderResponse>
@@ -211,46 +202,20 @@ export default function AiProviderGeneralPage() {
                                                         )}
                                                     </FormLabel>
                                                     <FormControl>
-                                                        {isCustom ? (
-                                                            <AiProviderCapabilitiesSelect
-                                                                value={
-                                                                    field.value ??
-                                                                    []
-                                                                }
-                                                                onChange={
-                                                                    field.onChange
-                                                                }
-                                                            />
-                                                        ) : (
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {(
-                                                                    provider.capabilities ??
-                                                                    []
-                                                                ).map((cap) => (
-                                                                    <span
-                                                                        key={
-                                                                            cap
-                                                                        }
-                                                                        className="inline-flex items-center rounded-md border border-input bg-muted/40 px-2.5 py-1 text-sm"
-                                                                    >
-                                                                        {t(
-                                                                            capabilityLabelKey(
-                                                                                cap
-                                                                            )
-                                                                        )}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                                        <AiProviderCapabilitiesSelect
+                                                            value={
+                                                                field.value ??
+                                                                []
+                                                            }
+                                                            onChange={
+                                                                field.onChange
+                                                            }
+                                                        />
                                                     </FormControl>
                                                     <FormDescription>
-                                                        {isCustom
-                                                            ? t(
-                                                                  "aiProviderCapabilitiesCustomDescription"
-                                                              )
-                                                            : t(
-                                                                  "aiProviderCapabilitiesDescription"
-                                                              )}
+                                                        {t(
+                                                            "aiProviderCapabilitiesDescription"
+                                                        )}
                                                     </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>

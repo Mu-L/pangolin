@@ -124,6 +124,15 @@ export async function createAiProvider(
             capabilities
         });
 
+        if (resolvedCapabilities.length === 0) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "At least one capability is required"
+                )
+            );
+        }
+
         const [provider] = await db
             .insert(aiProviders)
             .values({

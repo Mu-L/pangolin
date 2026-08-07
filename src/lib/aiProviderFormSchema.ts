@@ -97,10 +97,7 @@ export function createAiProviderFormSchema(t: TranslateFn) {
                 });
             }
 
-            if (
-                data.type === "custom" &&
-                (!data.capabilities || data.capabilities.length === 0)
-            ) {
+            if (!data.capabilities || data.capabilities.length === 0) {
                 ctx.addIssue({
                     code: "custom",
                     message: t("aiProviderErrorCapabilitiesRequired"),
@@ -187,8 +184,7 @@ export function toAiProviderCreatePayload(values: AiProviderFormValues) {
         upstreamUrl,
         apiKey: values.apiKey?.trim() ? values.apiKey.trim() : undefined,
         authType: values.authType ?? "bearer",
-        capabilities:
-            values.type === "custom" ? (values.capabilities ?? []) : undefined,
+        capabilities: values.capabilities ?? [],
         headers:
             values.headers && values.headers.length > 0 ? values.headers : null,
         skipTlsVerification: values.skipTlsVerification,
@@ -216,7 +212,7 @@ export function toAiProviderUpdatePayload(values: AiProviderFormValues) {
         enabled: values.enabled ?? true
     };
 
-    if (values.type === "custom" && values.capabilities) {
+    if (values.capabilities) {
         payload.capabilities = values.capabilities;
     }
 
