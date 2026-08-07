@@ -9,12 +9,13 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import {
-    assertSiteAllowlistApiEligible,
-    assertModelsBelongToSiteAllowlistProviders
+    assertSiteModelListApiEligible,
+    assertSiteResourceModelEntriesValid,
+    resourceAiModelEntrySchema
 } from "@server/lib/aiInferenceResource";
 
 const setSiteResourceAiModelsBodySchema = z.strictObject({
-    modelIds: z.array(z.int().positive())
+    models: z.array(resourceAiModelEntrySchema)
 });
 
 const setSiteResourceAiModelsParamsSchema = z.strictObject({
@@ -25,7 +26,7 @@ registry.registerPath({
     method: "post",
     path: "/site-resource/{siteResourceId}/ai-models",
     description:
-        "Replace the allowlist of catalog models for an inference site resource. Requires at least one attached AI provider in allowlist mode. Models must belong to a provider attached in allowlist mode. An empty array denies all models.",
+        "Replace the allow/block model selection for an inference site resource. Requires at least one attached AI provider in select mode. Models must belong to a select-mode provider and their listType must match the provider catalog entry. An empty array clears the selection, which denies all models for select-mode providers.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: setSiteResourceAiModelsParamsSchema,
@@ -73,7 +74,7 @@ export async function setSiteResourceAiModels(
             );
         }
 
-        const { modelIds } = parsedBody.data;
+        const { models } = parsedBody.data;
 
         const parsedParams = setSiteResourceAiModelsParamsSchema.safeParse(
             req.params
@@ -102,15 +103,22 @@ export async function setSiteResourceAiModels(
         }
 
         const eligibleError =
-            await assertSiteAllowlistApiEligible(siteResource);
+            await assertSiteModelListApiEligible(siteResource);
         if (eligibleError) {
             return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
         }
 
-        const modelError = await assertModelsBelongToSiteAllowlistProviders({
+        const byModelId = new Map(
+            models.map((m) => [m.modelId, m.listType] as const)
+        );
+        const uniqueModels = [...byModelId.entries()].map(
+            ([modelId, listType]) => ({ modelId, listType })
+        );
+
+        const modelError = await assertSiteResourceModelEntriesValid({
             orgId: siteResource.orgId,
             siteResourceId,
-            modelIds
+            models: uniqueModels
         });
         if (modelError) {
             return next(createHttpError(HttpCode.BAD_REQUEST, modelError));
@@ -121,11 +129,12 @@ export async function setSiteResourceAiModels(
                 .delete(siteResourceAiModels)
                 .where(eq(siteResourceAiModels.siteResourceId, siteResourceId));
 
-            if (modelIds.length > 0) {
+            if (uniqueModels.length > 0) {
                 await trx.insert(siteResourceAiModels).values(
-                    modelIds.map((modelId) => ({
+                    uniqueModels.map((m) => ({
                         siteResourceId,
-                        modelId
+                        modelId: m.modelId,
+                        listType: m.listType
                     }))
                 );
             }

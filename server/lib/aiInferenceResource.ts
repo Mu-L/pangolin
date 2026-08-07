@@ -14,13 +14,17 @@ import { modelKeysConflict } from "@server/lib/aiModelKeyMatch";
 
 type DbOrTrx = Transaction | typeof db;
 
-export const modelAccessModeSchema = z.enum(["catalog", "allowlist"]);
+export const modelListTypeSchema = z.enum(["allow", "block"]);
 
-export type ModelAccessMode = z.infer<typeof modelAccessModeSchema>;
+export type ModelListType = z.infer<typeof modelListTypeSchema>;
+
+export const accessModeSchema = z.enum(["inherit", "select"]);
+
+export type AccessMode = z.infer<typeof accessModeSchema>;
 
 export const resourceAiProviderAttachmentSchema = z.strictObject({
     providerId: z.number().int().positive(),
-    modelAccessMode: modelAccessModeSchema.optional()
+    accessMode: accessModeSchema.optional().default("inherit")
 });
 
 export type ResourceAiProviderInput = z.infer<
@@ -29,8 +33,15 @@ export type ResourceAiProviderInput = z.infer<
 
 export type ResourceAiProviderAttachment = {
     providerId: number;
-    modelAccessMode: ModelAccessMode;
+    accessMode: AccessMode;
 };
+
+export const resourceAiModelEntrySchema = z.strictObject({
+    modelId: z.number().int().positive(),
+    listType: modelListTypeSchema
+});
+
+export type ResourceAiModelEntry = z.infer<typeof resourceAiModelEntrySchema>;
 
 export type InferenceFieldsError = {
     error: string;
@@ -42,58 +53,153 @@ export function isInferenceFieldsError(
     return "error" in value;
 }
 
+/**
+ * Resolve which allow/block patterns apply for an attachment.
+ * inherit → provider lists; select → resource-selected lists (replace).
+ */
+export function resolveEffectiveLists(input: {
+    accessMode: AccessMode;
+    providerAllows: string[];
+    providerBlocks: string[];
+    resourceAllows: string[];
+    resourceBlocks: string[];
+}): { allows: string[]; blocks: string[] } {
+    if (input.accessMode === "select") {
+        return {
+            allows: input.resourceAllows,
+            blocks: input.resourceBlocks
+        };
+    }
+    return {
+        allows: input.providerAllows,
+        blocks: input.providerBlocks
+    };
+}
+
 function normalizeAttachments(
     inputs: ResourceAiProviderInput[]
 ): ResourceAiProviderAttachment[] {
-    const byProvider = new Map<number, ModelAccessMode>();
+    const byProviderId = new Map<number, AccessMode>();
     for (const input of inputs) {
-        byProvider.set(input.providerId, input.modelAccessMode ?? "catalog");
+        byProviderId.set(input.providerId, input.accessMode ?? "inherit");
     }
-    return [...byProvider.entries()].map(([providerId, modelAccessMode]) => ({
+    return [...byProviderId.entries()].map(([providerId, accessMode]) => ({
         providerId,
-        modelAccessMode
+        accessMode
     }));
 }
 
+type EffectiveAllowRow = {
+    providerId: number;
+    modelKey: string;
+};
+
 /**
- * Ensure enabled catalog modelKeys do not conflict across attached providers.
- * Catalog attachments contribute all enabled models on the provider.
- * Allowlist attachments contribute nothing until models are allowlisted
- * (those are checked when the allowlist is set).
- *
- * Conflicts: identical keys, or an exact key that matches another provider's
- * pattern. Full glob intersections are left to runtime ambiguity errors.
+ * Ensure effective allow modelKeys do not conflict across attached providers.
+ * inherit uses provider allows; select uses resource-selected allows (or the
+ * optional override map). Block patterns are ignored for overlap checks.
  */
 export async function assertNoOverlappingModelKeys(
     attachments: ResourceAiProviderAttachment[],
-    trx: DbOrTrx = db
+    options: {
+        trx?: DbOrTrx;
+        resourceId?: number;
+        siteResourceId?: number;
+        selectedAllowsByProvider?: Map<number, string[]>;
+    } = {}
 ): Promise<InferenceFieldsError | null> {
-    const catalogProviderIds = attachments
-        .filter((a) => a.modelAccessMode === "catalog")
-        .map((a) => a.providerId);
+    const trx = options.trx ?? db;
 
-    if (catalogProviderIds.length < 2) {
+    if (attachments.length < 2) {
         return null;
     }
 
-    const models = await trx
-        .select({
-            providerId: aiModels.providerId,
-            modelKey: aiModels.modelKey
-        })
-        .from(aiModels)
-        .where(
-            and(
-                inArray(aiModels.providerId, catalogProviderIds),
-                eq(aiModels.enabled, true)
-            )
-        );
+    const inheritProviderIds = attachments
+        .filter((a) => a.accessMode === "inherit")
+        .map((a) => a.providerId);
+    const selectProviderIds = attachments
+        .filter((a) => a.accessMode === "select")
+        .map((a) => a.providerId);
+
+    const effectiveAllows: EffectiveAllowRow[] = [];
+
+    if (inheritProviderIds.length > 0) {
+        const providerAllows = await trx
+            .select({
+                providerId: aiModels.providerId,
+                modelKey: aiModels.modelKey
+            })
+            .from(aiModels)
+            .where(
+                and(
+                    inArray(aiModels.providerId, inheritProviderIds),
+                    eq(aiModels.enabled, true),
+                    eq(aiModels.listType, "allow")
+                )
+            );
+        effectiveAllows.push(...providerAllows);
+    }
+
+    if (selectProviderIds.length > 0) {
+        if (options.selectedAllowsByProvider) {
+            for (const providerId of selectProviderIds) {
+                const keys =
+                    options.selectedAllowsByProvider.get(providerId) ?? [];
+                for (const modelKey of keys) {
+                    effectiveAllows.push({ providerId, modelKey });
+                }
+            }
+        } else if (options.resourceId !== undefined) {
+            const rows = await trx
+                .select({
+                    providerId: aiModels.providerId,
+                    modelKey: aiModels.modelKey
+                })
+                .from(resourceAiModels)
+                .innerJoin(
+                    aiModels,
+                    eq(resourceAiModels.modelId, aiModels.modelId)
+                )
+                .where(
+                    and(
+                        eq(resourceAiModels.resourceId, options.resourceId),
+                        inArray(aiModels.providerId, selectProviderIds),
+                        eq(resourceAiModels.listType, "allow"),
+                        eq(aiModels.enabled, true)
+                    )
+                );
+            effectiveAllows.push(...rows);
+        } else if (options.siteResourceId !== undefined) {
+            const rows = await trx
+                .select({
+                    providerId: aiModels.providerId,
+                    modelKey: aiModels.modelKey
+                })
+                .from(siteResourceAiModels)
+                .innerJoin(
+                    aiModels,
+                    eq(siteResourceAiModels.modelId, aiModels.modelId)
+                )
+                .where(
+                    and(
+                        eq(
+                            siteResourceAiModels.siteResourceId,
+                            options.siteResourceId
+                        ),
+                        inArray(aiModels.providerId, selectProviderIds),
+                        eq(siteResourceAiModels.listType, "allow"),
+                        eq(aiModels.enabled, true)
+                    )
+                );
+            effectiveAllows.push(...rows);
+        }
+    }
 
     const conflictPairs: string[] = [];
-    for (let i = 0; i < models.length; i++) {
-        for (let j = i + 1; j < models.length; j++) {
-            const left = models[i];
-            const right = models[j];
+    for (let i = 0; i < effectiveAllows.length; i++) {
+        for (let j = i + 1; j < effectiveAllows.length; j++) {
+            const left = effectiveAllows[i];
+            const right = effectiveAllows[j];
             if (left.providerId === right.providerId) {
                 continue;
             }
@@ -124,6 +230,8 @@ export async function resolveProviderAttachments(input: {
     orgId: string;
     attachments: ResourceAiProviderInput[];
     requireAtLeastOne: boolean;
+    resourceId?: number;
+    siteResourceId?: number;
 }): Promise<ResourceAiProviderAttachment[] | InferenceFieldsError> {
     const attachments = normalizeAttachments(input.attachments);
 
@@ -165,7 +273,10 @@ export async function resolveProviderAttachments(input: {
         };
     }
 
-    const overlapError = await assertNoOverlappingModelKeys(attachments);
+    const overlapError = await assertNoOverlappingModelKeys(attachments, {
+        resourceId: input.resourceId,
+        siteResourceId: input.siteResourceId
+    });
     if (overlapError) {
         return overlapError;
     }
@@ -188,6 +299,11 @@ export async function assertInferenceModeAllowsProviderFields(input: {
     return null;
 }
 
+/**
+ * Attach providers to a resource. Inherit attachments use the provider lists
+ * as-is (resource model rows for those providers are pruned). Select
+ * attachments keep resource-selected allow/block subsets.
+ */
 export async function setPublicResourceAiProviders(
     resourceId: number,
     attachments: ResourceAiProviderAttachment[],
@@ -202,12 +318,16 @@ export async function setPublicResourceAiProviders(
             attachments.map((a) => ({
                 resourceId,
                 providerId: a.providerId,
-                modelAccessMode: a.modelAccessMode
+                accessMode: a.accessMode
             }))
         );
     }
 
-    await prunePublicResourceAllowlistToAllowlistProviders(resourceId, trx);
+    await prunePublicResourceModelsToSelectProviders(
+        resourceId,
+        attachments,
+        trx
+    );
 }
 
 export async function setSiteResourceAiProviders(
@@ -224,12 +344,103 @@ export async function setSiteResourceAiProviders(
             attachments.map((a) => ({
                 siteResourceId,
                 providerId: a.providerId,
-                modelAccessMode: a.modelAccessMode
+                accessMode: a.accessMode
             }))
         );
     }
 
-    await pruneSiteResourceAllowlistToAllowlistProviders(siteResourceId, trx);
+    await pruneSiteResourceModelsToSelectProviders(
+        siteResourceId,
+        attachments,
+        trx
+    );
+}
+
+/**
+ * Keep resource model rows only for providers in select mode.
+ */
+async function prunePublicResourceModelsToSelectProviders(
+    resourceId: number,
+    attachments: ResourceAiProviderAttachment[],
+    trx: DbOrTrx
+): Promise<void> {
+    const selectProviderIds = attachments
+        .filter((a) => a.accessMode === "select")
+        .map((a) => a.providerId);
+
+    if (selectProviderIds.length === 0) {
+        await trx
+            .delete(resourceAiModels)
+            .where(eq(resourceAiModels.resourceId, resourceId));
+        return;
+    }
+
+    const existing = await trx
+        .select({
+            modelId: resourceAiModels.modelId,
+            providerId: aiModels.providerId
+        })
+        .from(resourceAiModels)
+        .innerJoin(aiModels, eq(resourceAiModels.modelId, aiModels.modelId))
+        .where(eq(resourceAiModels.resourceId, resourceId));
+
+    const allowed = new Set(selectProviderIds);
+    const toRemove = existing
+        .filter((row) => !allowed.has(row.providerId))
+        .map((row) => row.modelId);
+
+    if (toRemove.length > 0) {
+        await trx
+            .delete(resourceAiModels)
+            .where(
+                and(
+                    eq(resourceAiModels.resourceId, resourceId),
+                    inArray(resourceAiModels.modelId, toRemove)
+                )
+            );
+    }
+}
+
+async function pruneSiteResourceModelsToSelectProviders(
+    siteResourceId: number,
+    attachments: ResourceAiProviderAttachment[],
+    trx: DbOrTrx
+): Promise<void> {
+    const selectProviderIds = attachments
+        .filter((a) => a.accessMode === "select")
+        .map((a) => a.providerId);
+
+    if (selectProviderIds.length === 0) {
+        await trx
+            .delete(siteResourceAiModels)
+            .where(eq(siteResourceAiModels.siteResourceId, siteResourceId));
+        return;
+    }
+
+    const existing = await trx
+        .select({
+            modelId: siteResourceAiModels.modelId,
+            providerId: aiModels.providerId
+        })
+        .from(siteResourceAiModels)
+        .innerJoin(aiModels, eq(siteResourceAiModels.modelId, aiModels.modelId))
+        .where(eq(siteResourceAiModels.siteResourceId, siteResourceId));
+
+    const allowed = new Set(selectProviderIds);
+    const toRemove = existing
+        .filter((row) => !allowed.has(row.providerId))
+        .map((row) => row.modelId);
+
+    if (toRemove.length > 0) {
+        await trx
+            .delete(siteResourceAiModels)
+            .where(
+                and(
+                    eq(siteResourceAiModels.siteResourceId, siteResourceId),
+                    inArray(siteResourceAiModels.modelId, toRemove)
+                )
+            );
+    }
 }
 
 export async function clearPublicResourceAiConfig(
@@ -256,120 +467,14 @@ export async function clearSiteResourceAiConfig(
         .where(eq(siteResourceAiProviders.siteResourceId, siteResourceId));
 }
 
-async function prunePublicResourceAllowlistToAllowlistProviders(
-    resourceId: number,
-    trx: DbOrTrx = db
-): Promise<void> {
-    const allowlistProviders = await trx
-        .select({ providerId: resourceAiProviders.providerId })
-        .from(resourceAiProviders)
-        .where(
-            and(
-                eq(resourceAiProviders.resourceId, resourceId),
-                eq(resourceAiProviders.modelAccessMode, "allowlist")
-            )
-        );
-
-    if (allowlistProviders.length === 0) {
-        await trx
-            .delete(resourceAiModels)
-            .where(eq(resourceAiModels.resourceId, resourceId));
-        return;
-    }
-
-    const validModels = await trx
-        .select({ modelId: aiModels.modelId })
-        .from(aiModels)
-        .where(
-            inArray(
-                aiModels.providerId,
-                allowlistProviders.map((p) => p.providerId)
-            )
-        );
-    const validIds = validModels.map((m) => m.modelId);
-
-    const existing = await trx
-        .select({ modelId: resourceAiModels.modelId })
-        .from(resourceAiModels)
-        .where(eq(resourceAiModels.resourceId, resourceId));
-
-    const toRemove = existing
-        .map((e) => e.modelId)
-        .filter((id) => !validIds.includes(id));
-
-    if (toRemove.length > 0) {
-        await trx
-            .delete(resourceAiModels)
-            .where(
-                and(
-                    eq(resourceAiModels.resourceId, resourceId),
-                    inArray(resourceAiModels.modelId, toRemove)
-                )
-            );
-    }
-}
-
-async function pruneSiteResourceAllowlistToAllowlistProviders(
-    siteResourceId: number,
-    trx: DbOrTrx = db
-): Promise<void> {
-    const allowlistProviders = await trx
-        .select({ providerId: siteResourceAiProviders.providerId })
-        .from(siteResourceAiProviders)
-        .where(
-            and(
-                eq(siteResourceAiProviders.siteResourceId, siteResourceId),
-                eq(siteResourceAiProviders.modelAccessMode, "allowlist")
-            )
-        );
-
-    if (allowlistProviders.length === 0) {
-        await trx
-            .delete(siteResourceAiModels)
-            .where(eq(siteResourceAiModels.siteResourceId, siteResourceId));
-        return;
-    }
-
-    const validModels = await trx
-        .select({ modelId: aiModels.modelId })
-        .from(aiModels)
-        .where(
-            inArray(
-                aiModels.providerId,
-                allowlistProviders.map((p) => p.providerId)
-            )
-        );
-    const validIds = validModels.map((m) => m.modelId);
-
-    const existing = await trx
-        .select({ modelId: siteResourceAiModels.modelId })
-        .from(siteResourceAiModels)
-        .where(eq(siteResourceAiModels.siteResourceId, siteResourceId));
-
-    const toRemove = existing
-        .map((e) => e.modelId)
-        .filter((id) => !validIds.includes(id));
-
-    if (toRemove.length > 0) {
-        await trx
-            .delete(siteResourceAiModels)
-            .where(
-                and(
-                    eq(siteResourceAiModels.siteResourceId, siteResourceId),
-                    inArray(siteResourceAiModels.modelId, toRemove)
-                )
-            );
-    }
-}
-
 export async function listPublicResourceAiProviders(resourceId: number) {
     return db
         .select({
             providerId: resourceAiProviders.providerId,
-            modelAccessMode: resourceAiProviders.modelAccessMode,
             name: aiProviders.name,
             type: aiProviders.type,
-            enabled: aiProviders.enabled
+            enabled: aiProviders.enabled,
+            accessMode: resourceAiProviders.accessMode
         })
         .from(resourceAiProviders)
         .innerJoin(
@@ -383,10 +488,10 @@ export async function listSiteResourceAiProviders(siteResourceId: number) {
     return db
         .select({
             providerId: siteResourceAiProviders.providerId,
-            modelAccessMode: siteResourceAiProviders.modelAccessMode,
             name: aiProviders.name,
             type: aiProviders.type,
-            enabled: aiProviders.enabled
+            enabled: aiProviders.enabled,
+            accessMode: siteResourceAiProviders.accessMode
         })
         .from(siteResourceAiProviders)
         .innerJoin(
@@ -397,15 +502,15 @@ export async function listSiteResourceAiProviders(siteResourceId: number) {
 }
 
 /**
- * Allowlist APIs require an inference resource with at least one
- * attached provider in allowlist mode.
+ * Model list APIs require an inference resource with at least one select-mode
+ * attached provider.
  */
-export async function assertPublicAllowlistApiEligible(resource: {
+export async function assertPublicModelListApiEligible(resource: {
     resourceId: number;
     mode: string;
 }): Promise<string | null> {
     if (resource.mode !== "inference") {
-        return "AI model allowlists are only supported on inference-mode resources";
+        return "AI model lists are only supported on inference-mode resources";
     }
 
     const [row] = await db
@@ -414,23 +519,23 @@ export async function assertPublicAllowlistApiEligible(resource: {
         .where(
             and(
                 eq(resourceAiProviders.resourceId, resource.resourceId),
-                eq(resourceAiProviders.modelAccessMode, "allowlist")
+                eq(resourceAiProviders.accessMode, "select")
             )
         )
         .limit(1);
 
     if (!row) {
-        return "Attach at least one AI provider with modelAccessMode=allowlist before managing allowed models";
+        return "Set at least one attached AI provider to select mode before managing model lists";
     }
     return null;
 }
 
-export async function assertSiteAllowlistApiEligible(siteResource: {
+export async function assertSiteModelListApiEligible(siteResource: {
     siteResourceId: number;
     mode: string;
 }): Promise<string | null> {
     if (siteResource.mode !== "inference") {
-        return "AI model allowlists are only supported on inference-mode resources";
+        return "AI model lists are only supported on inference-mode resources";
     }
 
     const [row] = await db
@@ -442,33 +547,36 @@ export async function assertSiteAllowlistApiEligible(siteResource: {
                     siteResourceAiProviders.siteResourceId,
                     siteResource.siteResourceId
                 ),
-                eq(siteResourceAiProviders.modelAccessMode, "allowlist")
+                eq(siteResourceAiProviders.accessMode, "select")
             )
         )
         .limit(1);
 
     if (!row) {
-        return "Attach at least one AI provider with modelAccessMode=allowlist before managing allowed models";
+        return "Set at least one attached AI provider to select mode before managing model lists";
     }
     return null;
 }
 
 /**
- * Models must belong to providers attached to this resource in allowlist mode,
- * and those providers must belong to the resource's org.
+ * Resource model entries must belong to select-mode attached providers, and
+ * listType must match the provider catalog entry (allow→allow, block→block).
  */
-export async function assertModelsBelongToPublicAllowlistProviders(input: {
+export async function assertPublicResourceModelEntriesValid(input: {
     orgId: string;
     resourceId: number;
-    modelIds: number[];
+    models: ResourceAiModelEntry[];
 }): Promise<string | null> {
-    const uniqueIds = [...new Set(input.modelIds)];
-    if (uniqueIds.length === 0) {
+    const uniqueModels = dedupeModelEntries(input.models);
+    if (uniqueModels.length === 0) {
         return null;
     }
 
-    const allowlistProviders = await db
-        .select({ providerId: resourceAiProviders.providerId })
+    const attachments = await db
+        .select({
+            providerId: resourceAiProviders.providerId,
+            accessMode: resourceAiProviders.accessMode
+        })
         .from(resourceAiProviders)
         .innerJoin(
             aiProviders,
@@ -477,49 +585,33 @@ export async function assertModelsBelongToPublicAllowlistProviders(input: {
         .where(
             and(
                 eq(resourceAiProviders.resourceId, input.resourceId),
-                eq(resourceAiProviders.modelAccessMode, "allowlist"),
                 eq(aiProviders.orgId, input.orgId)
             )
         );
 
-    if (allowlistProviders.length === 0) {
-        return "No allowlist AI providers are attached to this resource";
-    }
-
-    const validModels = await db
-        .select({ modelId: aiModels.modelId })
-        .from(aiModels)
-        .innerJoin(aiProviders, eq(aiModels.providerId, aiProviders.providerId))
-        .where(
-            and(
-                inArray(aiModels.modelId, uniqueIds),
-                inArray(
-                    aiModels.providerId,
-                    allowlistProviders.map((p) => p.providerId)
-                ),
-                eq(aiProviders.orgId, input.orgId)
-            )
-        );
-
-    if (validModels.length !== uniqueIds.length) {
-        return "One or more model IDs do not exist or do not belong to an allowlist provider on this resource";
-    }
-
-    return null;
+    return assertModelEntriesValid({
+        orgId: input.orgId,
+        modelEntries: uniqueModels,
+        attachments,
+        resourceLabel: "resource"
+    });
 }
 
-export async function assertModelsBelongToSiteAllowlistProviders(input: {
+export async function assertSiteResourceModelEntriesValid(input: {
     orgId: string;
     siteResourceId: number;
-    modelIds: number[];
+    models: ResourceAiModelEntry[];
 }): Promise<string | null> {
-    const uniqueIds = [...new Set(input.modelIds)];
-    if (uniqueIds.length === 0) {
+    const uniqueModels = dedupeModelEntries(input.models);
+    if (uniqueModels.length === 0) {
         return null;
     }
 
-    const allowlistProviders = await db
-        .select({ providerId: siteResourceAiProviders.providerId })
+    const attachments = await db
+        .select({
+            providerId: siteResourceAiProviders.providerId,
+            accessMode: siteResourceAiProviders.accessMode
+        })
         .from(siteResourceAiProviders)
         .innerJoin(
             aiProviders,
@@ -531,32 +623,92 @@ export async function assertModelsBelongToSiteAllowlistProviders(input: {
                     siteResourceAiProviders.siteResourceId,
                     input.siteResourceId
                 ),
-                eq(siteResourceAiProviders.modelAccessMode, "allowlist"),
                 eq(aiProviders.orgId, input.orgId)
             )
         );
 
-    if (allowlistProviders.length === 0) {
-        return "No allowlist AI providers are attached to this site resource";
+    return assertModelEntriesValid({
+        orgId: input.orgId,
+        modelEntries: uniqueModels,
+        attachments,
+        resourceLabel: "site resource"
+    });
+}
+
+function dedupeModelEntries(
+    models: ResourceAiModelEntry[]
+): ResourceAiModelEntry[] {
+    const byModelId = new Map(
+        models.map((m) => [m.modelId, m.listType] as const)
+    );
+    return [...byModelId.entries()].map(([modelId, listType]) => ({
+        modelId,
+        listType
+    }));
+}
+
+async function assertModelEntriesValid(input: {
+    orgId: string;
+    modelEntries: ResourceAiModelEntry[];
+    attachments: ResourceAiProviderAttachment[];
+    resourceLabel: string;
+}): Promise<string | null> {
+    const selectProviderIds = input.attachments
+        .filter((a) => a.accessMode === "select")
+        .map((a) => a.providerId);
+
+    if (selectProviderIds.length === 0) {
+        return "Set at least one attached AI provider to select mode before managing model lists";
     }
 
-    const validModels = await db
-        .select({ modelId: aiModels.modelId })
+    const modelIds = input.modelEntries.map((m) => m.modelId);
+    const catalogRows = await db
+        .select({
+            modelId: aiModels.modelId,
+            modelKey: aiModels.modelKey,
+            listType: aiModels.listType,
+            providerId: aiModels.providerId,
+            enabled: aiModels.enabled
+        })
         .from(aiModels)
         .innerJoin(aiProviders, eq(aiModels.providerId, aiProviders.providerId))
         .where(
             and(
-                inArray(aiModels.modelId, uniqueIds),
-                inArray(
-                    aiModels.providerId,
-                    allowlistProviders.map((p) => p.providerId)
-                ),
+                inArray(aiModels.modelId, modelIds),
+                inArray(aiModels.providerId, selectProviderIds),
                 eq(aiProviders.orgId, input.orgId)
             )
         );
 
-    if (validModels.length !== uniqueIds.length) {
-        return "One or more model IDs do not exist or do not belong to an allowlist provider on this site resource";
+    if (catalogRows.length !== modelIds.length) {
+        return `One or more model IDs do not exist or do not belong to a select-mode provider on this ${input.resourceLabel}`;
+    }
+
+    const catalogById = new Map(catalogRows.map((row) => [row.modelId, row]));
+    const selectedAllowsByProvider = new Map<number, string[]>();
+    for (const entry of input.modelEntries) {
+        const catalog = catalogById.get(entry.modelId);
+        if (!catalog) {
+            return `One or more model IDs do not exist or do not belong to a select-mode provider on this ${input.resourceLabel}`;
+        }
+        if (catalog.listType !== entry.listType) {
+            return `Model ${entry.modelId} must use listType "${catalog.listType}" to match the provider catalog entry`;
+        }
+        if (!catalog.enabled) {
+            return `Model ${entry.modelId} is disabled on its provider`;
+        }
+        if (entry.listType === "allow") {
+            const keys = selectedAllowsByProvider.get(catalog.providerId) ?? [];
+            keys.push(catalog.modelKey);
+            selectedAllowsByProvider.set(catalog.providerId, keys);
+        }
+    }
+
+    const overlapError = await assertNoOverlappingModelKeys(input.attachments, {
+        selectedAllowsByProvider
+    });
+    if (overlapError) {
+        return overlapError.error;
     }
 
     return null;

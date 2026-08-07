@@ -127,13 +127,14 @@ export async function removeAiProviderFromResource(
             .filter((a) => a.providerId !== providerId)
             .map((a) => ({
                 providerId: a.providerId,
-                modelAccessMode: a.modelAccessMode
+                accessMode: a.accessMode
             }));
 
         const attachments = await resolveProviderAttachments({
             orgId: resource.orgId,
             attachments: remaining,
-            requireAtLeastOne: false
+            requireAtLeastOne: false,
+            resourceId
         });
         if (isInferenceFieldsError(attachments)) {
             return next(

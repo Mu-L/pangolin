@@ -43,7 +43,7 @@ export const AI_PROVIDER_DEFAULTS: Record<
         authType: "x-api-key"
     },
     googleGemini: {
-        upstreamUrl: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        upstreamUrl: "https://generativelanguage.googleapis.com",
         authType: "x-goog-api-key"
     },
     vertexAi: {

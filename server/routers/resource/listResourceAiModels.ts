@@ -19,7 +19,9 @@ async function query(resourceId: number) {
             modelId: aiModels.modelId,
             modelKey: aiModels.modelKey,
             name: aiModels.name,
-            enabled: aiModels.enabled
+            providerId: aiModels.providerId,
+            enabled: aiModels.enabled,
+            listType: resourceAiModels.listType
         })
         .from(resourceAiModels)
         .innerJoin(aiModels, eq(resourceAiModels.modelId, aiModels.modelId))
@@ -34,7 +36,7 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/ai-models",
     description:
-        "List catalog models on this resource's allowlist. Only enforced when modelAccessMode=allowlist; an empty allowlist denies all models.",
+        "List the models this resource has selected from its select-mode providers' allow/block lists. Providers in inherit mode are not represented here; they use their own lists.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: listResourceAiModelsParamsSchema

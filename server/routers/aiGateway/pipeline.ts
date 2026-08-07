@@ -38,10 +38,15 @@ import { isIpInCidr } from "@server/lib/ip";
 import { localCache } from "@server/lib/cache";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
-import type { ModelAccessMode } from "@server/lib/aiInferenceResource";
+import {
+    resolveEffectiveLists,
+    type AccessMode,
+    type ModelListType
+} from "@server/lib/aiInferenceResource";
 import {
     compareModelKeySpecificity,
-    modelKeyMatches
+    isAllowedByLists,
+    mostSpecificMatchingAllow
 } from "@server/lib/aiModelKeyMatch";
 import { aiGatewayUpstreamFetch } from "@server/lib/aiGatewayUpstreamFetch";
 
@@ -96,7 +101,19 @@ async function findClientByIp(ip: string): Promise<CachedClient> {
 
 type ProviderAttachment = {
     provider: AiProvider;
-    modelAccessMode: ModelAccessMode;
+    accessMode: AccessMode;
+};
+
+type ResourceModelPattern = {
+    providerId: number;
+    modelKey: string;
+    listType: ModelListType;
+    enabled: boolean;
+};
+
+type ProviderPatternLists = {
+    allows: string[];
+    blocks: string[];
 };
 
 type ResolvedTarget = {
@@ -104,7 +121,7 @@ type ResolvedTarget = {
     siteResourceId: number | null;
     orgId: string | null;
     attachments: ProviderAttachment[];
-    allowlistedModelIds: Set<number>;
+    resourceListsByProvider: Map<number, ProviderPatternLists>;
 };
 
 type ProviderSelection =
@@ -231,8 +248,8 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
     if (resourceRow) {
         const attachmentRows = await db
             .select({
-                modelAccessMode: resourceAiProviders.modelAccessMode,
-                provider: aiProviders
+                provider: aiProviders,
+                accessMode: resourceAiProviders.accessMode
             })
             .from(resourceAiProviders)
             .innerJoin(
@@ -252,38 +269,26 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
 
         const attachments: ProviderAttachment[] = attachmentRows.map((a) => ({
             provider: a.provider,
-            modelAccessMode: a.modelAccessMode as ModelAccessMode
+            accessMode: a.accessMode
         }));
 
-        const allowlistProviderIds = attachments
-            .filter((a) => a.modelAccessMode === "allowlist")
-            .map((a) => a.provider.providerId);
-        const allowlistedModelIds = new Set<number>();
-        if (allowlistProviderIds.length > 0) {
-            const restrictions = await db
-                .select({ modelId: resourceAiModels.modelId })
-                .from(resourceAiModels)
-                .innerJoin(
-                    aiModels,
-                    eq(resourceAiModels.modelId, aiModels.modelId)
-                )
-                .where(
-                    and(
-                        eq(resourceAiModels.resourceId, resourceRow.resourceId),
-                        inArray(aiModels.providerId, allowlistProviderIds)
-                    )
-                );
-            for (const row of restrictions) {
-                allowlistedModelIds.add(row.modelId);
-            }
-        }
+        const resourcePatterns = await db
+            .select({
+                providerId: aiModels.providerId,
+                modelKey: aiModels.modelKey,
+                listType: resourceAiModels.listType,
+                enabled: aiModels.enabled
+            })
+            .from(resourceAiModels)
+            .innerJoin(aiModels, eq(resourceAiModels.modelId, aiModels.modelId))
+            .where(eq(resourceAiModels.resourceId, resourceRow.resourceId));
 
         return {
             resourceId: resourceRow.resourceId,
             siteResourceId: null,
             orgId: resourceRow.orgId,
             attachments,
-            allowlistedModelIds
+            resourceListsByProvider: groupPatternsByProvider(resourcePatterns)
         };
     }
 
@@ -305,8 +310,8 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
     if (siteResourceRow) {
         const attachmentRows = await db
             .select({
-                modelAccessMode: siteResourceAiProviders.modelAccessMode,
-                provider: aiProviders
+                provider: aiProviders,
+                accessMode: siteResourceAiProviders.accessMode
             })
             .from(siteResourceAiProviders)
             .innerJoin(
@@ -329,50 +334,65 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
 
         const attachments: ProviderAttachment[] = attachmentRows.map((a) => ({
             provider: a.provider,
-            modelAccessMode: a.modelAccessMode as ModelAccessMode
+            accessMode: a.accessMode
         }));
 
-        const allowlistProviderIds = attachments
-            .filter((a) => a.modelAccessMode === "allowlist")
-            .map((a) => a.provider.providerId);
-        const allowlistedModelIds = new Set<number>();
-        if (allowlistProviderIds.length > 0) {
-            const restrictions = await db
-                .select({ modelId: siteResourceAiModels.modelId })
-                .from(siteResourceAiModels)
-                .innerJoin(
-                    aiModels,
-                    eq(siteResourceAiModels.modelId, aiModels.modelId)
+        const resourcePatterns = await db
+            .select({
+                providerId: aiModels.providerId,
+                modelKey: aiModels.modelKey,
+                listType: siteResourceAiModels.listType,
+                enabled: aiModels.enabled
+            })
+            .from(siteResourceAiModels)
+            .innerJoin(
+                aiModels,
+                eq(siteResourceAiModels.modelId, aiModels.modelId)
+            )
+            .where(
+                eq(
+                    siteResourceAiModels.siteResourceId,
+                    siteResourceRow.siteResourceId
                 )
-                .where(
-                    and(
-                        eq(
-                            siteResourceAiModels.siteResourceId,
-                            siteResourceRow.siteResourceId
-                        ),
-                        inArray(aiModels.providerId, allowlistProviderIds)
-                    )
-                );
-            for (const row of restrictions) {
-                allowlistedModelIds.add(row.modelId);
-            }
-        }
+            );
 
         return {
             resourceId: null,
             siteResourceId: siteResourceRow.siteResourceId,
             orgId: siteResourceRow.orgId,
             attachments,
-            allowlistedModelIds
+            resourceListsByProvider: groupPatternsByProvider(resourcePatterns)
         };
     }
 
     return null;
 }
 
+function groupPatternsByProvider(
+    patterns: ResourceModelPattern[]
+): Map<number, ProviderPatternLists> {
+    const byProvider = new Map<number, ProviderPatternLists>();
+    for (const pattern of patterns) {
+        if (!pattern.enabled) {
+            continue;
+        }
+        let lists = byProvider.get(pattern.providerId);
+        if (!lists) {
+            lists = { allows: [], blocks: [] };
+            byProvider.set(pattern.providerId, lists);
+        }
+        if (pattern.listType === "allow") {
+            lists.allows.push(pattern.modelKey);
+        } else {
+            lists.blocks.push(pattern.modelKey);
+        }
+    }
+    return byProvider;
+}
+
 async function selectProvider(
     attachments: ProviderAttachment[],
-    allowlistedModelIds: Set<number>,
+    resourceListsByProvider: Map<number, ProviderPatternLists>,
     requestedModel: string | undefined
 ): Promise<ProviderSelection> {
     if (!requestedModel) {
@@ -383,10 +403,10 @@ async function selectProvider(
         };
     }
 
-    const providerById = new Map(
+    const attachmentByProviderId = new Map(
         attachments.map((a) => [a.provider.providerId, a])
     );
-    const providerIds = [...providerById.keys()];
+    const providerIds = [...attachmentByProviderId.keys()];
     if (providerIds.length === 0) {
         return {
             ok: false,
@@ -397,13 +417,26 @@ async function selectProvider(
 
     const providerModels = await db
         .select({
-            modelId: aiModels.modelId,
             providerId: aiModels.providerId,
             modelKey: aiModels.modelKey,
+            listType: aiModels.listType,
             enabled: aiModels.enabled
         })
         .from(aiModels)
         .where(inArray(aiModels.providerId, providerIds));
+
+    const allowsByProvider = new Map<number, string[]>();
+    const blocksByProvider = new Map<number, string[]>();
+    for (const model of providerModels) {
+        if (!model.enabled) {
+            continue;
+        }
+        const targetMap =
+            model.listType === "allow" ? allowsByProvider : blocksByProvider;
+        const existing = targetMap.get(model.providerId) ?? [];
+        existing.push(model.modelKey);
+        targetMap.set(model.providerId, existing);
+    }
 
     type ModelCandidate = {
         provider: AiProvider;
@@ -411,34 +444,27 @@ async function selectProvider(
     };
 
     const candidates: ModelCandidate[] = [];
-    for (const model of providerModels) {
-        if (!model.enabled) {
+    for (const [providerId, attachment] of attachmentByProviderId) {
+        const resourceLists = resourceListsByProvider.get(providerId);
+        const { allows, blocks } = resolveEffectiveLists({
+            accessMode: attachment.accessMode,
+            providerAllows: allowsByProvider.get(providerId) ?? [],
+            providerBlocks: blocksByProvider.get(providerId) ?? [],
+            resourceAllows: resourceLists?.allows ?? [],
+            resourceBlocks: resourceLists?.blocks ?? []
+        });
+
+        if (!isAllowedByLists(requestedModel, allows, blocks)) {
             continue;
         }
-
-        if (!modelKeyMatches(model.modelKey, requestedModel)) {
+        const matchingAllow = mostSpecificMatchingAllow(requestedModel, allows);
+        if (!matchingAllow) {
             continue;
         }
-
-        const attachment = providerById.get(model.providerId);
-        if (!attachment) {
-            continue;
-        }
-
-        if (attachment.modelAccessMode === "catalog") {
-            candidates.push({
-                provider: attachment.provider,
-                modelKey: model.modelKey
-            });
-            continue;
-        }
-
-        if (allowlistedModelIds.has(model.modelId)) {
-            candidates.push({
-                provider: attachment.provider,
-                modelKey: model.modelKey
-            });
-        }
+        candidates.push({
+            provider: attachment.provider,
+            modelKey: matchingAllow
+        });
     }
 
     if (candidates.length === 0) {
@@ -504,7 +530,8 @@ export async function handleAiGatewayProxy(
             });
         }
 
-        const { attachments, allowlistedModelIds, resourceId, orgId } = target;
+        const { attachments, resourceListsByProvider, resourceId, orgId } =
+            target;
 
         const requestUser = await resolveRequestUser(req, resourceId, orgId);
         if (requestUser) {
@@ -529,7 +556,7 @@ export async function handleAiGatewayProxy(
 
         const selection = await selectProvider(
             capableAttachments,
-            allowlistedModelIds,
+            resourceListsByProvider,
             requestedModel
         );
         if (!selection.ok) {

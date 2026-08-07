@@ -9,12 +9,13 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import {
-    assertPublicAllowlistApiEligible,
-    assertModelsBelongToPublicAllowlistProviders
+    assertPublicModelListApiEligible,
+    assertPublicResourceModelEntriesValid,
+    resourceAiModelEntrySchema
 } from "@server/lib/aiInferenceResource";
 
 const setResourceAiModelsBodySchema = z.strictObject({
-    modelIds: z.array(z.int().positive())
+    models: z.array(resourceAiModelEntrySchema)
 });
 
 const setResourceAiModelsParamsSchema = z.strictObject({
@@ -25,7 +26,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/ai-models",
     description:
-        "Replace the allowlist of catalog models for an inference resource. Requires at least one attached AI provider in allowlist mode. Models must belong to a provider attached in allowlist mode. An empty array denies all models.",
+        "Replace the allow/block model selection for an inference resource. Requires at least one attached AI provider in select mode. Models must belong to a select-mode provider and their listType must match the provider catalog entry. An empty array clears the selection, which denies all models for select-mode providers.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: setResourceAiModelsParamsSchema,
@@ -71,7 +72,7 @@ export async function setResourceAiModels(
             );
         }
 
-        const { modelIds } = parsedBody.data;
+        const { models } = parsedBody.data;
 
         const parsedParams = setResourceAiModelsParamsSchema.safeParse(
             req.params
@@ -99,15 +100,22 @@ export async function setResourceAiModels(
             );
         }
 
-        const eligibleError = await assertPublicAllowlistApiEligible(resource);
+        const eligibleError = await assertPublicModelListApiEligible(resource);
         if (eligibleError) {
             return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
         }
 
-        const modelError = await assertModelsBelongToPublicAllowlistProviders({
+        const byModelId = new Map(
+            models.map((m) => [m.modelId, m.listType] as const)
+        );
+        const uniqueModels = [...byModelId.entries()].map(
+            ([modelId, listType]) => ({ modelId, listType })
+        );
+
+        const modelError = await assertPublicResourceModelEntriesValid({
             orgId: resource.orgId,
             resourceId,
-            modelIds
+            models: uniqueModels
         });
         if (modelError) {
             return next(createHttpError(HttpCode.BAD_REQUEST, modelError));
@@ -118,12 +126,14 @@ export async function setResourceAiModels(
                 .delete(resourceAiModels)
                 .where(eq(resourceAiModels.resourceId, resourceId));
 
-            if (modelIds.length > 0) {
-                await trx
-                    .insert(resourceAiModels)
-                    .values(
-                        modelIds.map((modelId) => ({ resourceId, modelId }))
-                    );
+            if (uniqueModels.length > 0) {
+                await trx.insert(resourceAiModels).values(
+                    uniqueModels.map((m) => ({
+                        resourceId,
+                        modelId: m.modelId,
+                        listType: m.listType
+                    }))
+                );
             }
         });
 

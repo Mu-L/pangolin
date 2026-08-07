@@ -8,7 +8,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { assertPublicAllowlistApiEligible } from "@server/lib/aiInferenceResource";
+import { assertPublicModelListApiEligible } from "@server/lib/aiInferenceResource";
 
 const removeAiModelFromResourceBodySchema = z.strictObject({
     modelId: z.int().positive()
@@ -22,7 +22,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/ai-models/remove",
     description:
-        "Remove a single catalog model from an inference resource allowlist. Requires at least one attached AI provider in allowlist mode.",
+        "Remove a single model from an inference resource allow/block list. Requires at least one attached AI provider.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: removeAiModelFromResourceParamsSchema,
@@ -98,7 +98,7 @@ export async function removeAiModelFromResource(
             );
         }
 
-        const eligibleError = await assertPublicAllowlistApiEligible(resource);
+        const eligibleError = await assertPublicModelListApiEligible(resource);
         if (eligibleError) {
             return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
         }

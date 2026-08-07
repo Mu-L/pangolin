@@ -1288,10 +1288,10 @@ export const resourceQueries = {
                     AxiosResponse<{
                         providers: Array<{
                             providerId: number;
-                            modelAccessMode: "catalog" | "allowlist";
                             name: string;
                             type: string;
                             enabled: boolean;
+                            accessMode: "inherit" | "select";
                         }>;
                     }>
                 >(`/site-resource/${siteResourceId}/ai-providers`, {
@@ -1308,10 +1308,10 @@ export const resourceQueries = {
                     AxiosResponse<{
                         providers: Array<{
                             providerId: number;
-                            modelAccessMode: "catalog" | "allowlist";
                             name: string;
                             type: string;
                             enabled: boolean;
+                            accessMode: "inherit" | "select";
                         }>;
                     }>
                 >(`/resource/${resourceId}/ai-providers`, {

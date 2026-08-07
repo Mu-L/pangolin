@@ -228,10 +228,10 @@ export const resourceAiProviders = sqliteTable(
         providerId: integer("providerId")
             .notNull()
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
-        modelAccessMode: text("modelAccessMode")
-            .$type<"catalog" | "allowlist">()
+        accessMode: text("accessMode")
+            .$type<"inherit" | "select">()
             .notNull()
-            .default("catalog")
+            .default("inherit")
     },
     (t) => [primaryKey({ columns: [t.resourceId, t.providerId] })]
 );
@@ -244,7 +244,11 @@ export const resourceAiModels = sqliteTable(
             .references(() => resources.resourceId, { onDelete: "cascade" }),
         modelId: integer("modelId")
             .notNull()
-            .references(() => aiModels.modelId, { onDelete: "cascade" })
+            .references(() => aiModels.modelId, { onDelete: "cascade" }),
+        listType: text("listType")
+            .$type<"allow" | "block">()
+            .notNull()
+            .default("allow")
     },
     (t) => [primaryKey({ columns: [t.resourceId, t.modelId] })]
 );
@@ -507,10 +511,10 @@ export const siteResourceAiProviders = sqliteTable(
         providerId: integer("providerId")
             .notNull()
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
-        modelAccessMode: text("modelAccessMode")
-            .$type<"catalog" | "allowlist">()
+        accessMode: text("accessMode")
+            .$type<"inherit" | "select">()
             .notNull()
-            .default("catalog")
+            .default("inherit")
     },
     (t) => [primaryKey({ columns: [t.siteResourceId, t.providerId] })]
 );
@@ -525,7 +529,11 @@ export const siteResourceAiModels = sqliteTable(
             }),
         modelId: integer("modelId")
             .notNull()
-            .references(() => aiModels.modelId, { onDelete: "cascade" })
+            .references(() => aiModels.modelId, { onDelete: "cascade" }),
+        listType: text("listType")
+            .$type<"allow" | "block">()
+            .notNull()
+            .default("allow")
     },
     (t) => [primaryKey({ columns: [t.siteResourceId, t.modelId] })]
 );
@@ -1660,6 +1668,10 @@ export const aiModels = sqliteTable(
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
         modelKey: text("modelKey").notNull(),
         name: text("name").notNull(),
+        listType: text("listType")
+            .$type<"allow" | "block">()
+            .notNull()
+            .default("allow"),
         enabled: integer("enabled", { mode: "boolean" })
             .notNull()
             .default(true),

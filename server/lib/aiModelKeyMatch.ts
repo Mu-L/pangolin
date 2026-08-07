@@ -83,3 +83,42 @@ export function modelKeysConflict(a: string, b: string): boolean {
 
     return modelKeyMatches(b, a);
 }
+
+/**
+ * Provider-layer policy: empty allowlist denies all. Blocklist only applies
+ * after an allow match.
+ */
+export function isAllowedByLists(
+    requested: string,
+    allows: string[],
+    blocks: string[]
+): boolean {
+    if (allows.length === 0) {
+        return false;
+    }
+    if (!allows.some((pattern) => modelKeyMatches(pattern, requested))) {
+        return false;
+    }
+    if (blocks.some((pattern) => modelKeyMatches(pattern, requested))) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Among allow patterns that match `requested`, return the most specific one,
+ * or null if none match.
+ */
+export function mostSpecificMatchingAllow(
+    requested: string,
+    allows: string[]
+): string | null {
+    const matching = allows.filter((pattern) =>
+        modelKeyMatches(pattern, requested)
+    );
+    if (matching.length === 0) {
+        return null;
+    }
+    matching.sort(compareModelKeySpecificity);
+    return matching[0];
+}

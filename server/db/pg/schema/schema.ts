@@ -231,10 +231,10 @@ export const resourceAiProviders = pgTable(
         providerId: integer("providerId")
             .notNull()
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
-        modelAccessMode: varchar("modelAccessMode")
-            .$type<"catalog" | "allowlist">()
+        accessMode: varchar("accessMode")
+            .$type<"inherit" | "select">()
             .notNull()
-            .default("catalog")
+            .default("inherit")
     },
     (t) => [primaryKey({ columns: [t.resourceId, t.providerId] })]
 );
@@ -247,7 +247,11 @@ export const resourceAiModels = pgTable(
             .references(() => resources.resourceId, { onDelete: "cascade" }),
         modelId: integer("modelId")
             .notNull()
-            .references(() => aiModels.modelId, { onDelete: "cascade" })
+            .references(() => aiModels.modelId, { onDelete: "cascade" }),
+        listType: varchar("listType")
+            .$type<"allow" | "block">()
+            .notNull()
+            .default("allow")
     },
     (t) => [primaryKey({ columns: [t.resourceId, t.modelId] })]
 );
@@ -522,10 +526,10 @@ export const siteResourceAiProviders = pgTable(
         providerId: integer("providerId")
             .notNull()
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
-        modelAccessMode: varchar("modelAccessMode")
-            .$type<"catalog" | "allowlist">()
+        accessMode: varchar("accessMode")
+            .$type<"inherit" | "select">()
             .notNull()
-            .default("catalog")
+            .default("inherit")
     },
     (t) => [primaryKey({ columns: [t.siteResourceId, t.providerId] })]
 );
@@ -540,7 +544,11 @@ export const siteResourceAiModels = pgTable(
             }),
         modelId: integer("modelId")
             .notNull()
-            .references(() => aiModels.modelId, { onDelete: "cascade" })
+            .references(() => aiModels.modelId, { onDelete: "cascade" }),
+        listType: varchar("listType")
+            .$type<"allow" | "block">()
+            .notNull()
+            .default("allow")
     },
     (t) => [primaryKey({ columns: [t.siteResourceId, t.modelId] })]
 );
@@ -1678,6 +1686,10 @@ export const aiModels = pgTable(
             .references(() => aiProviders.providerId, { onDelete: "cascade" }),
         modelKey: varchar("modelKey").notNull(),
         name: varchar("name").notNull(),
+        listType: varchar("listType")
+            .$type<"allow" | "block">()
+            .notNull()
+            .default("allow"),
         enabled: boolean("enabled").notNull().default(true),
         createdAt: bigint("createdAt", { mode: "number" }).notNull(),
         updatedAt: bigint("updatedAt", { mode: "number" }).notNull()

@@ -497,8 +497,7 @@ export default function Page() {
                 if (resourceType === "inference") {
                     Object.assign(payload, {
                         aiProviders: selectedProviders.map((provider) => ({
-                            providerId: parseInt(provider.id, 10),
-                            modelAccessMode: "catalog"
+                            providerId: parseInt(provider.id, 10)
                         }))
                     });
                 } else if (resourceType === "ssh") {

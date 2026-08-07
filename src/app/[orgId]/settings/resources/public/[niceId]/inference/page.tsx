@@ -102,8 +102,7 @@ export default function PublicResourceInferencePage() {
         try {
             await api.post(`/resource/${resource.resourceId}/ai-providers`, {
                 providers: data.providerIds.map((providerId) => ({
-                    providerId,
-                    modelAccessMode: "catalog"
+                    providerId
                 }))
             });
 

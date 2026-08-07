@@ -9,11 +9,14 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import {
-    assertPublicAllowlistApiEligible,
-    assertModelsBelongToPublicAllowlistProviders
+    assertPublicModelListApiEligible,
+    assertPublicResourceModelEntriesValid,
+    modelListTypeSchema
 } from "@server/lib/aiInferenceResource";
+
 const addAiModelToResourceBodySchema = z.strictObject({
-    modelId: z.int().positive()
+    modelId: z.number().int().positive(),
+    listType: modelListTypeSchema.optional().default("allow")
 });
 
 const addAiModelToResourceParamsSchema = z.strictObject({
@@ -24,7 +27,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/ai-models/add",
     description:
-        "Add a single catalog model to an inference resource allowlist. Requires at least one attached AI provider in allowlist mode. The model must belong to a provider attached in allowlist mode.",
+        "Add a single model to an inference resource allow/block selection. Requires at least one attached AI provider in select mode. The model must belong to a select-mode provider and its listType must match the provider catalog entry. listType defaults to allow.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: addAiModelToResourceParamsSchema,
@@ -70,7 +73,7 @@ export async function addAiModelToResource(
             );
         }
 
-        const { modelId } = parsedBody.data;
+        const { modelId, listType } = parsedBody.data;
 
         const parsedParams = addAiModelToResourceParamsSchema.safeParse(
             req.params
@@ -98,15 +101,15 @@ export async function addAiModelToResource(
             );
         }
 
-        const eligibleError = await assertPublicAllowlistApiEligible(resource);
+        const eligibleError = await assertPublicModelListApiEligible(resource);
         if (eligibleError) {
             return next(createHttpError(HttpCode.BAD_REQUEST, eligibleError));
         }
 
-        const modelError = await assertModelsBelongToPublicAllowlistProviders({
+        const modelError = await assertPublicResourceModelEntriesValid({
             orgId: resource.orgId,
             resourceId,
-            modelIds: [modelId]
+            models: [{ modelId, listType }]
         });
         if (modelError) {
             return next(createHttpError(HttpCode.BAD_REQUEST, modelError));
@@ -131,7 +134,9 @@ export async function addAiModelToResource(
             );
         }
 
-        await db.insert(resourceAiModels).values({ resourceId, modelId });
+        await db
+            .insert(resourceAiModels)
+            .values({ resourceId, modelId, listType });
 
         return response(res, {
             data: {},

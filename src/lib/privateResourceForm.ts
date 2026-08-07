@@ -217,8 +217,7 @@ export function buildCreateSiteResourcePayload(
         }),
         ...(data.mode === "inference" && {
             aiProviders: (data.providerIds ?? []).map((providerId) => ({
-                providerId,
-                modelAccessMode: "catalog" as const
+                providerId
             })),
             ssl: data.ssl ?? false,
             domainId: data.httpConfigDomainId

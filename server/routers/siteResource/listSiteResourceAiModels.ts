@@ -19,7 +19,9 @@ async function query(siteResourceId: number) {
             modelId: aiModels.modelId,
             modelKey: aiModels.modelKey,
             name: aiModels.name,
-            enabled: aiModels.enabled
+            providerId: aiModels.providerId,
+            enabled: aiModels.enabled,
+            listType: siteResourceAiModels.listType
         })
         .from(siteResourceAiModels)
         .innerJoin(aiModels, eq(siteResourceAiModels.modelId, aiModels.modelId))
@@ -34,7 +36,7 @@ registry.registerPath({
     method: "get",
     path: "/site-resource/{siteResourceId}/ai-models",
     description:
-        "List catalog models on this site resource's allowlist. Only enforced when modelAccessMode=allowlist; an empty allowlist denies all models.",
+        "List the models this site resource has selected from its select-mode providers' allow/block lists. Providers in inherit mode are not represented here; they use their own lists.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: listSiteResourceAiModelsParamsSchema

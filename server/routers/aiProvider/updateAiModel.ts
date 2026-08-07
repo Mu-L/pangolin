@@ -9,6 +9,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq, ne } from "drizzle-orm";
 import type { CreateOrEditAiModelResponse } from "@server/routers/aiProvider/types";
+import { modelListTypeSchema } from "@server/lib/aiInferenceResource";
 
 const paramsSchema = z.strictObject({
     modelId: z.coerce.number().int().positive()
@@ -17,7 +18,8 @@ const paramsSchema = z.strictObject({
 const bodySchema = z.strictObject({
     modelKey: z.string().nonempty().optional(),
     name: z.string().nonempty().optional(),
-    enabled: z.boolean().optional()
+    enabled: z.boolean().optional(),
+    listType: modelListTypeSchema.optional()
 });
 
 registry.registerPath({
@@ -127,6 +129,9 @@ export async function updateAiModel(
         }
         if (body.enabled !== undefined) {
             updateData.enabled = body.enabled;
+        }
+        if (body.listType !== undefined) {
+            updateData.listType = body.listType;
         }
 
         const [model] = await db

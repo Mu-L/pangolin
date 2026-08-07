@@ -130,8 +130,7 @@ export default function PrivateResourceInferencePage() {
 
             await api.post(`/site-resource/${siteResource.id}/ai-providers`, {
                 providers: data.providerIds.map((providerId) => ({
-                    providerId,
-                    modelAccessMode: "catalog"
+                    providerId
                 }))
             });
 
@@ -258,12 +257,10 @@ export default function PrivateResourceInferencePage() {
                                             cols={2}
                                             hideFreeDomain
                                             defaultSubdomain={
-                                                httpConfigSubdomain ??
-                                                undefined
+                                                httpConfigSubdomain ?? undefined
                                             }
                                             defaultDomainId={
-                                                httpConfigDomainId ??
-                                                undefined
+                                                httpConfigDomainId ?? undefined
                                             }
                                             defaultFullDomain={
                                                 httpConfigFullDomain ??

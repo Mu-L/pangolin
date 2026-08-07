@@ -11,14 +11,12 @@ import { OpenAPITags, registry } from "@server/openApi";
 import {
     isInferenceFieldsError,
     listPublicResourceAiProviders,
-    modelAccessModeSchema,
     resolveProviderAttachments,
     setPublicResourceAiProviders
 } from "@server/lib/aiInferenceResource";
 
 const addAiProviderToResourceBodySchema = z.strictObject({
-    providerId: z.number().int().positive(),
-    modelAccessMode: modelAccessModeSchema.optional()
+    providerId: z.number().int().positive()
 });
 
 const addAiProviderToResourceParamsSchema = z.strictObject({
@@ -29,7 +27,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/ai-providers/add",
     description:
-        "Add or replace a single AI provider attachment on an inference resource.",
+        "Add or replace a single AI provider attachment on an inference resource. The provider is attached in inherit mode, using its own allow/block lists.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: addAiProviderToResourceParamsSchema,
@@ -77,7 +75,7 @@ export async function addAiProviderToResource(
             );
         }
 
-        const { providerId, modelAccessMode } = parsedBody.data;
+        const { providerId } = parsedBody.data;
 
         const parsedParams = addAiProviderToResourceParamsSchema.safeParse(
             req.params
@@ -120,18 +118,21 @@ export async function addAiProviderToResource(
                 .filter((a) => a.providerId !== providerId)
                 .map((a) => ({
                     providerId: a.providerId,
-                    modelAccessMode: a.modelAccessMode
+                    accessMode: a.accessMode
                 })),
-            { providerId, modelAccessMode }
+            { providerId, accessMode: "inherit" as const }
         ];
 
         const attachments = await resolveProviderAttachments({
             orgId: resource.orgId,
             attachments: nextAttachments,
-            requireAtLeastOne: true
+            requireAtLeastOne: true,
+            resourceId
         });
         if (isInferenceFieldsError(attachments)) {
-            return next(createHttpError(HttpCode.BAD_REQUEST, attachments.error));
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, attachments.error)
+            );
         }
 
         await setPublicResourceAiProviders(resourceId, attachments);

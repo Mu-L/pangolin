@@ -27,7 +27,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/ai-providers",
     description:
-        "Replace the AI providers attached to an inference resource. An empty list clears all providers. Model keys must be unique across attached catalog providers.",
+        "Replace the AI providers attached to an inference resource. Each provider uses accessMode inherit (default, uses the provider's own allow/block lists) or select (uses the resource's selected subset of that provider's catalog). An empty list clears all providers. Effective allow model keys must be unique across attached providers.",
     tags: [OpenAPITags.PublicResource],
     request: {
         params: setResourceAiProvidersParamsSchema,
@@ -113,7 +113,8 @@ export async function setResourceAiProviders(
         const attachments = await resolveProviderAttachments({
             orgId: resource.orgId,
             attachments: providers,
-            requireAtLeastOne: false
+            requireAtLeastOne: false,
+            resourceId
         });
         if (isInferenceFieldsError(attachments)) {
             return next(

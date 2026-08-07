@@ -109,7 +109,7 @@ const createHttpResourceSchema = z
             .array(resourceAiProviderAttachmentSchema)
             .optional()
             .describe(
-                "For inference-mode resources: AI providers to attach. Each entry may set modelAccessMode (catalog or allowlist); defaults to catalog. Model keys must be unique across attached catalog providers."
+                "For inference-mode resources: AI providers to attach. Providers are attached in inherit mode, using each provider's own allow/block lists. Effective allow model keys must be unique across attached providers."
             )
     })
     .refine(
@@ -391,9 +391,14 @@ async function createHttpResource(
 
     let providerAttachments: ResourceAiProviderAttachment[] = [];
     if (effectiveMode === "inference") {
+        // A new resource has no model selections yet, so providers always start
+        // in inherit mode; select can be enabled afterwards.
         const resolved = await resolveProviderAttachments({
             orgId,
-            attachments: aiProviderInputs ?? [],
+            attachments: (aiProviderInputs ?? []).map((p) => ({
+                providerId: p.providerId,
+                accessMode: "inherit" as const
+            })),
             requireAtLeastOne: false
         });
         if (isInferenceFieldsError(resolved)) {

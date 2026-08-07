@@ -12,6 +12,7 @@ import {
 } from "@app/components/Settings";
 import { TagInput, type Tag } from "@app/components/tags/tag-input";
 import { Button } from "@app/components/ui/button";
+import { Label } from "@app/components/ui/label";
 import { useAiProviderContext } from "@app/hooks/useAiProviderContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
@@ -21,6 +22,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+type ModelListType = "allow" | "block";
+
 export default function AiProviderModelsPage() {
     const { provider } = useAiProviderContext();
     const { env } = useEnvContext();
@@ -28,8 +31,14 @@ export default function AiProviderModelsPage() {
     const queryClient = useQueryClient();
     const t = useTranslations();
     const [saveLoading, setSaveLoading] = useState(false);
-    const [tags, setTags] = useState<Tag[]>([]);
-    const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
+    const [allowTags, setAllowTags] = useState<Tag[]>([]);
+    const [blockTags, setBlockTags] = useState<Tag[]>([]);
+    const [activeAllowTagIndex, setActiveAllowTagIndex] = useState<
+        number | null
+    >(null);
+    const [activeBlockTagIndex, setActiveBlockTagIndex] = useState<
+        number | null
+    >(null);
 
     const modelsQuery = useQuery(
         aiProviderQueries.providerModels({ providerId: provider.providerId })
@@ -37,11 +46,21 @@ export default function AiProviderModelsPage() {
 
     useEffect(() => {
         if (!modelsQuery.data) return;
-        setTags(
-            modelsQuery.data.map((model) => ({
-                id: String(model.modelId),
-                text: model.modelKey
-            }))
+        setAllowTags(
+            modelsQuery.data
+                .filter((model) => (model.listType ?? "allow") === "allow")
+                .map((model) => ({
+                    id: String(model.modelId),
+                    text: model.modelKey
+                }))
+        );
+        setBlockTags(
+            modelsQuery.data
+                .filter((model) => model.listType === "block")
+                .map((model) => ({
+                    id: String(model.modelId),
+                    text: model.modelKey
+                }))
         );
     }, [modelsQuery.data]);
 
@@ -52,27 +71,74 @@ export default function AiProviderModelsPage() {
             const existingByKey = new Map(
                 existing.map((model) => [model.modelKey, model])
             );
-            const nextKeys = new Set(
-                tags.map((tag) => tag.text.trim()).filter(Boolean)
+
+            const nextAllow = new Set(
+                allowTags.map((tag) => tag.text.trim()).filter(Boolean)
+            );
+            const nextBlock = new Set(
+                blockTags.map((tag) => tag.text.trim()).filter(Boolean)
             );
 
-            const toCreate = [...nextKeys].filter(
-                (key) => !existingByKey.has(key)
-            );
-            const toDelete = existing.filter(
-                (model) => !nextKeys.has(model.modelKey)
-            );
+            const overlap = [...nextAllow].filter((key) => nextBlock.has(key));
+            if (overlap.length > 0) {
+                toast({
+                    variant: "destructive",
+                    title: t("aiProviderModelsErrorUpdate"),
+                    description: t("aiProviderModelsOverlapError", {
+                        keys: overlap.join(", ")
+                    })
+                });
+                return;
+            }
+
+            const desired = new Map<string, ModelListType>();
+            for (const key of nextAllow) {
+                desired.set(key, "allow");
+            }
+            for (const key of nextBlock) {
+                desired.set(key, "block");
+            }
+
+            const toCreate: { modelKey: string; listType: ModelListType }[] =
+                [];
+            const toUpdate: {
+                modelId: number;
+                listType: ModelListType;
+            }[] = [];
+            const toDelete: number[] = [];
+
+            for (const [modelKey, listType] of desired) {
+                const existingModel = existingByKey.get(modelKey);
+                if (!existingModel) {
+                    toCreate.push({ modelKey, listType });
+                    continue;
+                }
+                if ((existingModel.listType ?? "allow") !== listType) {
+                    toUpdate.push({
+                        modelId: existingModel.modelId,
+                        listType
+                    });
+                }
+            }
+
+            for (const model of existing) {
+                if (!desired.has(model.modelKey)) {
+                    toDelete.push(model.modelId);
+                }
+            }
 
             await Promise.all([
-                ...toCreate.map((modelKey) =>
+                ...toCreate.map(({ modelKey, listType }) =>
                     api.put(`/ai-provider/${provider.providerId}/model`, {
                         modelKey,
-                        name: modelKey
+                        name: modelKey,
+                        listType
                     })
                 ),
-                ...toDelete.map((model) =>
-                    api.delete(`/ai-model/${model.modelId}`)
-                )
+                ...toUpdate.map(({ modelId, listType }) =>
+                    api.post(`/ai-model/${modelId}`, { listType })
+                ),
+                ...toDelete.map((modelId) => api.delete(`/ai-model/${modelId}`))
             ]);
 
             await queryClient.invalidateQueries(
@@ -113,24 +179,59 @@ export default function AiProviderModelsPage() {
 
                 <SettingsSectionBody>
                     <SettingsSectionForm variant="half">
-                        <TagInput
-                            activeTagIndex={activeTagIndex}
-                            setActiveTagIndex={setActiveTagIndex}
-                            placeholder={t("aiProviderModelsPlaceholder")}
-                            size="sm"
-                            tags={tags}
-                            setTags={(newTags) => {
-                                const next =
-                                    typeof newTags === "function"
-                                        ? newTags(tags)
-                                        : newTags;
-                                setTags(next as Tag[]);
-                            }}
-                            allowDuplicates={false}
-                            sortTags
-                            delimiterList={[",", "Enter"]}
-                            disabled={modelsQuery.isLoading || saveLoading}
-                        />
+                        <div className="space-y-2">
+                            <Label>{t("aiProviderModelsAllow")}</Label>
+                            <TagInput
+                                activeTagIndex={activeAllowTagIndex}
+                                setActiveTagIndex={setActiveAllowTagIndex}
+                                placeholder={t(
+                                    "aiProviderModelsAllowPlaceholder"
+                                )}
+                                size="sm"
+                                tags={allowTags}
+                                setTags={(newTags) => {
+                                    const next =
+                                        typeof newTags === "function"
+                                            ? newTags(allowTags)
+                                            : newTags;
+                                    setAllowTags(next as Tag[]);
+                                }}
+                                allowDuplicates={false}
+                                sortTags
+                                delimiterList={[",", "Enter"]}
+                                disabled={modelsQuery.isLoading || saveLoading}
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                {t("aiProviderModelsAllowDescription")}
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>{t("aiProviderModelsBlock")}</Label>
+                            <TagInput
+                                activeTagIndex={activeBlockTagIndex}
+                                setActiveTagIndex={setActiveBlockTagIndex}
+                                placeholder={t(
+                                    "aiProviderModelsBlockPlaceholder"
+                                )}
+                                size="sm"
+                                tags={blockTags}
+                                setTags={(newTags) => {
+                                    const next =
+                                        typeof newTags === "function"
+                                            ? newTags(blockTags)
+                                            : newTags;
+                                    setBlockTags(next as Tag[]);
+                                }}
+                                allowDuplicates={false}
+                                sortTags
+                                delimiterList={[",", "Enter"]}
+                                disabled={modelsQuery.isLoading || saveLoading}
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                {t("aiProviderModelsBlockDescription")}
+                            </p>
+                        </div>
                     </SettingsSectionForm>
                 </SettingsSectionBody>
 

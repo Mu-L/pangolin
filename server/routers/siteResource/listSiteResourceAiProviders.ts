@@ -21,7 +21,8 @@ export type ListSiteResourceAiProvidersResponse = {
 registry.registerPath({
     method: "get",
     path: "/site-resource/{siteResourceId}/ai-providers",
-    description: "List AI providers attached to an inference site resource.",
+    description:
+        "List AI providers attached to an inference site resource, including each attachment's accessMode.",
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: listSiteResourceAiProvidersParamsSchema

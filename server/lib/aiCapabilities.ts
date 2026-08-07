@@ -40,18 +40,37 @@ function paramModel(req: Request): string | undefined {
 }
 
 /**
- * Join base URL with a path, avoiding double slashes and a duplicated trailing
- * /v1 when the inbound path already starts with /v1 and the base ends with /v1.
+ * Join a provider base URL with an inbound request path.
  */
 export function joinUpstreamUrl(baseUrl: string, path: string): string {
     const base = baseUrl.replace(/\/+$/, "");
     let suffix = path.startsWith("/") ? path : `/${path}`;
 
-    if (
-        base.endsWith("/v1") &&
-        (suffix === "/v1" || suffix.startsWith("/v1/"))
-    ) {
-        suffix = suffix.slice("/v1".length) || "/";
+    let basePathname = "/";
+    try {
+        basePathname = new URL(base).pathname.replace(/\/+$/, "") || "/";
+    } catch {
+        // Fall through with "/" non-absolute bases are not expected in
+        // production, but keep joining usable for malformed input.
+    }
+
+    if (basePathname !== "/") {
+        const baseSegs = basePathname.split("/").filter(Boolean);
+        const pathSegs = suffix.split("/").filter(Boolean);
+        const max = Math.min(baseSegs.length, pathSegs.length);
+        let overlap = 0;
+        for (let n = max; n >= 1; n--) {
+            const baseSuffix = baseSegs.slice(-n);
+            const pathPrefix = pathSegs.slice(0, n);
+            if (baseSuffix.every((seg, i) => seg === pathPrefix[i])) {
+                overlap = n;
+                break;
+            }
+        }
+        if (overlap > 0) {
+            const remaining = pathSegs.slice(overlap);
+            suffix = remaining.length > 0 ? `/${remaining.join("/")}` : "/";
+        }
     }
 
     if (suffix === "/") {
@@ -175,7 +194,7 @@ export const AI_PROVIDER_CAPABILITY_DEFAULTS: Record<
 > = {
     openai: ["openai_chat"],
     anthropic: ["anthropic_messages"],
-    googleGemini: ["openai_chat"],
+    googleGemini: ["gemini_generate_content"],
     vertexAi: ["google_generate_content"],
     bedrock: ["bedrock_converse"],
     microsoftFoundry: ["openai_chat"],
