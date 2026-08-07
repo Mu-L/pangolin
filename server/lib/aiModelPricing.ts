@@ -5,22 +5,25 @@ import type { AiProviderType } from "@server/lib/aiProviderDefaults";
 import type { AiUsage } from "@server/lib/aiUsageExtraction";
 import logger from "@server/logger";
 
-// config/models.json is a runtime asset (same category as config.yml or the
-// MaxMind DBs) - not part of the source tree. Its shape mirrors litellm's
-// public model_prices_and_context_window.json: a flat list of
-// { id, name, provider, input_cost_per_token, output_cost_per_token,
-// cache_read_input_token_cost, output_cost_per_reasoning_token }, where
-// `provider` is litellm's provider bucket, not our AiProviderType.
 const MODELS_JSON_PATH = path.join(APP_PATH, "models.json");
 
-export type AiModelPricingEntry = {
-    id: string;
-    name: string;
-    provider: string;
-    input_cost_per_token: number | null;
-    output_cost_per_token: number | null;
-    cache_read_input_token_cost: number | null;
-    output_cost_per_reasoning_token: number | null;
+export type CatalogProvider =
+    | "openai"
+    | "anthropic"
+    | "gemini"
+    | "vertex"
+    | "azure"
+    | "bedrock";
+
+export type AiModelCatalogEntry = {
+    provider: CatalogProvider;
+    model: string;
+    pricing: {
+        input: number | null;
+        output: number | null;
+        cacheRead: number | null;
+        reasoningOutput: number | null;
+    };
 };
 
 export type AiModelPricing = {
@@ -28,65 +31,48 @@ export type AiModelPricing = {
     outputCostPerToken: number | null;
     cacheReadInputTokenCost: number | null;
     outputCostPerReasoningToken: number | null;
-    // True when the match came from a different provider bucket than the one
-    // mapped to this provider's type (e.g. an openRouter/custom model id that
-    // only matched by stripping a "vendor/" prefix against the whole table).
-    // Costs found this way are a best-effort approximation, not a guarantee
-    // the upstream provider bills at the same rate.
+    // True when the match came from a different catalog provider than the
+    // one mapped to this provider's type (e.g. an openRouter/custom model
+    // id that only matched a global search across every provider). Costs
+    // found this way are a best-effort approximation, not a guarantee the
+    // upstream provider bills at the same rate.
     approximate: boolean;
 };
 
-// Which litellm provider buckets to search for each of our provider types.
-// Several of our provider types (openRouter, vercelAiGateway, custom) proxy
-// arbitrary underlying models and have no dedicated bucket in the pricing
-// data, so they fall back to a global search across all buckets.
-const PROVIDER_PRICING_BUCKETS: Record<
+// Each of our provider types maps to at most one catalog provider. Provider types that proxy
+// arbitrary underlying models (openRouter, vercelAiGateway, custom) have no
+// mapping and always fall back to a global search.
+const PROVIDER_CATALOG_MAP: Record<
     Exclude<AiProviderType, "custom">,
-    string[]
+    CatalogProvider | null
 > = {
-    openai: ["openai"],
-    anthropic: ["anthropic"],
-    googleGemini: ["gemini"],
-    vertexAi: [
-        "vertex_ai-language-models",
-        "vertex_ai",
-        "vertex_ai-anthropic_models",
-        "vertex_ai-mistral_models",
-        "vertex_ai-deepseek_models",
-        "vertex_ai-ai21_models",
-        "vertex_ai-llama_models",
-        "vertex_ai-minimax_models",
-        "vertex_ai-moonshot_models",
-        "vertex_ai-zai_models",
-        "vertex_ai-openai_models",
-        "vertex_ai-qwen_models",
-        "vertex_ai-text-models"
-    ],
-    bedrock: ["bedrock_converse", "bedrock", "bedrock_mantle"],
-    microsoftFoundry: ["azure", "azure_ai", "azure_text"],
-    openRouter: [],
-    vercelAiGateway: []
+    openai: "openai",
+    anthropic: "anthropic",
+    googleGemini: "gemini",
+    vertexAi: "vertex",
+    bedrock: "bedrock",
+    microsoftFoundry: "azure",
+    openRouter: null,
+    vercelAiGateway: null
 };
 
-let modelsById: Map<string, AiModelPricingEntry[]> | null = null;
+let modelsByName: Map<string, AiModelCatalogEntry[]> | null = null;
 
-function loadModels(): Map<string, AiModelPricingEntry[]> {
-    if (modelsById) {
-        return modelsById;
+function loadModels(): Map<string, AiModelCatalogEntry[]> {
+    if (modelsByName) {
+        return modelsByName;
     }
 
-    const byId = new Map<string, AiModelPricingEntry[]>();
+    const byName = new Map<string, AiModelCatalogEntry[]>();
     try {
         if (fs.existsSync(MODELS_JSON_PATH)) {
             const raw = fs.readFileSync(MODELS_JSON_PATH, "utf-8");
-            const parsed = JSON.parse(raw) as { data: AiModelPricingEntry[] };
+            const parsed = JSON.parse(raw) as { data: AiModelCatalogEntry[] };
             for (const entry of parsed.data ?? []) {
-                for (const key of [entry.id, entry.name]) {
-                    if (!key) continue;
-                    const list = byId.get(key) ?? [];
-                    list.push(entry);
-                    byId.set(key, list);
-                }
+                if (!entry.model) continue;
+                const list = byName.get(entry.model) ?? [];
+                list.push(entry);
+                byName.set(entry.model, list);
             }
         } else {
             logger.debug(
@@ -97,8 +83,8 @@ function loadModels(): Map<string, AiModelPricingEntry[]> {
         logger.warn("Failed to load AI model pricing file", { error });
     }
 
-    modelsById = byId;
-    return byId;
+    modelsByName = byName;
+    return byName;
 }
 
 function stripVendorPrefix(modelId: string): string | null {
@@ -110,32 +96,32 @@ function stripVendorPrefix(modelId: string): string | null {
 }
 
 function toPricing(
-    entry: AiModelPricingEntry,
+    entry: AiModelCatalogEntry,
     approximate: boolean
 ): AiModelPricing {
     return {
-        inputCostPerToken: entry.input_cost_per_token,
-        outputCostPerToken: entry.output_cost_per_token,
-        cacheReadInputTokenCost: entry.cache_read_input_token_cost,
-        outputCostPerReasoningToken: entry.output_cost_per_reasoning_token,
+        inputCostPerToken: entry.pricing.input,
+        outputCostPerToken: entry.pricing.output,
+        cacheReadInputTokenCost: entry.pricing.cacheRead,
+        outputCostPerReasoningToken: entry.pricing.reasoningOutput,
         approximate
     };
 }
 
-function findInBuckets(
-    byId: Map<string, AiModelPricingEntry[]>,
+function findEntry(
+    byName: Map<string, AiModelCatalogEntry[]>,
     modelId: string,
-    buckets: string[] | null
-): AiModelPricingEntry | null {
+    provider: CatalogProvider | null
+): AiModelCatalogEntry | null {
     const candidates = [modelId, stripVendorPrefix(modelId)].filter(
         (v): v is string => v != null
     );
 
     for (const key of candidates) {
-        const entries = byId.get(key);
+        const entries = byName.get(key);
         if (!entries) continue;
-        const match = buckets
-            ? entries.find((e) => buckets.includes(e.provider))
+        const match = provider
+            ? entries.find((e) => e.provider === provider)
             : entries[0];
         if (match) {
             return match;
@@ -145,10 +131,10 @@ function findInBuckets(
 }
 
 /**
- * Looks up per-token pricing for a model, scoped first to the litellm
- * provider bucket(s) that correspond to our provider type, then falling
- * back to a global search across all buckets (marked `approximate`) for
- * provider types that proxy arbitrary underlying models.
+ * Looks up per-token pricing for a model, scoped first to the catalog
+ * provider that corresponds to our provider type, then falling back to a
+ * global search across every provider (marked `approximate`) for provider
+ * types that proxy arbitrary underlying models.
  */
 export function getModelPricing(
     providerType: AiProviderType,
@@ -158,20 +144,18 @@ export function getModelPricing(
         return null;
     }
 
-    const byId = loadModels();
-    const buckets =
-        providerType === "custom"
-            ? []
-            : PROVIDER_PRICING_BUCKETS[providerType];
+    const byName = loadModels();
+    const catalogProvider =
+        providerType === "custom" ? null : PROVIDER_CATALOG_MAP[providerType];
 
-    if (buckets && buckets.length > 0) {
-        const scoped = findInBuckets(byId, modelId, buckets);
+    if (catalogProvider) {
+        const scoped = findEntry(byName, modelId, catalogProvider);
         if (scoped) {
             return toPricing(scoped, false);
         }
     }
 
-    const fallback = findInBuckets(byId, modelId, null);
+    const fallback = findEntry(byName, modelId, null);
     if (fallback) {
         return toPricing(fallback, true);
     }
@@ -191,9 +175,9 @@ export type AiCostBreakdown = {
 /**
  * Computes a $ cost breakdown for a usage record given a model's pricing.
  * Cache writes and reasoning tokens fall back to the normal input/output
- * rate respectively when the pricing data has no dedicated rate for them
- * (the models.json schema here has no cache-write field at all, and only
- * some models report a distinct reasoning rate).
+ * rate respectively when the catalog has no dedicated rate for them (the
+ * catalog has no cache-write field at all, and only some models report a
+ * distinct reasoning rate).
  */
 export function calculateAiCost(
     pricing: AiModelPricing | null,
