@@ -33,11 +33,44 @@ const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
 });
 
-const querySchema = z.strictObject({
-    event: z.enum(["site_offline", "site_online", "site_toggle"])
+export const SITE_EVENT_TYPES = [
+    "site_online",
+    "site_offline",
+    "site_toggle"
+] as const;
+export const HC_EVENT_TYPES = [
+    "health_check_healthy",
+    "health_check_unhealthy",
+    "health_check_toggle"
+] as const;
+export const RESOURCE_EVENT_TYPES = [
+    "resource_healthy",
+    "resource_unhealthy",
+    "resource_degraded",
+    "resource_toggle"
+] as const;
+
+const webhookActionSchema = z.strictObject({
+    webhookUrl: z.string().url(),
+    config: z.string().optional(),
+    enabled: z.boolean().optional().default(true)
 });
 
-export async function testSiteAlertRule(
+const bodySchema = z.strictObject({
+    eventType: z.enum([
+        ...HC_EVENT_TYPES,
+        ...SITE_EVENT_TYPES,
+        ...RESOURCE_EVENT_TYPES
+    ]),
+    // Email recipients (flat)
+    userIds: z.array(z.string().nonempty()).optional().default([]),
+    roleIds: z.array(z.number()).optional().default([]),
+    emails: z.array(z.email()).optional().default([]),
+    // Webhook actions
+    webhookActions: z.array(webhookActionSchema).optional().default([])
+});
+
+export async function testAlertRule(
     req: Request,
     res: Response,
     next: NextFunction
@@ -54,16 +87,17 @@ export async function testSiteAlertRule(
         }
         const { orgId } = parsedParams.data;
 
-        const parsedQuery = querySchema.safeParse(req.query);
-        if (!parsedQuery.success) {
+        const parsedBody = bodySchema.safeParse(req.body);
+        if (!parsedBody.success) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    fromError(parsedQuery.error).toString()
+                    fromError(parsedBody.error).toString()
                 )
             );
         }
-        const { event } = parsedQuery.data;
+
+        // TODO: process alert rule
     } catch (error) {
         logger.error(error);
         return next(

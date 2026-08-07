@@ -808,12 +808,12 @@ authenticated.get(
     alertRule.listAlertRules
 );
 
-authenticated.get(
-    "/org/:orgId/test-site-alert-rule/:alertRuleId",
+authenticated.post(
+    "/org/:orgId/alert-rule/test",
     verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.testAlertRule),
-    alertRule.testSiteAlertRule
+    alertRule.testAlertRule
 );
 
 authenticated.get(
