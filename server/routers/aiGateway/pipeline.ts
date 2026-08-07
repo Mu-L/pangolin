@@ -242,137 +242,146 @@ async function resolveRequestUser(
 }
 
 async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
-    const [resourceRow] = await db
-        .select({
-            resourceId: resources.resourceId,
-            orgId: resources.orgId
-        })
-        .from(resources)
-        .where(
-            and(
-                eq(resources.fullDomain, host),
-                eq(resources.mode, "inference"),
-                eq(resources.enabled, true)
-            )
-        )
-        .limit(1);
-
-    if (resourceRow) {
-        const attachmentRows = await db
+    const [[resourceRow], [siteResourceRow]] = await Promise.all([
+        db
             .select({
-                provider: aiProviders,
-                accessMode: resourceAiProviders.accessMode
+                resourceId: resources.resourceId,
+                orgId: resources.orgId
             })
-            .from(resourceAiProviders)
-            .innerJoin(
-                aiProviders,
-                eq(resourceAiProviders.providerId, aiProviders.providerId)
-            )
+            .from(resources)
             .where(
                 and(
-                    eq(resourceAiProviders.resourceId, resourceRow.resourceId),
-                    eq(aiProviders.enabled, true)
+                    eq(resources.fullDomain, host),
+                    eq(resources.mode, "inference"),
+                    eq(resources.enabled, true)
                 )
-            );
+            )
+            .limit(1),
+        db
+            .select({
+                siteResourceId: siteResources.siteResourceId,
+                orgId: siteResources.orgId
+            })
+            .from(siteResources)
+            .where(
+                and(
+                    eq(siteResources.fullDomain, host),
+                    eq(siteResources.mode, "inference"),
+                    eq(siteResources.enabled, true)
+                )
+            )
+            .limit(1)
+    ]);
+
+    // Prefer public inference resources when both match the same host.
+    if (resourceRow) {
+        const [attachmentRows, resourcePatterns] = await Promise.all([
+            db
+                .select({
+                    provider: aiProviders,
+                    accessMode: resourceAiProviders.accessMode
+                })
+                .from(resourceAiProviders)
+                .innerJoin(
+                    aiProviders,
+                    eq(resourceAiProviders.providerId, aiProviders.providerId)
+                )
+                .where(
+                    and(
+                        eq(
+                            resourceAiProviders.resourceId,
+                            resourceRow.resourceId
+                        ),
+                        eq(aiProviders.enabled, true)
+                    )
+                ),
+            db
+                .select({
+                    providerId: aiModels.providerId,
+                    modelKey: aiModels.modelKey,
+                    listType: resourceAiModels.listType,
+                    enabled: aiModels.enabled
+                })
+                .from(resourceAiModels)
+                .innerJoin(
+                    aiModels,
+                    eq(resourceAiModels.modelId, aiModels.modelId)
+                )
+                .where(eq(resourceAiModels.resourceId, resourceRow.resourceId))
+        ]);
 
         if (attachmentRows.length === 0) {
             return null;
         }
-
-        const attachments: ProviderAttachment[] = attachmentRows.map((a) => ({
-            provider: a.provider,
-            accessMode: a.accessMode
-        }));
-
-        const resourcePatterns = await db
-            .select({
-                providerId: aiModels.providerId,
-                modelKey: aiModels.modelKey,
-                listType: resourceAiModels.listType,
-                enabled: aiModels.enabled
-            })
-            .from(resourceAiModels)
-            .innerJoin(aiModels, eq(resourceAiModels.modelId, aiModels.modelId))
-            .where(eq(resourceAiModels.resourceId, resourceRow.resourceId));
 
         return {
             resourceId: resourceRow.resourceId,
             siteResourceId: null,
             orgId: resourceRow.orgId,
-            attachments,
+            attachments: attachmentRows.map((a) => ({
+                provider: a.provider,
+                accessMode: a.accessMode
+            })),
             resourceListsByProvider: groupPatternsByProvider(resourcePatterns)
         };
     }
 
-    const [siteResourceRow] = await db
-        .select({
-            siteResourceId: siteResources.siteResourceId,
-            orgId: siteResources.orgId
-        })
-        .from(siteResources)
-        .where(
-            and(
-                eq(siteResources.fullDomain, host),
-                eq(siteResources.mode, "inference"),
-                eq(siteResources.enabled, true)
-            )
-        )
-        .limit(1);
-
     if (siteResourceRow) {
-        const attachmentRows = await db
-            .select({
-                provider: aiProviders,
-                accessMode: siteResourceAiProviders.accessMode
-            })
-            .from(siteResourceAiProviders)
-            .innerJoin(
-                aiProviders,
-                eq(siteResourceAiProviders.providerId, aiProviders.providerId)
-            )
-            .where(
-                and(
+        const [attachmentRows, resourcePatterns] = await Promise.all([
+            db
+                .select({
+                    provider: aiProviders,
+                    accessMode: siteResourceAiProviders.accessMode
+                })
+                .from(siteResourceAiProviders)
+                .innerJoin(
+                    aiProviders,
                     eq(
-                        siteResourceAiProviders.siteResourceId,
-                        siteResourceRow.siteResourceId
-                    ),
-                    eq(aiProviders.enabled, true)
+                        siteResourceAiProviders.providerId,
+                        aiProviders.providerId
+                    )
                 )
-            );
+                .where(
+                    and(
+                        eq(
+                            siteResourceAiProviders.siteResourceId,
+                            siteResourceRow.siteResourceId
+                        ),
+                        eq(aiProviders.enabled, true)
+                    )
+                ),
+            db
+                .select({
+                    providerId: aiModels.providerId,
+                    modelKey: aiModels.modelKey,
+                    listType: siteResourceAiModels.listType,
+                    enabled: aiModels.enabled
+                })
+                .from(siteResourceAiModels)
+                .innerJoin(
+                    aiModels,
+                    eq(siteResourceAiModels.modelId, aiModels.modelId)
+                )
+                .where(
+                    eq(
+                        siteResourceAiModels.siteResourceId,
+                        siteResourceRow.siteResourceId
+                    )
+                )
+        ]);
 
         if (attachmentRows.length === 0) {
             return null;
         }
 
-        const attachments: ProviderAttachment[] = attachmentRows.map((a) => ({
-            provider: a.provider,
-            accessMode: a.accessMode
-        }));
-
-        const resourcePatterns = await db
-            .select({
-                providerId: aiModels.providerId,
-                modelKey: aiModels.modelKey,
-                listType: siteResourceAiModels.listType,
-                enabled: aiModels.enabled
-            })
-            .from(siteResourceAiModels)
-            .innerJoin(
-                aiModels,
-                eq(siteResourceAiModels.modelId, aiModels.modelId)
-            )
-            .where(
-                eq(
-                    siteResourceAiModels.siteResourceId,
-                    siteResourceRow.siteResourceId
-                )
-            );
-
         return {
             resourceId: null,
             siteResourceId: siteResourceRow.siteResourceId,
             orgId: siteResourceRow.orgId,
-            attachments,
+            attachments: attachmentRows.map((a) => ({
+                provider: a.provider,
+                accessMode: a.accessMode
+            })),
             resourceListsByProvider: groupPatternsByProvider(resourcePatterns)
         };
     }
@@ -587,13 +596,6 @@ export async function handleAiGatewayProxy(
         const { attachments, resourceListsByProvider, resourceId, orgId } =
             target;
 
-        const requestUser = await resolveRequestUser(req, resourceId, orgId);
-        if (requestUser) {
-            logger.debug(
-                `AI gateway request from user ${requestUser.userId} (${requestUser.username})`
-            );
-        }
-
         const capableAttachments = attachments.filter((a) =>
             providerHasCapability(a.provider.capabilities, capability)
         );
@@ -608,11 +610,21 @@ export async function handleAiGatewayProxy(
 
         const requestedModel = def.extractModel(req);
 
-        const selection = await selectProvider(
-            capableAttachments,
-            resourceListsByProvider,
-            requestedModel
-        );
+        const [requestUser, selection] = await Promise.all([
+            resolveRequestUser(req, resourceId, orgId),
+            selectProvider(
+                capableAttachments,
+                resourceListsByProvider,
+                requestedModel
+            )
+        ]);
+
+        if (requestUser) {
+            logger.debug(
+                `AI gateway request from user ${requestUser.userId} (${requestUser.username})`
+            );
+        }
+
         if (!selection.ok) {
             return res.status(selection.status).json({
                 error: { message: selection.message }
