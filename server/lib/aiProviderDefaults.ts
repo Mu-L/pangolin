@@ -1,4 +1,8 @@
 import { decrypt, encrypt } from "@server/lib/crypto";
+import {
+    parseCapabilities,
+    type AiCapability
+} from "@server/lib/aiCapabilities";
 
 export type AiProviderType =
     | "openai"
@@ -28,6 +32,7 @@ export type AiProviderRoutingMode = "url" | "target";
 type AiProviderDefaults = {
     upstreamUrl: string | null;
     authType: AiProviderAuthType;
+    capabilities: readonly AiCapability[];
 };
 
 export const AI_PROVIDER_DEFAULTS: Record<
@@ -36,35 +41,43 @@ export const AI_PROVIDER_DEFAULTS: Record<
 > = {
     openai: {
         upstreamUrl: "https://api.openai.com/v1",
-        authType: "bearer"
+        authType: "bearer",
+        capabilities: ["openai_chat", "openai_responses"]
     },
     anthropic: {
         upstreamUrl: "https://api.anthropic.com",
-        authType: "x-api-key"
+        authType: "x-api-key",
+        capabilities: ["anthropic_messages"]
     },
     googleGemini: {
         upstreamUrl: "https://generativelanguage.googleapis.com",
-        authType: "x-goog-api-key"
+        authType: "x-goog-api-key",
+        capabilities: ["gemini_generate_content"]
     },
     vertexAi: {
         upstreamUrl: null,
-        authType: "bearer"
+        authType: "bearer",
+        capabilities: ["google_generate_content", "google_raw_predict"]
     },
     bedrock: {
         upstreamUrl: "https://bedrock-runtime.us-east-1.amazonaws.com",
-        authType: "bearer"
+        authType: "bearer",
+        capabilities: ["bedrock_converse"]
     },
     microsoftFoundry: {
         upstreamUrl: null,
-        authType: "bearer"
+        authType: "bearer",
+        capabilities: ["openai_chat", "openai_responses", "anthropic_messages"]
     },
     openRouter: {
         upstreamUrl: "https://openrouter.ai/api/v1",
-        authType: "bearer"
+        authType: "bearer",
+        capabilities: ["openai_chat"]
     },
     vercelAiGateway: {
         upstreamUrl: "https://ai-gateway.vercel.sh/v1",
-        authType: "bearer"
+        authType: "bearer",
+        capabilities: ["openai_chat", "openai_responses"]
     }
 };
 
@@ -224,4 +237,26 @@ export function applyAiProviderAuthHeaders(
             headers["cf-aig-authorization"] = `Bearer ${apiKey}`;
             break;
     }
+}
+
+export function resolveCapabilitiesForCreate(input: {
+    type: AiProviderType;
+    capabilities?: AiCapability[] | null;
+}): AiCapability[] {
+    if (input.capabilities != null) {
+        return parseCapabilities(input.capabilities);
+    }
+    if (input.type === "custom") {
+        return [];
+    }
+    return [...AI_PROVIDER_DEFAULTS[input.type].capabilities];
+}
+
+export function defaultsForProviderType(
+    type: AiProviderType
+): readonly AiCapability[] {
+    if (type === "custom") {
+        return [];
+    }
+    return AI_PROVIDER_DEFAULTS[type].capabilities;
 }

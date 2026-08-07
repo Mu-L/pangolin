@@ -1,5 +1,4 @@
 import type { Request } from "express";
-import type { AiProviderType } from "@server/lib/aiProviderDefaults";
 
 export const AI_CAPABILITIES = [
     "openai_chat",
@@ -188,20 +187,6 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
         }
     };
 
-export const AI_PROVIDER_CAPABILITY_DEFAULTS: Record<
-    Exclude<AiProviderType, "custom">,
-    readonly AiCapability[]
-> = {
-    openai: ["openai_chat"],
-    anthropic: ["anthropic_messages"],
-    googleGemini: ["gemini_generate_content"],
-    vertexAi: ["google_generate_content"],
-    bedrock: ["bedrock_converse"],
-    microsoftFoundry: ["openai_chat"],
-    openRouter: ["openai_chat"],
-    vercelAiGateway: ["openai_chat"]
-};
-
 export function isAiCapability(value: unknown): value is AiCapability {
     return (
         typeof value === "string" &&
@@ -255,26 +240,4 @@ export function providerHasCapability(
             ? parseCapabilities(capabilities)
             : capabilities;
     return list.includes(capability);
-}
-
-export function resolveCapabilitiesForCreate(input: {
-    type: AiProviderType;
-    capabilities?: AiCapability[] | null;
-}): AiCapability[] {
-    if (input.capabilities != null) {
-        return parseCapabilities(input.capabilities);
-    }
-    if (input.type === "custom") {
-        return [];
-    }
-    return [...AI_PROVIDER_CAPABILITY_DEFAULTS[input.type]];
-}
-
-export function defaultsForProviderType(
-    type: AiProviderType
-): readonly AiCapability[] {
-    if (type === "custom") {
-        return [];
-    }
-    return AI_PROVIDER_CAPABILITY_DEFAULTS[type];
 }

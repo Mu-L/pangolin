@@ -3,15 +3,12 @@ import {
     AI_PROVIDER_AUTH_TYPES,
     AI_PROVIDER_DEFAULTS,
     authTypeRequiresApiKey,
+    defaultsForProviderType,
     providerRequiresUpstreamUrl,
     type AiProviderAuthType,
     type AiProviderType
 } from "@server/lib/aiProviderDefaults";
-import {
-    AI_CAPABILITIES,
-    defaultsForProviderType,
-    type AiCapability
-} from "@server/lib/aiCapabilities";
+import { AI_CAPABILITIES, type AiCapability } from "@server/lib/aiCapabilities";
 
 type TranslateFn = (key: string) => string;
 

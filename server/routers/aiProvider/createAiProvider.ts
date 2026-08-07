@@ -9,7 +9,11 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-import { resolveAiProviderCreateFields } from "@server/lib/aiProviderDefaults";
+import {
+    resolveAiProviderCreateFields,
+    resolveCapabilitiesForCreate,
+    serializeAiProviderHeaders
+} from "@server/lib/aiProviderDefaults";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import { toPublicAiProvider } from "@server/routers/aiProvider/types";
 import {
@@ -20,11 +24,7 @@ import {
     aiRoutingModeSchema,
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
-import { serializeAiProviderHeaders } from "@server/lib/aiProviderDefaults";
-import {
-    resolveCapabilitiesForCreate,
-    serializeCapabilities
-} from "@server/lib/aiCapabilities";
+import { serializeCapabilities } from "@server/lib/aiCapabilities";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
