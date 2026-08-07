@@ -710,11 +710,6 @@ export default function CreatePrivateResourcePage() {
                                                                 }}
                                                             />
                                                         </FormControl>
-                                                        <FormDescription>
-                                                            {t(
-                                                                "aiResourceProvidersHelp"
-                                                            )}
-                                                        </FormDescription>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}

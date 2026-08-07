@@ -118,9 +118,14 @@ export async function addAiProviderToResource(
                 .filter((a) => a.providerId !== providerId)
                 .map((a) => ({
                     providerId: a.providerId,
-                    accessMode: a.accessMode
+                    accessMode: a.accessMode,
+                    enabled: a.enabled
                 })),
-            { providerId, accessMode: "inherit" as const }
+            {
+                providerId,
+                accessMode: "inherit" as const,
+                enabled: true as const
+            }
         ];
 
         const attachments = await resolveProviderAttachments({

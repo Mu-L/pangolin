@@ -38,6 +38,7 @@ import type { GetResourcePolicyResponse } from "@server/routers/policy";
 import type {
     GetResourcePoliciesResponse,
     GetResourceWhitelistResponse,
+    ListResourceAiModelsResponse,
     ListResourceNamesResponse,
     ListResourceRolesResponse,
     ListResourceRulesResponse,
@@ -51,6 +52,7 @@ import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
     ListAllSiteResourcesByOrgResponse,
+    ListSiteResourceAiModelsResponse,
     ListSiteResourceClientsResponse,
     ListSiteResourceRolesResponse,
     ListSiteResourceUsersResponse
@@ -1291,6 +1293,7 @@ export const resourceQueries = {
                             name: string;
                             type: string;
                             enabled: boolean;
+                            providerEnabled: boolean;
                             accessMode: "inherit" | "select";
                         }>;
                     }>
@@ -1311,6 +1314,7 @@ export const resourceQueries = {
                             name: string;
                             type: string;
                             enabled: boolean;
+                            providerEnabled: boolean;
                             accessMode: "inherit" | "select";
                         }>;
                     }>
@@ -1318,6 +1322,26 @@ export const resourceQueries = {
                     signal
                 });
                 return res.data.data.providers;
+            }
+        }),
+    resourceAiModels: ({ resourceId }: { resourceId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCES", resourceId, "AI_MODELS"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListResourceAiModelsResponse>
+                >(`/resource/${resourceId}/ai-models`, { signal });
+                return res.data.data.models;
+            }
+        }),
+    siteResourceAiModels: ({ siteResourceId }: { siteResourceId: number }) =>
+        queryOptions({
+            queryKey: ["SITE_RESOURCES", siteResourceId, "AI_MODELS"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListSiteResourceAiModelsResponse>
+                >(`/site-resource/${siteResourceId}/ai-models`, { signal });
+                return res.data.data.models;
             }
         }),
     resourceTargets: ({ resourceId }: { resourceId: number }) =>

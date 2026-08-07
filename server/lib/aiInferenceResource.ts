@@ -24,7 +24,8 @@ export type AccessMode = z.infer<typeof accessModeSchema>;
 
 export const resourceAiProviderAttachmentSchema = z.strictObject({
     providerId: z.number().int().positive(),
-    accessMode: accessModeSchema.optional().default("inherit")
+    accessMode: accessModeSchema.optional().default("inherit"),
+    enabled: z.boolean().optional().default(true)
 });
 
 export type ResourceAiProviderInput = z.infer<
@@ -34,6 +35,7 @@ export type ResourceAiProviderInput = z.infer<
 export type ResourceAiProviderAttachment = {
     providerId: number;
     accessMode: AccessMode;
+    enabled: boolean;
 };
 
 export const resourceAiModelEntrySchema = z.strictObject({
@@ -79,14 +81,23 @@ export function resolveEffectiveLists(input: {
 function normalizeAttachments(
     inputs: ResourceAiProviderInput[]
 ): ResourceAiProviderAttachment[] {
-    const byProviderId = new Map<number, AccessMode>();
+    const byProviderId = new Map<
+        number,
+        { accessMode: AccessMode; enabled: boolean }
+    >();
     for (const input of inputs) {
-        byProviderId.set(input.providerId, input.accessMode ?? "inherit");
+        byProviderId.set(input.providerId, {
+            accessMode: input.accessMode ?? "inherit",
+            enabled: input.enabled ?? true
+        });
     }
-    return [...byProviderId.entries()].map(([providerId, accessMode]) => ({
-        providerId,
-        accessMode
-    }));
+    return [...byProviderId.entries()].map(
+        ([providerId, { accessMode, enabled }]) => ({
+            providerId,
+            accessMode,
+            enabled
+        })
+    );
 }
 
 type EffectiveAllowRow = {
@@ -110,14 +121,16 @@ export async function assertNoOverlappingModelKeys(
 ): Promise<InferenceFieldsError | null> {
     const trx = options.trx ?? db;
 
-    if (attachments.length < 2) {
+    const activeAttachments = attachments.filter((a) => a.enabled);
+
+    if (activeAttachments.length < 2) {
         return null;
     }
 
-    const inheritProviderIds = attachments
+    const inheritProviderIds = activeAttachments
         .filter((a) => a.accessMode === "inherit")
         .map((a) => a.providerId);
-    const selectProviderIds = attachments
+    const selectProviderIds = activeAttachments
         .filter((a) => a.accessMode === "select")
         .map((a) => a.providerId);
 
@@ -318,7 +331,8 @@ export async function setPublicResourceAiProviders(
             attachments.map((a) => ({
                 resourceId,
                 providerId: a.providerId,
-                accessMode: a.accessMode
+                accessMode: a.accessMode,
+                enabled: a.enabled
             }))
         );
     }
@@ -344,7 +358,8 @@ export async function setSiteResourceAiProviders(
             attachments.map((a) => ({
                 siteResourceId,
                 providerId: a.providerId,
-                accessMode: a.accessMode
+                accessMode: a.accessMode,
+                enabled: a.enabled
             }))
         );
     }
@@ -473,7 +488,8 @@ export async function listPublicResourceAiProviders(resourceId: number) {
             providerId: resourceAiProviders.providerId,
             name: aiProviders.name,
             type: aiProviders.type,
-            enabled: aiProviders.enabled,
+            enabled: resourceAiProviders.enabled,
+            providerEnabled: aiProviders.enabled,
             accessMode: resourceAiProviders.accessMode
         })
         .from(resourceAiProviders)
@@ -490,7 +506,8 @@ export async function listSiteResourceAiProviders(siteResourceId: number) {
             providerId: siteResourceAiProviders.providerId,
             name: aiProviders.name,
             type: aiProviders.type,
-            enabled: aiProviders.enabled,
+            enabled: siteResourceAiProviders.enabled,
+            providerEnabled: aiProviders.enabled,
             accessMode: siteResourceAiProviders.accessMode
         })
         .from(siteResourceAiProviders)
@@ -575,7 +592,8 @@ export async function assertPublicResourceModelEntriesValid(input: {
     const attachments = await db
         .select({
             providerId: resourceAiProviders.providerId,
-            accessMode: resourceAiProviders.accessMode
+            accessMode: resourceAiProviders.accessMode,
+            enabled: resourceAiProviders.enabled
         })
         .from(resourceAiProviders)
         .innerJoin(
@@ -610,7 +628,8 @@ export async function assertSiteResourceModelEntriesValid(input: {
     const attachments = await db
         .select({
             providerId: siteResourceAiProviders.providerId,
-            accessMode: siteResourceAiProviders.accessMode
+            accessMode: siteResourceAiProviders.accessMode,
+            enabled: siteResourceAiProviders.enabled
         })
         .from(siteResourceAiProviders)
         .innerJoin(

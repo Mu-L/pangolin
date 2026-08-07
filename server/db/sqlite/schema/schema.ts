@@ -231,7 +231,8 @@ export const resourceAiProviders = sqliteTable(
         accessMode: text("accessMode")
             .$type<"inherit" | "select">()
             .notNull()
-            .default("inherit")
+            .default("inherit"),
+        enabled: integer("enabled", { mode: "boolean" }).notNull().default(true)
     },
     (t) => [primaryKey({ columns: [t.resourceId, t.providerId] })]
 );
@@ -514,7 +515,8 @@ export const siteResourceAiProviders = sqliteTable(
         accessMode: text("accessMode")
             .$type<"inherit" | "select">()
             .notNull()
-            .default("inherit")
+            .default("inherit"),
+        enabled: integer("enabled", { mode: "boolean" }).notNull().default(true)
     },
     (t) => [primaryKey({ columns: [t.siteResourceId, t.providerId] })]
 );

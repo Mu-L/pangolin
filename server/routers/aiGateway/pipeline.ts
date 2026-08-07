@@ -287,7 +287,8 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
                             resourceAiProviders.resourceId,
                             resourceRow.resourceId
                         ),
-                        eq(aiProviders.enabled, true)
+                        eq(aiProviders.enabled, true),
+                        eq(resourceAiProviders.enabled, true)
                     )
                 ),
             db
@@ -342,7 +343,8 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
                             siteResourceAiProviders.siteResourceId,
                             siteResourceRow.siteResourceId
                         ),
-                        eq(aiProviders.enabled, true)
+                        eq(aiProviders.enabled, true),
+                        eq(siteResourceAiProviders.enabled, true)
                     )
                 ),
             db
@@ -525,8 +527,15 @@ function logAiUsageAndCost(args: {
     isStream: boolean;
     headers: Headers;
 }): void {
-    const { capability, provider, requestedModel, requestBody, responseText, isStream, headers } =
-        args;
+    const {
+        capability,
+        provider,
+        requestedModel,
+        requestBody,
+        responseText,
+        isStream,
+        headers
+    } = args;
 
     let usage: AiUsage | null = extractUsage(
         capability,

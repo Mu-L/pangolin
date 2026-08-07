@@ -234,7 +234,8 @@ export const resourceAiProviders = pgTable(
         accessMode: varchar("accessMode")
             .$type<"inherit" | "select">()
             .notNull()
-            .default("inherit")
+            .default("inherit"),
+        enabled: boolean("enabled").notNull().default(true)
     },
     (t) => [primaryKey({ columns: [t.resourceId, t.providerId] })]
 );
@@ -529,7 +530,8 @@ export const siteResourceAiProviders = pgTable(
         accessMode: varchar("accessMode")
             .$type<"inherit" | "select">()
             .notNull()
-            .default("inherit")
+            .default("inherit"),
+        enabled: boolean("enabled").notNull().default(true)
     },
     (t) => [primaryKey({ columns: [t.siteResourceId, t.providerId] })]
 );

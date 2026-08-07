@@ -126,7 +126,8 @@ export async function removeAiProviderFromSiteResource(
             .filter((a) => a.providerId !== providerId)
             .map((a) => ({
                 providerId: a.providerId,
-                accessMode: a.accessMode
+                accessMode: a.accessMode,
+                enabled: a.enabled
             }));
 
         const attachments = await resolveProviderAttachments({

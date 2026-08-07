@@ -16,9 +16,9 @@ import {
     SettingsSubsectionTitle
 } from "@app/components/Settings";
 import {
-    AiProvidersSelector,
-    type SelectedAiProvider
-} from "@app/components/AiProvidersSelector";
+    AiProviderAttachments,
+    type AiProviderAttachmentValue
+} from "@app/components/AiProviderAttachments";
 import DomainPicker from "@app/components/DomainPicker";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
@@ -41,7 +41,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -65,7 +65,15 @@ export default function PrivateResourceInferencePage() {
     const formSchema = useMemo(
         () =>
             z.object({
-                providerIds: z.array(z.number().int().positive()),
+                providers: z.array(
+                    z.object({
+                        providerId: z.number().int().positive(),
+                        name: z.string(),
+                        accessMode: z.enum(["inherit", "select"]),
+                        enabled: z.boolean(),
+                        selectedModelIds: z.array(z.number().int().positive())
+                    })
+                ),
                 httpConfigSubdomain: z.string().nullish(),
                 httpConfigDomainId: z.string().nullish(),
                 httpConfigFullDomain: z.string().nullish(),
@@ -75,12 +83,15 @@ export default function PrivateResourceInferencePage() {
     );
     type FormValues = z.infer<typeof formSchema>;
 
-    const [selectedProviders, setSelectedProviders] = useState<
-        SelectedAiProvider[]
-    >([]);
-
     const attachedQuery = useQuery({
         ...resourceQueries.siteResourceAiProviders({
+            siteResourceId: siteResource.id
+        }),
+        enabled: siteResource.mode === "inference"
+    });
+
+    const modelsQuery = useQuery({
+        ...resourceQueries.siteResourceAiModels({
             siteResourceId: siteResource.id
         }),
         enabled: siteResource.mode === "inference"
@@ -89,7 +100,7 @@ export default function PrivateResourceInferencePage() {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            providerIds: [],
+            providers: [],
             httpConfigSubdomain: siteResource.subdomain ?? null,
             httpConfigDomainId: siteResource.domainId ?? null,
             httpConfigFullDomain: siteResource.fullDomain ?? null,
@@ -103,16 +114,33 @@ export default function PrivateResourceInferencePage() {
 
     useEffect(() => {
         if (!attachedQuery.data) return;
-        const providers = attachedQuery.data.map((provider) => ({
-            id: String(provider.providerId),
-            text: provider.name
-        }));
-        setSelectedProviders(providers);
-        form.setValue(
-            "providerIds",
-            attachedQuery.data.map((p) => p.providerId)
+        const hasSelect = attachedQuery.data.some(
+            (provider) => provider.accessMode === "select"
         );
-    }, [attachedQuery.data, form]);
+        if (hasSelect && modelsQuery.isLoading) return;
+
+        const modelsByProvider = new Map<number, number[]>();
+        for (const model of modelsQuery.data ?? []) {
+            if (model.listType !== "allow") continue;
+            const existing = modelsByProvider.get(model.providerId) ?? [];
+            existing.push(model.modelId);
+            modelsByProvider.set(model.providerId, existing);
+        }
+
+        form.setValue(
+            "providers",
+            attachedQuery.data.map((provider) => ({
+                providerId: provider.providerId,
+                name: provider.name,
+                accessMode: provider.accessMode,
+                enabled: provider.enabled,
+                selectedModelIds:
+                    provider.accessMode === "select"
+                        ? (modelsByProvider.get(provider.providerId) ?? [])
+                        : []
+            }))
+        );
+    }, [attachedQuery.data, modelsQuery.data, modelsQuery.isLoading, form]);
 
     const [, formAction, saveLoading] = useActionState(async () => {
         const isValid = await form.trigger();
@@ -129,13 +157,34 @@ export default function PrivateResourceInferencePage() {
             });
 
             await api.post(`/site-resource/${siteResource.id}/ai-providers`, {
-                providers: data.providerIds.map((providerId) => ({
-                    providerId
+                providers: data.providers.map((provider) => ({
+                    providerId: provider.providerId,
+                    accessMode: provider.accessMode,
+                    enabled: provider.enabled
                 }))
             });
 
+            const selectProviders = data.providers.filter(
+                (provider) => provider.accessMode === "select"
+            );
+            if (selectProviders.length > 0) {
+                await api.post(`/site-resource/${siteResource.id}/ai-models`, {
+                    models: selectProviders.flatMap((provider) =>
+                        provider.selectedModelIds.map((modelId) => ({
+                            modelId,
+                            listType: "allow" as const
+                        }))
+                    )
+                });
+            }
+
             await queryClient.invalidateQueries(
                 resourceQueries.siteResourceAiProviders({
+                    siteResourceId: siteResource.id
+                })
+            );
+            await queryClient.invalidateQueries(
+                resourceQueries.siteResourceAiModels({
                     siteResourceId: siteResource.id
                 })
             );
@@ -160,6 +209,11 @@ export default function PrivateResourceInferencePage() {
         return null;
     }
 
+    const providersLoading =
+        attachedQuery.isLoading ||
+        (attachedQuery.data?.some((p) => p.accessMode === "select") &&
+            modelsQuery.isLoading);
+
     return (
         <SettingsContainer>
             <SettingsSection>
@@ -183,8 +237,8 @@ export default function PrivateResourceInferencePage() {
                                     <SettingsFormCell span="full">
                                         <FormField
                                             control={form.control}
-                                            name="providerIds"
-                                            render={() => (
+                                            name="providers"
+                                            render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>
                                                         {t(
@@ -192,44 +246,21 @@ export default function PrivateResourceInferencePage() {
                                                         )}
                                                     </FormLabel>
                                                     <FormControl>
-                                                        <AiProvidersSelector
+                                                        <AiProviderAttachments
                                                             orgId={
                                                                 siteResource.orgId
                                                             }
-                                                            selectedProviders={
-                                                                selectedProviders
+                                                            value={
+                                                                field.value as AiProviderAttachmentValue[]
                                                             }
                                                             disabled={
-                                                                attachedQuery.isLoading ||
-                                                                saveLoading
+                                                                providersLoading
                                                             }
-                                                            onSelectProviders={(
-                                                                providers
-                                                            ) => {
-                                                                setSelectedProviders(
-                                                                    providers
-                                                                );
-                                                                form.setValue(
-                                                                    "providerIds",
-                                                                    providers.map(
-                                                                        (p) =>
-                                                                            parseInt(
-                                                                                p.id,
-                                                                                10
-                                                                            )
-                                                                    ),
-                                                                    {
-                                                                        shouldValidate: true
-                                                                    }
-                                                                );
-                                                            }}
+                                                            onChange={
+                                                                field.onChange
+                                                            }
                                                         />
                                                     </FormControl>
-                                                    <FormDescription>
-                                                        {t(
-                                                            "aiResourceProvidersHelp"
-                                                        )}
-                                                    </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -335,7 +366,7 @@ export default function PrivateResourceInferencePage() {
                         type="submit"
                         form="private-resource-providers-form"
                         loading={saveLoading}
-                        disabled={attachedQuery.isLoading}
+                        disabled={providersLoading || saveLoading}
                     >
                         {t("saveSettings")}
                     </Button>

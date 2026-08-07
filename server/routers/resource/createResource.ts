@@ -397,7 +397,8 @@ async function createHttpResource(
             orgId,
             attachments: (aiProviderInputs ?? []).map((p) => ({
                 providerId: p.providerId,
-                accessMode: "inherit" as const
+                accessMode: "inherit" as const,
+                enabled: true as const
             })),
             requireAtLeastOne: false
         });

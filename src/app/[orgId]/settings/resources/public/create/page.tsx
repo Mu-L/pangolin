@@ -1437,11 +1437,6 @@ export default function Page() {
                                                                 );
                                                             }}
                                                         />
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {t(
-                                                                "aiResourceProvidersHelp"
-                                                            )}
-                                                        </p>
                                                     </div>
                                                 </SettingsFormCell>
                                             </SettingsFormGrid>
