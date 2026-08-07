@@ -809,6 +809,14 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/test-site-alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.testAlertRule),
+    alertRule.testSiteAlertRule
+);
+
+authenticated.get(
     "/org/:orgId/alert-rule/:alertRuleId",
     verifyValidLicense,
     verifyOrgAccess,

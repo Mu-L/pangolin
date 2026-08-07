@@ -151,6 +151,7 @@ export enum ActionsEnum {
     createAlertRule = "createAlertRule",
     updateAlertRule = "updateAlertRule",
     deleteAlertRule = "deleteAlertRule",
+    testAlertRule = "testAlertRule",
     listAlertRules = "listAlertRules",
     listOrgLabels = "listOrgLabels",
     createOrgLabel = "createOrgLabel",
