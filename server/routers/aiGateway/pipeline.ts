@@ -51,6 +51,7 @@ import {
 } from "@server/lib/aiModelKeyMatch";
 import { aiGatewayUpstreamFetch } from "@server/lib/aiGatewayUpstreamFetch";
 import { getModelPricing, calculateAiCost } from "@server/lib/aiModelPricing";
+import { checkBudgets, recordUsage } from "@server/lib/aiBudgetEnforcement";
 import {
     extractUsage,
     estimateUsage,
@@ -141,6 +142,7 @@ export type RequestUser = {
     email: string | null;
     name: string | null;
     role: string | null;
+    roleIds: number[];
 };
 
 // Identity headers forwarded to the upstream inference endpoint when the
@@ -193,7 +195,8 @@ async function buildRequestUser(
         username: user.username,
         email: user.email,
         name: user.name,
-        role: orgRoles.map((r) => r.roleName).join(", ") || null
+        role: orgRoles.map((r) => r.roleName).join(", ") || null,
+        roleIds: orgRoles.map((r) => r.roleId)
     };
 
     localCache.set(cacheKey, requestUser, REQUEST_USER_TTL_SEC);
@@ -526,6 +529,10 @@ function logAiUsageAndCost(args: {
     responseText: string;
     isStream: boolean;
     headers: Headers;
+    orgId: string | null;
+    resourceId: number | null;
+    siteResourceId: number | null;
+    requestUserId: string | null;
 }): void {
     const {
         capability,
@@ -534,7 +541,11 @@ function logAiUsageAndCost(args: {
         requestBody,
         responseText,
         isStream,
-        headers
+        headers,
+        orgId,
+        resourceId,
+        siteResourceId,
+        requestUserId
     } = args;
 
     let usage: AiUsage | null = extractUsage(
@@ -565,6 +576,19 @@ function logAiUsageAndCost(args: {
         pricingApproximate: pricing?.approximate ?? null,
         totalCostUsd: cost?.totalCost ?? null
     });
+
+    if (orgId) {
+        void recordUsage({
+            orgId,
+            providerId: provider.providerId,
+            resourceId,
+            siteResourceId,
+            userId: requestUserId,
+            requestedModel: model ?? "unknown",
+            usage,
+            costUsd: cost?.totalCost ?? null
+        });
+    }
 }
 
 export async function handleAiGatewayProxy(
@@ -597,8 +621,13 @@ export async function handleAiGatewayProxy(
             });
         }
 
-        const { attachments, resourceListsByProvider, resourceId, orgId } =
-            target;
+        const {
+            attachments,
+            resourceListsByProvider,
+            resourceId,
+            siteResourceId,
+            orgId
+        } = target;
 
         const capableAttachments = attachments.filter((a) =>
             providerHasCapability(a.provider.capabilities, capability)
@@ -636,6 +665,35 @@ export async function handleAiGatewayProxy(
         }
 
         const { provider } = selection;
+
+        if (orgId) {
+            const budgetCheck = await checkBudgets({
+                orgId,
+                providerId: provider.providerId,
+                requestedModel: requestedModel!,
+                resourceId,
+                siteResourceId,
+                roleIds: requestUser?.roleIds ?? [],
+                requestUserId: requestUser?.userId ?? null
+            });
+
+            if (budgetCheck.blocked) {
+                logger.warn("AI gateway request blocked by budget", {
+                    budgetId: budgetCheck.blockingBudget?.budgetId,
+                    orgId,
+                    providerId: provider.providerId,
+                    requestedModel,
+                    resourceId,
+                    siteResourceId,
+                    userId: requestUser?.userId ?? null
+                });
+                return res.status(HttpCode.TOO_MANY_REQUESTS).json({
+                    error: {
+                        message: "AI usage budget exceeded for this request"
+                    }
+                });
+            }
+        }
 
         if (provider.type === "custom" && provider.routingMode === "target") {
             return await proxyAiGatewayToSiteTarget(
@@ -814,7 +872,11 @@ export async function handleAiGatewayProxy(
                     requestBody: req.body,
                     responseText: fullText,
                     isStream: true,
-                    headers: upstreamRes.headers
+                    headers: upstreamRes.headers,
+                    orgId,
+                    resourceId,
+                    siteResourceId,
+                    requestUserId: requestUser?.userId ?? null
                 });
             }
             return;
@@ -829,7 +891,11 @@ export async function handleAiGatewayProxy(
             requestBody: req.body,
             responseText: text,
             isStream: false,
-            headers: upstreamRes.headers
+            headers: upstreamRes.headers,
+            orgId,
+            resourceId,
+            siteResourceId,
+            requestUserId: requestUser?.userId ?? null
         });
         return res.send(text);
     } catch (error) {

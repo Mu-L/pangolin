@@ -1758,6 +1758,100 @@ export const aiBudgets = pgTable(
     ]
 );
 
+export const aiUsageRecords = pgTable(
+    "aiUsageRecords",
+    {
+        id: serial("id").primaryKey(),
+        orgId: varchar("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        providerId: integer("providerId")
+            .notNull()
+            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+        resourceId: integer("resourceId").references(
+            () => resources.resourceId,
+            { onDelete: "cascade" }
+        ),
+        siteResourceId: integer("siteResourceId").references(
+            () => siteResources.siteResourceId,
+            { onDelete: "cascade" }
+        ),
+        userId: varchar("userId").references(() => users.userId, {
+            onDelete: "set null"
+        }),
+        requestedModel: varchar("requestedModel").notNull(),
+        promptTokens: integer("promptTokens").notNull().default(0),
+        cacheReadTokens: integer("cacheReadTokens").notNull().default(0),
+        cacheWriteTokens: integer("cacheWriteTokens").notNull().default(0),
+        completionTokens: integer("completionTokens").notNull().default(0),
+        reasoningTokens: integer("reasoningTokens").notNull().default(0),
+        totalTokens: integer("totalTokens").notNull().default(0),
+        costUsd: real("costUsd"),
+        estimated: boolean("estimated").notNull().default(false),
+        createdAt: bigint("createdAt", { mode: "number" }).notNull()
+    },
+    (t) => [
+        index("idx_ai_usage_records_org_provider_created").on(
+            t.orgId,
+            t.providerId,
+            t.createdAt
+        ),
+        index("idx_ai_usage_records_org_resource_created").on(
+            t.orgId,
+            t.resourceId,
+            t.createdAt
+        ),
+        index("idx_ai_usage_records_org_site_resource_created").on(
+            t.orgId,
+            t.siteResourceId,
+            t.createdAt
+        ),
+        index("idx_ai_usage_records_org_user_created").on(
+            t.orgId,
+            t.userId,
+            t.createdAt
+        )
+    ]
+);
+
+export const aiBudgetBreachEvents = pgTable(
+    "aiBudgetBreachEvents",
+    {
+        id: serial("id").primaryKey(),
+        orgId: varchar("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        budgetId: integer("budgetId")
+            .notNull()
+            .references(() => aiBudgets.budgetId, { onDelete: "cascade" }),
+        enforcement: varchar("enforcement").$type<"hard" | "soft">().notNull(),
+        unit: varchar("unit").$type<"usd" | "tokens">().notNull(),
+        period: varchar("period")
+            .$type<
+                | "monthly"
+                | "yearly"
+                | "lifetime"
+                | "daily"
+                | "hourly"
+                | "weekly"
+            >()
+            .notNull(),
+        amount: real("amount").notNull(),
+        usageAmount: real("usageAmount").notNull(),
+        blocked: boolean("blocked").notNull(),
+        requestUserId: varchar("requestUserId").references(() => users.userId, {
+            onDelete: "set null"
+        }),
+        createdAt: bigint("createdAt", { mode: "number" }).notNull()
+    },
+    (t) => [
+        index("idx_ai_budget_breach_events_budget_created").on(
+            t.budgetId,
+            t.createdAt
+        )
+    ]
+);
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -1845,6 +1939,8 @@ export type ResourcePolicyRule = InferSelectModel<typeof resourcePolicyRules>;
 export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
 export type AiBudget = InferSelectModel<typeof aiBudgets>;
+export type AiUsageRecord = InferSelectModel<typeof aiUsageRecords>;
+export type AiBudgetBreachEvent = InferSelectModel<typeof aiBudgetBreachEvents>;
 export type ResourceAiProvider = InferSelectModel<typeof resourceAiProviders>;
 export type SiteResourceAiProvider = InferSelectModel<
     typeof siteResourceAiProviders
