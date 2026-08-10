@@ -61,7 +61,8 @@ import type { GetSiteResourceResponse } from "@server/routers/siteResource/getSi
 import type { ListTargetsResponse } from "@server/routers/target";
 import type {
     ListAiModelsResponse,
-    ListAiProvidersResponse
+    ListAiProvidersResponse,
+    ListCatalogModelsResponse
 } from "@server/routers/aiProvider/types";
 import type { ListAiBudgetsByScopeResponse } from "@server/routers/aiBudget/types";
 import {
@@ -1196,6 +1197,16 @@ export const aiProviderQueries = {
                     params: { page: 1, pageSize: 1000 },
                     signal
                 });
+                return res.data.data.models;
+            }
+        }),
+    catalogModels: ({ providerId }: { providerId: number }) =>
+        queryOptions({
+            queryKey: ["AI_PROVIDERS", providerId, "CATALOG_MODELS"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListCatalogModelsResponse>
+                >(`/ai-provider/${providerId}/catalog-models`, { signal });
                 return res.data.data.models;
             }
         }),

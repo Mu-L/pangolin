@@ -2,6 +2,7 @@ import type { AiProviderType } from "@server/lib/aiProviderDefaults";
 import type { AiUsage } from "@server/lib/aiUsageExtraction";
 import {
     aiModelCatalog,
+    getCatalogProviderForType,
     type AiModelCatalogEntry,
     type CatalogProvider
 } from "@server/lib/aiModelCatalog";
@@ -17,23 +18,6 @@ export type AiModelPricing = {
     // found this way are a best-effort approximation, not a guarantee the
     // upstream provider bills at the same rate.
     approximate: boolean;
-};
-
-// Each of our provider types maps to at most one catalog provider. Provider types that proxy
-// arbitrary underlying models (openRouter, vercelAiGateway, custom) have no
-// mapping and always fall back to a global search.
-const PROVIDER_CATALOG_MAP: Record<
-    Exclude<AiProviderType, "custom">,
-    CatalogProvider | null
-> = {
-    openai: "openai",
-    anthropic: "anthropic",
-    googleGemini: "gemini",
-    vertexAi: "vertex",
-    bedrock: "bedrock",
-    microsoftFoundry: "azure",
-    openRouter: null,
-    vercelAiGateway: null
 };
 
 function stripVendorPrefix(modelId: string): string | null {
@@ -96,8 +80,7 @@ export function getModelPricing(
         return null;
     }
 
-    const catalogProvider =
-        providerType === "custom" ? null : PROVIDER_CATALOG_MAP[providerType];
+    const catalogProvider = getCatalogProviderForType(providerType);
 
     if (catalogProvider) {
         const scoped = findEntry(modelId, catalogProvider);

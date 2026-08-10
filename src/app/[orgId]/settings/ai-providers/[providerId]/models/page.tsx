@@ -20,7 +20,7 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { aiProviderQueries } from "@app/lib/queries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ModelListType = "allow" | "block";
 
@@ -42,6 +42,18 @@ export default function AiProviderModelsPage() {
 
     const modelsQuery = useQuery(
         aiProviderQueries.providerModels({ providerId: provider.providerId })
+    );
+    const catalogQuery = useQuery(
+        aiProviderQueries.catalogModels({ providerId: provider.providerId })
+    );
+
+    const catalogTags = useMemo(
+        () =>
+            (catalogQuery.data ?? []).map((entry) => ({
+                id: entry.model,
+                text: entry.model
+            })),
+        [catalogQuery.data]
     );
 
     useEffect(() => {
@@ -165,6 +177,8 @@ export default function AiProviderModelsPage() {
         }
     }
 
+    const inputsDisabled = modelsQuery.isLoading || saveLoading;
+
     return (
         <SettingsContainer>
             <SettingsSection>
@@ -196,10 +210,12 @@ export default function AiProviderModelsPage() {
                                             : newTags;
                                     setAllowTags(next as Tag[]);
                                 }}
+                                enableAutocomplete={catalogTags.length > 0}
+                                autocompleteOptions={catalogTags}
                                 allowDuplicates={false}
                                 sortTags
                                 delimiterList={[",", "Enter"]}
-                                disabled={modelsQuery.isLoading || saveLoading}
+                                disabled={inputsDisabled}
                             />
                             <p className="text-sm text-muted-foreground">
                                 {t("aiProviderModelsAllowDescription")}
@@ -223,10 +239,12 @@ export default function AiProviderModelsPage() {
                                             : newTags;
                                     setBlockTags(next as Tag[]);
                                 }}
+                                enableAutocomplete={catalogTags.length > 0}
+                                autocompleteOptions={catalogTags}
                                 allowDuplicates={false}
                                 sortTags
                                 delimiterList={[",", "Enter"]}
-                                disabled={modelsQuery.isLoading || saveLoading}
+                                disabled={inputsDisabled}
                             />
                             <p className="text-sm text-muted-foreground">
                                 {t("aiProviderModelsBlockDescription")}
