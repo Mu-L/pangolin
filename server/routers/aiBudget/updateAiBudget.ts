@@ -15,7 +15,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import type { CreateOrEditAiBudgetResponse } from "@server/routers/aiBudget/types";
 import {
     aiBudgetEnforcementSchema,
@@ -128,6 +128,9 @@ export async function updateAiBudget(
                 : existing.siteResourceId;
         const nextRoleId =
             body.roleId !== undefined ? body.roleId : existing.roleId;
+        const nextUnit = body.unit !== undefined ? body.unit : existing.unit;
+        const nextPeriod =
+            body.period !== undefined ? body.period : existing.period;
 
         const scopeValidation = z
             .object({
@@ -242,44 +245,45 @@ export async function updateAiBudget(
             }
         }
 
-        const conflictCondition =
-            body.providerId !== undefined && body.providerId !== null
-                ? and(
-                      eq(aiBudgets.providerId, body.providerId),
-                      ne(aiBudgets.budgetId, budgetId)
-                  )
-                : body.modelId !== undefined && body.modelId !== null
-                  ? and(
-                        eq(aiBudgets.modelId, body.modelId),
-                        ne(aiBudgets.budgetId, budgetId)
-                    )
-                  : body.resourceId !== undefined && body.resourceId !== null
-                    ? and(
-                          eq(aiBudgets.resourceId, body.resourceId),
-                          ne(aiBudgets.budgetId, budgetId)
-                      )
-                    : body.siteResourceId !== undefined &&
-                        body.siteResourceId !== null
-                      ? and(
-                            eq(aiBudgets.siteResourceId, body.siteResourceId),
-                            ne(aiBudgets.budgetId, budgetId)
-                        )
-                      : undefined;
+        const scopeCondition =
+            nextProviderId !== null
+                ? eq(aiBudgets.providerId, nextProviderId)
+                : nextModelId !== null
+                  ? eq(aiBudgets.modelId, nextModelId)
+                  : nextResourceId !== null
+                    ? eq(aiBudgets.resourceId, nextResourceId)
+                    : nextSiteResourceId !== null
+                      ? eq(aiBudgets.siteResourceId, nextSiteResourceId)
+                      : nextRoleId !== null
+                        ? eq(aiBudgets.roleId, nextRoleId)
+                        : and(
+                              eq(aiBudgets.orgId, orgId),
+                              isNull(aiBudgets.providerId),
+                              isNull(aiBudgets.modelId),
+                              isNull(aiBudgets.resourceId),
+                              isNull(aiBudgets.siteResourceId),
+                              isNull(aiBudgets.roleId)
+                          );
 
-        if (conflictCondition) {
-            const [conflict] = await db
-                .select({ budgetId: aiBudgets.budgetId })
-                .from(aiBudgets)
-                .where(conflictCondition)
-                .limit(1);
-            if (conflict) {
-                return next(
-                    createHttpError(
-                        HttpCode.CONFLICT,
-                        "A budget already exists for this scope"
-                    )
-                );
-            }
+        const [conflict] = await db
+            .select({ budgetId: aiBudgets.budgetId })
+            .from(aiBudgets)
+            .where(
+                and(
+                    scopeCondition,
+                    eq(aiBudgets.unit, nextUnit),
+                    eq(aiBudgets.period, nextPeriod),
+                    ne(aiBudgets.budgetId, budgetId)
+                )
+            )
+            .limit(1);
+        if (conflict) {
+            return next(
+                createHttpError(
+                    HttpCode.CONFLICT,
+                    `A ${nextPeriod} ${nextUnit} budget already exists for this scope`
+                )
+            );
         }
 
         const updateData: Partial<typeof aiBudgets.$inferInsert> = {

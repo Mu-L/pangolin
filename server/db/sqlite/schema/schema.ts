@@ -1732,10 +1732,15 @@ export const aiBudgets = sqliteTable(
         updatedAt: integer("updatedAt").notNull()
     },
     (t) => [
-        unique("ai_budget_provider_uniq").on(t.providerId),
-        unique("ai_budget_model_uniq").on(t.modelId),
-        unique("ai_budget_resource_uniq").on(t.resourceId),
-        unique("ai_budget_site_resource_uniq").on(t.siteResourceId)
+        unique("ai_budget_provider_uniq").on(t.providerId, t.unit, t.period),
+        unique("ai_budget_model_uniq").on(t.modelId, t.unit, t.period),
+        unique("ai_budget_resource_uniq").on(t.resourceId, t.unit, t.period),
+        unique("ai_budget_site_resource_uniq").on(
+            t.siteResourceId,
+            t.unit,
+            t.period
+        ),
+        unique("ai_budget_role_uniq").on(t.roleId, t.unit, t.period)
     ]
 );
 

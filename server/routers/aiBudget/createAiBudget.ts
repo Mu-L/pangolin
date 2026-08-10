@@ -15,7 +15,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { CreateOrEditAiBudgetResponse } from "@server/routers/aiBudget/types";
 import {
     aiBudgetEnforcementSchema,
@@ -189,7 +189,7 @@ export async function createAiBudget(
             }
         }
 
-        const conflictCondition =
+        const scopeCondition =
             providerId !== undefined
                 ? eq(aiBudgets.providerId, providerId)
                 : modelId !== undefined
@@ -198,22 +198,35 @@ export async function createAiBudget(
                     ? eq(aiBudgets.resourceId, resourceId)
                     : siteResourceId !== undefined
                       ? eq(aiBudgets.siteResourceId, siteResourceId)
-                      : undefined;
+                      : roleId !== undefined
+                        ? eq(aiBudgets.roleId, roleId)
+                        : and(
+                              eq(aiBudgets.orgId, orgId),
+                              isNull(aiBudgets.providerId),
+                              isNull(aiBudgets.modelId),
+                              isNull(aiBudgets.resourceId),
+                              isNull(aiBudgets.siteResourceId),
+                              isNull(aiBudgets.roleId)
+                          );
 
-        if (conflictCondition) {
-            const [existing] = await db
-                .select({ budgetId: aiBudgets.budgetId })
-                .from(aiBudgets)
-                .where(conflictCondition)
-                .limit(1);
-            if (existing) {
-                return next(
-                    createHttpError(
-                        HttpCode.CONFLICT,
-                        "A budget already exists for this scope"
-                    )
-                );
-            }
+        const [existing] = await db
+            .select({ budgetId: aiBudgets.budgetId })
+            .from(aiBudgets)
+            .where(
+                and(
+                    scopeCondition,
+                    eq(aiBudgets.unit, unit),
+                    eq(aiBudgets.period, period)
+                )
+            )
+            .limit(1);
+        if (existing) {
+            return next(
+                createHttpError(
+                    HttpCode.CONFLICT,
+                    `A ${period} ${unit} budget already exists for this scope`
+                )
+            );
         }
 
         const now = Date.now();

@@ -5,6 +5,10 @@ export type ListAiBudgetsResponse = PaginatedResponse<{
     budgets: AiBudget[];
 }>;
 
+export type ListAiBudgetsByScopeResponse = {
+    budgets: AiBudget[];
+};
+
 export type GetAiBudgetResponse = {
     budget: AiBudget;
 };

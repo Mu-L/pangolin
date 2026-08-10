@@ -1627,6 +1627,41 @@ authenticated.delete(
 );
 
 authenticated.get(
+    "/ai-provider/:providerId/ai-budgets",
+    verifyAiProviderAccess,
+    verifyUserHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForProvider
+);
+
+authenticated.get(
+    "/ai-model/:modelId/ai-budgets",
+    verifyAiModelAccess,
+    verifyUserHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForModel
+);
+
+authenticated.get(
+    "/resource/:resourceId/ai-budgets",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForResource
+);
+
+authenticated.get(
+    "/site-resource/:siteResourceId/ai-budgets",
+    verifySiteResourceAccess,
+    verifyUserHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForSiteResource
+);
+
+authenticated.get(
+    "/role/:roleId/ai-budgets",
+    verifyRoleAccess,
+    verifyUserHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForRole
+);
+
+authenticated.get(
     "/org/:orgId/labels",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listOrgLabels),
