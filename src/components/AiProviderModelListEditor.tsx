@@ -43,7 +43,18 @@ import {
 import { cn } from "@app/lib/cn";
 import { isModelKeyPattern } from "@server/lib/aiModelKeyMatch";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
-import { BudgetsEditor } from "@app/components/BudgetsEditor";
+import {
+    BudgetRowsFields,
+    getBudgetRowsErrors,
+    rowsFromBudgets,
+    saveBudgetRows,
+    type BudgetRow
+} from "@app/components/BudgetsEditor";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { aiBudgetQueries } from "@app/lib/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
     Asterisk,
@@ -792,6 +803,9 @@ function EditModelCredenza({
     onSave: (item: AiProviderModelListItem) => void;
 }) {
     const t = useTranslations();
+    const { env } = useEnvContext();
+    const api = createApiClient({ env });
+    const queryClient = useQueryClient();
 
     const editSchema = useMemo(
         () =>
@@ -814,12 +828,78 @@ function EditModelCredenza({
         defaultValues: { modelKey: item.modelKey }
     });
 
+    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>(
+        []
+    );
+    const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
+    const [savingBudgets, setSavingBudgets] = useState(false);
+
+    const budgetScope =
+        item.modelId !== undefined
+            ? { type: "model" as const, id: item.modelId }
+            : null;
+
+    const budgetsQuery = useQuery({
+        ...aiBudgetQueries.scoped({
+            scope: budgetScope ?? { type: "model", id: -1 }
+        }),
+        enabled: open && budgetScope !== null
+    });
+
     useEffect(() => {
         if (!open) return;
         form.reset({ modelKey: item.modelKey });
+        setAttemptedBudgetsSave(false);
     }, [form, item.clientId, item.modelKey, open]);
 
-    function handleSubmit(values: EditFormValues) {
+    useEffect(() => {
+        if (!open || !budgetsQuery.data) return;
+        setPendingBudgetRows(rowsFromBudgets(budgetsQuery.data));
+    }, [open, budgetsQuery.data]);
+
+    async function handleSubmit(values: EditFormValues) {
+        const { conflictingKeys, invalidAmountKeys } =
+            getBudgetRowsErrors(pendingBudgetRows);
+        if (conflictingKeys.size > 0 || invalidAmountKeys.size > 0) {
+            setAttemptedBudgetsSave(true);
+            toast({
+                variant: "destructive",
+                title: t("aiBudgetErrorSave"),
+                description: conflictingKeys.size
+                    ? t("aiBudgetConflictError")
+                    : t("aiBudgetInvalidAmountError")
+            });
+            return;
+        }
+
+        if (budgetScope) {
+            setSavingBudgets(true);
+            try {
+                const existingBudgets = await queryClient.fetchQuery(
+                    aiBudgetQueries.scoped({ scope: budgetScope })
+                );
+                await saveBudgetRows({
+                    api,
+                    orgId,
+                    scope: budgetScope,
+                    existingBudgets,
+                    rows: pendingBudgetRows
+                });
+                await queryClient.invalidateQueries(
+                    aiBudgetQueries.scoped({ scope: budgetScope })
+                );
+            } catch (e) {
+                toast({
+                    variant: "destructive",
+                    title: t("aiBudgetErrorSave"),
+                    description: formatAxiosError(e, t("aiBudgetErrorSave"))
+                });
+                setSavingBudgets(false);
+                return;
+            }
+            setSavingBudgets(false);
+        }
+
         onSave({
             ...item,
             modelKey: values.modelKey.trim()
@@ -881,21 +961,27 @@ function EditModelCredenza({
                                     />
                                 </div>
                                 <div className="space-y-4 mt-4">
-                                    {item.modelId !== undefined ? (
-                                        <BudgetsEditor
-                                            orgId={orgId}
-                                            scope={{
-                                                type: "model",
-                                                id: item.modelId
-                                            }}
-                                            hideCardHeader={true}
-                                            title={t(
-                                                "aiProviderModelsBudgetTab"
-                                            )}
-                                            description={t(
-                                                "aiProviderModelsBudgetDescription"
-                                            )}
-                                        />
+                                    {budgetScope ? (
+                                        <>
+                                            <p className="text-sm text-muted-foreground">
+                                                {t(
+                                                    "aiProviderModelsBudgetDescription"
+                                                )}
+                                            </p>
+                                            <BudgetRowsFields
+                                                rows={pendingBudgetRows}
+                                                onChange={
+                                                    setPendingBudgetRows
+                                                }
+                                                disabled={
+                                                    budgetsQuery.isLoading ||
+                                                    savingBudgets
+                                                }
+                                                attemptedSave={
+                                                    attemptedBudgetsSave
+                                                }
+                                            />
+                                        </>
                                     ) : (
                                         <p className="text-sm text-muted-foreground">
                                             {t(
@@ -914,7 +1000,12 @@ function EditModelCredenza({
                             {t("cancel")}
                         </Button>
                     </CredenzaClose>
-                    <Button type="submit" form="ai-provider-model-edit-form">
+                    <Button
+                        type="submit"
+                        form="ai-provider-model-edit-form"
+                        loading={savingBudgets}
+                        disabled={savingBudgets}
+                    >
                         {t("save")}
                     </Button>
                 </CredenzaFooter>

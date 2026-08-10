@@ -40,6 +40,7 @@ import {
 import { aiBudgetQueries } from "@app/lib/queries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AiBudget } from "@server/db";
+import type { AxiosInstance } from "axios";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
@@ -52,7 +53,7 @@ export type BudgetRow = {
     period: AiBudgetPeriod;
 };
 
-function rowsFromBudgets(budgets: AiBudget[]): BudgetRow[] {
+export function rowsFromBudgets(budgets: AiBudget[]): BudgetRow[] {
     return budgets.map((budget) => ({
         key: String(budget.budgetId),
         budgetId: budget.budgetId,
@@ -324,6 +325,66 @@ export function BudgetRowsFields({
     );
 }
 
+export async function saveBudgetRows({
+    api,
+    orgId,
+    scope,
+    existingBudgets,
+    rows
+}: {
+    api: AxiosInstance;
+    orgId: string;
+    scope: AiBudgetScope;
+    existingBudgets: AiBudget[];
+    rows: Pick<BudgetRow, "budgetId" | "amount" | "unit" | "period">[];
+}): Promise<void> {
+    const existingById = new Map(
+        existingBudgets.map((budget) => [budget.budgetId, budget])
+    );
+    const currentBudgetIds = new Set(
+        rows
+            .filter((row) => row.budgetId !== undefined)
+            .map((row) => row.budgetId as number)
+    );
+    const bodyField = getAiBudgetScopeBodyField(scope);
+
+    const toDelete = existingBudgets.filter(
+        (budget) => !currentBudgetIds.has(budget.budgetId)
+    );
+    const toCreate = rows.filter((row) => row.budgetId === undefined);
+    const toUpdate = rows.filter((row) => {
+        if (row.budgetId === undefined) return false;
+        const existingBudget = existingById.get(row.budgetId);
+        if (!existingBudget) return false;
+        return (
+            existingBudget.amount !== Number(row.amount) ||
+            existingBudget.unit !== row.unit ||
+            existingBudget.period !== row.period
+        );
+    });
+
+    await Promise.all([
+        ...toDelete.map((budget) =>
+            api.delete(`/ai-budget/${budget.budgetId}`)
+        ),
+        ...toCreate.map((row) =>
+            api.put(`/org/${orgId}/ai-budget`, {
+                [bodyField]: scope.id,
+                amount: Number(row.amount),
+                unit: row.unit,
+                period: row.period
+            })
+        ),
+        ...toUpdate.map((row) =>
+            api.post(`/ai-budget/${row.budgetId}`, {
+                amount: Number(row.amount),
+                unit: row.unit,
+                period: row.period
+            })
+        )
+    ]);
+}
+
 export function BudgetsEditor({
     scope,
     orgId,
@@ -376,52 +437,13 @@ export function BudgetsEditor({
 
         setSaveLoading(true);
         try {
-            const existing = budgetsQuery.data ?? [];
-            const existingById = new Map(
-                existing.map((budget) => [budget.budgetId, budget])
-            );
-            const currentBudgetIds = new Set(
+            await saveBudgetRows({
+                api,
+                orgId,
+                scope,
+                existingBudgets: budgetsQuery.data ?? [],
                 rows
-                    .filter((row) => row.budgetId !== undefined)
-                    .map((row) => row.budgetId as number)
-            );
-            const bodyField = getAiBudgetScopeBodyField(scope);
-
-            const toDelete = existing.filter(
-                (budget) => !currentBudgetIds.has(budget.budgetId)
-            );
-            const toCreate = rows.filter((row) => row.budgetId === undefined);
-            const toUpdate = rows.filter((row) => {
-                if (row.budgetId === undefined) return false;
-                const existingBudget = existingById.get(row.budgetId);
-                if (!existingBudget) return false;
-                return (
-                    existingBudget.amount !== Number(row.amount) ||
-                    existingBudget.unit !== row.unit ||
-                    existingBudget.period !== row.period
-                );
             });
-
-            await Promise.all([
-                ...toDelete.map((budget) =>
-                    api.delete(`/ai-budget/${budget.budgetId}`)
-                ),
-                ...toCreate.map((row) =>
-                    api.put(`/org/${orgId}/ai-budget`, {
-                        [bodyField]: scope.id,
-                        amount: Number(row.amount),
-                        unit: row.unit,
-                        period: row.period
-                    })
-                ),
-                ...toUpdate.map((row) =>
-                    api.post(`/ai-budget/${row.budgetId}`, {
-                        amount: Number(row.amount),
-                        unit: row.unit,
-                        period: row.period
-                    })
-                )
-            ]);
 
             await queryClient.invalidateQueries(
                 aiBudgetQueries.scoped({ scope })

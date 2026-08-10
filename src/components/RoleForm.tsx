@@ -30,17 +30,19 @@ import {
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { CheckboxWithLabel } from "./ui/checkbox";
 import {
-    BudgetsEditor,
     BudgetRowsFields,
     getBudgetRowsErrors,
+    rowsFromBudgets,
     type BudgetRow
 } from "@app/components/BudgetsEditor";
+import { aiBudgetQueries } from "@app/lib/queries";
 import type { AiBudgetPeriod, AiBudgetUnit } from "@app/lib/aiBudgetScope";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { Role } from "@server/db";
@@ -90,6 +92,7 @@ function hasOnlyAbsoluteSudoCommands(value: string | undefined): boolean {
 }
 
 export type PendingRoleBudget = {
+    budgetId?: number;
     amount: string;
     unit: AiBudgetUnit;
     period: AiBudgetPeriod;
@@ -221,6 +224,19 @@ export function RoleForm({
     );
     const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
 
+    const budgetsQuery = useQuery({
+        ...aiBudgetQueries.scoped({
+            scope: { type: "role", id: role?.roleId ?? -1 }
+        }),
+        enabled: variant === "edit" && !!role
+    });
+
+    useEffect(() => {
+        if (variant !== "edit" || !budgetsQuery.data) return;
+        setPendingBudgetRows(rowsFromBudgets(budgetsQuery.data));
+        setAttemptedBudgetsSave(false);
+    }, [variant, budgetsQuery.data]);
+
     useEffect(() => {
         if (sshDisabled) {
             form.setValue("allowSsh", false);
@@ -271,32 +287,31 @@ export function RoleForm({
     }
 
     function handleFormSubmit(values: z.infer<typeof formSchema>) {
-        if (variant === "create") {
-            const { conflictingKeys, invalidAmountKeys } =
-                getBudgetRowsErrors(pendingBudgetRows);
-            if (conflictingKeys.size > 0 || invalidAmountKeys.size > 0) {
-                setAttemptedBudgetsSave(true);
-                toast({
-                    variant: "destructive",
-                    title: t("aiBudgetErrorSave"),
-                    description: conflictingKeys.size
-                        ? t("aiBudgetConflictError")
-                        : t("aiBudgetInvalidAmountError")
-                });
-                return;
-            }
+        const { conflictingKeys, invalidAmountKeys } =
+            getBudgetRowsErrors(pendingBudgetRows);
+        if (conflictingKeys.size > 0 || invalidAmountKeys.size > 0) {
+            setAttemptedBudgetsSave(true);
+            toast({
+                variant: "destructive",
+                title: t("aiBudgetErrorSave"),
+                description: conflictingKeys.size
+                    ? t("aiBudgetConflictError")
+                    : t("aiBudgetInvalidAmountError")
+            });
+            return;
+        }
 
-            return onSubmit({
-                ...values,
-                budgets: pendingBudgetRows.map(({ amount, unit, period }) => ({
+        return onSubmit({
+            ...values,
+            budgets: pendingBudgetRows.map(
+                ({ budgetId, amount, unit, period }) => ({
+                    budgetId,
                     amount,
                     unit,
                     period
-                }))
-            });
-        }
-
-        return onSubmit(values);
+                })
+            )
+        });
     }
 
     function getTextImportDropHandlers(field: RoleTextImportField) {
@@ -689,33 +704,18 @@ export function RoleForm({
 
                         {/* Inference Budget tab */}
                         <div className="space-y-4 mt-4">
-                            {variant === "edit" && role ? (
-                                <BudgetsEditor
-                                    orgId={role.orgId}
-                                    scope={{
-                                        type: "role",
-                                        id: role.roleId
-                                    }}
-                                    hideCardHeader={true}
-                                    title={t("accessRoleInferenceBudget")}
-                                    description={t(
-                                        "accessRoleInferenceBudgetDescription"
-                                    )}
-                                />
-                            ) : (
-                                <>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t(
-                                            "accessRoleInferenceBudgetDescription"
-                                        )}
-                                    </p>
-                                    <BudgetRowsFields
-                                        rows={pendingBudgetRows}
-                                        onChange={setPendingBudgetRows}
-                                        attemptedSave={attemptedBudgetsSave}
-                                    />
-                                </>
-                            )}
+                            <p className="text-sm text-muted-foreground">
+                                {t("accessRoleInferenceBudgetDescription")}
+                            </p>
+                            <BudgetRowsFields
+                                rows={pendingBudgetRows}
+                                onChange={setPendingBudgetRows}
+                                disabled={
+                                    variant === "edit" &&
+                                    budgetsQuery.isLoading
+                                }
+                                attemptedSave={attemptedBudgetsSave}
+                            />
                         </div>
                     </HorizontalTabs>
                 )}
