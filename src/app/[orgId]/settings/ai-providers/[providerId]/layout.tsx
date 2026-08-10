@@ -76,6 +76,10 @@ export default async function AiProviderLayout({ children, params }: Props) {
         {
             title: t("aiProviderAuthSettings"),
             href: "/{orgId}/settings/ai-providers/{providerId}/authentication"
+        },
+        {
+            title: t("aiProviderBudgetSettings"),
+            href: "/{orgId}/settings/ai-providers/{providerId}/budget"
         }
     ];
 

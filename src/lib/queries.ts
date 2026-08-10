@@ -63,6 +63,11 @@ import type {
     ListAiModelsResponse,
     ListAiProvidersResponse
 } from "@server/routers/aiProvider/types";
+import type { ListAiBudgetsByScopeResponse } from "@server/routers/aiBudget/types";
+import {
+    getAiBudgetScopeListPath,
+    type AiBudgetScope
+} from "@app/lib/aiBudgetScope";
 import type { ListUsersResponse } from "@server/routers/user";
 import type ResponseT from "@server/types/Response";
 import {
@@ -1209,6 +1214,19 @@ export const aiProviderQueries = {
                     signal
                 });
                 return res.data.data.providers;
+            }
+        })
+};
+
+export const aiBudgetQueries = {
+    scoped: ({ scope }: { scope: AiBudgetScope }) =>
+        queryOptions({
+            queryKey: ["AI_BUDGETS", scope.type, scope.id] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAiBudgetsByScopeResponse>
+                >(getAiBudgetScopeListPath(scope), { signal });
+                return res.data.data.budgets;
             }
         })
 };
