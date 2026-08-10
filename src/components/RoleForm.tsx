@@ -35,7 +35,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { CheckboxWithLabel } from "./ui/checkbox";
-import { BudgetsEditor } from "@app/components/BudgetsEditor";
+import {
+    BudgetsEditor,
+    BudgetRowsFields,
+    getBudgetRowsErrors,
+    type BudgetRow
+} from "@app/components/BudgetsEditor";
+import type { AiBudgetPeriod, AiBudgetUnit } from "@app/lib/aiBudgetScope";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { Role } from "@server/db";
 
@@ -83,6 +89,12 @@ function hasOnlyAbsoluteSudoCommands(value: string | undefined): boolean {
     });
 }
 
+export type PendingRoleBudget = {
+    amount: string;
+    unit: AiBudgetUnit;
+    period: AiBudgetPeriod;
+};
+
 export type RoleFormValues = {
     name: string;
     description?: string;
@@ -92,6 +104,7 @@ export type RoleFormValues = {
     sshSudoCommands?: string;
     sshCreateHomeDir?: boolean;
     sshUnixGroups?: string;
+    budgets?: PendingRoleBudget[];
 };
 
 type RoleFormProps = {
@@ -203,6 +216,10 @@ export function RoleForm({
         useState<PendingTextImport | null>(null);
     const [dragOverField, setDragOverField] =
         useState<RoleTextImportField | null>(null);
+    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>(
+        []
+    );
+    const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
 
     useEffect(() => {
         if (sshDisabled) {
@@ -253,6 +270,35 @@ export function RoleForm({
         });
     }
 
+    function handleFormSubmit(values: z.infer<typeof formSchema>) {
+        if (variant === "create") {
+            const { conflictingKeys, invalidAmountKeys } =
+                getBudgetRowsErrors(pendingBudgetRows);
+            if (conflictingKeys.size > 0 || invalidAmountKeys.size > 0) {
+                setAttemptedBudgetsSave(true);
+                toast({
+                    variant: "destructive",
+                    title: t("aiBudgetErrorSave"),
+                    description: conflictingKeys.size
+                        ? t("aiBudgetConflictError")
+                        : t("aiBudgetInvalidAmountError")
+                });
+                return;
+            }
+
+            return onSubmit({
+                ...values,
+                budgets: pendingBudgetRows.map(({ amount, unit, period }) => ({
+                    amount,
+                    unit,
+                    period
+                }))
+            });
+        }
+
+        return onSubmit(values);
+    }
+
     function getTextImportDropHandlers(field: RoleTextImportField) {
         return {
             onDragOver: (event: React.DragEvent<HTMLTextAreaElement>) => {
@@ -285,7 +331,7 @@ export function RoleForm({
     return (
         <Form {...form}>
             <form
-                onSubmit={form.handleSubmit((values) => onSubmit(values))}
+                onSubmit={form.handleSubmit(handleFormSubmit)}
                 className="space-y-4"
                 id={formId}
             >
@@ -335,14 +381,10 @@ export function RoleForm({
                             ...(env.flags.disableEnterpriseFeatures
                                 ? []
                                 : [{ title: t("sshAccess"), href: "#" }]),
-                            ...(variant === "edit" && role
-                                ? [
-                                      {
-                                          title: t("accessRoleInferenceBudget"),
-                                          href: "#"
-                                      }
-                                  ]
-                                : [])
+                            {
+                                title: t("accessRoleInferenceBudget"),
+                                href: "#"
+                            }
                         ]}
                     >
                         {/* General tab */}
@@ -645,9 +687,9 @@ export function RoleForm({
                             </div>
                         )}
 
-                        {/* Inference Budget tab - only available once the role exists */}
-                        {variant === "edit" && role && (
-                            <div className="space-y-4 mt-4">
+                        {/* Inference Budget tab */}
+                        <div className="space-y-4 mt-4">
+                            {variant === "edit" && role ? (
                                 <BudgetsEditor
                                     orgId={role.orgId}
                                     scope={{
@@ -660,8 +702,21 @@ export function RoleForm({
                                         "accessRoleInferenceBudgetDescription"
                                     )}
                                 />
-                            </div>
-                        )}
+                            ) : (
+                                <>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t(
+                                            "accessRoleInferenceBudgetDescription"
+                                        )}
+                                    </p>
+                                    <BudgetRowsFields
+                                        rows={pendingBudgetRows}
+                                        onChange={setPendingBudgetRows}
+                                        attemptedSave={attemptedBudgetsSave}
+                                    />
+                                </>
+                            )}
+                        </div>
                     </HorizontalTabs>
                 )}
             </form>

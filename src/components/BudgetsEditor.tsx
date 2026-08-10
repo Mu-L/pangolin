@@ -44,7 +44,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
-type BudgetRow = {
+export type BudgetRow = {
     key: string;
     budgetId?: number;
     amount: string;
@@ -81,6 +81,249 @@ function nextAvailableCombo(rows: BudgetRow[]): {
     return { unit: "usd", period: "monthly" };
 }
 
+export function newBudgetRow(rows: BudgetRow[]): BudgetRow {
+    const combo = nextAvailableCombo(rows);
+    return {
+        key: crypto.randomUUID(),
+        amount: "",
+        unit: combo.unit,
+        period: combo.period
+    };
+}
+
+export function getBudgetRowsErrors(rows: BudgetRow[]): {
+    conflictingKeys: Set<string>;
+    invalidAmountKeys: Set<string>;
+} {
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+        const key = comboKey(row.unit, row.period);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const conflictingKeys = new Set<string>();
+    for (const row of rows) {
+        const key = comboKey(row.unit, row.period);
+        if ((counts.get(key) ?? 0) > 1) {
+            conflictingKeys.add(row.key);
+        }
+    }
+
+    const invalidAmountKeys = new Set<string>();
+    for (const row of rows) {
+        const amount = Number(row.amount);
+        if (!row.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
+            invalidAmountKeys.add(row.key);
+        }
+    }
+
+    return { conflictingKeys, invalidAmountKeys };
+}
+
+export function BudgetRowsFields({
+    rows,
+    onChange,
+    disabled = false,
+    attemptedSave = false
+}: {
+    rows: BudgetRow[];
+    onChange: (rows: BudgetRow[]) => void;
+    disabled?: boolean;
+    attemptedSave?: boolean;
+}) {
+    const t = useTranslations();
+
+    const { conflictingKeys, invalidAmountKeys } = useMemo(
+        () => getBudgetRowsErrors(rows),
+        [rows]
+    );
+
+    function addRow() {
+        onChange([...rows, newBudgetRow(rows)]);
+    }
+
+    function removeRow(key: string) {
+        onChange(rows.filter((row) => row.key !== key));
+    }
+
+    function updateRow(key: string, patch: Partial<BudgetRow>) {
+        onChange(
+            rows.map((row) => (row.key === key ? { ...row, ...patch } : row))
+        );
+    }
+
+    const periodLabels: Record<AiBudgetPeriod, string> = {
+        hourly: t("aiBudgetPeriodHourly"),
+        daily: t("aiBudgetPeriodDaily"),
+        weekly: t("aiBudgetPeriodWeekly"),
+        monthly: t("aiBudgetPeriodMonthly"),
+        yearly: t("aiBudgetPeriodYearly"),
+        lifetime: t("aiBudgetPeriodLifetime")
+    };
+
+    const unitLabels: Record<AiBudgetUnit, string> = {
+        usd: t("aiBudgetUnitUsd"),
+        tokens: t("aiBudgetUnitTokens")
+    };
+
+    const addRowButton = (
+        <Button
+            type="button"
+            variant="outline"
+            onClick={addRow}
+            disabled={disabled}
+        >
+            <Plus className="h-4 w-4 mr-2" />
+            {t("aiBudgetAdd")}
+        </Button>
+    );
+
+    return (
+        <div className="space-y-4">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>{t("aiBudgetAmount")}</TableHead>
+                        <TableHead>{t("aiBudgetUnit")}</TableHead>
+                        <TableHead>{t("aiBudgetPeriod")}</TableHead>
+                        <TableHead></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {rows.length === 0 ? (
+                        <DataTableEmptyState
+                            colSpan={4}
+                            message={t("aiBudgetEmpty")}
+                            action={addRowButton}
+                            compact
+                        />
+                    ) : (
+                        rows.map((row) => {
+                            const showConflict = conflictingKeys.has(row.key);
+                            const showInvalidAmount =
+                                attemptedSave &&
+                                invalidAmountKeys.has(row.key);
+                            return (
+                                <TableRow key={row.key}>
+                                    <TableCell>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            placeholder={t(
+                                                "aiBudgetAmountPlaceholder"
+                                            )}
+                                            value={row.amount}
+                                            aria-invalid={showInvalidAmount}
+                                            disabled={disabled}
+                                            onChange={(e) =>
+                                                updateRow(row.key, {
+                                                    amount: e.target.value
+                                                })
+                                            }
+                                            className="w-full min-w-0"
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                        <Select
+                                            value={row.unit}
+                                            onValueChange={(value) =>
+                                                updateRow(row.key, {
+                                                    unit: value as AiBudgetUnit
+                                                })
+                                            }
+                                            disabled={disabled}
+                                        >
+                                            <SelectTrigger
+                                                className="w-full min-w-0"
+                                                aria-invalid={showConflict}
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {AI_BUDGET_UNITS.map(
+                                                    (unit) => (
+                                                        <SelectItem
+                                                            key={unit}
+                                                            value={unit}
+                                                        >
+                                                            {
+                                                                unitLabels[
+                                                                    unit
+                                                                ]
+                                                            }
+                                                        </SelectItem>
+                                                    )
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Select
+                                            value={row.period}
+                                            onValueChange={(value) =>
+                                                updateRow(row.key, {
+                                                    period: value as AiBudgetPeriod
+                                                })
+                                            }
+                                            disabled={disabled}
+                                        >
+                                            <SelectTrigger
+                                                className="w-full min-w-0"
+                                                aria-invalid={showConflict}
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {AI_BUDGET_PERIODS.map(
+                                                    (period) => (
+                                                        <SelectItem
+                                                            key={period}
+                                                            value={period}
+                                                        >
+                                                            {
+                                                                periodLabels[
+                                                                    period
+                                                                ]
+                                                            }
+                                                        </SelectItem>
+                                                    )
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center justify-end space-x-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                disabled={disabled}
+                                                onClick={() =>
+                                                    removeRow(row.key)
+                                                }
+                                            >
+                                                Delete
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })
+                    )}
+                </TableBody>
+            </Table>
+            {(conflictingKeys.size > 0 ||
+                (attemptedSave && invalidAmountKeys.size > 0)) && (
+                <p className="text-xs text-destructive">
+                    {conflictingKeys.size > 0
+                        ? t("aiBudgetConflictError")
+                        : t("aiBudgetInvalidAmountError")}
+                </p>
+            )}
+            {rows.length > 0 && addRowButton}
+        </div>
+    );
+}
+
 export function BudgetsEditor({
     scope,
     orgId,
@@ -111,57 +354,12 @@ export function BudgetsEditor({
         setAttemptedSave(false);
     }, [budgetsQuery.data]);
 
-    const conflictingKeys = useMemo(() => {
-        const counts = new Map<string, number>();
-        for (const row of rows) {
-            const key = comboKey(row.unit, row.period);
-            counts.set(key, (counts.get(key) ?? 0) + 1);
-        }
-        const conflicting = new Set<string>();
-        for (const row of rows) {
-            const key = comboKey(row.unit, row.period);
-            if ((counts.get(key) ?? 0) > 1) {
-                conflicting.add(row.key);
-            }
-        }
-        return conflicting;
-    }, [rows]);
-
-    const invalidAmountKeys = useMemo(() => {
-        const invalid = new Set<string>();
-        for (const row of rows) {
-            const amount = Number(row.amount);
-            if (!row.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
-                invalid.add(row.key);
-            }
-        }
-        return invalid;
-    }, [rows]);
+    const { conflictingKeys, invalidAmountKeys } = useMemo(
+        () => getBudgetRowsErrors(rows),
+        [rows]
+    );
 
     const hasErrors = conflictingKeys.size > 0 || invalidAmountKeys.size > 0;
-
-    function addRow() {
-        const combo = nextAvailableCombo(rows);
-        setRows((prev) => [
-            ...prev,
-            {
-                key: crypto.randomUUID(),
-                amount: "",
-                unit: combo.unit,
-                period: combo.period
-            }
-        ]);
-    }
-
-    function removeRow(key: string) {
-        setRows((prev) => prev.filter((row) => row.key !== key));
-    }
-
-    function updateRow(key: string, patch: Partial<BudgetRow>) {
-        setRows((prev) =>
-            prev.map((row) => (row.key === key ? { ...row, ...patch } : row))
-        );
-    }
 
     async function onSave() {
         setAttemptedSave(true);
@@ -244,201 +442,15 @@ export function BudgetsEditor({
         }
     }
 
-    const periodLabels: Record<AiBudgetPeriod, string> = {
-        hourly: t("aiBudgetPeriodHourly"),
-        daily: t("aiBudgetPeriodDaily"),
-        weekly: t("aiBudgetPeriodWeekly"),
-        monthly: t("aiBudgetPeriodMonthly"),
-        yearly: t("aiBudgetPeriodYearly"),
-        lifetime: t("aiBudgetPeriodLifetime")
-    };
-
-    const unitLabels: Record<AiBudgetUnit, string> = {
-        usd: t("aiBudgetUnitUsd"),
-        tokens: t("aiBudgetUnitTokens")
-    };
-
-    const addRowButton = (
-        <Button
-            type="button"
-            variant="outline"
-            onClick={addRow}
-            disabled={saveLoading || budgetsQuery.isLoading}
-        >
-            <Plus className="h-4 w-4 mr-2" />
-            {t("aiBudgetAdd")}
-        </Button>
-    );
-
     const body = (
         <>
             <SettingsSectionBody>
-                <div className="space-y-4">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>{t("aiBudgetAmount")}</TableHead>
-                                <TableHead>{t("aiBudgetUnit")}</TableHead>
-                                <TableHead>{t("aiBudgetPeriod")}</TableHead>
-                                <TableHead></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rows.length === 0 ? (
-                                <DataTableEmptyState
-                                    colSpan={4}
-                                    message={t("aiBudgetEmpty")}
-                                    action={addRowButton}
-                                    compact
-                                />
-                            ) : (
-                                rows.map((row) => {
-                                    const showConflict = conflictingKeys.has(
-                                        row.key
-                                    );
-                                    const showInvalidAmount =
-                                        attemptedSave &&
-                                        invalidAmountKeys.has(row.key);
-                                    return (
-                                        <TableRow key={row.key}>
-                                            <TableCell>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    step="any"
-                                                    placeholder={t(
-                                                        "aiBudgetAmountPlaceholder"
-                                                    )}
-                                                    value={row.amount}
-                                                    aria-invalid={
-                                                        showInvalidAmount
-                                                    }
-                                                    disabled={
-                                                        saveLoading ||
-                                                        budgetsQuery.isLoading
-                                                    }
-                                                    onChange={(e) =>
-                                                        updateRow(row.key, {
-                                                            amount: e.target
-                                                                .value
-                                                        })
-                                                    }
-                                                    className="w-full min-w-0"
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={row.unit}
-                                                    onValueChange={(value) =>
-                                                        updateRow(row.key, {
-                                                            unit: value as AiBudgetUnit
-                                                        })
-                                                    }
-                                                    disabled={
-                                                        saveLoading ||
-                                                        budgetsQuery.isLoading
-                                                    }
-                                                >
-                                                    <SelectTrigger
-                                                        className="w-full min-w-0"
-                                                        aria-invalid={
-                                                            showConflict
-                                                        }
-                                                    >
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {AI_BUDGET_UNITS.map(
-                                                            (unit) => (
-                                                                <SelectItem
-                                                                    key={unit}
-                                                                    value={unit}
-                                                                >
-                                                                    {
-                                                                        unitLabels[
-                                                                            unit
-                                                                        ]
-                                                                    }
-                                                                </SelectItem>
-                                                            )
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={row.period}
-                                                    onValueChange={(value) =>
-                                                        updateRow(row.key, {
-                                                            period: value as AiBudgetPeriod
-                                                        })
-                                                    }
-                                                    disabled={
-                                                        saveLoading ||
-                                                        budgetsQuery.isLoading
-                                                    }
-                                                >
-                                                    <SelectTrigger
-                                                        className="w-full min-w-0"
-                                                        aria-invalid={
-                                                            showConflict
-                                                        }
-                                                    >
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {AI_BUDGET_PERIODS.map(
-                                                            (period) => (
-                                                                <SelectItem
-                                                                    key={period}
-                                                                    value={
-                                                                        period
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        periodLabels[
-                                                                            period
-                                                                        ]
-                                                                    }
-                                                                </SelectItem>
-                                                            )
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center justify-end space-x-2">
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        disabled={
-                                                            saveLoading ||
-                                                            budgetsQuery.isLoading
-                                                        }
-                                                        onClick={() =>
-                                                            removeRow(row.key)
-                                                        }
-                                                    >
-                                                        Delete
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
-                    {(conflictingKeys.size > 0 ||
-                        (attemptedSave && invalidAmountKeys.size > 0)) && (
-                        <p className="text-xs text-destructive">
-                            {conflictingKeys.size > 0
-                                ? t("aiBudgetConflictError")
-                                : t("aiBudgetInvalidAmountError")}
-                        </p>
-                    )}
-                    {rows.length > 0 && addRowButton}
-                </div>
+                <BudgetRowsFields
+                    rows={rows}
+                    onChange={setRows}
+                    disabled={saveLoading || budgetsQuery.isLoading}
+                    attemptedSave={attemptedSave}
+                />
             </SettingsSectionBody>
 
             <SettingsSectionFooter>
