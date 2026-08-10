@@ -42,6 +42,8 @@ import {
 } from "@app/components/ui/tooltip";
 import { cn } from "@app/lib/cn";
 import { isModelKeyPattern } from "@server/lib/aiModelKeyMatch";
+import { HorizontalTabs } from "@app/components/HorizontalTabs";
+import { BudgetsEditor } from "@app/components/BudgetsEditor";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
     Asterisk,
@@ -75,6 +77,7 @@ export type AiProviderModelListItem = {
 };
 
 export type AiProviderModelListEditorProps = {
+    orgId: string;
     listType: ModelListType;
     items: AiProviderModelListItem[];
     catalogModels: string[];
@@ -146,6 +149,7 @@ function useModelGridColumns(): number {
 }
 
 export function AiProviderModelListEditor({
+    orgId,
     listType,
     items,
     catalogModels,
@@ -632,6 +636,7 @@ export function AiProviderModelListEditor({
 
             {editing && (
                 <EditModelCredenza
+                    orgId={orgId}
                     item={editing}
                     open={editingClientId !== null}
                     onOpenChange={(open) => {
@@ -772,12 +777,14 @@ type EditFormValues = {
 };
 
 function EditModelCredenza({
+    orgId,
     item,
     open,
     onOpenChange,
     existingKeys,
     onSave
 }: {
+    orgId: string;
     item: AiProviderModelListItem;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -835,27 +842,69 @@ function EditModelCredenza({
                         id="ai-provider-model-edit-form"
                         onSubmit={form.handleSubmit(handleSubmit)}
                     >
-                        <CredenzaBody className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="modelKey"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {t("aiProviderModelsKeyLabel")}
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                autoComplete="off"
-                                                spellCheck={false}
-                                                className="font-mono"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                        <CredenzaBody>
+                            <HorizontalTabs
+                                clientSide={true}
+                                defaultTab={0}
+                                items={[
+                                    { title: t("general"), href: "#" },
+                                    {
+                                        title: t(
+                                            "aiProviderModelsBudgetTab"
+                                        ),
+                                        href: "#"
+                                    }
+                                ]}
+                            >
+                                <div className="space-y-4 mt-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="modelKey"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t(
+                                                        "aiProviderModelsKeyLabel"
+                                                    )}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        autoComplete="off"
+                                                        spellCheck={false}
+                                                        className="font-mono"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <div className="space-y-4 mt-4">
+                                    {item.modelId !== undefined ? (
+                                        <BudgetsEditor
+                                            orgId={orgId}
+                                            scope={{
+                                                type: "model",
+                                                id: item.modelId
+                                            }}
+                                            hideCardHeader={true}
+                                            title={t(
+                                                "aiProviderModelsBudgetTab"
+                                            )}
+                                            description={t(
+                                                "aiProviderModelsBudgetDescription"
+                                            )}
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">
+                                            {t(
+                                                "aiProviderModelsBudgetUnsaved"
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+                            </HorizontalTabs>
                         </CredenzaBody>
                     </form>
                 </Form>

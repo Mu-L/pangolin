@@ -235,6 +235,7 @@ export default function AiProviderModelsPage() {
                         <div className="space-y-2">
                             <Label>{t("aiProviderModelsAllow")}</Label>
                             <AiProviderModelListEditor
+                                orgId={provider.orgId}
                                 listType="allow"
                                 items={allowItems}
                                 onChange={setAllowItems}
@@ -254,6 +255,7 @@ export default function AiProviderModelsPage() {
                         <div className="space-y-2">
                             <Label>{t("aiProviderModelsBlock")}</Label>
                             <AiProviderModelListEditor
+                                orgId={provider.orgId}
                                 listType="block"
                                 items={blockItems}
                                 onChange={setBlockItems}
