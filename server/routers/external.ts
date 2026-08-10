@@ -47,7 +47,8 @@ import {
     verifyLimits,
     verifyResourcePolicyAccess,
     verifyAiProviderAccess,
-    verifyAiModelAccess
+    verifyAiModelAccess,
+    verifyAiBudgetAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -58,6 +59,7 @@ import { logActionAudit } from "#dynamic/middlewares";
 import { checkRoundTripMessage } from "./ws";
 import * as labels from "@server/routers/labels";
 import * as aiProvider from "@server/routers/aiProvider";
+import * as aiBudget from "@server/routers/aiBudget";
 
 // Root routes
 export const unauthenticated = Router();
@@ -1584,6 +1586,44 @@ authenticated.delete(
     verifyUserHasAction(ActionsEnum.deleteAiModel),
     logActionAudit(ActionsEnum.deleteAiModel),
     aiProvider.deleteAiModel
+);
+
+authenticated.put(
+    "/org/:orgId/ai-budget",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.createAiBudget),
+    logActionAudit(ActionsEnum.createAiBudget),
+    aiBudget.createAiBudget
+);
+
+authenticated.get(
+    "/org/:orgId/ai-budgets",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgets
+);
+
+authenticated.get(
+    "/ai-budget/:budgetId",
+    verifyAiBudgetAccess,
+    verifyUserHasAction(ActionsEnum.getAiBudget),
+    aiBudget.getAiBudget
+);
+
+authenticated.post(
+    "/ai-budget/:budgetId",
+    verifyAiBudgetAccess,
+    verifyUserHasAction(ActionsEnum.updateAiBudget),
+    logActionAudit(ActionsEnum.updateAiBudget),
+    aiBudget.updateAiBudget
+);
+
+authenticated.delete(
+    "/ai-budget/:budgetId",
+    verifyAiBudgetAccess,
+    verifyUserHasAction(ActionsEnum.deleteAiBudget),
+    logActionAudit(ActionsEnum.deleteAiBudget),
+    aiBudget.deleteAiBudget
 );
 
 authenticated.get(

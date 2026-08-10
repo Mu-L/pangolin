@@ -194,7 +194,12 @@ export enum ActionsEnum {
     deleteAiModel = "deleteAiModel",
     getAiModel = "getAiModel",
     listAiModels = "listAiModels",
-    updateAiModel = "updateAiModel"
+    updateAiModel = "updateAiModel",
+    createAiBudget = "createAiBudget",
+    deleteAiBudget = "deleteAiBudget",
+    getAiBudget = "getAiBudget",
+    listAiBudgets = "listAiBudgets",
+    updateAiBudget = "updateAiBudget"
 }
 
 export async function checkUserActionPermission(

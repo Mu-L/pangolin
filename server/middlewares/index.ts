@@ -29,6 +29,7 @@ export * from "./verifySiteProvisioningKeyAccess";
 export * from "./verifyDomainAccess";
 export * from "./verifyAiProviderAccess";
 export * from "./verifyAiModelAccess";
+export * from "./verifyAiBudgetAccess";
 export * from "./verifyUserIsOrgOwner";
 export * from "./verifyUserFromResourceSession";
 export * from "./verifySiteResourceAccess";
