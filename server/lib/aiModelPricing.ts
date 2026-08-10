@@ -1,7 +1,7 @@
 import type { AiProviderType } from "@server/lib/aiProviderDefaults";
 import type { AiUsage } from "@server/lib/aiUsageExtraction";
 import {
-    getAiModelCatalog,
+    aiModelCatalog,
     type AiModelCatalogEntry,
     type CatalogProvider
 } from "@server/lib/aiModelCatalog";
@@ -36,31 +36,6 @@ const PROVIDER_CATALOG_MAP: Record<
     vercelAiGateway: null
 };
 
-// Indexed view over the in-memory catalog, rebuilt only when
-// getAiModelCatalog() returns a different array instance (i.e. after a
-// background refresh swaps it out), not on every lookup.
-let indexedCatalog: AiModelCatalogEntry[] | null = null;
-let indexedByName: Map<string, AiModelCatalogEntry[]> = new Map();
-
-function getIndexedCatalog(): Map<string, AiModelCatalogEntry[]> {
-    const catalog = getAiModelCatalog();
-    if (catalog === indexedCatalog) {
-        return indexedByName;
-    }
-
-    const byName = new Map<string, AiModelCatalogEntry[]>();
-    for (const entry of catalog) {
-        if (!entry.model) continue;
-        const list = byName.get(entry.model) ?? [];
-        list.push(entry);
-        byName.set(entry.model, list);
-    }
-
-    indexedCatalog = catalog;
-    indexedByName = byName;
-    return byName;
-}
-
 function stripVendorPrefix(modelId: string): string | null {
     const idx = modelId.indexOf("/");
     if (idx === -1 || idx === modelId.length - 1) {
@@ -83,7 +58,6 @@ function toPricing(
 }
 
 function findEntry(
-    byName: Map<string, AiModelCatalogEntry[]>,
     modelId: string,
     provider: CatalogProvider | null
 ): AiModelCatalogEntry | null {
@@ -92,11 +66,15 @@ function findEntry(
     );
 
     for (const key of candidates) {
-        const entries = byName.get(key);
-        if (!entries) continue;
-        const match = provider
-            ? entries.find((e) => e.provider === provider)
-            : entries[0];
+        if (provider) {
+            const match = aiModelCatalog.get(provider, key);
+            if (match) {
+                return match;
+            }
+            continue;
+        }
+
+        const match = aiModelCatalog.listByKey(key)[0];
         if (match) {
             return match;
         }
@@ -118,18 +96,17 @@ export function getModelPricing(
         return null;
     }
 
-    const byName = getIndexedCatalog();
     const catalogProvider =
         providerType === "custom" ? null : PROVIDER_CATALOG_MAP[providerType];
 
     if (catalogProvider) {
-        const scoped = findEntry(byName, modelId, catalogProvider);
+        const scoped = findEntry(modelId, catalogProvider);
         if (scoped) {
             return toPricing(scoped, false);
         }
     }
 
-    const fallback = findEntry(byName, modelId, null);
+    const fallback = findEntry(modelId, null);
     if (fallback) {
         return toPricing(fallback, true);
     }
