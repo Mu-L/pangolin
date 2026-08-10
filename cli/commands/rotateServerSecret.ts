@@ -1,5 +1,5 @@
 import { CommandModule } from "yargs";
-import { db, idpOidcConfig, licenseKey, certificates, eventStreamingDestinations, alertWebhookActions, aiProviders } from "@server/db";
+import { db, idpOidcConfig, licenseKey, certificates, eventStreamingDestinations, alertWebhookActions, aiProviders, virtualApiKeys } from "@server/db";
 import { encrypt, decrypt } from "@server/lib/crypto";
 import { configFilePath1, configFilePath2 } from "@server/lib/consts";
 import { eq } from "drizzle-orm";
@@ -133,6 +133,7 @@ export const rotateServerSecret: CommandModule<
             const streamingDestinations = await db.select().from(eventStreamingDestinations);
             const webhookActions = await db.select().from(alertWebhookActions);
             const providers = await db.select().from(aiProviders);
+            const virtualKeys = await db.select().from(virtualApiKeys);
 
             console.log(`Found ${idpConfigs.length} OIDC IdP configuration(s)`);
             console.log(`Found ${licenseKeys.length} license key(s)`);
@@ -140,6 +141,7 @@ export const rotateServerSecret: CommandModule<
             console.log(`Found ${streamingDestinations.length} event streaming destination(s)`);
             console.log(`Found ${webhookActions.length} alert webhook action(s)`);
             console.log(`Found ${providers.length} AI provider(s)`);
+            console.log(`Found ${virtualKeys.length} virtual API key(s)`);
 
             // Prepare all decrypted and re-encrypted values
             console.log("\nDecrypting and re-encrypting values...");
@@ -179,12 +181,18 @@ export const rotateServerSecret: CommandModule<
                 encryptedHeaders: string | null;
             };
 
+            type VirtualApiKeyUpdate = {
+                virtualApiKeyId: string;
+                encryptedToken: string;
+            };
+
             const idpUpdates: IdpUpdate[] = [];
             const licenseKeyUpdates: LicenseKeyUpdate[] = [];
             const certUpdates: CertUpdate[] = [];
             const streamingDestinationUpdates: StreamingDestinationUpdate[] = [];
             const webhookActionUpdates: WebhookActionUpdate[] = [];
             const aiProviderUpdates: AiProviderUpdate[] = [];
+            const virtualApiKeyUpdates: VirtualApiKeyUpdate[] = [];
 
             // Process idpOidcConfig entries
             for (const idpConfig of idpConfigs) {
@@ -346,6 +354,29 @@ export const rotateServerSecret: CommandModule<
                 }
             }
 
+            // Process virtualApiKeys entries (token)
+            for (const key of virtualKeys) {
+                try {
+                    if (!key.token) {
+                        continue;
+                    }
+
+                    virtualApiKeyUpdates.push({
+                        virtualApiKeyId: key.virtualApiKeyId,
+                        encryptedToken: encrypt(
+                            decrypt(key.token, oldSecret),
+                            newSecret
+                        )
+                    });
+                } catch (error) {
+                    console.error(
+                        `Error processing virtual API key ${key.virtualApiKeyId}:`,
+                        error
+                    );
+                    throw error;
+                }
+            }
+
             // Perform all database updates in a single transaction
             console.log("\nUpdating database in transaction...");
             await db.transaction(async (trx) => {
@@ -427,6 +458,21 @@ export const rotateServerSecret: CommandModule<
                         })
                         .where(eq(aiProviders.providerId, update.providerId));
                 }
+
+                // Update virtual API key entries
+                for (const update of virtualApiKeyUpdates) {
+                    await trx
+                        .update(virtualApiKeys)
+                        .set({
+                            token: update.encryptedToken
+                        })
+                        .where(
+                            eq(
+                                virtualApiKeys.virtualApiKeyId,
+                                update.virtualApiKeyId
+                            )
+                        );
+                }
             });
 
             console.log(`Rotated ${idpUpdates.length} OIDC IdP configuration(s)`);
@@ -435,6 +481,7 @@ export const rotateServerSecret: CommandModule<
             console.log(`Rotated ${streamingDestinationUpdates.length} event streaming destination(s)`);
             console.log(`Rotated ${webhookActionUpdates.length} alert webhook action(s)`);
             console.log(`Rotated ${aiProviderUpdates.length} AI provider(s)`);
+            console.log(`Rotated ${virtualApiKeyUpdates.length} virtual API key(s)`);
 
             // Update config file with new secret
             console.log("\nUpdating config file...");

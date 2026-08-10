@@ -8,7 +8,8 @@ import {
     real,
     sqliteTable,
     text,
-    unique
+    unique,
+    uniqueIndex
 } from "drizzle-orm/sqlite-core";
 
 export const domains = sqliteTable("domains", {
@@ -1499,6 +1500,54 @@ export const apiKeyOrg = sqliteTable("apiKeyOrg", {
         .notNull()
 });
 
+export const virtualApiKeys = sqliteTable(
+    "virtualApiKeys",
+    {
+        virtualApiKeyId: text("virtualApiKeyId").primaryKey(),
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        kind: text("kind").$type<"user" | "manual">().notNull(),
+        userId: text("userId").references(() => users.userId, {
+            onDelete: "cascade"
+        }),
+        name: text("name"),
+        description: text("description"),
+        token: text("token").notNull(),
+        lastChars: text("lastChars").notNull(),
+        allResources: integer("allResources", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        expiresAt: integer("expiresAt"),
+        lastUsedAt: integer("lastUsedAt"),
+        createdAt: integer("createdAt").notNull(),
+        createdByUserId: text("createdByUserId").references(
+            () => users.userId,
+            { onDelete: "set null" }
+        )
+    },
+    (t) => [
+        uniqueIndex("virtual_api_key_user_identity_uniq")
+            .on(t.orgId, t.userId)
+            .where(sql`${t.kind} = 'user'`)
+    ]
+);
+
+export const virtualApiKeyResources = sqliteTable(
+    "virtualApiKeyResources",
+    {
+        virtualApiKeyId: text("virtualApiKeyId")
+            .notNull()
+            .references(() => virtualApiKeys.virtualApiKeyId, {
+                onDelete: "cascade"
+            }),
+        resourceId: integer("resourceId")
+            .notNull()
+            .references(() => resources.resourceId, { onDelete: "cascade" })
+    },
+    (t) => [primaryKey({ columns: [t.virtualApiKeyId, t.resourceId] })]
+);
+
 export const idpOrg = sqliteTable("idpOrg", {
     idpId: integer("idpId")
         .notNull()
@@ -1891,6 +1940,10 @@ export type Idp = InferSelectModel<typeof idp>;
 export type ApiKey = InferSelectModel<typeof apiKeys>;
 export type ApiKeyAction = InferSelectModel<typeof apiKeyActions>;
 export type ApiKeyOrg = InferSelectModel<typeof apiKeyOrg>;
+export type VirtualApiKey = InferSelectModel<typeof virtualApiKeys>;
+export type VirtualApiKeyResource = InferSelectModel<
+    typeof virtualApiKeyResources
+>;
 export type SiteResource = InferSelectModel<typeof siteResources>;
 export type Network = InferSelectModel<typeof networks>;
 export type OrgDomains = InferSelectModel<typeof orgDomains>;

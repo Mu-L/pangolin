@@ -12,6 +12,7 @@ import {
     serial,
     text,
     unique,
+    uniqueIndex,
     varchar
 } from "drizzle-orm/pg-core";
 
@@ -1242,6 +1243,52 @@ export const apiKeyOrg = pgTable("apiKeyOrg", {
         .notNull()
 });
 
+export const virtualApiKeys = pgTable(
+    "virtualApiKeys",
+    {
+        virtualApiKeyId: varchar("virtualApiKeyId").primaryKey(),
+        orgId: varchar("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        kind: varchar("kind").$type<"user" | "manual">().notNull(),
+        userId: varchar("userId").references(() => users.userId, {
+            onDelete: "cascade"
+        }),
+        name: varchar("name"),
+        description: varchar("description"),
+        token: varchar("token").notNull(),
+        lastChars: varchar("lastChars").notNull(),
+        allResources: boolean("allResources").notNull().default(false),
+        expiresAt: bigint("expiresAt", { mode: "number" }),
+        lastUsedAt: bigint("lastUsedAt", { mode: "number" }),
+        createdAt: bigint("createdAt", { mode: "number" }).notNull(),
+        createdByUserId: varchar("createdByUserId").references(
+            () => users.userId,
+            { onDelete: "set null" }
+        )
+    },
+    (t) => [
+        uniqueIndex("virtual_api_key_user_identity_uniq")
+            .on(t.orgId, t.userId)
+            .where(sql`${t.kind} = 'user'`)
+    ]
+);
+
+export const virtualApiKeyResources = pgTable(
+    "virtualApiKeyResources",
+    {
+        virtualApiKeyId: varchar("virtualApiKeyId")
+            .notNull()
+            .references(() => virtualApiKeys.virtualApiKeyId, {
+                onDelete: "cascade"
+            }),
+        resourceId: integer("resourceId")
+            .notNull()
+            .references(() => resources.resourceId, { onDelete: "cascade" })
+    },
+    (t) => [primaryKey({ columns: [t.virtualApiKeyId, t.resourceId] })]
+);
+
 export const idpOrg = pgTable("idpOrg", {
     idpId: integer("idpId")
         .notNull()
@@ -1907,6 +1954,10 @@ export type Idp = InferSelectModel<typeof idp>;
 export type ApiKey = InferSelectModel<typeof apiKeys>;
 export type ApiKeyAction = InferSelectModel<typeof apiKeyActions>;
 export type ApiKeyOrg = InferSelectModel<typeof apiKeyOrg>;
+export type VirtualApiKey = InferSelectModel<typeof virtualApiKeys>;
+export type VirtualApiKeyResource = InferSelectModel<
+    typeof virtualApiKeyResources
+>;
 export type Client = InferSelectModel<typeof clients>;
 export type ClientSite = InferSelectModel<typeof clientSitesAssociationsCache>;
 export type Olm = InferSelectModel<typeof olms>;

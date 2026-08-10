@@ -48,7 +48,8 @@ import {
     verifyResourcePolicyAccess,
     verifyAiProviderAccess,
     verifyAiModelAccess,
-    verifyAiBudgetAccess
+    verifyAiBudgetAccess,
+    verifyVirtualApiKeyAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -60,6 +61,7 @@ import { checkRoundTripMessage } from "./ws";
 import * as labels from "@server/routers/labels";
 import * as aiProvider from "@server/routers/aiProvider";
 import * as aiBudget from "@server/routers/aiBudget";
+import * as virtualApiKey from "@server/routers/virtualApiKey";
 
 // Root routes
 export const unauthenticated = Router();
@@ -1631,6 +1633,44 @@ authenticated.delete(
     verifyUserHasAction(ActionsEnum.deleteAiBudget),
     logActionAudit(ActionsEnum.deleteAiBudget),
     aiBudget.deleteAiBudget
+);
+
+authenticated.put(
+    "/org/:orgId/virtual-api-key",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.createVirtualApiKey),
+    logActionAudit(ActionsEnum.createVirtualApiKey),
+    virtualApiKey.createVirtualApiKey
+);
+
+authenticated.get(
+    "/org/:orgId/virtual-api-keys",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listVirtualApiKeys),
+    virtualApiKey.listVirtualApiKeys
+);
+
+authenticated.get(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyVirtualApiKeyAccess,
+    verifyUserHasAction(ActionsEnum.getVirtualApiKey),
+    virtualApiKey.getVirtualApiKey
+);
+
+authenticated.post(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyVirtualApiKeyAccess,
+    verifyUserHasAction(ActionsEnum.updateVirtualApiKey),
+    logActionAudit(ActionsEnum.updateVirtualApiKey),
+    virtualApiKey.updateVirtualApiKey
+);
+
+authenticated.delete(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyVirtualApiKeyAccess,
+    verifyUserHasAction(ActionsEnum.deleteVirtualApiKey),
+    logActionAudit(ActionsEnum.deleteVirtualApiKey),
+    virtualApiKey.deleteVirtualApiKey
 );
 
 authenticated.get(

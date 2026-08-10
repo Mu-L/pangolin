@@ -17,7 +17,8 @@ import {
     Session,
     SiteResource,
     User,
-    UserOrg
+    UserOrg,
+    VirtualApiKey
 } from "@server/db";
 import config from "@server/lib/config";
 import { setHostMeta } from "@server/lib/hostMeta";
@@ -94,6 +95,7 @@ declare global {
             aiProvider?: AiProvider;
             aiModel?: AiModel;
             aiBudget?: AiBudget;
+            virtualApiKey?: VirtualApiKey;
             orgPolicyAllowed?: boolean;
         }
     }

@@ -199,7 +199,12 @@ export enum ActionsEnum {
     deleteAiBudget = "deleteAiBudget",
     getAiBudget = "getAiBudget",
     listAiBudgets = "listAiBudgets",
-    updateAiBudget = "updateAiBudget"
+    updateAiBudget = "updateAiBudget",
+    createVirtualApiKey = "createVirtualApiKey",
+    deleteVirtualApiKey = "deleteVirtualApiKey",
+    getVirtualApiKey = "getVirtualApiKey",
+    listVirtualApiKeys = "listVirtualApiKeys",
+    updateVirtualApiKey = "updateVirtualApiKey"
 }
 
 export async function checkUserActionPermission(

@@ -20,3 +20,4 @@ export * from "./verifyApiKeyAiProviderAccess";
 export * from "./verifyApiKeyAiModelAccess";
 export * from "./verifyApiKeyResourcePolicyAccess";
 export * from "./verifyApiKeySiteProvisioningKeyAccess";
+export * from "./verifyVirtualApiKeyAccess";

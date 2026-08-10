@@ -14,6 +14,7 @@ import * as idp from "./idp";
 import * as logs from "./auditLogs";
 import * as siteResource from "./siteResource";
 import * as aiProvider from "./aiProvider";
+import * as virtualApiKey from "./virtualApiKey";
 import {
     verifyApiKey,
     verifyApiKeyOrgAccess,
@@ -34,6 +35,7 @@ import {
     verifyApiKeyResourcePolicyAccess,
     verifyApiKeyAiProviderAccess,
     verifyApiKeyAiModelAccess,
+    verifyApiKeyVirtualApiKeyAccess,
     verifyUserHasAction
 } from "@server/middlewares";
 import HttpCode from "@server/types/HttpCode";
@@ -1632,4 +1634,42 @@ authenticated.delete(
     verifyApiKeyHasAction(ActionsEnum.deleteAiModel),
     logActionAudit(ActionsEnum.deleteAiModel),
     aiProvider.deleteAiModel
+);
+
+authenticated.put(
+    "/org/:orgId/virtual-api-key",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.createVirtualApiKey),
+    logActionAudit(ActionsEnum.createVirtualApiKey),
+    virtualApiKey.createVirtualApiKey
+);
+
+authenticated.get(
+    "/org/:orgId/virtual-api-keys",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listVirtualApiKeys),
+    virtualApiKey.listVirtualApiKeys
+);
+
+authenticated.get(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyApiKeyVirtualApiKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.getVirtualApiKey),
+    virtualApiKey.getVirtualApiKey
+);
+
+authenticated.post(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyApiKeyVirtualApiKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateVirtualApiKey),
+    logActionAudit(ActionsEnum.updateVirtualApiKey),
+    virtualApiKey.updateVirtualApiKey
+);
+
+authenticated.delete(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyApiKeyVirtualApiKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteVirtualApiKey),
+    logActionAudit(ActionsEnum.deleteVirtualApiKey),
+    virtualApiKey.deleteVirtualApiKey
 );
