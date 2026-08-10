@@ -39,6 +39,10 @@ export type ListAiModelsResponse = PaginatedResponse<{
     models: AiModel[];
 }>;
 
+export type ListCatalogModelsResponse = {
+    models: { model: string }[];
+};
+
 export type GetAiModelResponse = {
     model: AiModel;
 };

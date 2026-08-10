@@ -2,6 +2,7 @@ import fs from "node:fs";
 import axios from "axios";
 import config from "@server/lib/config";
 import logger from "@server/logger";
+import type { AiProviderType } from "@server/lib/aiProviderDefaults";
 
 export const CATALOG_PROVIDERS = [
     "openai",
@@ -15,6 +16,32 @@ export const CATALOG_PROVIDERS = [
 export type CatalogProvider = (typeof CATALOG_PROVIDERS)[number];
 
 const CATALOG_PROVIDER_SET = new Set<string>(CATALOG_PROVIDERS);
+
+// Each of our provider types maps to at most one catalog provider. Provider
+// types that proxy arbitrary underlying models (openRouter, vercelAiGateway,
+// custom) have no mapping.
+const PROVIDER_CATALOG_MAP: Record<
+    Exclude<AiProviderType, "custom">,
+    CatalogProvider | null
+> = {
+    openai: "openai",
+    anthropic: "anthropic",
+    googleGemini: "gemini",
+    vertexAi: "vertex",
+    bedrock: "bedrock",
+    microsoftFoundry: "azure",
+    openRouter: null,
+    vercelAiGateway: null
+};
+
+export function getCatalogProviderForType(
+    type: AiProviderType
+): CatalogProvider | null {
+    if (type === "custom") {
+        return null;
+    }
+    return PROVIDER_CATALOG_MAP[type];
+}
 
 export type AiModelCatalogEntry = {
     provider: CatalogProvider;
