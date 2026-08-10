@@ -1079,6 +1079,8 @@
     "accessRoleErrorNewRequired": "New role is required",
     "accessRoleErrorRemove": "Failed to remove role",
     "accessRoleErrorRemoveDescription": "An error occurred while removing the role.",
+    "accessRoleInferenceBudget": "Inference Budget",
+    "accessRoleInferenceBudgetDescription": "Configure how members of this role restrict AI usage based on spending or token limits",
     "accessRoleName": "Role Name",
     "accessRoleQuestionRemove": "You're about to delete the `{name}` role. You cannot undo this action.",
     "accessRoleRemove": "Remove Role",

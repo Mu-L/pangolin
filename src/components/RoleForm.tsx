@@ -35,6 +35,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { CheckboxWithLabel } from "./ui/checkbox";
+import { BudgetsEditor } from "@app/components/BudgetsEditor";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { Role } from "@server/db";
 
@@ -333,7 +334,15 @@ export function RoleForm({
                             { title: t("general"), href: "#" },
                             ...(env.flags.disableEnterpriseFeatures
                                 ? []
-                                : [{ title: t("sshAccess"), href: "#" }])
+                                : [{ title: t("sshAccess"), href: "#" }]),
+                            ...(variant === "edit" && role
+                                ? [
+                                      {
+                                          title: t("accessRoleInferenceBudget"),
+                                          href: "#"
+                                      }
+                                  ]
+                                : [])
                         ]}
                     >
                         {/* General tab */}
@@ -631,6 +640,24 @@ export function RoleForm({
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
+                                    )}
+                                />
+                            </div>
+                        )}
+
+                        {/* Inference Budget tab - only available once the role exists */}
+                        {variant === "edit" && role && (
+                            <div className="space-y-4 mt-4">
+                                <BudgetsEditor
+                                    orgId={role.orgId}
+                                    scope={{
+                                        type: "role",
+                                        id: role.roleId
+                                    }}
+                                    hideCardHeader={true}
+                                    title={t("accessRoleInferenceBudget")}
+                                    description={t(
+                                        "accessRoleInferenceBudgetDescription"
                                     )}
                                 />
                             </div>

@@ -85,12 +85,14 @@ export function BudgetsEditor({
     scope,
     orgId,
     title,
-    description
+    description,
+    hideCardHeader = false
 }: {
     scope: AiBudgetScope;
     orgId: string;
     title: string;
     description: string;
+    hideCardHeader?: boolean;
 }) {
     const { env } = useEnvContext();
     const api = createApiClient({ env });
@@ -268,15 +270,8 @@ export function BudgetsEditor({
         </Button>
     );
 
-    return (
-        <SettingsSection>
-            <SettingsSectionHeader>
-                <SettingsSectionTitle>{title}</SettingsSectionTitle>
-                <SettingsSectionDescription>
-                    {description}
-                </SettingsSectionDescription>
-            </SettingsSectionHeader>
-
+    const body = (
+        <>
             <SettingsSectionBody>
                 <div className="space-y-4">
                     <Table>
@@ -456,6 +451,22 @@ export function BudgetsEditor({
                     {t("saveSettings")}
                 </Button>
             </SettingsSectionFooter>
+        </>
+    );
+
+    if (hideCardHeader) {
+        return <div className="space-y-4">{body}</div>;
+    }
+
+    return (
+        <SettingsSection>
+            <SettingsSectionHeader>
+                <SettingsSectionTitle>{title}</SettingsSectionTitle>
+                <SettingsSectionDescription>
+                    {description}
+                </SettingsSectionDescription>
+            </SettingsSectionHeader>
+            {body}
         </SettingsSection>
     );
 }
