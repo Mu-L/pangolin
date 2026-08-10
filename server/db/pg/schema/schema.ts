@@ -1,3 +1,4 @@
+import { aiBudgetPeriods } from "@server/db/sqlite";
 import { randomUUID } from "crypto";
 import { InferSelectModel, sql } from "drizzle-orm";
 import {
@@ -1721,10 +1722,20 @@ export const aiBudgets = pgTable(
             () => siteResources.siteResourceId,
             { onDelete: "cascade" }
         ),
+        roleId: integer("roleId").references(() => roles.roleId, {
+            onDelete: "cascade"
+        }),
         amount: real("amount").notNull(),
         unit: varchar("unit").$type<"usd" | "tokens">().notNull(),
         period: varchar("period")
-            .$type<"monthly">()
+            .$type<
+                | "monthly"
+                | "yearly"
+                | "lifetime"
+                | "daily"
+                | "hourly"
+                | "weekly"
+            >()
             .notNull()
             .default("monthly"),
         enforcement: varchar("enforcement")
@@ -1750,20 +1761,6 @@ export const aiBudgets = pgTable(
         unique("ai_budget_resource_uniq").on(t.resourceId),
         unique("ai_budget_site_resource_uniq").on(t.siteResourceId)
     ]
-);
-
-export const aiBudgetPeriods = pgTable(
-    "aiBudgetPeriods",
-    {
-        periodId: serial("periodId").primaryKey(),
-        budgetId: integer("budgetId")
-            .notNull()
-            .references(() => aiBudgets.budgetId, { onDelete: "cascade" }),
-        periodStart: bigint("periodStart", { mode: "number" }).notNull(),
-        periodEnd: bigint("periodEnd", { mode: "number" }).notNull(),
-        usedAmount: real("usedAmount").notNull().default(0)
-    },
-    (t) => [unique("ai_budget_period_start_uniq").on(t.budgetId, t.periodStart)]
 );
 
 export type Org = InferSelectModel<typeof orgs>;
@@ -1853,7 +1850,6 @@ export type ResourcePolicyRule = InferSelectModel<typeof resourcePolicyRules>;
 export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
 export type AiBudget = InferSelectModel<typeof aiBudgets>;
-export type AiBudgetPeriod = InferSelectModel<typeof aiBudgetPeriods>;
 export type ResourceAiProvider = InferSelectModel<typeof resourceAiProviders>;
 export type SiteResourceAiProvider = InferSelectModel<
     typeof siteResourceAiProviders

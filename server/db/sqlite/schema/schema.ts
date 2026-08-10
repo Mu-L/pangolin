@@ -1705,9 +1705,22 @@ export const aiBudgets = sqliteTable(
             () => siteResources.siteResourceId,
             { onDelete: "cascade" }
         ),
+        roleId: integer("roleId").references(() => roles.roleId, {
+            onDelete: "cascade"
+        }),
         amount: real("amount").notNull(),
         unit: text("unit").$type<"usd" | "tokens">().notNull(),
-        period: text("period").$type<"monthly">().notNull().default("monthly"),
+        period: text("period")
+            .$type<
+                | "monthly"
+                | "yearly"
+                | "lifetime"
+                | "daily"
+                | "hourly"
+                | "weekly"
+            >()
+            .notNull()
+            .default("monthly"),
         enforcement: text("enforcement")
             .$type<"hard" | "soft">()
             .notNull()
@@ -1724,20 +1737,6 @@ export const aiBudgets = sqliteTable(
         unique("ai_budget_resource_uniq").on(t.resourceId),
         unique("ai_budget_site_resource_uniq").on(t.siteResourceId)
     ]
-);
-
-export const aiBudgetPeriods = sqliteTable(
-    "aiBudgetPeriods",
-    {
-        periodId: integer("periodId").primaryKey({ autoIncrement: true }),
-        budgetId: integer("budgetId")
-            .notNull()
-            .references(() => aiBudgets.budgetId, { onDelete: "cascade" }),
-        periodStart: integer("periodStart").notNull(),
-        periodEnd: integer("periodEnd").notNull(),
-        usedAmount: real("usedAmount").notNull().default(0)
-    },
-    (t) => [unique("ai_budget_period_start_uniq").on(t.budgetId, t.periodStart)]
 );
 
 export type Org = InferSelectModel<typeof orgs>;
@@ -1825,7 +1824,6 @@ export type UserPolicy = InferSelectModel<typeof userPolicies>;
 export type AiProvider = InferSelectModel<typeof aiProviders>;
 export type AiModel = InferSelectModel<typeof aiModels>;
 export type AiBudget = InferSelectModel<typeof aiBudgets>;
-export type AiBudgetPeriod = InferSelectModel<typeof aiBudgetPeriods>;
 export type ResourceAiProvider = InferSelectModel<typeof resourceAiProviders>;
 export type SiteResourceAiProvider = InferSelectModel<
     typeof siteResourceAiProviders
