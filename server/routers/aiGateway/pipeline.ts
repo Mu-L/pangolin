@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { and, eq, inArray } from "drizzle-orm";
 import {
+    AiBudget,
     AiProvider,
     aiModels,
     aiProviders,
@@ -51,7 +52,11 @@ import {
 } from "@server/lib/aiModelKeyMatch";
 import { aiGatewayUpstreamFetch } from "@server/lib/aiGatewayUpstreamFetch";
 import { getModelPricing, calculateAiCost } from "@server/lib/aiModelPricing";
-import { checkBudgets, recordUsage } from "@server/lib/aiBudgetEnforcement";
+import {
+    applyUsageToBudgetCache,
+    checkBudgets,
+    recordUsage
+} from "@server/lib/aiBudgetEnforcement";
 import {
     extractUsage,
     estimateUsage,
@@ -533,6 +538,7 @@ function logAiUsageAndCost(args: {
     resourceId: number | null;
     siteResourceId: number | null;
     requestUserId: string | null;
+    budgets: AiBudget[];
 }): void {
     const {
         capability,
@@ -545,7 +551,8 @@ function logAiUsageAndCost(args: {
         orgId,
         resourceId,
         siteResourceId,
-        requestUserId
+        requestUserId,
+        budgets
     } = args;
 
     let usage: AiUsage | null = extractUsage(
@@ -588,6 +595,18 @@ function logAiUsageAndCost(args: {
             usage,
             costUsd: cost?.totalCost ?? null
         });
+
+        if (budgets.length > 0) {
+            void applyUsageToBudgetCache(budgets, {
+                usd: cost?.totalCost ?? 0,
+                tokens:
+                    usage.promptTokens +
+                    usage.cacheReadTokens +
+                    usage.cacheWriteTokens +
+                    usage.completionTokens +
+                    usage.reasoningTokens
+            });
+        }
     }
 }
 
@@ -666,6 +685,7 @@ export async function handleAiGatewayProxy(
 
         const { provider } = selection;
 
+        let appliedBudgets: AiBudget[] = [];
         if (orgId) {
             const budgetCheck = await checkBudgets({
                 orgId,
@@ -676,6 +696,7 @@ export async function handleAiGatewayProxy(
                 roleIds: requestUser?.roleIds ?? [],
                 requestUserId: requestUser?.userId ?? null
             });
+            appliedBudgets = budgetCheck.budgets;
 
             if (budgetCheck.blocked) {
                 logger.warn("AI gateway request blocked by budget", {
@@ -876,7 +897,8 @@ export async function handleAiGatewayProxy(
                     orgId,
                     resourceId,
                     siteResourceId,
-                    requestUserId: requestUser?.userId ?? null
+                    requestUserId: requestUser?.userId ?? null,
+                    budgets: appliedBudgets
                 });
             }
             return;
@@ -895,7 +917,8 @@ export async function handleAiGatewayProxy(
             orgId,
             resourceId,
             siteResourceId,
-            requestUserId: requestUser?.userId ?? null
+            requestUserId: requestUser?.userId ?? null,
+            budgets: appliedBudgets
         });
         return res.send(text);
     } catch (error) {

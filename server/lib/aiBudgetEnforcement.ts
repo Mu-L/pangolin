@@ -10,6 +10,7 @@ import {
 } from "@server/db";
 import { modelKeyMatches } from "@server/lib/aiModelKeyMatch";
 import type { AiUsage } from "@server/lib/aiUsageExtraction";
+import { regionalCache as cache } from "#dynamic/lib/cache";
 import logger from "@server/logger";
 
 type BudgetPeriod = AiBudget["period"];
@@ -20,6 +21,39 @@ const PERIOD_DURATIONS_MS: Record<Exclude<BudgetPeriod, "lifetime">, number> = {
     weekly: 7 * 24 * 60 * 60 * 1000,
     monthly: 30 * 24 * 60 * 60 * 1000,
     yearly: 365 * 24 * 60 * 60 * 1000
+};
+
+// Budgets are cheap to be a little stale about (enforcement is already
+// check-then-act, not transactional). Re-derive each budget's usage sum
+// from aiUsageRecords at most this often; in between, completed requests
+// just add their own contribution onto the cached sum instead of
+// re-querying/re-aggregating from scratch.
+const BUDGET_CACHE_REFRESH_MS = 8_000;
+// Redis-level TTL is only a safety net for eviction if a budget stops
+// seeing traffic - the actual staleness check is the computedAt timestamp
+// stored in the cached value, compared against BUDGET_CACHE_REFRESH_MS.
+const BUDGET_CACHE_SAFETY_TTL_SEC = 60;
+
+function applicableBudgetsCacheKey(ctx: BudgetScopeContext): string {
+    const roleKey = [...ctx.roleIds].sort((a, b) => a - b).join(",");
+    return [
+        "aiBudget:applicable",
+        ctx.orgId,
+        ctx.providerId,
+        ctx.requestedModel,
+        ctx.resourceId ?? "",
+        ctx.siteResourceId ?? "",
+        roleKey
+    ].join(":");
+}
+
+function budgetUsageCacheKey(budgetId: number): string {
+    return `aiBudget:usage:${budgetId}`;
+}
+
+type CachedBudgetUsage = {
+    sum: number;
+    computedAt: number;
 };
 
 // Budget periods are trailing windows from "now", not calendar-aligned
@@ -45,9 +79,25 @@ export type BudgetScopeContext = {
  * Every budget that could apply to this request: the provider itself, any
  * model on that provider whose (possibly wildcarded) modelKey matches the
  * requested model, the target resource/site-resource, and any role the
- * requesting user holds in the org.
+ * requesting user holds in the org. Cached for BUDGET_CACHE_REFRESH_MS since
+ * budget/model config changes are rare and a request-scoped org/provider/
+ * model/resource/role combination repeats constantly under real traffic.
  */
 export async function resolveApplicableBudgets(
+    ctx: BudgetScopeContext
+): Promise<AiBudget[]> {
+    const cacheKey = applicableBudgetsCacheKey(ctx);
+    const cached = await cache.get<AiBudget[]>(cacheKey);
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const budgets = await fetchApplicableBudgets(ctx);
+    await cache.set(cacheKey, budgets, BUDGET_CACHE_REFRESH_MS / 1000);
+    return budgets;
+}
+
+async function fetchApplicableBudgets(
     ctx: BudgetScopeContext
 ): Promise<AiBudget[]> {
     const providerModels = await db
@@ -217,6 +267,74 @@ export async function sumUsageForBudget(
     return 0;
 }
 
+/**
+ * Cached wrapper around sumUsageForBudget. Reuses a per-budget cached sum
+ * for up to BUDGET_CACHE_REFRESH_MS, and otherwise falls through to the DB
+ * aggregation and reseeds the cache. Completed requests within that window
+ * top the cached sum up via applyUsageToBudgetCache below rather than
+ * forcing a re-aggregation on every request.
+ */
+async function getBudgetUsage(
+    budget: AiBudget,
+    ctx: BudgetScopeContext,
+    now: number
+): Promise<number> {
+    const cacheKey = budgetUsageCacheKey(budget.budgetId);
+    const cached = await cache.get<CachedBudgetUsage>(cacheKey);
+    if (cached && now - cached.computedAt < BUDGET_CACHE_REFRESH_MS) {
+        return cached.sum;
+    }
+
+    const sum = await sumUsageForBudget(budget, ctx, now);
+    await cache.set(
+        cacheKey,
+        { sum, computedAt: now } satisfies CachedBudgetUsage,
+        BUDGET_CACHE_SAFETY_TTL_SEC
+    );
+    return sum;
+}
+
+/**
+ * Called once a request's actual usage is known, for every budget that was
+ * resolved as applicable to it (i.e. checkBudgets' returned `budgets`).
+ * Adds this request's contribution directly onto each budget's cached sum
+ * so the next request in the same refresh window doesn't need to re-query
+ * or re-aggregate. If there's no warm cache entry, or it's already due for
+ * a refresh, this is a no-op - the next reader re-derives from the DB,
+ * which by then already includes this request's row via recordUsage.
+ */
+export async function applyUsageToBudgetCache(
+    budgets: AiBudget[],
+    usage: { usd: number; tokens: number }
+): Promise<void> {
+    await Promise.all(
+        budgets.map(async (budget) => {
+            const delta = budget.unit === "usd" ? usage.usd : usage.tokens;
+            if (!delta) {
+                return;
+            }
+
+            const cacheKey = budgetUsageCacheKey(budget.budgetId);
+            const cached = await cache.get<CachedBudgetUsage>(cacheKey);
+            if (
+                !cached ||
+                Date.now() - cached.computedAt >= BUDGET_CACHE_REFRESH_MS
+            ) {
+                return;
+            }
+
+            await cache.set(
+                cacheKey,
+                {
+                    sum: cached.sum + delta,
+                    computedAt: cached.computedAt
+                } satisfies CachedBudgetUsage,
+                BUDGET_CACHE_SAFETY_TTL_SEC
+            );
+        })
+    );
+}
+
 // Throttled to one durable event per budget per breach window, so a soft
 // budget being exceeded doesn't write a row on every subsequent request
 // while it stays over.
@@ -265,6 +383,10 @@ async function recordBreachEventIfNew(
 export type BudgetCheckResult = {
     blocked: boolean;
     blockingBudget?: AiBudget;
+    // Every budget resolved as applicable to this request, regardless of
+    // whether it was breached - pass to applyUsageToBudgetCache once this
+    // request's actual usage is known.
+    budgets: AiBudget[];
 };
 
 export async function checkBudgets(
@@ -272,14 +394,14 @@ export async function checkBudgets(
 ): Promise<BudgetCheckResult> {
     const budgets = await resolveApplicableBudgets(ctx);
     if (budgets.length === 0) {
-        return { blocked: false };
+        return { blocked: false, budgets: [] };
     }
 
     const now = Date.now();
     let blockingBudget: AiBudget | undefined;
 
     for (const budget of budgets) {
-        const usage = await sumUsageForBudget(budget, ctx, now);
+        const usage = await getBudgetUsage(budget, ctx, now);
         if (usage < budget.amount) {
             continue;
         }
@@ -292,8 +414,8 @@ export async function checkBudgets(
     }
 
     return blockingBudget
-        ? { blocked: true, blockingBudget }
-        : { blocked: false };
+        ? { blocked: true, blockingBudget, budgets }
+        : { blocked: false, budgets };
 }
 
 export type UsageRecordInput = {

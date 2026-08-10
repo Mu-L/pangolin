@@ -168,5 +168,5 @@ class AdaptiveCache {
 
 // Export singleton instance
 export const cache = new AdaptiveCache();
-export const regionalCache = cache; // Alias for compatability with the private version
+export const regionalCache = cache; // Alias for compatibility with the private version
 export default cache;
