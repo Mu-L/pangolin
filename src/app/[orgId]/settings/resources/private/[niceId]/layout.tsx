@@ -70,6 +70,13 @@ export default async function PrivateResourceLayout(
         }
     ];
 
+    if (siteResource.mode === "inference") {
+        navItems.push({
+            title: t("resourceBudgetSettings"),
+            href: `/{orgId}/settings/resources/private/{niceId}/budget`
+        });
+    }
+
     return (
         <>
             <SettingsSectionTitle

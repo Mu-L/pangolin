@@ -1817,6 +1817,8 @@
     "aiResourceAliasRequired": "Alias is required for inference resources",
     "aiResourceDomainConfiguration": "Domain configuration",
     "aiResourceDomainConfigurationDescription": "Choose the domain clients will use to reach this inference resource.",
+    "resourceBudgetSettings": "Budget",
+    "resourceBudgetSettingsDescription": "Configure how this inference resource restricts usage based on spending or token limits",
     "sidebarApiKeys": "API Keys",
     "sidebarProvisioning": "Provisioning",
     "sidebarSettings": "Settings",

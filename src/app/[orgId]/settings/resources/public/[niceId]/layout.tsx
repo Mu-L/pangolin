@@ -113,6 +113,13 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
         }
     }
 
+    if (resource.mode === "inference") {
+        navItems.push({
+            title: t("resourceBudgetSettings"),
+            href: `/{orgId}/settings/resources/public/{niceId}/budget`
+        });
+    }
+
     return (
         <>
             <SettingsSectionTitle
