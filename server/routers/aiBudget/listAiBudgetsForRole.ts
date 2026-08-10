@@ -51,7 +51,7 @@ export async function listAiBudgetsForRole(
             .select()
             .from(aiBudgets)
             .where(eq(aiBudgets.roleId, roleId))
-            .orderBy(asc(aiBudgets.unit), asc(aiBudgets.period));
+            .orderBy(asc(aiBudgets.budgetId));
 
         return response<ListAiBudgetsByScopeResponse>(res, {
             data: { budgets },
