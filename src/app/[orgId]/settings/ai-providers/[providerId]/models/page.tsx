@@ -10,7 +10,11 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
-import { TagInput, type Tag } from "@app/components/tags/tag-input";
+import {
+    AiProviderModelListEditor,
+    type AiProviderModelListItem,
+    type ModelListType
+} from "@app/components/AiProviderModelListEditor";
 import { Button } from "@app/components/ui/button";
 import { Label } from "@app/components/ui/label";
 import { useAiProviderContext } from "@app/hooks/useAiProviderContext";
@@ -22,7 +26,22 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
-type ModelListType = "allow" | "block";
+function toListItem(
+    model: {
+        modelId: number;
+        modelKey: string;
+        listType?: ModelListType | null;
+    },
+    listType: ModelListType
+): AiProviderModelListItem {
+    return {
+        clientId: String(model.modelId),
+        modelId: model.modelId,
+        modelKey: model.modelKey,
+        listType,
+        hasBudget: false
+    };
+}
 
 export default function AiProviderModelsPage() {
     const { provider } = useAiProviderContext();
@@ -31,14 +50,8 @@ export default function AiProviderModelsPage() {
     const queryClient = useQueryClient();
     const t = useTranslations();
     const [saveLoading, setSaveLoading] = useState(false);
-    const [allowTags, setAllowTags] = useState<Tag[]>([]);
-    const [blockTags, setBlockTags] = useState<Tag[]>([]);
-    const [activeAllowTagIndex, setActiveAllowTagIndex] = useState<
-        number | null
-    >(null);
-    const [activeBlockTagIndex, setActiveBlockTagIndex] = useState<
-        number | null
-    >(null);
+    const [allowItems, setAllowItems] = useState<AiProviderModelListItem[]>([]);
+    const [blockItems, setBlockItems] = useState<AiProviderModelListItem[]>([]);
 
     const modelsQuery = useQuery(
         aiProviderQueries.providerModels({ providerId: provider.providerId })
@@ -47,32 +60,31 @@ export default function AiProviderModelsPage() {
         aiProviderQueries.catalogModels({ providerId: provider.providerId })
     );
 
-    const catalogTags = useMemo(
-        () =>
-            (catalogQuery.data ?? []).map((entry) => ({
-                id: entry.model,
-                text: entry.model
-            })),
+    const catalogModels = useMemo(
+        () => (catalogQuery.data ?? []).map((entry) => entry.model),
         [catalogQuery.data]
+    );
+
+    const allowExcludeKeys = useMemo(
+        () => new Set(blockItems.map((item) => item.modelKey)),
+        [blockItems]
+    );
+    const blockExcludeKeys = useMemo(
+        () => new Set(allowItems.map((item) => item.modelKey)),
+        [allowItems]
     );
 
     useEffect(() => {
         if (!modelsQuery.data) return;
-        setAllowTags(
+        setAllowItems(
             modelsQuery.data
                 .filter((model) => (model.listType ?? "allow") === "allow")
-                .map((model) => ({
-                    id: String(model.modelId),
-                    text: model.modelKey
-                }))
+                .map((model) => toListItem(model, "allow"))
         );
-        setBlockTags(
+        setBlockItems(
             modelsQuery.data
                 .filter((model) => model.listType === "block")
-                .map((model) => ({
-                    id: String(model.modelId),
-                    text: model.modelKey
-                }))
+                .map((model) => toListItem(model, "block"))
         );
     }, [modelsQuery.data]);
 
@@ -80,15 +92,23 @@ export default function AiProviderModelsPage() {
         setSaveLoading(true);
         try {
             const existing = modelsQuery.data ?? [];
+            const existingById = new Map(
+                existing.map((model) => [model.modelId, model])
+            );
             const existingByKey = new Map(
                 existing.map((model) => [model.modelKey, model])
             );
 
+            const desiredItems = [...allowItems, ...blockItems].map((item) => ({
+                ...item,
+                modelKey: item.modelKey.trim()
+            }));
+
             const nextAllow = new Set(
-                allowTags.map((tag) => tag.text.trim()).filter(Boolean)
+                allowItems.map((item) => item.modelKey.trim()).filter(Boolean)
             );
             const nextBlock = new Set(
-                blockTags.map((tag) => tag.text.trim()).filter(Boolean)
+                blockItems.map((item) => item.modelKey.trim()).filter(Boolean)
             );
 
             const overlap = [...nextAllow].filter((key) => nextBlock.has(key));
@@ -103,41 +123,58 @@ export default function AiProviderModelsPage() {
                 return;
             }
 
-            const desired = new Map<string, ModelListType>();
-            for (const key of nextAllow) {
-                desired.set(key, "allow");
-            }
-            for (const key of nextBlock) {
-                desired.set(key, "block");
-            }
-
             const toCreate: { modelKey: string; listType: ModelListType }[] =
                 [];
             const toUpdate: {
                 modelId: number;
+                modelKey: string;
                 listType: ModelListType;
             }[] = [];
-            const toDelete: number[] = [];
+            const retainedIds = new Set<number>();
 
-            for (const [modelKey, listType] of desired) {
-                const existingModel = existingByKey.get(modelKey);
-                if (!existingModel) {
-                    toCreate.push({ modelKey, listType });
+            for (const item of desiredItems) {
+                const listType = item.listType;
+                const modelKey = item.modelKey;
+                if (!modelKey) continue;
+
+                if (item.modelId != null && existingById.has(item.modelId)) {
+                    retainedIds.add(item.modelId);
+                    const existingModel = existingById.get(item.modelId)!;
+                    if (
+                        existingModel.modelKey !== modelKey ||
+                        (existingModel.listType ?? "allow") !== listType
+                    ) {
+                        toUpdate.push({
+                            modelId: item.modelId,
+                            modelKey,
+                            listType
+                        });
+                    }
                     continue;
                 }
-                if ((existingModel.listType ?? "allow") !== listType) {
-                    toUpdate.push({
-                        modelId: existingModel.modelId,
-                        listType
-                    });
+
+                const existingBySameKey = existingByKey.get(modelKey);
+                if (
+                    existingBySameKey &&
+                    !retainedIds.has(existingBySameKey.modelId)
+                ) {
+                    retainedIds.add(existingBySameKey.modelId);
+                    if ((existingBySameKey.listType ?? "allow") !== listType) {
+                        toUpdate.push({
+                            modelId: existingBySameKey.modelId,
+                            modelKey,
+                            listType
+                        });
+                    }
+                    continue;
                 }
+
+                toCreate.push({ modelKey, listType });
             }
 
-            for (const model of existing) {
-                if (!desired.has(model.modelKey)) {
-                    toDelete.push(model.modelId);
-                }
-            }
+            const toDelete = existing
+                .filter((model) => !retainedIds.has(model.modelId))
+                .map((model) => model.modelId);
 
             await Promise.all([
                 ...toCreate.map(({ modelKey, listType }) =>
@@ -147,8 +184,12 @@ export default function AiProviderModelsPage() {
                         listType
                     })
                 ),
-                ...toUpdate.map(({ modelId, listType }) =>
-                    api.post(`/ai-model/${modelId}`, { listType })
+                ...toUpdate.map(({ modelId, modelKey, listType }) =>
+                    api.post(`/ai-model/${modelId}`, {
+                        modelKey,
+                        name: modelKey,
+                        listType
+                    })
                 ),
                 ...toDelete.map((modelId) => api.delete(`/ai-model/${modelId}`))
             ]);
@@ -177,8 +218,6 @@ export default function AiProviderModelsPage() {
         }
     }
 
-    const inputsDisabled = modelsQuery.isLoading || saveLoading;
-
     return (
         <SettingsContainer>
             <SettingsSection>
@@ -192,30 +231,20 @@ export default function AiProviderModelsPage() {
                 </SettingsSectionHeader>
 
                 <SettingsSectionBody>
-                    <SettingsSectionForm variant="half">
+                    <SettingsSectionForm>
                         <div className="space-y-2">
                             <Label>{t("aiProviderModelsAllow")}</Label>
-                            <TagInput
-                                activeTagIndex={activeAllowTagIndex}
-                                setActiveTagIndex={setActiveAllowTagIndex}
-                                placeholder={t(
+                            <AiProviderModelListEditor
+                                listType="allow"
+                                items={allowItems}
+                                onChange={setAllowItems}
+                                catalogModels={catalogModels}
+                                excludeKeys={allowExcludeKeys}
+                                disabled={modelsQuery.isLoading}
+                                emptyMessage={t("aiProviderModelsAllowEmpty")}
+                                addPlaceholder={t(
                                     "aiProviderModelsAllowPlaceholder"
                                 )}
-                                size="sm"
-                                tags={allowTags}
-                                setTags={(newTags) => {
-                                    const next =
-                                        typeof newTags === "function"
-                                            ? newTags(allowTags)
-                                            : newTags;
-                                    setAllowTags(next as Tag[]);
-                                }}
-                                enableAutocomplete={catalogTags.length > 0}
-                                autocompleteOptions={catalogTags}
-                                allowDuplicates={false}
-                                sortTags
-                                delimiterList={[",", "Enter"]}
-                                disabled={inputsDisabled}
                             />
                             <p className="text-sm text-muted-foreground">
                                 {t("aiProviderModelsAllowDescription")}
@@ -224,27 +253,17 @@ export default function AiProviderModelsPage() {
 
                         <div className="space-y-2">
                             <Label>{t("aiProviderModelsBlock")}</Label>
-                            <TagInput
-                                activeTagIndex={activeBlockTagIndex}
-                                setActiveTagIndex={setActiveBlockTagIndex}
-                                placeholder={t(
+                            <AiProviderModelListEditor
+                                listType="block"
+                                items={blockItems}
+                                onChange={setBlockItems}
+                                catalogModels={catalogModels}
+                                excludeKeys={blockExcludeKeys}
+                                disabled={modelsQuery.isLoading}
+                                emptyMessage={t("aiProviderModelsBlockEmpty")}
+                                addPlaceholder={t(
                                     "aiProviderModelsBlockPlaceholder"
                                 )}
-                                size="sm"
-                                tags={blockTags}
-                                setTags={(newTags) => {
-                                    const next =
-                                        typeof newTags === "function"
-                                            ? newTags(blockTags)
-                                            : newTags;
-                                    setBlockTags(next as Tag[]);
-                                }}
-                                enableAutocomplete={catalogTags.length > 0}
-                                autocompleteOptions={catalogTags}
-                                allowDuplicates={false}
-                                sortTags
-                                delimiterList={[",", "Enter"]}
-                                disabled={inputsDisabled}
                             />
                             <p className="text-sm text-muted-foreground">
                                 {t("aiProviderModelsBlockDescription")}
