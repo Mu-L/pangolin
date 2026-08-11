@@ -1,11 +1,15 @@
+import { db, userOrgRoles, users } from "@server/db";
 import logger from "@server/logger";
 import type {
     EmailAlertAction,
-    TestAlertContext
+    TestAlertContext,
+    WebhookAlertConfig
 } from "@server/routers/alertRule/types";
+import { eq, inArray } from "drizzle-orm";
 import { sendAlertEmail } from "./sendAlertEmail";
-import type { db, alertEmailRecipients, users, userOrgRoles } from "@server/db";
-import type { eq } from "drizzle-orm";
+import { decrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
+import { sendAlertWebhook } from "./sendAlertWebhook";
 
 export async function processTestAlerts(context: TestAlertContext) {
     const emailActions = context.actions.filter(
@@ -19,7 +23,38 @@ export async function processTestAlerts(context: TestAlertContext) {
                 await sendAlertEmail(recipients, context);
             }
         } catch (err) {
-            logger.error(`processAlerts: failed to send alert email`, err);
+            logger.error(`processTestAlerts: failed to send alert email`, err);
+        }
+    }
+
+    const webhookActions = context.actions.filter(
+        (action) => action.type === "webhook"
+    );
+    const serverSecret = config.getRawConfig().server.secret!;
+
+    for (const action of webhookActions) {
+        try {
+            let webhookConfig: WebhookAlertConfig = { authType: "none" };
+
+            if (action.config) {
+                try {
+                    const decrypted = decrypt(action.config, serverSecret);
+                    webhookConfig = JSON.parse(decrypted) as WebhookAlertConfig;
+                } catch (err) {
+                    logger.error(
+                        `processTestAlerts: failed to decrypt webhook`,
+                        err
+                    );
+                    continue;
+                }
+            }
+
+            await sendAlertWebhook(action.webhookUrl, webhookConfig, context);
+        } catch (err) {
+            logger.error(
+                `processTestAlerts: failed to send alert webhook `,
+                err
+            );
         }
     }
 }
@@ -35,39 +70,31 @@ export async function processTestAlerts(context: TestAlertContext) {
 async function resolveEmailRecipients(
     action: EmailAlertAction
 ): Promise<string[]> {
-    const emailSet = new Set<string>();
+    const emailList: string[] = [];
 
-    // for (const row of rows) {
-    //     if (row.email) {
-    //         emailSet.add(row.email);
-    //     }
+    emailList.push(...(action.emails ?? []));
 
-    //     if (row.userId) {
-    //         const [user] = await db
-    //             .select({ email: users.email })
-    //             .from(users)
-    //             .where(eq(users.userId, row.userId))
-    //             .limit(1);
-    //         if (user?.email) {
-    //             emailSet.add(user.email);
-    //         }
-    //     }
+    if (action.userIds && action.userIds?.length > 0) {
+        const userList = await db
+            .select({ email: users.email })
+            .from(users)
+            .where(inArray(users.userId, action.userIds));
 
-    //     if (row.roleId) {
-    //         // Find all users with this role via userOrgRoles
-    //         const roleUsers = await db
-    //             .select({ email: users.email })
-    //             .from(userOrgRoles)
-    //             .innerJoin(users, eq(userOrgRoles.userId, users.userId))
-    //             .where(eq(userOrgRoles.roleId, Number(row.roleId)));
+        emailList.push(
+            ...userList.filter((u) => u.email !== null).map((u) => u.email!)
+        );
+    }
+    if (action.roleIds && action.roleIds?.length > 0) {
+        const userList = await db
+            .select({ email: users.email })
+            .from(userOrgRoles)
+            .innerJoin(users, eq(userOrgRoles.userId, users.userId))
+            .where(inArray(userOrgRoles.roleId, action.roleIds.map(Number)));
 
-    //         for (const u of roleUsers) {
-    //             if (u.email) {
-    //                 emailSet.add(u.email);
-    //             }
-    //         }
-    //     }
-    // }
+        emailList.push(
+            ...userList.filter((u) => u.email !== null).map((u) => u.email!)
+        );
+    }
 
-    return Array.from(emailSet);
+    return [...new Set(emailList)];
 }
