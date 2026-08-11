@@ -49,7 +49,10 @@ function scanNumericFields(
     return out;
 }
 
-function sseDataFrames(text: string): string[] {
+// Exported for reuse by server/lib/aiMessageNormalization.ts, which needs
+// the same SSE-frame/JSON-parsing groundwork to extract message content
+// instead of usage numbers.
+export function sseDataFrames(text: string): string[] {
     const frames: string[] = [];
     for (const rawFrame of text.split(/\r?\n\r?\n/)) {
         for (const line of rawFrame.split(/\r?\n/)) {
@@ -63,7 +66,7 @@ function sseDataFrames(text: string): string[] {
     return frames;
 }
 
-function tryParseJson(text: string): any | null {
+export function tryParseJson(text: string): any | null {
     try {
         return JSON.parse(text);
     } catch {
@@ -115,7 +118,10 @@ function extractOpenAiResponses(
     if (isStream) {
         for (const frame of sseDataFrames(text)) {
             const parsed = tryParseJson(frame);
-            if (parsed?.type === "response.completed" && parsed?.response?.usage) {
+            if (
+                parsed?.type === "response.completed" &&
+                parsed?.response?.usage
+            ) {
                 usage = parsed.response.usage;
             } else if (parsed?.usage) {
                 usage = parsed.usage;
@@ -244,7 +250,10 @@ function extractBedrockConverse(
     if (usage) {
         const cacheReadTokens = usage.cacheReadInputTokens ?? 0;
         return {
-            promptTokens: Math.max(0, (usage.inputTokens ?? 0) - cacheReadTokens),
+            promptTokens: Math.max(
+                0,
+                (usage.inputTokens ?? 0) - cacheReadTokens
+            ),
             cacheReadTokens,
             cacheWriteTokens: usage.cacheWriteInputTokens ?? 0,
             completionTokens: usage.outputTokens ?? 0,
@@ -437,7 +446,12 @@ export function stripInjectedUsageFrame(sseText: string): string {
         if (dataLine) {
             const data = dataLine.slice("data:".length).trim();
             const parsed = data !== "[DONE]" ? tryParseJson(data) : null;
-            if (parsed && Array.isArray(parsed.choices) && parsed.choices.length === 0 && parsed.usage) {
+            if (
+                parsed &&
+                Array.isArray(parsed.choices) &&
+                parsed.choices.length === 0 &&
+                parsed.usage
+            ) {
                 continue;
             }
         }

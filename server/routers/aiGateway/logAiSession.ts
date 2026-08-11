@@ -7,6 +7,10 @@ import cache from "#dynamic/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 import { sanitizeString } from "@server/lib/sanitize";
 import type { AiCapability } from "@server/lib/aiCapabilities";
+import {
+    normalizeAiRequest,
+    normalizeAiResponse
+} from "@server/lib/aiMessageNormalization";
 
 // Caps how much of the request/response body we keep per row, so a single
 // huge multimodal payload can't blow up buffer memory or storage.
@@ -197,6 +201,26 @@ export function logAiSession(data: {
             );
             const responseBodyText = truncateBody(data.responseText ?? "");
 
+            // Uniform, capability-agnostic transcript for search/display -
+            // computed from the untruncated originals so normalization sees
+            // the full content; the normalized result gets its own
+            // (typically much smaller) truncation pass below.
+            const normalizedRequestMessages = normalizeAiRequest(
+                data.capability,
+                data.requestBody
+            );
+            const normalizedResponseMessages = normalizeAiResponse(
+                data.capability,
+                data.responseText ?? "",
+                data.isStream
+            );
+            const normalizedRequestText = normalizedRequestMessages
+                ? truncateBody(JSON.stringify(normalizedRequestMessages))
+                : null;
+            const normalizedResponseText = normalizedResponseMessages
+                ? truncateBody(JSON.stringify(normalizedResponseMessages))
+                : null;
+
             // Prevent unbounded buffer growth - drop oldest entries if buffer is too large
             if (sessionLogBuffer.length >= MAX_BUFFER_SIZE) {
                 const dropped = sessionLogBuffer.splice(0, BATCH_SIZE);
@@ -217,8 +241,17 @@ export function logAiSession(data: {
                 isStream: data.isStream,
                 requestBody: sanitizeString(requestBodyText.value),
                 responseBody: sanitizeString(responseBodyText.value),
+                normalizedRequest: normalizedRequestText
+                    ? sanitizeString(normalizedRequestText.value)
+                    : undefined,
+                normalizedResponse: normalizedResponseText
+                    ? sanitizeString(normalizedResponseText.value)
+                    : undefined,
                 truncated:
-                    requestBodyText.truncated || responseBodyText.truncated,
+                    requestBodyText.truncated ||
+                    responseBodyText.truncated ||
+                    (normalizedRequestText?.truncated ?? false) ||
+                    (normalizedResponseText?.truncated ?? false),
                 statusCode: data.statusCode,
                 createdAt: Date.now()
             });

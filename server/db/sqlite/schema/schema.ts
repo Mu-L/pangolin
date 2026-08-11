@@ -68,7 +68,7 @@ export const orgs = sqliteTable("orgs", {
         "settingsLogRetentionDaysAISessions"
     ) // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
-        .default(0),
+        .default(7),
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
     sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
     isBillingOrg: integer("isBillingOrg", { mode: "boolean" }),
@@ -1928,8 +1928,15 @@ export const aiSessionLog = sqliteTable(
             .default(false),
         requestBody: text("requestBody"),
         responseBody: text("responseBody"),
-        // True if requestBody/responseBody were cut short at
-        // AI_SESSION_LOG_MAX_BODY_CHARS before storage.
+        // Capability-agnostic message transcript (JSON-encoded
+        // NormalizedAiMessage[] from server/lib/aiMessageNormalization.ts),
+        // computed at write time so search/display never need per-capability
+        // parsing logic. Null when normalization couldn't recognize the
+        // shape - callers fall back to requestBody/responseBody.
+        normalizedRequest: text("normalizedRequest"),
+        normalizedResponse: text("normalizedResponse"),
+        // True if any of the request/response (raw or normalized) fields
+        // were cut short at AI_SESSION_LOG_MAX_BODY_CHARS before storage.
         truncated: integer("truncated", { mode: "boolean" })
             .notNull()
             .default(false),
