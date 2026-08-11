@@ -391,7 +391,7 @@ export default function CreateVirtualApiKeyForm({
                         )}
                         {credential && (
                             <div className="space-y-4">
-                                <p>{t("virtualApiKeysSeeOnce")}</p>
+                                <p>{t("virtualApiKeysCopyKey")}</p>
                                 <CopyTextBox
                                     text={credential}
                                     wrapText={false}

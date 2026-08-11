@@ -35,6 +35,7 @@ import CreateVirtualApiKeyForm, {
 } from "@app/components/CreateVirtualApiKeyForm";
 import EditVirtualApiKeyForm from "@app/components/EditVirtualApiKeyForm";
 import ViewVirtualApiKeySecret from "@app/components/ViewVirtualApiKeySecret";
+import CopyToClipboard from "@app/components/CopyToClipboard";
 import { useTranslations } from "next-intl";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { UserSelector, type SelectedUser } from "@app/components/user-selector";
@@ -44,6 +45,8 @@ import {
 } from "@app/components/resource-selector";
 import { cn } from "@app/lib/cn";
 import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
+import type { GetVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
+import { AxiosResponse } from "axios";
 
 export type VirtualApiKeyRow = CreatedVirtualApiKey;
 
@@ -344,8 +347,12 @@ export default function VirtualApiKeysTable({
                     </Button>
                 );
             },
-            cell: ({ row }) =>
-                `vk-${row.original.virtualApiKeyId}.••••${row.original.lastChars}`
+            cell: ({ row }) => (
+                <VirtualApiKeySecretCell
+                    virtualApiKeyId={row.original.virtualApiKeyId}
+                    lastChars={row.original.lastChars}
+                />
+            )
         },
         {
             accessorKey: "createdAt",
@@ -396,7 +403,7 @@ export default function VirtualApiKeysTable({
             cell: ({ row }) => {
                 const keyRow = row.original;
                 return (
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-end gap-2">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -512,5 +519,56 @@ export default function VirtualApiKeysTable({
                 isRefreshing={isRefreshing}
             />
         </>
+    );
+}
+
+function VirtualApiKeySecretCell({
+    virtualApiKeyId,
+    lastChars
+}: {
+    virtualApiKeyId: string;
+    lastChars: string;
+}) {
+    const t = useTranslations();
+    const api = createApiClient(useEnvContext());
+    const preview = `vk-${virtualApiKeyId}••••${lastChars}`;
+    const [credential, setCredential] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        api.get<AxiosResponse<GetVirtualApiKeyResponse>>(
+            `/virtual-api-key/${virtualApiKeyId}`
+        )
+            .then((res) => {
+                if (cancelled) {
+                    return;
+                }
+                const secret = res.data.data.virtualApiKey.secret;
+                if (secret) {
+                    setCredential(`vk-${virtualApiKeyId}.${secret}`);
+                }
+            })
+            .catch((e) => {
+                if (cancelled) {
+                    return;
+                }
+                toast({
+                    variant: "destructive",
+                    title: t("virtualApiKeysErrorFetchSecret"),
+                    description: formatAxiosError(
+                        e,
+                        t("virtualApiKeysErrorFetchSecretDescription")
+                    )
+                });
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [virtualApiKeyId]);
+
+    return (
+        <CopyToClipboard text={credential ?? preview} displayText={preview} />
     );
 }

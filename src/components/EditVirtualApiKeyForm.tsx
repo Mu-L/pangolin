@@ -7,9 +7,9 @@ import {
     FormDescription,
     FormField,
     FormItem,
-    FormLabel,
     FormMessage
 } from "@app/components/ui/form";
+import { Label } from "@app/components/ui/label";
 import { toast } from "@app/hooks/useToast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosResponse } from "axios";
@@ -46,7 +46,9 @@ import {
 } from "@app/components/multi-resource-selector";
 import type { SelectedResource } from "@app/components/resource-selector";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
+import CopyTextBox from "@app/components/CopyTextBox";
 import type { CreatedVirtualApiKey } from "@app/components/CreateVirtualApiKeyForm";
+import type { GetVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
 
 type FormProps = {
     open: boolean;
@@ -96,6 +98,8 @@ export default function EditVirtualApiKeyForm({
     const [selectedResources, setSelectedResources] = useState<
         SelectedResource[]
     >([]);
+    const [credential, setCredential] = useState<string | null>(null);
+    const [credentialLoading, setCredentialLoading] = useState(false);
 
     const formSchema = z
         .object({
@@ -132,6 +136,55 @@ export default function EditVirtualApiKeyForm({
         form.reset({
             allResources: virtualApiKey.allResources
         });
+
+        let cancelled = false;
+        setCredentialLoading(true);
+        setCredential(null);
+
+        api.get<AxiosResponse<GetVirtualApiKeyResponse>>(
+            `/virtual-api-key/${virtualApiKey.virtualApiKeyId}`
+        )
+            .then((res) => {
+                if (cancelled) {
+                    return;
+                }
+                const secret = res.data.data.virtualApiKey.secret;
+                if (secret) {
+                    setCredential(
+                        `vk-${virtualApiKey.virtualApiKeyId}.${secret}`
+                    );
+                } else {
+                    toast({
+                        variant: "destructive",
+                        title: t("virtualApiKeysErrorFetchSecret"),
+                        description: t(
+                            "virtualApiKeysErrorFetchSecretDescription"
+                        )
+                    });
+                }
+            })
+            .catch((e) => {
+                if (cancelled) {
+                    return;
+                }
+                toast({
+                    variant: "destructive",
+                    title: t("virtualApiKeysErrorFetchSecret"),
+                    description: formatAxiosError(
+                        e,
+                        t("virtualApiKeysErrorFetchSecretDescription")
+                    )
+                });
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setCredentialLoading(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
     }, [open, virtualApiKey, form]);
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -228,11 +281,11 @@ export default function EditVirtualApiKeyForm({
                                 id="edit-virtual-api-key-form"
                             >
                                 <div className="space-y-2">
-                                    <FormLabel>
+                                    <Label>
                                         {t(
                                             "virtualApiKeysAssociateUserOptional"
                                         )}
-                                    </FormLabel>
+                                    </Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button
@@ -316,11 +369,11 @@ export default function EditVirtualApiKeyForm({
 
                                     {!allResources && (
                                         <div className="space-y-2">
-                                            <FormLabel>
+                                            <Label>
                                                 {t(
                                                     "virtualApiKeysSelectResources"
                                                 )}
-                                            </FormLabel>
+                                            </Label>
                                             <Popover>
                                                 <PopoverTrigger asChild>
                                                     <Button
