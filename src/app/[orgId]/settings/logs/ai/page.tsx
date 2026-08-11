@@ -473,18 +473,6 @@ export default function AiSessionLogsPage() {
                         </p>
                     </div>
                     <div>
-                        <strong>{t("tokens")}</strong>
-                        <p className="text-muted-foreground mt-1">
-                            {row.usage
-                                ? `${row.usage.totalTokens.toLocaleString()}${
-                                      row.usage.estimated
-                                          ? ` (${t("estimated")})`
-                                          : ""
-                                  }`
-                                : "N/A"}
-                        </p>
-                    </div>
-                    <div>
                         <strong>{t("cost")}</strong>
                         <p className="text-muted-foreground mt-1">
                             {row.usage && row.usage.costUsd != null
@@ -492,7 +480,62 @@ export default function AiSessionLogsPage() {
                                 : "N/A"}
                         </p>
                     </div>
+                    <div>
+                        <strong>{t("estimated")}</strong>
+                        <p className="text-muted-foreground mt-1">
+                            {row.usage
+                                ? row.usage.estimated
+                                    ? t("yes")
+                                    : t("no")
+                                : "N/A"}
+                        </p>
+                    </div>
                 </div>
+                {row.usage && (
+                    <div>
+                        <div className="text-xs font-medium mb-2">
+                            {t("tokenUsage")}
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 text-xs">
+                            <div>
+                                <strong>{t("promptTokens")}</strong>
+                                <p className="text-muted-foreground mt-1">
+                                    {row.usage.promptTokens.toLocaleString()}
+                                </p>
+                            </div>
+                            <div>
+                                <strong>{t("cacheReadTokens")}</strong>
+                                <p className="text-muted-foreground mt-1">
+                                    {row.usage.cacheReadTokens.toLocaleString()}
+                                </p>
+                            </div>
+                            <div>
+                                <strong>{t("cacheWriteTokens")}</strong>
+                                <p className="text-muted-foreground mt-1">
+                                    {row.usage.cacheWriteTokens.toLocaleString()}
+                                </p>
+                            </div>
+                            <div>
+                                <strong>{t("completionTokens")}</strong>
+                                <p className="text-muted-foreground mt-1">
+                                    {row.usage.completionTokens.toLocaleString()}
+                                </p>
+                            </div>
+                            <div>
+                                <strong>{t("reasoningTokens")}</strong>
+                                <p className="text-muted-foreground mt-1">
+                                    {row.usage.reasoningTokens.toLocaleString()}
+                                </p>
+                            </div>
+                            <div>
+                                <strong>{t("totalTokens")}</strong>
+                                <p className="text-muted-foreground mt-1">
+                                    {row.usage.totalTokens.toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <AiSessionChatView
                     normalizedRequest={row.normalizedRequest}
                     normalizedResponse={row.normalizedResponse}
