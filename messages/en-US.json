@@ -1646,6 +1646,8 @@
     "sidebarAiProviders": "Providers",
     "commandAiProviders": "AI Providers",
     "sidebarVirtualApiKeys": "Virtual API Keys",
+    "sidebarMyApiKeys": "Your API Keys",
+    "sidebarAccount": "Launcher",
     "commandVirtualApiKeys": "Virtual API Keys",
     "virtualApiKeysTitle": "Manage Virtual API Keys",
     "virtualApiKeysDescription": "Create and manage manual API keys for AI Gateway access to public inference resources",

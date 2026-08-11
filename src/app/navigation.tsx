@@ -53,6 +53,11 @@ export const orgLangingNavItems: SidebarNavItem[] = [
         title: "sidebarAccount",
         href: "/{orgId}",
         icon: <LayoutGrid className="size-4 flex-none" />
+    },
+    {
+        title: "sidebarMyApiKeys",
+        href: "/{orgId}/keys",
+        icon: <KeyRound className="size-4 flex-none" />
     }
 ];
 

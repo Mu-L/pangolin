@@ -108,6 +108,7 @@ export default async function ResourceKeysPage(props: ResourceKeysPageProps) {
                     isPrimaryOrg: primaryOrg
                 })}
                 showSidebar={false}
+                launcherMode
                 showViewAsAdmin={isAdminOrOwner}
             >
                 <UserVirtualApiKeys

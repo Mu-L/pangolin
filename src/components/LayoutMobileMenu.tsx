@@ -4,7 +4,7 @@ import type { SidebarNavSection } from "@app/app/navigation";
 import { CommandPaletteTrigger } from "@app/components/command-palette/CommandPaletteTrigger";
 import { OrgSelector } from "@app/components/OrgSelector";
 import ProfileIcon from "@app/components/ProfileIcon";
-import { SidebarNav } from "@app/components/SidebarNav";
+import { SidebarNav, type SidebarNavItem } from "@app/components/SidebarNav";
 import ThemeSwitcher from "@app/components/ThemeSwitcher";
 import { Button } from "@app/components/ui/button";
 import {
@@ -27,6 +27,7 @@ interface LayoutMobileMenuProps {
     orgId?: string;
     orgs?: ListUserOrgsResponse["orgs"];
     navItems: SidebarNavSection[];
+    launcherNavItems?: SidebarNavItem[];
     showSidebar: boolean;
     showTopBar: boolean;
     launcherMode?: boolean;
@@ -37,6 +38,7 @@ export function LayoutMobileMenu({
     orgId,
     orgs,
     navItems,
+    launcherNavItems = [],
     showSidebar,
     showTopBar,
     launcherMode = false,
@@ -95,8 +97,55 @@ export function LayoutMobileMenu({
                                                     />
                                                 </div>
                                             </div>
-                                            {showViewAsAdmin && orgId ? (
-                                                <div className="px-3">
+                                            <div className="px-3">
+                                                {orgId
+                                                    ? launcherNavItems
+                                                          .filter(
+                                                              (item) =>
+                                                                  item.href
+                                                          )
+                                                          .map((item) => {
+                                                              const href =
+                                                                  item.href!.replace(
+                                                                      "{orgId}",
+                                                                      orgId
+                                                                  );
+                                                              return (
+                                                                  <div
+                                                                      key={href}
+                                                                      className="mb-1"
+                                                                  >
+                                                                      <Link
+                                                                          href={
+                                                                              href
+                                                                          }
+                                                                          className={
+                                                                              mobileNavLinkClassName
+                                                                          }
+                                                                          onClick={() =>
+                                                                              setIsMobileMenuOpen(
+                                                                                  false
+                                                                              )
+                                                                          }
+                                                                      >
+                                                                          {item.icon ? (
+                                                                              <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground mr-3">
+                                                                                  {
+                                                                                      item.icon
+                                                                                  }
+                                                                              </span>
+                                                                          ) : null}
+                                                                          <span className="flex-1">
+                                                                              {t(
+                                                                                  item.title
+                                                                              )}
+                                                                          </span>
+                                                                      </Link>
+                                                                  </div>
+                                                              );
+                                                          })
+                                                    : null}
+                                                {showViewAsAdmin && orgId ? (
                                                     <div className="mb-1">
                                                         <Link
                                                             href={`/${orgId}/settings`}
@@ -119,8 +168,8 @@ export function LayoutMobileMenu({
                                                             </span>
                                                         </Link>
                                                     </div>
-                                                </div>
-                                            ) : null}
+                                                ) : null}
+                                            </div>
                                         </>
                                     ) : (
                                         <>

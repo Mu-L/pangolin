@@ -76,6 +76,12 @@ export function useCommandPaletteActions(
             }
         } else if (orgId) {
             actions.push({
+                id: "my-api-keys",
+                label: t("sidebarMyApiKeys"),
+                icon: <KeyRound className="size-4" />,
+                href: `/${orgId}/keys`
+            });
+            actions.push({
                 id: "create-site",
                 label: t("commandPaletteCreateSite"),
                 icon: <Plus className="size-4" />,

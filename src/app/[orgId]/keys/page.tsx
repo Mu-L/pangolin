@@ -104,6 +104,7 @@ export default async function KeysPage(props: KeysPageProps) {
                     isPrimaryOrg: primaryOrg
                 })}
                 showSidebar={false}
+                launcherMode
                 showViewAsAdmin={isAdminOrOwner}
             >
                 <UserVirtualApiKeys orgId={orgId} initialData={keysData} />
