@@ -94,6 +94,53 @@ export type QueryAccessAuditLogResponse = {
     };
 };
 
+export type QueryAiSessionLogResponse = {
+    log: {
+        id: number;
+        sessionId: string;
+        orgId: string | null;
+        providerId: number;
+        providerName: string | null;
+        providerType: string | null;
+        capability: string;
+        resourceId: number | null;
+        siteResourceId: number | null;
+        resourceName: string | null;
+        resourceNiceId: string | null;
+        resourceType: "public" | "site" | null;
+        userId: string | null;
+        userEmail: string | null;
+        requestedModel: string | null;
+        isStream: boolean;
+        requestBody: string | null;
+        responseBody: string | null;
+        normalizedRequest: string | null;
+        normalizedResponse: string | null;
+        truncated: boolean;
+        statusCode: number | null;
+        createdAt: number;
+    }[];
+    pagination: {
+        total: number;
+        limit: number;
+        offset: number;
+    };
+    filterAttributes: {
+        providers: {
+            id: number;
+            name: string | null;
+        }[];
+        resources: {
+            id: number;
+            name: string | null;
+        }[];
+        users: {
+            id: string;
+            email: string | null;
+        }[];
+    };
+};
+
 export type QueryConnectionAuditLogResponse = {
     log: {
         sessionId: string;

@@ -1488,6 +1488,21 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/logs/ai",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.viewLogs),
+    logs.queryAiSessionLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/export",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.exportLogs),
+    logActionAudit(ActionsEnum.exportLogs),
+    logs.exportAiSessionLogs
+);
+
+authenticated.get(
     "/org/:orgId/blueprints",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listBlueprints),

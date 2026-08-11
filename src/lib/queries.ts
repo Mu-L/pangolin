@@ -10,6 +10,7 @@ import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type {
     QueryAccessAuditLogResponse,
     QueryActionAuditLogResponse,
+    QueryAiSessionLogResponse,
     QueryConnectionAuditLogResponse,
     QueryRequestAuditLogResponse
 } from "@server/routers/auditLogs/types";
@@ -1031,6 +1032,32 @@ export const connectionLogsFiltersSchema = z.object({
 
 export type ConnectionLogFilters = z.output<typeof connectionLogsFiltersSchema>;
 
+export const aiSessionLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    providerId: z.string().optional().catch(undefined),
+    capability: z.string().optional().catch(undefined),
+    resourceId: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined),
+    isStream: z.string().optional().catch(undefined)
+});
+
+export type AiSessionLogFilters = z.output<typeof aiSessionLogsFiltersSchema>;
+
 export const logQueries = {
     requestAnalytics: ({
         orgId,
@@ -1165,6 +1192,37 @@ export const logQueries = {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryConnectionAuditLogResponse>
                 >(`/org/${orgId}/logs/connection`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    aiSessions: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: AiSessionLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["AI_SESSION_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAiSessionLogResponse>
+                >(`/org/${orgId}/logs/ai`, {
                     params: {
                         ...rest,
                         limit: pageSize,

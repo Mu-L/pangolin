@@ -3,6 +3,7 @@ import { Env } from "@app/lib/types/env";
 import { build } from "@server/build";
 import {
     BellRing,
+    Bot,
     Boxes,
     Building2,
     Cable,
@@ -226,6 +227,11 @@ export const orgNavSections = (
                         icon: (
                             <SquareMousePointer className="size-4 flex-none" />
                         )
+                    },
+                    {
+                        title: "sidebarLogsAi",
+                        href: "/{orgId}/settings/logs/ai",
+                        icon: <Bot className="size-4 flex-none" />
                     },
                     ...(!env?.flags.disableEnterpriseFeatures
                         ? [
@@ -520,6 +526,11 @@ export const commandBarNavSections = (
                 title: "commandLogsRequest",
                 href: "/{orgId}/settings/logs/request",
                 icon: <SquareMousePointer className="size-4 flex-none" />
+            },
+            {
+                title: "commandLogsAi",
+                href: "/{orgId}/settings/logs/ai",
+                icon: <Bot className="size-4 flex-none" />
             },
             ...(!env?.flags.disableEnterpriseFeatures
                 ? [
