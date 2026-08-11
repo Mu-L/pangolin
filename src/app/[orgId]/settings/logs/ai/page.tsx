@@ -50,12 +50,14 @@ export default function AiSessionLogsPage() {
         capability?: string;
         resourceId?: string;
         actor?: string;
+        model?: string;
         isStream?: string;
     }>({
         providerId: searchParams.get("providerId") || undefined,
         capability: searchParams.get("capability") || undefined,
         resourceId: searchParams.get("resourceId") || undefined,
         actor: searchParams.get("actor") || undefined,
+        model: searchParams.get("model") || undefined,
         isStream: searchParams.get("isStream") || undefined
     });
 
@@ -132,7 +134,8 @@ export default function AiSessionLogsPage() {
     const filterAttributes = data?.filterAttributes ?? {
         providers: [],
         resources: [],
-        users: []
+        users: [],
+        models: []
     };
 
     const handleDateRangeChange = (
@@ -309,15 +312,27 @@ export default function AiSessionLogsPage() {
         },
         {
             accessorKey: "requestedModel",
-            header: ({ column }) => (
-                <span className="px-2">{t("model")}</span>
-            ),
-            cell: ({ row }) => {
+            header: ({ column }) => {
                 return (
-                    <span className="text-xs text-muted-foreground">
-                        {row.original.requestedModel || "-"}
-                    </span>
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
+                            options={filterAttributes.models.map((model) => ({
+                                value: model,
+                                label: model
+                            }))}
+                            selectedValue={filters.model}
+                            onValueChange={(value) =>
+                                handleFilterChange("model", value)
+                            }
+                            label={t("model")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
+                        />
+                    </div>
                 );
+            },
+            cell: ({ row }) => {
+                return <span>{row.original.requestedModel || "-"}</span>;
             }
         },
         {
@@ -444,7 +459,7 @@ export default function AiSessionLogsPage() {
     const renderExpandedRow = (row: any) => {
         return (
             <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                <div className="grid grid-cols-2 gap-4 text-xs">
                     <div>
                         <strong>{t("aiSessionId")}</strong>
                         <p className="text-muted-foreground mt-1 break-all">
@@ -455,18 +470,6 @@ export default function AiSessionLogsPage() {
                         <strong>{t("statusCode")}</strong>
                         <p className="text-muted-foreground mt-1">
                             {row.statusCode ?? "N/A"}
-                        </p>
-                    </div>
-                    <div>
-                        <strong>{t("model")}</strong>
-                        <p className="text-muted-foreground mt-1 break-all">
-                            {row.requestedModel || "N/A"}
-                        </p>
-                    </div>
-                    <div>
-                        <strong>{t("capability")}</strong>
-                        <p className="text-muted-foreground mt-1 break-all">
-                            {capabilityLabels[row.capability] || row.capability}
                         </p>
                     </div>
                 </div>

@@ -138,6 +138,7 @@ export type QueryAiSessionLogResponse = {
             id: string;
             email: string | null;
         }[];
+        models: string[];
     };
 };
 

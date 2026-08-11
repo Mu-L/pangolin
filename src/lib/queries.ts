@@ -1053,6 +1053,7 @@ export const aiSessionLogsFiltersSchema = z.object({
     capability: z.string().optional().catch(undefined),
     resourceId: z.string().optional().catch(undefined),
     actor: z.string().optional().catch(undefined),
+    model: z.string().optional().catch(undefined),
     isStream: z.string().optional().catch(undefined)
 });
 

@@ -66,6 +66,7 @@ export const queryAiSessionLogsQuery = z.strictObject({
         .pipe(z.int().positive())
         .optional(),
     actor: z.string().optional(),
+    model: z.string().optional(),
     isStream: z
         .union([z.boolean(), z.string()])
         .transform((val) => (typeof val === "string" ? val === "true" : val))
@@ -123,6 +124,9 @@ function getWhere(data: Q) {
               )
             : undefined,
         data.actor ? eq(aiSessionLog.userId, data.actor) : undefined,
+        data.model
+            ? eq(aiSessionLog.requestedModel, data.model)
+            : undefined,
         data.isStream !== undefined
             ? eq(aiSessionLog.isStream, data.isStream)
             : undefined
@@ -333,7 +337,8 @@ async function queryUniqueFilterAttributes(
         uniqueProviders,
         uniqueUsers,
         uniqueResources,
-        uniqueSiteResources
+        uniqueSiteResources,
+        uniqueModels
     ] = await Promise.all([
         logsDb
             .selectDistinct({ id: aiSessionLog.providerId })
@@ -354,8 +359,17 @@ async function queryUniqueFilterAttributes(
             .selectDistinct({ id: aiSessionLog.siteResourceId })
             .from(aiSessionLog)
             .where(and(baseConditions, isNull(aiSessionLog.resourceId)))
+            .limit(DISTINCT_LIMIT + 1),
+        logsDb
+            .selectDistinct({ model: aiSessionLog.requestedModel })
+            .from(aiSessionLog)
+            .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1)
     ]);
+
+    const models = uniqueModels
+        .map((row) => row.model)
+        .filter((model): model is string => model !== null);
 
     const providerIds = uniqueProviders
         .map((row) => row.id)
@@ -440,7 +454,8 @@ async function queryUniqueFilterAttributes(
     return {
         providers: sortNamedFilterOptions(providers),
         resources: sortNamedFilterOptions(resourcesWithNames),
-        users: userList
+        users: userList,
+        models: models.sort()
     };
 }
 

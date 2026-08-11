@@ -1,8 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Bot, Terminal, User as UserIcon, Wrench } from "lucide-react";
+import {
+    AlertTriangle,
+    Bot,
+    Code,
+    MessagesSquare,
+    Terminal,
+    User as UserIcon,
+    Wrench
+} from "lucide-react";
+import { Button } from "@app/components/ui/button";
 import type { NormalizedAiMessage } from "@server/lib/aiMessageNormalization";
 
 type AiSessionChatViewProps = {
@@ -95,14 +104,14 @@ function RawFallbackBlock({
     label: string;
     raw: string | null;
     noDataLabel: string;
-    unparsedLabel: string;
+    unparsedLabel?: string;
 }) {
     const pretty = prettyRaw(raw);
     return (
         <div className="rounded-md border bg-muted/30 p-3">
             <div className="mb-1 text-xs font-medium text-muted-foreground">
                 {label}
-                {pretty && (
+                {pretty && unparsedLabel && (
                     <span className="ml-2 font-normal italic opacity-70">
                         {unparsedLabel}
                     </span>
@@ -123,6 +132,7 @@ export function AiSessionChatView({
     truncated
 }: AiSessionChatViewProps) {
     const t = useTranslations();
+    const [rawMode, setRawMode] = useState(false);
 
     const requestMessages = useMemo(
         () => parseMessages(normalizedRequest),
@@ -139,38 +149,69 @@ export function AiSessionChatView({
 
     return (
         <div className="space-y-2">
-            {truncated && (
-                <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-500">
-                    <AlertTriangle className="h-3.5 w-3.5 flex-none" />
-                    {t("aiSessionLogTruncated")}
-                </div>
-            )}
-            <div className="flex max-h-[32rem] flex-col gap-3 overflow-y-auto rounded-md border bg-background p-4">
-                {hasRequestMessages ? (
-                    requestMessages!.map((message, i) => (
-                        <MessageBubble key={`req-${i}`} message={message} />
-                    ))
+            <div className="flex items-center justify-between gap-2">
+                {truncated ? (
+                    <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-500">
+                        <AlertTriangle className="h-3.5 w-3.5 flex-none" />
+                        {t("aiSessionLogTruncated")}
+                    </div>
                 ) : (
+                    <div />
+                )}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRawMode((prev) => !prev)}
+                >
+                    {rawMode ? (
+                        <MessagesSquare className="mr-2 h-3.5 w-3.5" />
+                    ) : (
+                        <Code className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    {rawMode ? t("aiSessionViewChat") : t("aiSessionViewRaw")}
+                </Button>
+            </div>
+            {rawMode ? (
+                <div className="flex max-h-[32rem] flex-col gap-3 overflow-y-auto rounded-md border bg-background p-4">
                     <RawFallbackBlock
                         label={t("aiSessionRequest")}
-                        raw={requestBody}
+                        raw={normalizedRequest}
                         noDataLabel={t("aiSessionNoData")}
-                        unparsedLabel={t("aiSessionCouldNotParse")}
                     />
-                )}
-                {hasResponseMessages ? (
-                    responseMessages!.map((message, i) => (
-                        <MessageBubble key={`res-${i}`} message={message} />
-                    ))
-                ) : (
                     <RawFallbackBlock
                         label={t("aiSessionResponse")}
-                        raw={responseBody}
+                        raw={normalizedResponse}
                         noDataLabel={t("aiSessionNoData")}
-                        unparsedLabel={t("aiSessionCouldNotParse")}
                     />
-                )}
-            </div>
+                </div>
+            ) : (
+                <div className="flex max-h-[32rem] flex-col gap-3 overflow-y-auto rounded-md border bg-background p-4">
+                    {hasRequestMessages ? (
+                        requestMessages!.map((message, i) => (
+                            <MessageBubble key={`req-${i}`} message={message} />
+                        ))
+                    ) : (
+                        <RawFallbackBlock
+                            label={t("aiSessionRequest")}
+                            raw={requestBody}
+                            noDataLabel={t("aiSessionNoData")}
+                            unparsedLabel={t("aiSessionCouldNotParse")}
+                        />
+                    )}
+                    {hasResponseMessages ? (
+                        responseMessages!.map((message, i) => (
+                            <MessageBubble key={`res-${i}`} message={message} />
+                        ))
+                    ) : (
+                        <RawFallbackBlock
+                            label={t("aiSessionResponse")}
+                            raw={responseBody}
+                            noDataLabel={t("aiSessionNoData")}
+                            unparsedLabel={t("aiSessionCouldNotParse")}
+                        />
+                    )}
+                </div>
+            )}
         </div>
     );
 }
