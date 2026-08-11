@@ -382,18 +382,20 @@ export const orgQueries = {
     proxyResources: ({
         orgId,
         query,
-        perPage = 10_000
+        perPage = 10_000,
+        protocol
     }: {
         orgId: string;
         query?: string;
         perPage?: number;
+        protocol?: string;
     }) =>
         queryOptions({
             queryKey: [
                 "ORG",
                 orgId,
                 "PROXY_RESOURCES",
-                { query, perPage }
+                { query, perPage, protocol }
             ] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
@@ -402,6 +404,10 @@ export const orgQueries = {
 
                 if (query?.trim()) {
                     sp.set("query", query);
+                }
+
+                if (protocol) {
+                    sp.set("protocol", protocol);
                 }
 
                 const res = await meta!.api.get<

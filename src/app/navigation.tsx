@@ -195,6 +195,11 @@ export const orgNavSections = (
                 title: "sidebarAiProviders",
                 href: "/{orgId}/settings/ai-providers",
                 icon: <Sparkles className="size-4 flex-none" />
+            },
+            {
+                title: "sidebarVirtualApiKeys",
+                href: "/{orgId}/settings/virtual-api-keys",
+                icon: <KeyRound className="size-4 flex-none" />
             }
         ]
     },
@@ -490,6 +495,11 @@ export const commandBarNavSections = (
                 title: "commandAiProviders",
                 href: "/{orgId}/settings/ai-providers",
                 icon: <Sparkles className="size-4 flex-none" />
+            },
+            {
+                title: "commandVirtualApiKeys",
+                href: "/{orgId}/settings/virtual-api-keys",
+                icon: <KeyRound className="size-4 flex-none" />
             }
         ]
     },

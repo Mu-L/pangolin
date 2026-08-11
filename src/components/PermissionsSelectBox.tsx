@@ -166,6 +166,14 @@ function getActionsCategories(root: boolean) {
             [t("actionGetAiModel")]: "getAiModel",
             [t("actionListAiModels")]: "listAiModels",
             [t("actionUpdateAiModel")]: "updateAiModel"
+        },
+
+        "Virtual API Key": {
+            [t("actionCreateVirtualApiKey")]: "createVirtualApiKey",
+            [t("actionDeleteVirtualApiKey")]: "deleteVirtualApiKey",
+            [t("actionGetVirtualApiKey")]: "getVirtualApiKey",
+            [t("actionListVirtualApiKeys")]: "listVirtualApiKeys",
+            [t("actionUpdateVirtualApiKey")]: "updateVirtualApiKey"
         }
     };
 

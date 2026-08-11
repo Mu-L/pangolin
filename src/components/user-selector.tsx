@@ -23,20 +23,30 @@ export type UserSelectorProps = {
     selectedUser?: SelectedUser | null;
     onSelectUser: (user: SelectedUser | null) => void;
     allowClear?: boolean;
+    showClear?: boolean;
+    onClear?: () => void;
+    unassignedOption?: {
+        label: string;
+        selected: boolean;
+        onSelect: () => void;
+    };
 };
 
 export function UserSelector({
     orgId,
     selectedUser,
     onSelectUser,
-    allowClear = true
+    allowClear = true,
+    showClear = false,
+    onClear,
+    unassignedOption
 }: UserSelectorProps) {
     const t = useTranslations();
     const [userSearchQuery, setUserSearchQuery] = useState("");
     const [debouncedValue] = useDebounce(userSearchQuery, 150);
 
     const { data: users = [] } = useQuery(
-        orgQueries.users({ orgId, perPage: 10, query: debouncedValue })
+        orgQueries.users({ orgId, perPage: 10, term: debouncedValue })
     );
 
     const usersShown = useMemo(() => {
@@ -64,6 +74,14 @@ export function UserSelector({
             <CommandList>
                 <CommandEmpty>{t("usersNotFound")}</CommandEmpty>
                 <CommandGroup>
+                    {showClear && onClear && (
+                        <CommandItem
+                            onSelect={onClear}
+                            className="text-muted-foreground"
+                        >
+                            {t("accessFilterClear")}
+                        </CommandItem>
+                    )}
                     {allowClear && (
                         <CommandItem
                             value="__none__"
@@ -78,6 +96,22 @@ export function UserSelector({
                                 )}
                             />
                             {t("none")}
+                        </CommandItem>
+                    )}
+                    {unassignedOption && (
+                        <CommandItem
+                            value="__unassigned__"
+                            onSelect={unassignedOption.onSelect}
+                        >
+                            <CheckIcon
+                                className={cn(
+                                    "mr-2 h-4 w-4",
+                                    unassignedOption.selected
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                )}
+                            />
+                            {unassignedOption.label}
                         </CommandItem>
                     )}
                     {usersShown.map((user) => (

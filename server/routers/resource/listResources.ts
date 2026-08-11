@@ -124,12 +124,21 @@ const listResourcesSchema = z.strictObject({
                 "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status."
         }),
     protocol: z
-        .enum(["http", "https", "tcp", "udp", "ssh", "rdp", "vnc"])
+        .enum(["http", "https", "tcp", "udp", "ssh", "rdp", "vnc", "inference"])
         .optional()
         .catch(undefined)
         .openapi({
             type: "string",
-            enum: ["http", "https", "tcp", "udp", "ssh", "rdp", "vnc"],
+            enum: [
+                "http",
+                "https",
+                "tcp",
+                "udp",
+                "ssh",
+                "rdp",
+                "vnc",
+                "inference"
+            ],
             description:
                 "Filter resources by protocol. `http` and `https` match HTTP resources without and with SSL respectively."
         }),

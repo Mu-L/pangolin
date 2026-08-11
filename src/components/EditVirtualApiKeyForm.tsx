@@ -1,0 +1,396 @@
+"use client";
+
+import { Button } from "@app/components/ui/button";
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage
+} from "@app/components/ui/form";
+import { toast } from "@app/hooks/useToast";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosResponse } from "axios";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import {
+    Credenza,
+    CredenzaBody,
+    CredenzaClose,
+    CredenzaContent,
+    CredenzaDescription,
+    CredenzaFooter,
+    CredenzaHeader,
+    CredenzaTitle
+} from "@app/components/Credenza";
+import { useOrgContext } from "@app/hooks/useOrgContext";
+import { formatAxiosError, createApiClient } from "@app/lib/api";
+import { cn } from "@app/lib/cn";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
+import { CaretSortIcon } from "@radix-ui/react-icons";
+import { Checkbox } from "@app/components/ui/checkbox";
+import { useTranslations } from "next-intl";
+import { UserSelector, type SelectedUser } from "@app/components/user-selector";
+import type { CreateOrEditVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
+import {
+    MultiResourcesSelector,
+    formatMultiResourcesSelectorLabel
+} from "@app/components/multi-resource-selector";
+import type { SelectedResource } from "@app/components/resource-selector";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
+import type { CreatedVirtualApiKey } from "@app/components/CreateVirtualApiKeyForm";
+
+type FormProps = {
+    open: boolean;
+    setOpen: (open: boolean) => void;
+    virtualApiKey: CreatedVirtualApiKey | null;
+    onUpdated?: (result: CreatedVirtualApiKey) => void;
+};
+
+function resourcesFromRow(key: CreatedVirtualApiKey): SelectedResource[] {
+    return key.resources.map((r) => ({
+        resourceId: r.resourceId,
+        name: r.name,
+        niceId: r.niceId,
+        fullDomain: null,
+        ssl: false,
+        wildcard: false
+    }));
+}
+
+function userFromRow(key: CreatedVirtualApiKey): SelectedUser | null {
+    if (!key.userId) {
+        return null;
+    }
+    return {
+        id: key.userId,
+        text: getUserDisplayName({
+            email: key.userEmail,
+            name: key.userName,
+            username: key.username
+        })
+    };
+}
+
+export default function EditVirtualApiKeyForm({
+    open,
+    setOpen,
+    virtualApiKey,
+    onUpdated
+}: FormProps) {
+    const { org } = useOrgContext();
+    const { env } = useEnvContext();
+    const api = createApiClient({ env });
+    const t = useTranslations();
+
+    const [loading, setLoading] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<SelectedUser | null>(null);
+    const [selectedResources, setSelectedResources] = useState<
+        SelectedResource[]
+    >([]);
+
+    const formSchema = z
+        .object({
+            allResources: z.boolean()
+        })
+        .superRefine((data, ctx) => {
+            if (!data.allResources && selectedResources.length === 0) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("virtualApiKeysSelectResourcesRequired"),
+                    path: ["allResources"]
+                });
+            }
+        });
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            allResources: false
+        }
+    });
+
+    const allResources = form.watch("allResources");
+
+    useEffect(() => {
+        if (!open || !virtualApiKey) {
+            return;
+        }
+        setLoading(false);
+        setSelectedUser(userFromRow(virtualApiKey));
+        setSelectedResources(
+            virtualApiKey.allResources ? [] : resourcesFromRow(virtualApiKey)
+        );
+        form.reset({
+            allResources: virtualApiKey.allResources
+        });
+    }, [open, virtualApiKey, form]);
+
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        if (!virtualApiKey) {
+            return;
+        }
+
+        setLoading(true);
+
+        const res = await api
+            .post<AxiosResponse<CreateOrEditVirtualApiKeyResponse>>(
+                `/virtual-api-key/${virtualApiKey.virtualApiKeyId}`,
+                {
+                    userId: selectedUser?.id ?? null,
+                    allResources: values.allResources,
+                    resourceIds: values.allResources
+                        ? []
+                        : selectedResources.map((r) => r.resourceId)
+                }
+            )
+            .catch((e) => {
+                console.error(e);
+                toast({
+                    variant: "destructive",
+                    title: t("virtualApiKeysErrorUpdate"),
+                    description: formatAxiosError(
+                        e,
+                        t("virtualApiKeysErrorUpdateDescription")
+                    )
+                });
+            });
+
+        if (res?.data.data.virtualApiKey) {
+            const key = res.data.data.virtualApiKey;
+            const resourceLookup = new Map(
+                selectedResources.map((r) => [
+                    r.resourceId,
+                    { name: r.name, niceId: r.niceId }
+                ])
+            );
+            const resourceNames = key.allResources
+                ? t("virtualApiKeysAllResources")
+                : key.resourceIds
+                      .map((id) => resourceLookup.get(id)?.name)
+                      .filter(Boolean)
+                      .join(", ") || t("virtualApiKeysNoResources");
+
+            onUpdated?.({
+                ...virtualApiKey,
+                userId: key.userId,
+                allResources: key.allResources,
+                resourceIds: key.resourceIds,
+                userName: selectedUser?.text ?? null,
+                username: null,
+                userEmail: null,
+                resourceNames,
+                resources: key.resourceIds.map((id) => ({
+                    resourceId: id,
+                    name: resourceLookup.get(id)?.name ?? String(id),
+                    niceId: resourceLookup.get(id)?.niceId ?? ""
+                }))
+            });
+
+            toast({
+                title: t("virtualApiKeysUpdated"),
+                description: t("virtualApiKeysUpdatedDescription")
+            });
+            setOpen(false);
+        }
+
+        setLoading(false);
+    }
+
+    return (
+        <Credenza
+            open={open}
+            onOpenChange={(val) => {
+                setOpen(val);
+            }}
+        >
+            <CredenzaContent>
+                <CredenzaHeader>
+                    <CredenzaTitle>{t("virtualApiKeysEdit")}</CredenzaTitle>
+                    <CredenzaDescription>
+                        {t("virtualApiKeysEditDescription")}
+                    </CredenzaDescription>
+                </CredenzaHeader>
+                <CredenzaBody>
+                    <div className="flex flex-col gap-y-4 px-1">
+                        <Form {...form}>
+                            <form
+                                onSubmit={form.handleSubmit(onSubmit)}
+                                className="space-y-4"
+                                id="edit-virtual-api-key-form"
+                            >
+                                <div className="space-y-2">
+                                    <FormLabel>
+                                        {t(
+                                            "virtualApiKeysAssociateUserOptional"
+                                        )}
+                                    </FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between",
+                                                    !selectedUser &&
+                                                        "text-muted-foreground"
+                                                )}
+                                            >
+                                                {selectedUser?.text
+                                                    ? selectedUser.text
+                                                    : t("userSelect")}
+                                                <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
+                                            <UserSelector
+                                                orgId={org.org.orgId}
+                                                selectedUser={selectedUser}
+                                                onSelectUser={setSelectedUser}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t(
+                                            "virtualApiKeysAssociateUserDescription"
+                                        )}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <FormField
+                                        control={form.control}
+                                        name="allResources"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <div className="flex items-start space-x-2">
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            id="edit-all-resources"
+                                                            checked={
+                                                                field.value
+                                                            }
+                                                            onCheckedChange={(
+                                                                val
+                                                            ) => {
+                                                                field.onChange(
+                                                                    val as boolean
+                                                                );
+                                                                if (val) {
+                                                                    setSelectedResources(
+                                                                        []
+                                                                    );
+                                                                }
+                                                            }}
+                                                            className="mt-0.5"
+                                                        />
+                                                    </FormControl>
+                                                    <div className="space-y-1">
+                                                        <label
+                                                            htmlFor="edit-all-resources"
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                        >
+                                                            {t(
+                                                                "virtualApiKeysAllResources"
+                                                            )}
+                                                        </label>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {t(
+                                                                "virtualApiKeysAllResourcesDescription"
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {!allResources && (
+                                        <div className="space-y-2">
+                                            <FormLabel>
+                                                {t(
+                                                    "virtualApiKeysSelectResources"
+                                                )}
+                                            </FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        className={cn(
+                                                            "w-full justify-between",
+                                                            selectedResources.length ===
+                                                                0 &&
+                                                                "text-muted-foreground"
+                                                        )}
+                                                    >
+                                                        <span className="truncate text-left">
+                                                            {formatMultiResourcesSelectorLabel(
+                                                                selectedResources,
+                                                                t,
+                                                                "virtualApiKeysSelectResourcesPlaceholder"
+                                                            )}
+                                                        </span>
+                                                        <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                                    <MultiResourcesSelector
+                                                        orgId={org.org.orgId}
+                                                        selectedResources={
+                                                            selectedResources
+                                                        }
+                                                        onSelectionChange={
+                                                            setSelectedResources
+                                                        }
+                                                        protocol="inference"
+                                                        showClear={
+                                                            selectedResources.length >
+                                                            0
+                                                        }
+                                                        onClear={() =>
+                                                            setSelectedResources(
+                                                                []
+                                                            )
+                                                        }
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <FormDescription>
+                                                {t(
+                                                    "virtualApiKeysSelectResourcesRequired"
+                                                )}
+                                            </FormDescription>
+                                        </div>
+                                    )}
+                                </div>
+                            </form>
+                        </Form>
+                    </div>
+                </CredenzaBody>
+                <CredenzaFooter>
+                    <CredenzaClose asChild>
+                        <Button variant="outline">{t("close")}</Button>
+                    </CredenzaClose>
+                    <Button
+                        type="submit"
+                        form="edit-virtual-api-key-form"
+                        loading={loading}
+                        disabled={loading || !virtualApiKey}
+                    >
+                        {t("virtualApiKeysSaveButton")}
+                    </Button>
+                </CredenzaFooter>
+            </CredenzaContent>
+        </Credenza>
+    );
+}

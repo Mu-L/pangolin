@@ -62,8 +62,16 @@ export async function assertManualKeyResourcesInOrg(params: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
     const { allResources, resourceIds, orgId } = params;
 
-    if (allResources || resourceIds.length === 0) {
+    if (allResources) {
         return { ok: true };
+    }
+
+    if (resourceIds.length === 0) {
+        return {
+            ok: false,
+            message:
+                "Select at least one public inference resource, or enable all public inference resources"
+        };
     }
 
     const uniqueIds = [...new Set(resourceIds)];
@@ -73,6 +81,7 @@ export async function assertManualKeyResourcesInOrg(params: {
         .where(
             and(
                 eq(resources.orgId, orgId),
+                eq(resources.mode, "inference"),
                 inArray(resources.resourceId, uniqueIds)
             )
         );
@@ -80,7 +89,8 @@ export async function assertManualKeyResourcesInOrg(params: {
     if (rows.length !== uniqueIds.length) {
         return {
             ok: false,
-            message: "One or more resources are invalid for this organization"
+            message:
+                "One or more resources are invalid public inference resources for this organization"
         };
     }
 
