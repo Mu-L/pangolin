@@ -1651,6 +1651,18 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/my-virtual-api-keys",
+    verifyOrgAccess,
+    virtualApiKey.listMyVirtualApiKeys
+);
+
+authenticated.get(
+    "/org/:orgId/my-virtual-api-keys/:virtualApiKeyId",
+    verifyOrgAccess,
+    virtualApiKey.getMyVirtualApiKey
+);
+
+authenticated.get(
     "/virtual-api-key/:virtualApiKeyId",
     verifyVirtualApiKeyAccess,
     verifyUserHasAction(ActionsEnum.getVirtualApiKey),

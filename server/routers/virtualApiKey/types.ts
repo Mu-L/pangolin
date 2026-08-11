@@ -3,14 +3,27 @@ import type { PaginatedResponse } from "@server/types/Pagination";
 
 export type { PublicVirtualApiKey };
 
+export type VirtualApiKeyWithResources = PublicVirtualApiKey & {
+    resourceIds: number[];
+};
+
 export type ListVirtualApiKeysResponse = PaginatedResponse<{
-    virtualApiKeys: (PublicVirtualApiKey & { resourceIds: number[] })[];
+    virtualApiKeys: VirtualApiKeyWithResources[];
 }>;
 
 export type GetVirtualApiKeyResponse = {
-    virtualApiKey: PublicVirtualApiKey & { resourceIds: number[] };
+    virtualApiKey: VirtualApiKeyWithResources;
 };
 
 export type CreateOrEditVirtualApiKeyResponse = {
-    virtualApiKey: PublicVirtualApiKey & { resourceIds: number[] };
+    virtualApiKey: VirtualApiKeyWithResources;
+};
+
+export type ListMyVirtualApiKeysResponse = {
+    userKey: VirtualApiKeyWithResources;
+    manualKeys: VirtualApiKeyWithResources[];
+};
+
+export type GetMyVirtualApiKeyResponse = {
+    virtualApiKey: VirtualApiKeyWithResources;
 };
