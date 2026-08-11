@@ -128,7 +128,7 @@ export interface AlertContext {
 export type EmailAlertAction = {
     type: "email";
     userIds?: string[];
-    roleIds?: string[];
+    roleIds?: number[];
     emails?: string[];
 };
 
@@ -139,7 +139,7 @@ export type WebhookAlertAction = {
     config?: string | undefined;
 };
 
-type AlertAction = EmailAlertAction | WebhookAlertAction;
+export type AlertAction = EmailAlertAction | WebhookAlertAction;
 export interface TestAlertContext {
     eventType: AlertEventType;
     actions: AlertAction[];

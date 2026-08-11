@@ -20,7 +20,10 @@ export async function processTestAlerts(context: TestAlertContext) {
         try {
             const recipients = await resolveEmailRecipients(action);
             if (recipients.length > 0) {
-                await sendAlertEmail(recipients, context);
+                await sendAlertEmail(recipients, {
+                    ...context,
+                    isTest: true
+                });
             }
         } catch (err) {
             logger.error(`processTestAlerts: failed to send alert email`, err);

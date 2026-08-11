@@ -27,7 +27,13 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
-import { ListAlertRulesResponse } from "@server/routers/alertRule/types";
+import {
+    ListAlertRulesResponse,
+    type AlertAction,
+    type EmailAlertAction
+} from "@server/routers/alertRule/types";
+import { processTestAlerts } from "@server/private/lib/alerts/processTestAlerts";
+import { getRandomItemInArray } from "@app/lib/getRandomItemInArray";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -51,12 +57,12 @@ export const RESOURCE_EVENT_TYPES = [
 ] as const;
 
 const webhookActionSchema = z.strictObject({
-    webhookUrl: z.string().url(),
+    webhookUrl: z.url(),
     config: z.string().optional(),
     enabled: z.boolean().optional().default(true)
 });
 
-const bodySchema = z.strictObject({
+const bodySchema = z.object({
     eventType: z.enum([
         ...HC_EVENT_TYPES,
         ...SITE_EVENT_TYPES,
@@ -97,7 +103,106 @@ export async function testAlertRule(
             );
         }
 
+        const body = parsedBody.data;
+        const collectedActions: AlertAction[] = [];
+        if (
+            body.emails.length > 0 ||
+            body.roleIds.length > 0 ||
+            body.userIds.length > 0
+        ) {
+            collectedActions.push({
+                type: "email",
+                emails: body.emails,
+                roleIds: body.roleIds,
+                userIds: body.userIds
+            });
+        }
+
+        for (const action of body.webhookActions) {
+            collectedActions.push({
+                type: "webhook",
+                ...action
+            });
+        }
+
+        let data: Record<string, any> = {};
+        switch (body.eventType) {
+            case "site_toggle":
+                data = {
+                    status: getRandomItemInArray(["online", "offline"]),
+                    siteName: "Test Site Alert"
+                };
+                break;
+            case "site_offline":
+                data = {
+                    status: "offline",
+                    siteName: "Test Site Alert"
+                };
+                break;
+            case "site_online":
+                data = {
+                    status: "online",
+                    siteName: "Test Site Alert"
+                };
+                break;
+            case "resource_toggle":
+                data = {
+                    status: getRandomItemInArray([
+                        "healthy",
+                        "unhealthy",
+                        "degraded"
+                    ]),
+                    siteName: "Test Resource Alert"
+                };
+                break;
+            case "resource_healthy":
+                data = {
+                    status: "healthy",
+                    siteName: "Test Resource Alert"
+                };
+                break;
+            case "resource_unhealthy":
+                data = {
+                    status: "unhealthy",
+                    siteName: "Test Resource Alert"
+                };
+                break;
+            case "resource_degraded":
+                data = {
+                    status: "degraded",
+                    siteName: "Test Resource Alert"
+                };
+                break;
+            case "health_check_toggle":
+                data = {
+                    status: getRandomItemInArray(["healthy", "unhealthy"]),
+                    healthCheckName: "Test Health Check Alert"
+                };
+                break;
+            case "health_check_healthy":
+                data = {
+                    status: "healthy",
+                    healthCheckName: "Test Health Check Alert"
+                };
+                break;
+            case "health_check_unhealthy":
+                data = {
+                    status: "unhealthy",
+                    healthCheckName: "Test Health Check Alert"
+                };
+                break;
+
+            default:
+                break;
+        }
+
         // TODO: process alert rule
+        await processTestAlerts({
+            eventType: body.eventType,
+            orgId,
+            actions: collectedActions,
+            data
+        });
     } catch (error) {
         logger.error(error);
         return next(

@@ -1695,6 +1695,8 @@
     "alertingRuleSaved": "Alert rule saved",
     "alertingRuleSavedCreatedDescription": "Your new alert rule was created. You can keep editing it on this page.",
     "alertingRuleSavedUpdatedDescription": "Your changes to this alert rule were saved.",
+    "alertingTestAlertSent": "Test alert sent",
+    "alertingTestAlertSentDescription": "A test alert was sent to the actions configured on this rule.",
     "alertingEditRule": "Edit Alert Rule",
     "alertingCreateRule": "Create Alert Rule",
     "alertingRuleCredenzaDescription": "Choose what to watch, when to fire, and how to notify",

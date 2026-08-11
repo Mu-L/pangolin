@@ -809,7 +809,7 @@ authenticated.get(
 );
 
 authenticated.post(
-    "/org/:orgId/alert-rule/test",
+    "/org/:orgId/test-alert-rule",
     verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.testAlertRule),

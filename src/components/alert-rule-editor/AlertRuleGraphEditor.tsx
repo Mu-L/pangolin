@@ -189,10 +189,38 @@ export default function AlertRuleGraphEditor({
                     description: t("alertingNoActionsTestDescription")
                 });
             }
+
             return;
         }
 
         const values = form.getValues();
+        try {
+            const payload = formValuesToApiPayload(values);
+            if (isNew) {
+                const res = await api.post<
+                    AxiosResponse<CreateAlertRuleResponse>
+                >(`/org/${orgId}/test-alert-rule`, payload);
+                toast({
+                    title: t("alertingTestAlertSent"),
+                    description: t("alertingTestAlertSentDescription")
+                });
+            } else {
+                await api.post(
+                    `/org/${orgId}/alert-rule/${alertRuleId}`,
+                    payload
+                );
+                toast({
+                    title: t("alertingTestAlertSent"),
+                    description: t("alertingTestAlertSentDescription")
+                });
+            }
+        } catch (e) {
+            toast({
+                title: t("error"),
+                description: formatAxiosError(e),
+                variant: "destructive"
+            });
+        }
     };
 
     const [, formAction, isSaving] = useActionState(saveAlert, null);
