@@ -95,7 +95,8 @@ export const subscriptions = pgTable("subscriptions", {
     billingCycleAnchor: bigint("billingCycleAnchor", { mode: "number" }),
     expiresAt: bigint("expiresAt", { mode: "number" }),
     trial: boolean("trial").default(false),
-    type: varchar("type", { length: 50 }) // tier1, tier2, tier3, or license
+    type: varchar("type", { length: 50 }), // tier1, tier2, tier3, or license
+    override: boolean("override").default(false)
 });
 
 export const subscriptionItems = pgTable("subscriptionItems", {

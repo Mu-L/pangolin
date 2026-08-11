@@ -53,7 +53,7 @@ import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@/hooks/usePaidStatus";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { toUnicode } from "punycode";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserContext } from "@app/hooks/useUserContext";
 
 type AvailableOption = {
@@ -166,8 +166,19 @@ export default function DomainPicker({
     const [selectedProvidedDomain, setSelectedProvidedDomain] =
         useState<AvailableOption | null>(null);
 
+    // Only run the initial base-domain selection once the domains have
+    // loaded. This must not re-run on later `defaultDomainId`/`defaultSubdomain`
+    // changes, because selecting a provided (namespace) domain calls
+    // onDomainChange(null), which the parent form echoes back as
+    // defaultDomainId/defaultSubdomain becoming undefined — re-running this
+    // effect on that change would immediately snap the selector back to the
+    // organization domain, making provided domains unselectable whenever one
+    // was already set.
+    const didSelectInitialDomainRef = useRef(false);
+
     useEffect(() => {
-        if (!loadingDomains) {
+        if (!loadingDomains && !didSelectInitialDomainRef.current) {
+            didSelectInitialDomainRef.current = true;
             let domainOptionToSelect: DomainOption | null = null;
             if (organizationDomains.length > 0) {
                 // Select the first organization domain or the one provided from props

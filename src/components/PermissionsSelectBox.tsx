@@ -115,8 +115,11 @@ function getActionsCategories(root: boolean) {
         },
 
         "Resource Policy": {
+            [t("actionListResourcePolicies")]: "listResourcePolicies",
+            [t("actionCreateResourcePolicy")]: "createResourcePolicy",
             [t("actionGetResourcePolicy")]: "getResourcePolicy",
             [t("actionUpdateResourcePolicy")]: "updateResourcePolicy",
+            [t("actionDeleteResourcePolicy")]: "deleteResourcePolicy",
             [t("actionSetResourcePolicyUsers")]: "setResourcePolicyUsers",
             [t("actionSetResourcePolicyRoles")]: "setResourcePolicyRoles",
             [t("actionSetResourcePolicyPassword")]: "setResourcePolicyPassword",
