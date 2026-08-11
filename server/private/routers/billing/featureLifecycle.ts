@@ -134,6 +134,17 @@ async function capRetentionDays(
         );
     }
 
+    if (
+        org.settingsLogRetentionDaysAISessions !== null &&
+        org.settingsLogRetentionDaysAISessions > maxRetentionDays
+    ) {
+        updates.settingsLogRetentionDaysAISessions = maxRetentionDays;
+        needsUpdate = true;
+        logger.info(
+            `Capping AI session log retention from ${org.settingsLogRetentionDaysAISessions} to ${maxRetentionDays} days for org ${orgId}`
+        );
+    }
+
     // Apply updates if needed
     if (needsUpdate) {
         await db.update(orgs).set(updates).where(eq(orgs.orgId, orgId));

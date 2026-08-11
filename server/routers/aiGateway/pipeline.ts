@@ -63,10 +63,11 @@ import {
     isUsageEmpty,
     needsStreamUsageInjection,
     withStreamUsageOption,
-    stripInjectedUsageFrame,
     extractResponseModel,
     type AiUsage
 } from "@server/lib/aiUsageExtraction";
+import { streamAiGatewayResponse } from "@server/routers/aiGateway/streamAiGatewayResponse";
+import { logAiSession } from "@server/routers/aiGateway/logAiSession";
 
 const EXIT_NODE_RANGES_CACHE_KEY = "aiGateway:exitNodeRanges";
 const EXIT_NODE_RANGES_TTL_SEC = 6000;
@@ -526,13 +527,20 @@ async function selectProvider(
     };
 }
 
-function logAiUsageAndCost(args: {
+// Extracts usage/cost from a completed AI gateway request, records it for
+// budget enforcement, and logs the aggregated prompt/response for session
+// replay. Shared by both the direct-upstream path (below) and the
+// "custom"/target routing-mode path (targetRouting.ts) so both get identical
+// usage/cost tracking and session logging instead of only the direct-upstream
+// path having it.
+export function recordAiGatewayCompletion(args: {
     capability: AiCapability;
     provider: AiProvider;
     requestedModel: string | undefined;
     requestBody: unknown;
     responseText: string;
     isStream: boolean;
+    statusCode: number;
     headers: Headers;
     orgId: string | null;
     resourceId: number | null;
@@ -547,6 +555,7 @@ function logAiUsageAndCost(args: {
         requestBody,
         responseText,
         isStream,
+        statusCode,
         headers,
         orgId,
         resourceId,
@@ -608,6 +617,20 @@ function logAiUsageAndCost(args: {
             });
         }
     }
+
+    logAiSession({
+        capability,
+        provider,
+        requestedModel,
+        requestBody,
+        responseText,
+        isStream,
+        statusCode,
+        orgId,
+        resourceId,
+        siteResourceId,
+        requestUserId
+    });
 }
 
 export async function handleAiGatewayProxy(
@@ -722,7 +745,14 @@ export async function handleAiGatewayProxy(
                 res,
                 provider,
                 requestUser,
-                capability
+                capability,
+                {
+                    orgId,
+                    resourceId,
+                    siteResourceId,
+                    requestedModel,
+                    budgets: appliedBudgets
+                }
             );
         }
 
@@ -843,84 +873,38 @@ export async function handleAiGatewayProxy(
             throw fetchError;
         }
 
-        const contentType = upstreamRes.headers.get("content-type") || "";
-        const isStream = def.isStreaming(req, contentType);
+        const isStream = def.isStreaming(
+            req,
+            upstreamRes.headers.get("content-type") || ""
+        );
 
-        res.status(upstreamRes.status);
-        res.setHeader("Content-Type", contentType || "application/json");
-
-        if (isStream && upstreamRes.body) {
-            res.flushHeaders();
-            const reader = upstreamRes.body.getReader();
-            const decoder = new TextDecoder();
-            let fullText = "";
-            // Frame-boundary buffer, only used when we need to filter the
-            // usage-only frame we injected out of what reaches the client.
-            let sseCarry = "";
-            try {
-                while (!abortController.signal.aborted) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunkText = decoder.decode(value, { stream: true });
-                    fullText += chunkText;
-                    if (injectedUsageOurselves) {
-                        sseCarry += chunkText;
-                        const lastBoundary = sseCarry.lastIndexOf("\n\n");
-                        if (lastBoundary !== -1) {
-                            const toEmit = sseCarry.slice(0, lastBoundary + 2);
-                            sseCarry = sseCarry.slice(lastBoundary + 2);
-                            res.write(stripInjectedUsageFrame(toEmit));
-                        }
-                    } else {
-                        res.write(value);
-                    }
-                }
-                if (injectedUsageOurselves && sseCarry) {
-                    res.write(stripInjectedUsageFrame(sseCarry));
-                }
-            } finally {
-                await reader.cancel().catch(() => {});
-                res.off("close", onClientClose);
-            }
-            if (!res.writableEnded) {
-                res.end();
-            }
-            if (!abortController.signal.aborted) {
-                logAiUsageAndCost({
-                    capability,
-                    provider,
-                    requestedModel,
-                    requestBody: req.body,
-                    responseText: fullText,
-                    isStream: true,
-                    headers: upstreamRes.headers,
-                    orgId,
-                    resourceId,
-                    siteResourceId,
-                    requestUserId: requestUser?.userId ?? null,
-                    budgets: appliedBudgets
-                });
-            }
-            return;
-        }
-
-        res.off("close", onClientClose);
-        const text = await upstreamRes.text();
-        logAiUsageAndCost({
-            capability,
-            provider,
-            requestedModel,
-            requestBody: req.body,
-            responseText: text,
-            isStream: false,
-            headers: upstreamRes.headers,
-            orgId,
-            resourceId,
-            siteResourceId,
-            requestUserId: requestUser?.userId ?? null,
-            budgets: appliedBudgets
+        const { fullText, aborted } = await streamAiGatewayResponse({
+            res,
+            upstreamRes,
+            isStream,
+            injectedUsageOurselves,
+            abortController,
+            onClientClose
         });
-        return res.send(text);
+
+        if (!aborted) {
+            recordAiGatewayCompletion({
+                capability,
+                provider,
+                requestedModel,
+                requestBody: outboundBody,
+                responseText: fullText,
+                isStream,
+                statusCode: upstreamRes.status,
+                headers: upstreamRes.headers,
+                orgId,
+                resourceId,
+                siteResourceId,
+                requestUserId: requestUser?.userId ?? null,
+                budgets: appliedBudgets
+            });
+        }
+        return;
     } catch (error) {
         logger.error(error);
         return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({

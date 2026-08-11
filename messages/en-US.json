@@ -3397,6 +3397,8 @@
     "logRetentionActionDescription": "How long to retain action logs",
     "logRetentionConnectionLabel": "Network Log Retention",
     "logRetentionConnectionDescription": "How long to retain connection logs",
+    "logRetentionAISessionsLabel": "AI Gateway Session Log Retention",
+    "logRetentionAISessionsDescription": "How long to retain AI gateway prompt/response session logs",
     "logRetentionDisabled": "Disabled",
     "logRetention3Days": "3 days",
     "logRetention7Days": "7 days",

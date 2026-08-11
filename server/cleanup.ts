@@ -4,6 +4,7 @@ import { flushSiteBandwidthToDb } from "@server/routers/gerbil/receiveBandwidth"
 import { stopPingAccumulator } from "@server/routers/newt/pingAccumulator";
 import { cleanup as wsCleanup } from "#dynamic/routers/ws";
 import { shutdownUsageRecorder } from "@server/lib/aiBudgetEnforcement";
+import { shutdownAiSessionLogger } from "@server/routers/aiGateway/logAiSession";
 
 async function cleanup() {
     await stopPingAccumulator();
@@ -11,6 +12,7 @@ async function cleanup() {
     await flushConnectionLogToDb();
     await flushSiteBandwidthToDb();
     await shutdownUsageRecorder();
+    await shutdownAiSessionLogger();
     await wsCleanup();
 
     process.exit(0);

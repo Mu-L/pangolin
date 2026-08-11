@@ -1,6 +1,13 @@
 import { Request, Response } from "express";
 import { and, eq } from "drizzle-orm";
-import { AiProvider, db, exitNodes, sites, targets } from "@server/db";
+import {
+    AiBudget,
+    AiProvider,
+    db,
+    exitNodes,
+    sites,
+    targets
+} from "@server/db";
 import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import { localCache } from "@server/lib/cache";
@@ -14,12 +21,18 @@ import {
     AI_CAPABILITY_DEFS,
     type AiCapability
 } from "@server/lib/aiCapabilities";
+import {
+    needsStreamUsageInjection,
+    withStreamUsageOption
+} from "@server/lib/aiUsageExtraction";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import {
     applyRequestUserHeaders,
+    recordAiGatewayCompletion,
     type RequestUser
 } from "@server/routers/aiGateway/pipeline";
+import { streamAiGatewayResponse } from "@server/routers/aiGateway/streamAiGatewayResponse";
 
 // Short TTL: long enough to spare the DB on a burst of requests, short
 // enough that target/site changes (added, removed, exit node moved) show up
@@ -157,7 +170,14 @@ export async function proxyAiGatewayToSiteTarget(
     res: Response,
     provider: AiProvider,
     requestUser: RequestUser | null,
-    capability: AiCapability
+    capability: AiCapability,
+    ctx: {
+        orgId: string | null;
+        resourceId: number | null;
+        siteResourceId: number | null;
+        requestedModel: string | undefined;
+        budgets: AiBudget[];
+    }
 ): Promise<void> {
     const providerTargets = await getProviderTargets(provider.providerId);
     if (providerTargets.length === 0) {
@@ -205,7 +225,17 @@ export async function proxyAiGatewayToSiteTarget(
     headers[PANGOLIN_DEST_HEADER] = target.destination;
     headers[PANGOLIN_HOST_HEADER] = target.hostHeader;
 
-    const body = JSON.stringify(req.body);
+    // Same OpenAI stream_options.include_usage injection direct-upstream
+    // requests get (pipeline.ts) - needed here too now that target-routed
+    // requests get usage/cost tracking and session logging as well.
+    const injectedUsageOurselves = needsStreamUsageInjection(
+        capability,
+        req.body
+    );
+    const outboundBody = injectedUsageOurselves
+        ? withStreamUsageOption(req.body)
+        : req.body;
+    const body = JSON.stringify(outboundBody);
 
     logger.debug("AI gateway target-routed request", {
         providerId: provider.providerId,
@@ -214,7 +244,7 @@ export async function proxyAiGatewayToSiteTarget(
         hostHeader: target.hostHeader,
         url: gerbilUrl,
         headers,
-        body: req.body
+        body: outboundBody
     });
 
     // Cancel the request to gerbil (which cascades to gerbil cancelling its
@@ -259,35 +289,35 @@ export async function proxyAiGatewayToSiteTarget(
         return;
     }
 
-    const contentType = upstreamRes.headers.get("content-type") || "";
     const isStream = AI_CAPABILITY_DEFS[capability].isStreaming(
         req,
-        contentType
+        upstreamRes.headers.get("content-type") || ""
     );
 
-    res.status(upstreamRes.status);
-    res.setHeader("Content-Type", contentType || "application/json");
+    const { fullText, aborted } = await streamAiGatewayResponse({
+        res,
+        upstreamRes,
+        isStream,
+        injectedUsageOurselves,
+        abortController,
+        onClientClose
+    });
 
-    if (isStream && upstreamRes.body) {
-        res.flushHeaders();
-        const reader = upstreamRes.body.getReader();
-        try {
-            while (!abortController.signal.aborted) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                res.write(value);
-            }
-        } finally {
-            await reader.cancel().catch(() => {});
-            res.off("close", onClientClose);
-        }
-        if (!res.writableEnded) {
-            res.end();
-        }
-        return;
+    if (!aborted) {
+        recordAiGatewayCompletion({
+            capability,
+            provider,
+            requestedModel: ctx.requestedModel,
+            requestBody: outboundBody,
+            responseText: fullText,
+            isStream,
+            statusCode: upstreamRes.status,
+            headers: upstreamRes.headers,
+            orgId: ctx.orgId,
+            resourceId: ctx.resourceId,
+            siteResourceId: ctx.siteResourceId,
+            requestUserId: requestUser?.userId ?? null,
+            budgets: ctx.budgets
+        });
     }
-
-    res.off("close", onClientClose);
-    const text = await upstreamRes.text();
-    res.send(text);
 }
