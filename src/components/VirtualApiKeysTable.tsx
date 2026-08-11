@@ -373,30 +373,6 @@ export default function VirtualApiKeysTable({
             cell: ({ row }) => moment(row.original.createdAt).format("lll")
         },
         {
-            accessorKey: "expiresAt",
-            friendlyName: t("expires"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("expires")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            },
-            cell: ({ row }) => {
-                const expiresAt = row.original.expiresAt;
-                if (expiresAt) {
-                    return moment(expiresAt).format("lll");
-                }
-                return t("never");
-            }
-        },
-        {
             id: "actions",
             enableHiding: false,
             header: () => <span className="p-3"></span>,
