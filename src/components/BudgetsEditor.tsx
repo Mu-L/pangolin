@@ -82,10 +82,17 @@ function nextAvailableCombo(rows: BudgetRow[]): {
     return { unit: "usd", period: "monthly" };
 }
 
+function newRowKey(): string {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+        return crypto.randomUUID();
+    }
+    return `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function newBudgetRow(rows: BudgetRow[]): BudgetRow {
     const combo = nextAvailableCombo(rows);
     return {
-        key: crypto.randomUUID(),
+        key: newRowKey(),
         amount: "",
         unit: combo.unit,
         period: combo.period
