@@ -42,6 +42,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -178,6 +179,7 @@ export function AiProviderAttachments({
 
             {editing && (
                 <EditAttachmentCredenza
+                    orgId={orgId}
                     attachment={editing}
                     open={editingProviderId !== null}
                     onOpenChange={(open) => {
@@ -283,11 +285,13 @@ type EditFormValues = {
 };
 
 function EditAttachmentCredenza({
+    orgId,
     attachment,
     open,
     onOpenChange,
     onSave
 }: {
+    orgId: string;
     attachment: AiProviderAttachmentValue;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -565,6 +569,18 @@ function EditAttachmentCredenza({
                     </Form>
                 </CredenzaBody>
                 <CredenzaFooter>
+                    <Button
+                        variant="link"
+                        size="sm"
+                        className="mr-auto px-0"
+                        asChild
+                    >
+                        <Link
+                            href={`/${orgId}/settings/ai-providers/${attachment.providerId}`}
+                        >
+                            {t("viewProviderSettings")}
+                        </Link>
+                    </Button>
                     <CredenzaClose asChild>
                         <Button variant="outline">{t("close")}</Button>
                     </CredenzaClose>

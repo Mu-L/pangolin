@@ -1921,6 +1921,7 @@
     "aiResourceProvidersUpdated": "Providers updated",
     "aiResourceProvidersErrorUpdate": "Failed to update providers",
     "aiResourceProviderEditDescription": "Choose how this provider's models are exposed on this resource.",
+    "viewProviderSettings": "View Provider Settings",
     "aiResourceProviderMode": "Access mode",
     "aiResourceProviderModeInherit": "Inherit",
     "aiResourceProviderModeSelect": "Select",
