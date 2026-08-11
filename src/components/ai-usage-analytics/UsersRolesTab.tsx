@@ -80,7 +80,7 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                 <h3 className="font-semibold text-muted-foreground">Roles</h3>
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Top roles</h3>
+                        <h3 className="font-semibold">Top Roles</h3>
                     </CardHeader>
                     <CardContent>
                         <TopEntitiesList
@@ -93,7 +93,7 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                 <div className="grid lg:grid-cols-2 gap-5">
                     <Card>
                         <CardHeader>
-                            <h3 className="font-semibold">Role cost</h3>
+                            <h3 className="font-semibold">Role Cost</h3>
                         </CardHeader>
                         <CardContent>
                             <ToggleableTrendChart
@@ -106,7 +106,7 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <h3 className="font-semibold">Role token usage</h3>
+                            <h3 className="font-semibold">Role Token Usage</h3>
                         </CardHeader>
                         <CardContent>
                             <ToggleableTrendChart
@@ -123,7 +123,7 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                 <h3 className="font-semibold text-muted-foreground">Users</h3>
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Top users</h3>
+                        <h3 className="font-semibold">Top Users</h3>
                     </CardHeader>
                     <CardContent>
                         <TopEntitiesList
@@ -136,7 +136,7 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                 <div className="grid lg:grid-cols-2 gap-5">
                     <Card>
                         <CardHeader>
-                            <h3 className="font-semibold">User cost</h3>
+                            <h3 className="font-semibold">User Cost</h3>
                         </CardHeader>
                         <CardContent>
                             <ToggleableTrendChart
@@ -149,7 +149,7 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <h3 className="font-semibold">User token usage</h3>
+                            <h3 className="font-semibold">User Token Usage</h3>
                         </CardHeader>
                         <CardContent>
                             <ToggleableTrendChart

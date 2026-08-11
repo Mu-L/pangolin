@@ -48,7 +48,7 @@ export function ProvidersTab(props: ProvidersTabProps) {
         <div className="flex flex-col gap-5">
             <Card>
                 <CardHeader>
-                    <h3 className="font-semibold">Top providers</h3>
+                    <h3 className="font-semibold">Top Providers</h3>
                 </CardHeader>
                 <CardContent>
                     <TopEntitiesList
@@ -62,7 +62,7 @@ export function ProvidersTab(props: ProvidersTabProps) {
             <div className="grid lg:grid-cols-2 gap-5">
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Provider cost</h3>
+                        <h3 className="font-semibold">Provider Cost</h3>
                     </CardHeader>
                     <CardContent>
                         <ToggleableTrendChart
@@ -75,7 +75,7 @@ export function ProvidersTab(props: ProvidersTabProps) {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Provider token usage</h3>
+                        <h3 className="font-semibold">Provider Token Usage</h3>
                     </CardHeader>
                     <CardContent>
                         <ToggleableTrendChart

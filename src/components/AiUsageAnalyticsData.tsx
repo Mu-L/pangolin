@@ -140,9 +140,9 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
 
     const tabs: TabItem[] = [
         { title: "Overview", href: "#" },
-        { title: "Provider usage", href: "#" },
+        { title: "Provider Usage", href: "#" },
         { title: "Resources", href: "#" },
-        { title: "Users & roles", href: "#" }
+        { title: "Users & Roles", href: "#" }
     ];
 
     return (
@@ -175,7 +175,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                 label="Provider"
                                 value={filters.providerId?.toString()}
                                 options={providerOptions}
-                                placeholder="All providers"
+                                placeholder="All Providers"
                                 onValueChange={(v) => setFilter("providerId", v)}
                             />
                             <FilterSelect
@@ -183,7 +183,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                 label="Model"
                                 value={filters.model}
                                 options={modelOptions}
-                                placeholder="All models"
+                                placeholder="All Models"
                                 onValueChange={(v) => setFilter("model", v)}
                             />
                             <FilterSelect
@@ -191,7 +191,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                 label="Resource"
                                 value={filters.resourceId?.toString()}
                                 options={resourceOptions}
-                                placeholder="All resources"
+                                placeholder="All Resources"
                                 onValueChange={(v) => setFilter("resourceId", v)}
                             />
                             <FilterSelect
@@ -199,7 +199,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                 label="Role"
                                 value={filters.roleId?.toString()}
                                 options={roleOptions}
-                                placeholder="All roles"
+                                placeholder="All Roles"
                                 onValueChange={(v) => setFilter("roleId", v)}
                             />
                             <FilterSelect
@@ -207,7 +207,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                 label="User"
                                 value={filters.userId}
                                 options={userOptions}
-                                placeholder="All users"
+                                placeholder="All Users"
                                 onValueChange={(v) => setFilter("userId", v)}
                             />
 
@@ -218,7 +218,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                     className="gap-2"
                                 >
                                     <XIcon className="size-4" />
-                                    Reset filters
+                                    Reset Filters
                                 </Button>
                             )}
                         </div>

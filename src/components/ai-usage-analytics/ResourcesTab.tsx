@@ -56,7 +56,7 @@ export function ResourcesTab(props: ResourcesTabProps) {
         <div className="flex flex-col gap-5">
             <Card>
                 <CardHeader>
-                    <h3 className="font-semibold">Top resources</h3>
+                    <h3 className="font-semibold">Top Resources</h3>
                 </CardHeader>
                 <CardContent>
                     <TopEntitiesList
@@ -70,7 +70,7 @@ export function ResourcesTab(props: ResourcesTabProps) {
             <div className="grid lg:grid-cols-2 gap-5">
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Resource cost</h3>
+                        <h3 className="font-semibold">Resource Cost</h3>
                     </CardHeader>
                     <CardContent>
                         <ToggleableTrendChart
@@ -83,7 +83,7 @@ export function ResourcesTab(props: ResourcesTabProps) {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Resource token usage</h3>
+                        <h3 className="font-semibold">Resource Token Usage</h3>
                     </CardHeader>
                     <CardContent>
                         <ToggleableTrendChart

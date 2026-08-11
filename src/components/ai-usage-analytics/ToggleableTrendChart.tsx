@@ -129,7 +129,7 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
                                     key={s.key}
                                     dataKey={s.key}
                                     stackId="stack"
-                                    fill={`var(--color-${s.key})`}
+                                    fill={s.color}
                                     radius={2}
                                     isAnimationActive={false}
                                 />
@@ -165,7 +165,7 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
                                 <Line
                                     key={s.key}
                                     dataKey={s.key}
-                                    stroke={`var(--color-${s.key})`}
+                                    stroke={s.color}
                                     strokeWidth={2}
                                     fill="transparent"
                                     isAnimationActive={false}

@@ -24,11 +24,13 @@ import {
 
 type Q = AiUsageAnalyticsQuery;
 
-// Composite key namespacing resourceId ("r:") vs siteResourceId ("s:") since
-// the two id spaces are independent and can overlap numerically.
+// Composite key namespacing resourceId ("r-") vs siteResourceId ("s-") since
+// the two id spaces are independent and can overlap numerically. Uses a dash
+// rather than a colon so the key stays safe to use as a CSS custom-property
+// name suffix (e.g. --color-r-1) on the client.
 function resourceKey(resourceId: number | null, siteResourceId: number | null) {
-    if (resourceId != null) return `r:${resourceId}`;
-    if (siteResourceId != null) return `s:${siteResourceId}`;
+    if (resourceId != null) return `r-${resourceId}`;
+    if (siteResourceId != null) return `s-${siteResourceId}`;
     return "none";
 }
 
@@ -113,7 +115,7 @@ async function query(data: Q) {
             .from(resources)
             .where(inArray(resources.resourceId, resourceIds));
         for (const r of resourceDetails) {
-            nameMap.set(`r:${r.resourceId}`, r.name);
+            nameMap.set(`r-${r.resourceId}`, r.name);
         }
     }
     if (siteResourceIds.length > 0) {
@@ -125,7 +127,7 @@ async function query(data: Q) {
             .from(siteResources)
             .where(inArray(siteResources.siteResourceId, siteResourceIds));
         for (const r of siteResourceDetails) {
-            nameMap.set(`s:${r.siteResourceId}`, r.name);
+            nameMap.set(`s-${r.siteResourceId}`, r.name);
         }
     }
 

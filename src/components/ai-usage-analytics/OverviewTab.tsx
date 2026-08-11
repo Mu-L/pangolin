@@ -75,7 +75,7 @@ export function OverviewTab(props: OverviewTabProps) {
                 <CardHeader>
                     <InfoSections cols={4}>
                         <InfoSection>
-                            <InfoSectionTitle>Total requests</InfoSectionTitle>
+                            <InfoSectionTitle>Total Requests</InfoSectionTitle>
                             <InfoSectionContent>
                                 {data
                                     ? compactNumberFormatter.format(
@@ -85,7 +85,7 @@ export function OverviewTab(props: OverviewTabProps) {
                             </InfoSectionContent>
                         </InfoSection>
                         <InfoSection>
-                            <InfoSectionTitle>Total tokens</InfoSectionTitle>
+                            <InfoSectionTitle>Total Tokens</InfoSectionTitle>
                             <InfoSectionContent>
                                 {data
                                     ? compactNumberFormatter.format(
@@ -95,7 +95,7 @@ export function OverviewTab(props: OverviewTabProps) {
                             </InfoSectionContent>
                         </InfoSection>
                         <InfoSection>
-                            <InfoSectionTitle>Total cost</InfoSectionTitle>
+                            <InfoSectionTitle>Total Cost</InfoSectionTitle>
                             <InfoSectionContent>
                                 {data ? formatCost(data.totalCost) : "--"}
                             </InfoSectionContent>
@@ -115,7 +115,7 @@ export function OverviewTab(props: OverviewTabProps) {
             <div className="grid lg:grid-cols-3 gap-5">
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Request volume</h3>
+                        <h3 className="font-semibold">Request Volume</h3>
                     </CardHeader>
                     <CardContent>
                         <ToggleableTrendChart
@@ -127,7 +127,7 @@ export function OverviewTab(props: OverviewTabProps) {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Token usage</h3>
+                        <h3 className="font-semibold">Token Usage</h3>
                     </CardHeader>
                     <CardContent>
                         <ToggleableTrendChart
@@ -155,7 +155,7 @@ export function OverviewTab(props: OverviewTabProps) {
             <div className="grid lg:grid-cols-2 gap-5">
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Model cost</h3>
+                        <h3 className="font-semibold">Model Cost</h3>
                     </CardHeader>
                     <CardContent>
                         <ToggleableTrendChart
@@ -168,7 +168,7 @@ export function OverviewTab(props: OverviewTabProps) {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Model tokens</h3>
+                        <h3 className="font-semibold">Model Tokens</h3>
                     </CardHeader>
                     <CardContent>
                         <ToggleableTrendChart
@@ -182,7 +182,7 @@ export function OverviewTab(props: OverviewTabProps) {
 
             <Card>
                 <CardHeader>
-                    <h3 className="font-semibold">Top models</h3>
+                    <h3 className="font-semibold">Top Models</h3>
                 </CardHeader>
                 <CardContent>
                     <TopEntitiesList
