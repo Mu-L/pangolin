@@ -115,8 +115,7 @@ export async function setSiteResourceAiProviders(
         const attachments = await resolveProviderAttachments({
             orgId: siteResource.orgId,
             attachments: providers,
-            requireAtLeastOne: false,
-            siteResourceId
+            requireAtLeastOne: false
         });
         if (isInferenceFieldsError(attachments)) {
             return next(

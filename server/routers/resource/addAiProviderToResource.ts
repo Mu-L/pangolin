@@ -131,8 +131,7 @@ export async function addAiProviderToResource(
         const attachments = await resolveProviderAttachments({
             orgId: resource.orgId,
             attachments: nextAttachments,
-            requireAtLeastOne: true,
-            resourceId
+            requireAtLeastOne: true
         });
         if (isInferenceFieldsError(attachments)) {
             return next(

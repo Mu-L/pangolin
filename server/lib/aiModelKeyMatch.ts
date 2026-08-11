@@ -62,29 +62,6 @@ export function compareModelKeySpecificity(a: string, b: string): number {
 }
 
 /**
- * Attach-time conflict check. Detects identical keys and exact-vs-pattern
- * matches. Does not attempt full glob intersection.
- */
-export function modelKeysConflict(a: string, b: string): boolean {
-    if (a === b) {
-        return true;
-    }
-
-    const aIsPattern = isModelKeyPattern(a);
-    const bIsPattern = isModelKeyPattern(b);
-
-    if (aIsPattern === bIsPattern) {
-        return false;
-    }
-
-    if (aIsPattern) {
-        return modelKeyMatches(a, b);
-    }
-
-    return modelKeyMatches(b, a);
-}
-
-/**
  * Provider-layer policy: empty allowlist denies all. Blocklist only applies
  * after an allow match.
  */

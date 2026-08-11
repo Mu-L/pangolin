@@ -10,7 +10,6 @@ import {
     type Transaction
 } from "@server/db";
 import { z } from "zod";
-import { modelKeysConflict } from "@server/lib/aiModelKeyMatch";
 
 type DbOrTrx = Transaction | typeof db;
 
@@ -100,142 +99,6 @@ function normalizeAttachments(
     );
 }
 
-type EffectiveAllowRow = {
-    providerId: number;
-    modelKey: string;
-};
-
-/**
- * Ensure effective allow modelKeys do not conflict across attached providers.
- * inherit uses provider allows; select uses resource-selected allows (or the
- * optional override map). Block patterns are ignored for overlap checks.
- */
-export async function assertNoOverlappingModelKeys(
-    attachments: ResourceAiProviderAttachment[],
-    options: {
-        trx?: DbOrTrx;
-        resourceId?: number;
-        siteResourceId?: number;
-        selectedAllowsByProvider?: Map<number, string[]>;
-    } = {}
-): Promise<InferenceFieldsError | null> {
-    const trx = options.trx ?? db;
-
-    const activeAttachments = attachments.filter((a) => a.enabled);
-
-    if (activeAttachments.length < 2) {
-        return null;
-    }
-
-    const inheritProviderIds = activeAttachments
-        .filter((a) => a.accessMode === "inherit")
-        .map((a) => a.providerId);
-    const selectProviderIds = activeAttachments
-        .filter((a) => a.accessMode === "select")
-        .map((a) => a.providerId);
-
-    const effectiveAllows: EffectiveAllowRow[] = [];
-
-    if (inheritProviderIds.length > 0) {
-        const providerAllows = await trx
-            .select({
-                providerId: aiModels.providerId,
-                modelKey: aiModels.modelKey
-            })
-            .from(aiModels)
-            .where(
-                and(
-                    inArray(aiModels.providerId, inheritProviderIds),
-                    eq(aiModels.enabled, true),
-                    eq(aiModels.listType, "allow")
-                )
-            );
-        effectiveAllows.push(...providerAllows);
-    }
-
-    if (selectProviderIds.length > 0) {
-        if (options.selectedAllowsByProvider) {
-            for (const providerId of selectProviderIds) {
-                const keys =
-                    options.selectedAllowsByProvider.get(providerId) ?? [];
-                for (const modelKey of keys) {
-                    effectiveAllows.push({ providerId, modelKey });
-                }
-            }
-        } else if (options.resourceId !== undefined) {
-            const rows = await trx
-                .select({
-                    providerId: aiModels.providerId,
-                    modelKey: aiModels.modelKey
-                })
-                .from(resourceAiModels)
-                .innerJoin(
-                    aiModels,
-                    eq(resourceAiModels.modelId, aiModels.modelId)
-                )
-                .where(
-                    and(
-                        eq(resourceAiModels.resourceId, options.resourceId),
-                        inArray(aiModels.providerId, selectProviderIds),
-                        eq(resourceAiModels.listType, "allow"),
-                        eq(aiModels.enabled, true)
-                    )
-                );
-            effectiveAllows.push(...rows);
-        } else if (options.siteResourceId !== undefined) {
-            const rows = await trx
-                .select({
-                    providerId: aiModels.providerId,
-                    modelKey: aiModels.modelKey
-                })
-                .from(siteResourceAiModels)
-                .innerJoin(
-                    aiModels,
-                    eq(siteResourceAiModels.modelId, aiModels.modelId)
-                )
-                .where(
-                    and(
-                        eq(
-                            siteResourceAiModels.siteResourceId,
-                            options.siteResourceId
-                        ),
-                        inArray(aiModels.providerId, selectProviderIds),
-                        eq(siteResourceAiModels.listType, "allow"),
-                        eq(aiModels.enabled, true)
-                    )
-                );
-            effectiveAllows.push(...rows);
-        }
-    }
-
-    const conflictPairs: string[] = [];
-    for (let i = 0; i < effectiveAllows.length; i++) {
-        for (let j = i + 1; j < effectiveAllows.length; j++) {
-            const left = effectiveAllows[i];
-            const right = effectiveAllows[j];
-            if (left.providerId === right.providerId) {
-                continue;
-            }
-            if (!modelKeysConflict(left.modelKey, right.modelKey)) {
-                continue;
-            }
-            const pair = [left.modelKey, right.modelKey].sort().join(" vs ");
-            if (!conflictPairs.includes(pair)) {
-                conflictPairs.push(pair);
-            }
-        }
-    }
-
-    if (conflictPairs.length === 0) {
-        return null;
-    }
-
-    conflictPairs.sort();
-    return {
-        error: `Model keys must be unique across providers on a resource. Overlapping keys: ${conflictPairs.join(", ")}`
-    };
-}
-
 /**
  * Validate provider attachments for an org.
  */
@@ -243,8 +106,6 @@ export async function resolveProviderAttachments(input: {
     orgId: string;
     attachments: ResourceAiProviderInput[];
     requireAtLeastOne: boolean;
-    resourceId?: number;
-    siteResourceId?: number;
 }): Promise<ResourceAiProviderAttachment[] | InferenceFieldsError> {
     const attachments = normalizeAttachments(input.attachments);
 
@@ -284,14 +145,6 @@ export async function resolveProviderAttachments(input: {
         return {
             error: `AI provider with ID ${disabled.providerId} is disabled`
         };
-    }
-
-    const overlapError = await assertNoOverlappingModelKeys(attachments, {
-        resourceId: input.resourceId,
-        siteResourceId: input.siteResourceId
-    });
-    if (overlapError) {
-        return overlapError;
     }
 
     return attachments;
@@ -830,7 +683,6 @@ async function assertModelEntriesValid(input: {
     const catalogRows = await db
         .select({
             modelId: aiModels.modelId,
-            modelKey: aiModels.modelKey,
             listType: aiModels.listType,
             providerId: aiModels.providerId,
             enabled: aiModels.enabled
@@ -850,7 +702,6 @@ async function assertModelEntriesValid(input: {
     }
 
     const catalogById = new Map(catalogRows.map((row) => [row.modelId, row]));
-    const selectedAllowsByProvider = new Map<number, string[]>();
     for (const entry of input.modelEntries) {
         const catalog = catalogById.get(entry.modelId);
         if (!catalog) {
@@ -862,18 +713,6 @@ async function assertModelEntriesValid(input: {
         if (!catalog.enabled) {
             return `Model ${entry.modelId} is disabled on its provider`;
         }
-        if (entry.listType === "allow") {
-            const keys = selectedAllowsByProvider.get(catalog.providerId) ?? [];
-            keys.push(catalog.modelKey);
-            selectedAllowsByProvider.set(catalog.providerId, keys);
-        }
-    }
-
-    const overlapError = await assertNoOverlappingModelKeys(input.attachments, {
-        selectedAllowsByProvider
-    });
-    if (overlapError) {
-        return overlapError.error;
     }
 
     return null;

@@ -50,6 +50,11 @@ import {
     isAllowedByLists,
     mostSpecificMatchingAllow
 } from "@server/lib/aiModelKeyMatch";
+import {
+    catalogOwnershipScore,
+    keepBestScored,
+    providerClassRank
+} from "@server/lib/aiProviderSelection";
 import { aiGatewayUpstreamFetch } from "@server/lib/aiGatewayUpstreamFetch";
 import { getModelPricing, calculateAiCost } from "@server/lib/aiModelPricing";
 import {
@@ -502,17 +507,28 @@ async function selectProvider(
         };
     }
 
+    // 1) Prefer the most specific allow pattern that matched the request.
     candidates.sort((a, b) =>
         compareModelKeySpecificity(a.modelKey, b.modelKey)
     );
-
     const bestSpecificity = candidates[0].modelKey;
-    const topCandidates = candidates.filter(
+    let remaining = candidates.filter(
         (c) => compareModelKeySpecificity(c.modelKey, bestSpecificity) === 0
     );
 
+    // 2) Prefer providers whose catalog owns this model id. Aggregators only
+    // score when the model is known somewhere in the catalog.
+    remaining = keepBestScored(remaining, (c) =>
+        catalogOwnershipScore(c.provider.type as AiProviderType, requestedModel)
+    );
+
+    // 3) Prefer native typed providers over aggregators over custom.
+    remaining = keepBestScored(remaining, (c) =>
+        providerClassRank(c.provider.type as AiProviderType)
+    );
+
     const uniqueProviders = new Map<number, AiProvider>();
-    for (const candidate of topCandidates) {
+    for (const candidate of remaining) {
         uniqueProviders.set(candidate.provider.providerId, candidate.provider);
     }
 
@@ -523,7 +539,7 @@ async function selectProvider(
     return {
         ok: false,
         status: HttpCode.FORBIDDEN,
-        message: `Model "${requestedModel}" is ambiguous across multiple AI providers on this resource`
+        message: `Model "${requestedModel}" is ambiguous across multiple AI providers on this resource. Ask your administrator to configure a more specific allow pattern for this model.`
     };
 }
 

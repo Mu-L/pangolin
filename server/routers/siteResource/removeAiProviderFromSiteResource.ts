@@ -133,8 +133,7 @@ export async function removeAiProviderFromSiteResource(
         const attachments = await resolveProviderAttachments({
             orgId: siteResource.orgId,
             attachments: remaining,
-            requireAtLeastOne: false,
-            siteResourceId
+            requireAtLeastOne: false
         });
         if (isInferenceFieldsError(attachments)) {
             return next(
