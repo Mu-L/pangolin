@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, or, sql, SQL } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, or, sql, SQL, type InferInsertModel } from "drizzle-orm";
 import {
     AiBudget,
     aiBudgetBreachEvents,
@@ -430,6 +430,91 @@ export type UsageRecordInput = {
     createdAt?: number;
 };
 
+type AiUsageRecordInsert = InferInsertModel<typeof aiUsageRecords>;
+
+// In-memory buffer for batching AI usage record inserts, mirroring the
+// approach in server/routers/badger/logRequestAudit.ts. Usage rows are read
+// back on every budget-cache miss (see getBudgetUsage above), which happens
+// at least every BUDGET_CACHE_REFRESH_MS, so this buffer is flushed much
+// more aggressively than the request audit log to keep the table from
+// lagging behind what budget enforcement needs. Unlike the audit log, there
+// is no retention/cleanup job for this table - usage history is kept
+// indefinitely for billing and historical reporting.
+const usageRecordBuffer: AiUsageRecordInsert[] = [];
+
+const USAGE_BATCH_SIZE = 20; // Write to DB every 20 records
+const USAGE_BATCH_INTERVAL_MS = 1000; // Or every 1 second, whichever comes first
+const USAGE_MAX_BUFFER_SIZE = 5000; // Prevent unbounded memory growth
+let usageFlushTimer: NodeJS.Timeout | null = null;
+let isUsageFlushInProgress = false;
+
+async function flushUsageRecords() {
+    if (usageRecordBuffer.length === 0 || isUsageFlushInProgress) {
+        return;
+    }
+
+    isUsageFlushInProgress = true;
+
+    const recordsToWrite = usageRecordBuffer.splice(0, usageRecordBuffer.length);
+
+    try {
+        // Use a transaction to ensure all inserts succeed or fail together
+        await db.transaction(async (tx) => {
+            // Batch insert in groups to avoid overwhelming the database
+            const DB_BATCH_SIZE = 25;
+            for (let i = 0; i < recordsToWrite.length; i += DB_BATCH_SIZE) {
+                const batch = recordsToWrite.slice(i, i + DB_BATCH_SIZE);
+                await tx.insert(aiUsageRecords).values(batch);
+            }
+        });
+        logger.debug(`Flushed ${recordsToWrite.length} AI usage records to database`);
+    } catch (error) {
+        logger.error("Error flushing AI usage records:", error);
+        // On transaction error, put records back at the front of the buffer
+        // to retry, but only if the buffer isn't too large
+        if (usageRecordBuffer.length < USAGE_MAX_BUFFER_SIZE - recordsToWrite.length) {
+            usageRecordBuffer.unshift(...recordsToWrite);
+            logger.info(`Re-queued ${recordsToWrite.length} AI usage records for retry`);
+        } else {
+            logger.error(`Buffer full, dropped ${recordsToWrite.length} AI usage records`);
+        }
+    } finally {
+        isUsageFlushInProgress = false;
+        // If buffer filled up while we were flushing, flush again
+        if (usageRecordBuffer.length >= USAGE_BATCH_SIZE) {
+            flushUsageRecords().catch((err) =>
+                logger.error("Error in follow-up AI usage flush:", err)
+            );
+        }
+    }
+}
+
+function scheduleUsageFlush() {
+    if (usageFlushTimer === null) {
+        usageFlushTimer = setTimeout(() => {
+            usageFlushTimer = null;
+            flushUsageRecords().catch((err) =>
+                logger.error("Error in scheduled AI usage flush:", err)
+            );
+        }, USAGE_BATCH_INTERVAL_MS);
+    }
+}
+
+/**
+ * Gracefully flush all pending AI usage records (call this on shutdown).
+ */
+export async function shutdownUsageRecorder() {
+    if (usageFlushTimer) {
+        clearTimeout(usageFlushTimer);
+        usageFlushTimer = null;
+    }
+    // Force flush even if one is in progress by waiting and retrying
+    while (isUsageFlushInProgress) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await flushUsageRecords();
+}
+
 export async function recordUsage(input: UsageRecordInput): Promise<void> {
     try {
         const { usage } = input;
@@ -440,7 +525,15 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
             usage.completionTokens +
             usage.reasoningTokens;
 
-        await db.insert(aiUsageRecords).values({
+        // Prevent unbounded buffer growth - drop oldest entries if buffer is too large
+        if (usageRecordBuffer.length >= USAGE_MAX_BUFFER_SIZE) {
+            const dropped = usageRecordBuffer.splice(0, USAGE_BATCH_SIZE);
+            logger.warn(
+                `AI usage record buffer exceeded max size (${USAGE_MAX_BUFFER_SIZE}), dropped ${dropped.length} oldest entries`
+            );
+        }
+
+        usageRecordBuffer.push({
             orgId: input.orgId,
             providerId: input.providerId,
             resourceId: input.resourceId,
@@ -457,6 +550,15 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
             estimated: usage.estimated,
             createdAt: input.createdAt ?? Date.now()
         });
+
+        // Flush immediately if buffer is full, otherwise schedule a flush
+        if (usageRecordBuffer.length >= USAGE_BATCH_SIZE) {
+            flushUsageRecords().catch((err) =>
+                logger.error("Error flushing AI usage records:", err)
+            );
+        } else {
+            scheduleUsageFlush();
+        }
     } catch (error) {
         logger.error("Failed to record AI usage", { error });
     }
