@@ -34,6 +34,8 @@ import type {
     ListLauncherSitesResponse,
     ListLauncherViewsResponse
 } from "@server/routers/launcher/types";
+import type { ListLauncherAiModelsResponse } from "@server/routers/launcher/listLauncherAiModels";
+import type { ListMyVirtualApiKeysResponse } from "@server/routers/virtualApiKey/types";
 import type { GetResourcePolicyResponse } from "@server/routers/policy";
 import type {
     GetResourcePoliciesResponse,
@@ -1775,6 +1777,70 @@ export const launcherQueries = {
                     resourceType: "site" as const,
                     data: res.data.data
                 };
+            }
+        }),
+    aiModels: (
+        orgId: string,
+        params:
+            | {
+                  resourceType: "public";
+                  resourceId: number;
+              }
+            | {
+                  resourceType: "site";
+                  siteResourceId: number;
+              }
+            | null
+    ) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "LAUNCHER", "AI_MODELS", params] as const,
+            enabled: params != null,
+            queryFn: async ({ signal, meta }) => {
+                if (!params) {
+                    throw new Error("Resource params are required");
+                }
+
+                if (params.resourceType === "public") {
+                    const res = await meta!.api.get<
+                        AxiosResponse<ListLauncherAiModelsResponse>
+                    >(
+                        `/org/${orgId}/launcher/resource/${params.resourceId}/ai-models`,
+                        { signal }
+                    );
+                    return res.data.data;
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListLauncherAiModelsResponse>
+                >(
+                    `/org/${orgId}/launcher/site-resource/${params.siteResourceId}/ai-models`,
+                    { signal }
+                );
+                return res.data.data;
+            }
+        }),
+    myVirtualApiKeys: (orgId: string, resourceGuid: string | null) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "LAUNCHER",
+                "MY_VIRTUAL_API_KEYS",
+                resourceGuid
+            ] as const,
+            enabled: Boolean(resourceGuid),
+            queryFn: async ({ signal, meta }) => {
+                if (!resourceGuid) {
+                    throw new Error("resourceGuid is required");
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListMyVirtualApiKeysResponse>
+                >(
+                    `/org/${orgId}/my-virtual-api-keys?resourceGuid=${encodeURIComponent(resourceGuid)}`,
+                    { signal }
+                );
+                return res.data.data;
             }
         })
 };

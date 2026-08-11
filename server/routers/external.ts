@@ -591,6 +591,20 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/launcher/resource/:resourceId/ai-models",
+    verifyOrgAccess,
+    verifyResourceAccess,
+    launcher.listLauncherPublicAiModels
+);
+
+authenticated.get(
+    "/org/:orgId/launcher/site-resource/:siteResourceId/ai-models",
+    verifyOrgAccess,
+    verifySiteResourceAccess,
+    launcher.listLauncherSiteAiModels
+);
+
+authenticated.get(
     "/org/:orgId/launcher/sites",
     verifyOrgAccess,
     launcher.listLauncherSites

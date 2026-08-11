@@ -37,7 +37,7 @@ export type LauncherAccessFields = {
 export function formatPublicResourceAccess(
     resource: PublicResourceAccessInput
 ): LauncherAccessFields {
-    const browserModes = ["http", "ssh", "rdp", "vnc"];
+    const browserModes = ["http", "ssh", "rdp", "vnc", "inference"];
     if (!browserModes.includes(resource.mode)) {
         const port = resource.proxyPort?.toString() ?? "";
         return {
@@ -66,16 +66,8 @@ export function formatPublicResourceAccess(
 export function formatSiteResourceAccess(
     resource: SiteResourceAccessInput
 ): LauncherAccessFields {
-    if (resource.alias) {
-        return {
-            accessDisplay: resource.alias,
-            accessCopyValue: resource.alias,
-            accessUrl: null
-        };
-    }
-
     if (
-        (resource.mode === "http" || resource.mode == "inference") &&
+        (resource.mode === "http" || resource.mode === "inference") &&
         resource.fullDomain
     ) {
         const url = `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`;
@@ -83,6 +75,14 @@ export function formatSiteResourceAccess(
             accessDisplay: url,
             accessCopyValue: url,
             accessUrl: url
+        };
+    }
+
+    if (resource.alias) {
+        return {
+            accessDisplay: resource.alias,
+            accessCopyValue: resource.alias,
+            accessUrl: null
         };
     }
 

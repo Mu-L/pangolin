@@ -518,6 +518,152 @@ export async function listSiteResourceAiProviders(siteResourceId: number) {
         .where(eq(siteResourceAiProviders.siteResourceId, siteResourceId));
 }
 
+export type EffectiveAllowModel = {
+    modelId: number;
+    modelKey: string;
+    name: string;
+    providerId: number;
+    providerName: string;
+};
+
+export async function listEffectiveAllowModels(options: {
+    resourceId?: number;
+    siteResourceId?: number;
+}): Promise<EffectiveAllowModel[]> {
+    if (
+        options.resourceId === undefined &&
+        options.siteResourceId === undefined
+    ) {
+        return [];
+    }
+
+    const attachments =
+        options.resourceId !== undefined
+            ? await listPublicResourceAiProviders(options.resourceId)
+            : await listSiteResourceAiProviders(options.siteResourceId!);
+
+    const activeAttachments = attachments.filter(
+        (a) => a.enabled && a.providerEnabled
+    );
+    if (activeAttachments.length === 0) {
+        return [];
+    }
+
+    const inheritProviderIds = activeAttachments
+        .filter((a) => a.accessMode === "inherit")
+        .map((a) => a.providerId);
+    const selectProviderIds = activeAttachments
+        .filter((a) => a.accessMode === "select")
+        .map((a) => a.providerId);
+
+    const providerNameById = new Map(
+        activeAttachments.map((a) => [a.providerId, a.name] as const)
+    );
+
+    const models: EffectiveAllowModel[] = [];
+
+    if (inheritProviderIds.length > 0) {
+        const rows = await db
+            .select({
+                modelId: aiModels.modelId,
+                modelKey: aiModels.modelKey,
+                name: aiModels.name,
+                providerId: aiModels.providerId
+            })
+            .from(aiModels)
+            .where(
+                and(
+                    inArray(aiModels.providerId, inheritProviderIds),
+                    eq(aiModels.enabled, true),
+                    eq(aiModels.listType, "allow")
+                )
+            );
+        for (const row of rows) {
+            models.push({
+                ...row,
+                providerName: providerNameById.get(row.providerId) ?? ""
+            });
+        }
+    }
+
+    if (selectProviderIds.length > 0) {
+        if (options.resourceId !== undefined) {
+            const rows = await db
+                .select({
+                    modelId: aiModels.modelId,
+                    modelKey: aiModels.modelKey,
+                    name: aiModels.name,
+                    providerId: aiModels.providerId
+                })
+                .from(resourceAiModels)
+                .innerJoin(
+                    aiModels,
+                    eq(resourceAiModels.modelId, aiModels.modelId)
+                )
+                .where(
+                    and(
+                        eq(resourceAiModels.resourceId, options.resourceId),
+                        inArray(aiModels.providerId, selectProviderIds),
+                        eq(resourceAiModels.listType, "allow"),
+                        eq(aiModels.enabled, true)
+                    )
+                );
+            for (const row of rows) {
+                models.push({
+                    ...row,
+                    providerName: providerNameById.get(row.providerId) ?? ""
+                });
+            }
+        } else if (options.siteResourceId !== undefined) {
+            const rows = await db
+                .select({
+                    modelId: aiModels.modelId,
+                    modelKey: aiModels.modelKey,
+                    name: aiModels.name,
+                    providerId: aiModels.providerId
+                })
+                .from(siteResourceAiModels)
+                .innerJoin(
+                    aiModels,
+                    eq(siteResourceAiModels.modelId, aiModels.modelId)
+                )
+                .where(
+                    and(
+                        eq(
+                            siteResourceAiModels.siteResourceId,
+                            options.siteResourceId
+                        ),
+                        inArray(aiModels.providerId, selectProviderIds),
+                        eq(siteResourceAiModels.listType, "allow"),
+                        eq(aiModels.enabled, true)
+                    )
+                );
+            for (const row of rows) {
+                models.push({
+                    ...row,
+                    providerName: providerNameById.get(row.providerId) ?? ""
+                });
+            }
+        }
+    }
+
+    models.sort((a, b) => {
+        const byProvider = a.providerName.localeCompare(
+            b.providerName,
+            undefined,
+            {
+                sensitivity: "base"
+            }
+        );
+        if (byProvider !== 0) {
+            return byProvider;
+        }
+        return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+
+    return models;
+}
+
 /**
  * Model list APIs require an inference resource with at least one select-mode
  * attached provider.

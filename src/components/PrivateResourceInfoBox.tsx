@@ -124,13 +124,17 @@ export function PrivateResourceInfoSections({
         siteResource.fullDomain &&
         build != "oss"
     );
+    const showPortRestrictions =
+        isPanel &&
+        siteResource.mode !== "http" &&
+        siteResource.mode !== "inference";
 
     const numSections =
         2 +
         (showDestination ? 1 : 0) +
         (showAlias ? 1 : 0) +
         (showCertificate ? 1 : 0) +
-        (isPanel ? 1 : 0);
+        (showPortRestrictions ? 1 : 0);
 
     const sections = (
         <InfoSections cols={numSections} layout={isPanel ? "panel" : "default"}>
@@ -194,7 +198,7 @@ export function PrivateResourceInfoSections({
                 </InfoSection>
             ) : null}
 
-            {isPanel ? (
+            {showPortRestrictions ? (
                 <InfoSection>
                     <InfoSectionTitle>{t("portRestrictions")}</InfoSectionTitle>
                     <InfoSectionContent>

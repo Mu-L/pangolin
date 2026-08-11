@@ -368,56 +368,65 @@ export default function CreatePrivateResourcePage() {
                                         />
                                     </SettingsFormCell>
 
-                                    {mode === "http" ||
-                                        (mode === "inference" && (
-                                            <SettingsFormCell span="full">
-                                                <FormItem>
-                                                    <DomainPicker
-                                                        orgId={orgId}
-                                                        cols={2}
-                                                        hideFreeDomain
-                                                        onDomainChange={(
-                                                            res
-                                                        ) => {
-                                                            if (!res) {
+                                    {(mode === "http" ||
+                                        mode === "inference") && (
+                                        <SettingsFormCell span="full">
+                                            <FormField
+                                                control={form.control}
+                                                name="httpConfigDomainId"
+                                                render={() => (
+                                                    <FormItem>
+                                                        <DomainPicker
+                                                            orgId={orgId}
+                                                            cols={2}
+                                                            hideFreeDomain
+                                                            onDomainChange={(
+                                                                res
+                                                            ) => {
+                                                                if (!res) {
+                                                                    form.setValue(
+                                                                        "httpConfigSubdomain",
+                                                                        null
+                                                                    );
+                                                                    form.setValue(
+                                                                        "httpConfigDomainId",
+                                                                        null
+                                                                    );
+                                                                    form.setValue(
+                                                                        "httpConfigFullDomain",
+                                                                        null
+                                                                    );
+                                                                    return;
+                                                                }
                                                                 form.setValue(
                                                                     "httpConfigSubdomain",
-                                                                    null
+                                                                    res.subdomain ??
+                                                                        null
                                                                 );
                                                                 form.setValue(
                                                                     "httpConfigDomainId",
-                                                                    null
+                                                                    res.domainId,
+                                                                    {
+                                                                        shouldValidate: true
+                                                                    }
                                                                 );
                                                                 form.setValue(
                                                                     "httpConfigFullDomain",
-                                                                    null
+                                                                    res.fullDomain
                                                                 );
-                                                                return;
-                                                            }
-                                                            form.setValue(
-                                                                "httpConfigSubdomain",
-                                                                res.subdomain ??
-                                                                    null
-                                                            );
-                                                            form.setValue(
-                                                                "httpConfigDomainId",
-                                                                res.domainId
-                                                            );
-                                                            form.setValue(
-                                                                "httpConfigFullDomain",
-                                                                res.fullDomain
-                                                            );
-                                                        }}
-                                                    />
-                                                    <FormMessage />
-                                                    <FormDescription>
-                                                        {t(
-                                                            "resourceDomainDescription"
-                                                        )}
-                                                    </FormDescription>
-                                                </FormItem>
-                                            </SettingsFormCell>
-                                        ))}
+                                                            }}
+                                                        />
+                                                        <FormMessage />
+                                                        <FormDescription>
+                                                            {t(
+                                                                "resourceDomainDescription"
+                                                            )}
+                                                        </FormDescription>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </SettingsFormCell>
+                                    )}
 
                                     {(mode === "host" ||
                                         (mode === "ssh" && !isNativeSsh)) && (
