@@ -344,7 +344,7 @@ class RegionalAdaptiveCache {
         }
 
         const success = regionalLocalCache.set(key, value, effectiveTtl || 0);
-        if (success) logger.debug(`[regional] Set key in local cache: ${key}`);
+        // if (success) logger.debug(`[regional] Set key in local cache: ${key}`);
         return success;
     }
 
