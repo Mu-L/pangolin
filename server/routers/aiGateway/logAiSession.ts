@@ -1,4 +1,3 @@
-import { randomUUID } from "crypto";
 import { logsDb, db, orgs, aiSessionLog, type AiProvider } from "@server/db";
 import type { InferInsertModel } from "drizzle-orm";
 import logger from "@server/logger";
@@ -169,6 +168,7 @@ function truncateBody(value: string): { value: string; truncated: boolean } {
 }
 
 export function logAiSession(data: {
+    sessionId: string;
     capability: AiCapability;
     provider: AiProvider;
     requestedModel: string | undefined;
@@ -230,7 +230,7 @@ export function logAiSession(data: {
             }
 
             sessionLogBuffer.push({
-                sessionId: randomUUID(),
+                sessionId: data.sessionId,
                 orgId: sanitizeString(data.orgId),
                 providerId: data.provider.providerId,
                 capability: data.capability,

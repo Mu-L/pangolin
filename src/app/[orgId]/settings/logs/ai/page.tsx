@@ -459,7 +459,7 @@ export default function AiSessionLogsPage() {
     const renderExpandedRow = (row: any) => {
         return (
             <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                     <div>
                         <strong>{t("aiSessionId")}</strong>
                         <p className="text-muted-foreground mt-1 break-all">
@@ -470,6 +470,26 @@ export default function AiSessionLogsPage() {
                         <strong>{t("statusCode")}</strong>
                         <p className="text-muted-foreground mt-1">
                             {row.statusCode ?? "N/A"}
+                        </p>
+                    </div>
+                    <div>
+                        <strong>{t("tokens")}</strong>
+                        <p className="text-muted-foreground mt-1">
+                            {row.usage
+                                ? `${row.usage.totalTokens.toLocaleString()}${
+                                      row.usage.estimated
+                                          ? ` (${t("estimated")})`
+                                          : ""
+                                  }`
+                                : "N/A"}
+                        </p>
+                    </div>
+                    <div>
+                        <strong>{t("cost")}</strong>
+                        <p className="text-muted-foreground mt-1">
+                            {row.usage && row.usage.costUsd != null
+                                ? `$${row.usage.costUsd.toFixed(4)}`
+                                : "N/A"}
                         </p>
                     </div>
                 </div>
@@ -572,7 +592,17 @@ function generateSampleAiSessionLogs(): QueryAiSessionLogResponse["log"] {
             statusCode: 200,
             createdAt: Math.floor(
                 sevenDaysAgoMs + Math.random() * (now - sevenDaysAgoMs)
-            )
+            ),
+            usage: {
+                promptTokens: 500,
+                cacheReadTokens: 0,
+                cacheWriteTokens: 0,
+                completionTokens: 150,
+                reasoningTokens: 0,
+                totalTokens: 650,
+                costUsd: 0.0123,
+                estimated: false
+            }
         };
     });
 }

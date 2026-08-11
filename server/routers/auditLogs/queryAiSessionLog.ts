@@ -2,6 +2,7 @@ import {
     logsDb,
     aiSessionLog,
     aiProviders,
+    aiUsageRecords,
     resources,
     siteResources,
     users,
@@ -253,6 +254,51 @@ async function enrichWithDetails(
         }
     }
 
+    const usageMap = new Map<
+        string,
+        {
+            promptTokens: number;
+            cacheReadTokens: number;
+            cacheWriteTokens: number;
+            completionTokens: number;
+            reasoningTokens: number;
+            totalTokens: number;
+            costUsd: number | null;
+            estimated: boolean;
+        }
+    >();
+    const sessionIds = logs.map((log) => log.sessionId);
+    if (sessionIds.length > 0) {
+        const usageDetails = await primaryDb
+            .select({
+                sessionId: aiUsageRecords.sessionId,
+                promptTokens: aiUsageRecords.promptTokens,
+                cacheReadTokens: aiUsageRecords.cacheReadTokens,
+                cacheWriteTokens: aiUsageRecords.cacheWriteTokens,
+                completionTokens: aiUsageRecords.completionTokens,
+                reasoningTokens: aiUsageRecords.reasoningTokens,
+                totalTokens: aiUsageRecords.totalTokens,
+                costUsd: aiUsageRecords.costUsd,
+                estimated: aiUsageRecords.estimated
+            })
+            .from(aiUsageRecords)
+            .where(inArray(aiUsageRecords.sessionId, sessionIds));
+
+        for (const u of usageDetails) {
+            if (!u.sessionId) continue;
+            usageMap.set(u.sessionId, {
+                promptTokens: u.promptTokens,
+                cacheReadTokens: u.cacheReadTokens,
+                cacheWriteTokens: u.cacheWriteTokens,
+                completionTokens: u.completionTokens,
+                reasoningTokens: u.reasoningTokens,
+                totalTokens: u.totalTokens,
+                costUsd: u.costUsd,
+                estimated: u.estimated
+            });
+        }
+    }
+
     return logs.map((log) => {
         const provider = providerMap.get(log.providerId);
 
@@ -281,7 +327,8 @@ async function enrichWithDetails(
             providerType: provider?.type ?? null,
             resourceName,
             resourceNiceId,
-            userEmail: log.userId ? (userMap.get(log.userId) ?? null) : null
+            userEmail: log.userId ? (userMap.get(log.userId) ?? null) : null,
+            usage: usageMap.get(log.sessionId) ?? null
         };
     });
 }

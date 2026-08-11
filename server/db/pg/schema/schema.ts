@@ -1831,6 +1831,13 @@ export const aiUsageRecords = pgTable(
         userId: varchar("userId").references(() => users.userId, {
             onDelete: "set null"
         }),
+        // Links this usage record back to the aiSessionLog row for the same
+        // request (aiSessionLog.sessionId), so token/cost usage can be shown
+        // alongside the session transcript. Not a DB-level FK - aiSessionLog
+        // lives in the separate logs database. Nullable because the session
+        // log may be disabled (retention set to 0) while usage tracking
+        // stays on.
+        sessionId: varchar("sessionId"),
         requestedModel: varchar("requestedModel").notNull(),
         promptTokens: integer("promptTokens").notNull().default(0),
         cacheReadTokens: integer("cacheReadTokens").notNull().default(0),
@@ -1862,7 +1869,8 @@ export const aiUsageRecords = pgTable(
             t.orgId,
             t.userId,
             t.createdAt
-        )
+        ),
+        index("idx_ai_usage_records_session").on(t.sessionId)
     ]
 );
 

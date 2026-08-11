@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { Request, Response } from "express";
 import { and, eq, inArray } from "drizzle-orm";
 import {
@@ -594,6 +595,12 @@ export function recordAiGatewayCompletion(args: {
     const pricing = getModelPricing(provider.type as AiProviderType, model);
     const cost = calculateAiCost(pricing, usage);
 
+    // Shared by the usage record and the session log so the two can be
+    // joined later to show token/cost usage alongside the transcript -
+    // generated up front since neither buffered insert's row id is known
+    // until its next batch flush.
+    const sessionId = randomUUID();
+
     logger.info("AI gateway request usage", {
         capability,
         providerId: provider.providerId,
@@ -618,7 +625,8 @@ export function recordAiGatewayCompletion(args: {
             userId: requestUserId,
             requestedModel: model ?? "unknown",
             usage,
-            costUsd: cost?.totalCost ?? null
+            costUsd: cost?.totalCost ?? null,
+            sessionId
         });
 
         if (budgets.length > 0) {
@@ -635,6 +643,7 @@ export function recordAiGatewayCompletion(args: {
     }
 
     logAiSession({
+        sessionId,
         capability,
         provider,
         requestedModel,

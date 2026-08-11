@@ -119,6 +119,16 @@ export type QueryAiSessionLogResponse = {
         truncated: boolean;
         statusCode: number | null;
         createdAt: number;
+        usage: {
+            promptTokens: number;
+            cacheReadTokens: number;
+            cacheWriteTokens: number;
+            completionTokens: number;
+            reasoningTokens: number;
+            totalTokens: number;
+            costUsd: number | null;
+            estimated: boolean;
+        } | null;
     }[];
     pagination: {
         total: number;

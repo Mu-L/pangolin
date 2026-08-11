@@ -428,6 +428,11 @@ export type UsageRecordInput = {
     usage: AiUsage;
     costUsd: number | null;
     createdAt?: number;
+    // Same id as the aiSessionLog row logged for this request, so the two
+    // can be joined to show token/cost usage alongside the session
+    // transcript. Undefined when the session wasn't logged (e.g. session
+    // log retention disabled for the org).
+    sessionId?: string;
 };
 
 type AiUsageRecordInsert = InferInsertModel<typeof aiUsageRecords>;
@@ -539,6 +544,7 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
             resourceId: input.resourceId,
             siteResourceId: input.siteResourceId,
             userId: input.userId,
+            sessionId: input.sessionId,
             requestedModel: input.requestedModel,
             promptTokens: usage.promptTokens,
             cacheReadTokens: usage.cacheReadTokens,
