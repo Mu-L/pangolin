@@ -8,6 +8,7 @@ import {
     Building2,
     Cable,
     ChartLine,
+    Coins,
     Combine,
     CreditCard,
     Fingerprint,
@@ -232,6 +233,11 @@ export const orgNavSections = (
                         title: "sidebarLogsAi",
                         href: "/{orgId}/settings/logs/ai",
                         icon: <Bot className="size-4 flex-none" />
+                    },
+                    {
+                        title: "sidebarLogsAiUsage",
+                        href: "/{orgId}/settings/logs/ai-usage",
+                        icon: <Coins className="size-4 flex-none" />
                     },
                     ...(!env?.flags.disableEnterpriseFeatures
                         ? [
@@ -531,6 +537,11 @@ export const commandBarNavSections = (
                 title: "commandLogsAi",
                 href: "/{orgId}/settings/logs/ai",
                 icon: <Bot className="size-4 flex-none" />
+            },
+            {
+                title: "commandLogsAiUsage",
+                href: "/{orgId}/settings/logs/ai-usage",
+                icon: <Coins className="size-4 flex-none" />
             },
             ...(!env?.flags.disableEnterpriseFeatures
                 ? [

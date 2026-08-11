@@ -6,7 +6,14 @@ import {
     type BatchedStatusHistoryResponse
 } from "@server/lib/statusHistory";
 import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
-import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
+import type {
+    QueryRequestAnalyticsResponse,
+    QueryAiUsageFilterOptionsResponse,
+    QueryAiUsageOverviewResponse,
+    QueryAiUsageProvidersResponse,
+    QueryAiUsageResourcesResponse,
+    QueryAiUsageUsersRolesResponse
+} from "@server/routers/auditLogs";
 import type {
     QueryAccessAuditLogResponse,
     QueryActionAuditLogResponse,
@@ -928,6 +935,32 @@ export const logAnalyticsFiltersSchema = z.object({
 
 export type LogAnalyticsFilters = z.output<typeof logAnalyticsFiltersSchema>;
 
+export const aiUsageAnalyticsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    providerId: z.coerce.number().optional().catch(undefined),
+    model: z.string().optional().catch(undefined),
+    resourceId: z.coerce.number().optional().catch(undefined),
+    roleId: z.coerce.number().optional().catch(undefined),
+    userId: z.string().optional().catch(undefined)
+});
+
+export type AiUsageAnalyticsFilters = z.output<
+    typeof aiUsageAnalyticsFiltersSchema
+>;
+
 export const httpLogsFiltersSchema = z.object({
     timeStart: z
         .string()
@@ -1229,6 +1262,137 @@ export const logQueries = {
                         limit: pageSize,
                         offset: page * pageSize
                     },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        })
+};
+
+export const aiUsageAnalyticsQueries = {
+    filterOptions: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: Pick<AiUsageAnalyticsFilters, "timeStart" | "timeEnd">;
+    }) =>
+        queryOptions({
+            queryKey: ["AI_USAGE_ANALYTICS", orgId, "FILTERS", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAiUsageFilterOptionsResponse>
+                >(`/org/${orgId}/logs/ai/usage/filters`, {
+                    params: filters,
+                    signal
+                });
+                return res.data.data;
+            }
+        }),
+
+    overview: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: AiUsageAnalyticsFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["AI_USAGE_ANALYTICS", orgId, "OVERVIEW", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAiUsageOverviewResponse>
+                >(`/org/${orgId}/logs/ai/usage/overview`, {
+                    params: filters,
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    providers: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: AiUsageAnalyticsFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["AI_USAGE_ANALYTICS", orgId, "PROVIDERS", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAiUsageProvidersResponse>
+                >(`/org/${orgId}/logs/ai/usage/providers`, {
+                    params: filters,
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    resources: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: AiUsageAnalyticsFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["AI_USAGE_ANALYTICS", orgId, "RESOURCES", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAiUsageResourcesResponse>
+                >(`/org/${orgId}/logs/ai/usage/resources`, {
+                    params: filters,
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    usersRoles: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: AiUsageAnalyticsFilters;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "AI_USAGE_ANALYTICS",
+                orgId,
+                "USERS_ROLES",
+                filters
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAiUsageUsersRolesResponse>
+                >(`/org/${orgId}/logs/ai/usage/users-roles`, {
+                    params: filters,
                     signal
                 });
                 return res.data.data;

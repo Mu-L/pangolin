@@ -1546,6 +1546,41 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/logs/ai/usage/filters",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageFilterOptions
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/overview",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageOverview
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/providers",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageProviders
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/resources",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageResources
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/users-roles",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageUsersRoles
+);
+
+authenticated.get(
     "/org/:orgId/logs/analytics",
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.viewLogs),

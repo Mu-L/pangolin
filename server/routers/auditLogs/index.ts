@@ -3,3 +3,8 @@ export * from "./queryRequestAnalytics";
 export * from "./exportRequestAuditLog";
 export * from "./queryAiSessionLog";
 export * from "./exportAiSessionLog";
+export * from "./queryAiUsageFilterOptions";
+export * from "./queryAiUsageOverview";
+export * from "./queryAiUsageProviders";
+export * from "./queryAiUsageResources";
+export * from "./queryAiUsageUsersRoles";

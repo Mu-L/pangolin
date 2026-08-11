@@ -3397,6 +3397,8 @@
     "aiSessionLogsDescription": "View prompt and response transcripts for AI gateway requests in this organization",
     "sidebarLogsAi": "AI Session Logs",
     "commandLogsAi": "AI Session Logs",
+    "sidebarLogsAiUsage": "AI Usage Analytics",
+    "commandLogsAiUsage": "AI Usage Analytics",
     "provider": "Provider",
     "capability": "Capability",
     "model": "Model",

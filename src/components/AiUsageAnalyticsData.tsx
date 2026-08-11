@@ -1,0 +1,297 @@
+"use client";
+
+import { cn } from "@app/lib/cn";
+import {
+    aiUsageAnalyticsFiltersSchema,
+    aiUsageAnalyticsQueries,
+    type AiUsageAnalyticsFilters
+} from "@app/lib/queries";
+import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw, XIcon } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { DateRangePicker, type DateTimeValue } from "./DateTimePicker";
+import { Button } from "./ui/button";
+import { Card, CardHeader } from "./ui/card";
+import { Label } from "./ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "./ui/select";
+import { Separator } from "./ui/separator";
+import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
+import { HorizontalTabs, type TabItem } from "./HorizontalTabs";
+import { OverviewTab } from "./ai-usage-analytics/OverviewTab";
+import { ProvidersTab } from "./ai-usage-analytics/ProvidersTab";
+import { ResourcesTab } from "./ai-usage-analytics/ResourcesTab";
+import { UsersRolesTab } from "./ai-usage-analytics/UsersRolesTab";
+
+export type AiUsageAnalyticsDataProps = {
+    orgId: string;
+};
+
+const AI_USAGE_ANALYTICS_QUERY_PREFIX = ["AI_USAGE_ANALYTICS"];
+
+export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
+    const searchParams = useSearchParams();
+    const path = usePathname();
+    const router = useRouter();
+    const queryClient = useQueryClient();
+
+    const filters = aiUsageAnalyticsFiltersSchema.parse(
+        Object.fromEntries(searchParams.entries())
+    );
+
+    const isEmptySearchParams = Object.values(filters).every(
+        (v) => v === undefined
+    );
+
+    const dateRange = {
+        startDate: filters.timeStart
+            ? new Date(filters.timeStart)
+            : getSevenDaysAgo(),
+        endDate: filters.timeEnd ? new Date(filters.timeEnd) : new Date()
+    };
+
+    const { data: filterOptions } = useQuery(
+        aiUsageAnalyticsQueries.filterOptions({
+            orgId: props.orgId,
+            filters: {
+                timeStart: filters.timeStart,
+                timeEnd: filters.timeEnd
+            }
+        })
+    );
+
+    const isFetching =
+        useIsFetching({
+            queryKey: [...AI_USAGE_ANALYTICS_QUERY_PREFIX, props.orgId]
+        }) > 0;
+
+    function setFilter(key: keyof AiUsageAnalyticsFilters, value?: string) {
+        const newSearch = new URLSearchParams(searchParams);
+        newSearch.delete(key);
+        if (value !== undefined) {
+            newSearch.set(key, value);
+        }
+        router.replace(`${path}?${newSearch.toString()}`);
+    }
+
+    function handleTimeRangeUpdate(start: DateTimeValue, end: DateTimeValue) {
+        const newSearch = new URLSearchParams(searchParams);
+        const timeRegex =
+            /^(?<hours>\d{1,2})\:(?<minutes>\d{1,2})(\:(?<seconds>\d{1,2}))?$/;
+
+        if (start.date) {
+            const startDate = new Date(start.date);
+            if (start.time) {
+                const time = timeRegex.exec(start.time);
+                const groups = time?.groups ?? {};
+                startDate.setHours(Number(groups.hours));
+                startDate.setMinutes(Number(groups.minutes));
+                if (groups.seconds) {
+                    startDate.setSeconds(Number(groups.seconds));
+                }
+            }
+            newSearch.set("timeStart", startDate.toISOString());
+        }
+        if (end.date) {
+            const endDate = new Date(end.date);
+            if (end.time) {
+                const time = timeRegex.exec(end.time);
+                const groups = time?.groups ?? {};
+                endDate.setHours(Number(groups.hours));
+                endDate.setMinutes(Number(groups.minutes));
+                if (groups.seconds) {
+                    endDate.setSeconds(Number(groups.seconds));
+                }
+            }
+            newSearch.set("timeEnd", endDate.toISOString());
+        }
+        router.replace(`${path}?${newSearch.toString()}`);
+    }
+
+    function getDateTime(date: Date) {
+        return `${date.getHours()}:${date.getMinutes()}`;
+    }
+
+    const providerOptions = (filterOptions?.providers ?? []).map((p) => ({
+        value: String(p.id),
+        label: p.name ?? `Provider #${p.id}`
+    }));
+    const modelOptions = (filterOptions?.models ?? []).map((m) => ({
+        value: m,
+        label: m
+    }));
+    const resourceOptions = (filterOptions?.resources ?? []).map((r) => ({
+        value: String(r.id),
+        label: r.name ?? `Resource #${r.id}`
+    }));
+    const roleOptions = (filterOptions?.roles ?? []).map((r) => ({
+        value: String(r.id),
+        label: r.name ?? `Role #${r.id}`
+    }));
+    const userOptions = (filterOptions?.users ?? []).map((u) => ({
+        value: u.id,
+        label: u.email ?? u.id
+    }));
+
+    const tabs: TabItem[] = [
+        { title: "Overview", href: "#" },
+        { title: "Provider usage", href: "#" },
+        { title: "Resources", href: "#" },
+        { title: "Users & roles", href: "#" }
+    ];
+
+    return (
+        <div className="flex flex-col gap-5">
+            <Card>
+                <CardHeader className="flex flex-col gap-4">
+                    <div className="flex flex-col lg:flex-row items-start lg:items-end w-full gap-2">
+                        <DateRangePicker
+                            startValue={{
+                                date: dateRange.startDate,
+                                time: dateRange.startDate
+                                    ? getDateTime(dateRange.startDate)
+                                    : undefined
+                            }}
+                            endValue={{
+                                date: dateRange.endDate,
+                                time: dateRange.endDate
+                                    ? getDateTime(dateRange.endDate)
+                                    : undefined
+                            }}
+                            onRangeChange={handleTimeRangeUpdate}
+                            className="flex-wrap gap-2"
+                        />
+
+                        <Separator className="w-px h-6 self-end relative bottom-1.5 hidden lg:block" />
+
+                        <div className="flex flex-wrap items-end gap-2">
+                            <FilterSelect
+                                id="providerId"
+                                label="Provider"
+                                value={filters.providerId?.toString()}
+                                options={providerOptions}
+                                placeholder="All providers"
+                                onValueChange={(v) => setFilter("providerId", v)}
+                            />
+                            <FilterSelect
+                                id="model"
+                                label="Model"
+                                value={filters.model}
+                                options={modelOptions}
+                                placeholder="All models"
+                                onValueChange={(v) => setFilter("model", v)}
+                            />
+                            <FilterSelect
+                                id="resourceId"
+                                label="Resource"
+                                value={filters.resourceId?.toString()}
+                                options={resourceOptions}
+                                placeholder="All resources"
+                                onValueChange={(v) => setFilter("resourceId", v)}
+                            />
+                            <FilterSelect
+                                id="roleId"
+                                label="Role"
+                                value={filters.roleId?.toString()}
+                                options={roleOptions}
+                                placeholder="All roles"
+                                onValueChange={(v) => setFilter("roleId", v)}
+                            />
+                            <FilterSelect
+                                id="userId"
+                                label="User"
+                                value={filters.userId}
+                                options={userOptions}
+                                placeholder="All users"
+                                onValueChange={(v) => setFilter("userId", v)}
+                            />
+
+                            {!isEmptySearchParams && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => router.replace(path)}
+                                    className="gap-2"
+                                >
+                                    <XIcon className="size-4" />
+                                    Reset filters
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex justify-end">
+                        <Button
+                            variant="outline"
+                            onClick={() =>
+                                queryClient.invalidateQueries({
+                                    queryKey: [
+                                        ...AI_USAGE_ANALYTICS_QUERY_PREFIX,
+                                        props.orgId
+                                    ]
+                                })
+                            }
+                            disabled={isFetching}
+                            className="gap-2"
+                        >
+                            <RefreshCw
+                                className={cn(
+                                    "size-4",
+                                    isFetching && "animate-spin"
+                                )}
+                            />
+                            Refresh
+                        </Button>
+                    </div>
+                </CardHeader>
+            </Card>
+
+            <HorizontalTabs items={tabs} clientSide>
+                <OverviewTab orgId={props.orgId} filters={filters} />
+                <ProvidersTab orgId={props.orgId} filters={filters} />
+                <ResourcesTab orgId={props.orgId} filters={filters} />
+                <UsersRolesTab orgId={props.orgId} filters={filters} />
+            </HorizontalTabs>
+        </div>
+    );
+}
+
+type FilterSelectProps = {
+    id: string;
+    label: string;
+    value?: string;
+    options: { value: string; label: string }[];
+    placeholder: string;
+    onValueChange: (value?: string) => void;
+};
+
+function FilterSelect(props: FilterSelectProps) {
+    return (
+        <div className="flex flex-col items-start gap-2 w-44">
+            <Label htmlFor={props.id}>{props.label}</Label>
+            <Select
+                onValueChange={(newValue) =>
+                    props.onValueChange(
+                        newValue === "all" ? undefined : newValue
+                    )
+                }
+                value={props.value ?? "all"}
+            >
+                <SelectTrigger id={props.id} className="w-full">
+                    <SelectValue placeholder={props.placeholder} />
+                </SelectTrigger>
+                <SelectContent className="w-full">
+                    <SelectItem value="all">{props.placeholder}</SelectItem>
+                    {props.options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}

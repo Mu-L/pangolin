@@ -1503,6 +1503,41 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/logs/ai/usage/filters",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageFilterOptions
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/overview",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageOverview
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/providers",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageProviders
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/resources",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageResources
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/users-roles",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageUsersRoles
+);
+
+authenticated.get(
     "/org/:orgId/blueprints",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listBlueprints),
