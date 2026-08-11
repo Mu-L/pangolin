@@ -48,11 +48,11 @@ class AdaptiveCache {
     async get<T = any>(key: string): Promise<T | undefined> {
         // Use local cache as fallback or primary
         const value = localCache.get<T>(key);
-        if (value !== undefined) {
-            logger.debug(`Cache hit in local cache: ${key}`);
-        } else {
-            logger.debug(`Cache miss in local cache: ${key}`);
-        }
+        // if (value !== undefined) {
+        //     logger.debug(`Cache hit in local cache: ${key}`);
+        // } else {
+        //     logger.debug(`Cache miss in local cache: ${key}`);
+        // }
         return value;
     }
 

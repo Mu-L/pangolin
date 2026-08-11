@@ -111,11 +111,11 @@ class AdaptiveCache {
 
         // Use local cache as fallback or primary
         const value = localCache.get<T>(key);
-        if (value !== undefined) {
-            logger.debug(`Cache hit in local cache: ${key}`);
-        } else {
-            logger.debug(`Cache miss in local cache: ${key}`);
-        }
+        // if (value !== undefined) {
+        //     logger.debug(`Cache hit in local cache: ${key}`);
+        // } else {
+        //     logger.debug(`Cache miss in local cache: ${key}`);
+        // }
         return value;
     }
 
@@ -367,11 +367,11 @@ class RegionalAdaptiveCache {
         }
 
         const value = regionalLocalCache.get<T>(key);
-        if (value !== undefined) {
-            logger.debug(`[regional] Cache hit in local cache: ${key}`);
-        } else {
-            logger.debug(`[regional] Cache miss in local cache: ${key}`);
-        }
+        // if (value !== undefined) {
+        //     logger.debug(`[regional] Cache hit in local cache: ${key}`);
+        // } else {
+        //     logger.debug(`[regional] Cache miss in local cache: ${key}`);
+        // }
         return value;
     }
 
