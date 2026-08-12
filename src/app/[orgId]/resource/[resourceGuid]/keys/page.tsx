@@ -18,7 +18,7 @@ import { cache } from "react";
 export async function generateMetadata(): Promise<Metadata> {
     const t = await getTranslations();
     return {
-        title: t("myVirtualApiKeysResourceTitle")
+        title: t("myVirtualApiKeysTitle")
     };
 }
 
@@ -41,7 +41,9 @@ export default async function ResourceKeysPage(props: ResourceKeysPageProps) {
     const user = await getUser();
 
     if (!user) {
-        redirect("/");
+        redirect(
+            `/auth/resource/${encodeURIComponent(resourceGuid)}?redirect=${encodeURIComponent(`/${orgId}/resource/${resourceGuid}/keys`)}`
+        );
     }
 
     const cookieHeader = await authCookieHeader();
@@ -111,11 +113,7 @@ export default async function ResourceKeysPage(props: ResourceKeysPageProps) {
                 launcherMode
                 showViewAsAdmin={isAdminOrOwner}
             >
-                <UserVirtualApiKeys
-                    orgId={orgId}
-                    resourceGuid={resourceGuid}
-                    initialData={keysData}
-                />
+                <UserVirtualApiKeys orgId={orgId} initialData={keysData} />
             </Layout>
         </UserProvider>
     );

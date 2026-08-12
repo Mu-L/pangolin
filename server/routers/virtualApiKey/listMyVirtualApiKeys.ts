@@ -123,10 +123,12 @@ export async function listMyVirtualApiKeys(
         }
 
         let resourceId: number | undefined;
+        let resourceName: string | undefined;
         if (resourceGuid) {
             const [resource] = await db
                 .select({
-                    resourceId: resources.resourceId
+                    resourceId: resources.resourceId,
+                    name: resources.name
                 })
                 .from(resources)
                 .where(
@@ -147,6 +149,7 @@ export async function listMyVirtualApiKeys(
             }
 
             resourceId = resource.resourceId;
+            resourceName = resource.name;
         }
 
         const { key: userKeyRow } = await getOrCreateUserVirtualApiKey({
@@ -203,7 +206,8 @@ export async function listMyVirtualApiKeys(
                 userKey: toKeyWithResources(userKeyRow, resourceIdsByKey),
                 manualKeys: manualRows.map((row) =>
                     toKeyWithResources(row, resourceIdsByKey)
-                )
+                ),
+                ...(resourceName !== undefined ? { resourceName } : {})
             },
             success: true,
             error: false,

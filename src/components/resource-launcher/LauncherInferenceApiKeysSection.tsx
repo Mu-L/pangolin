@@ -202,7 +202,12 @@ export function LauncherInferenceApiKeysSection({
                                     </SettingsSubsectionTitle>
                                     <SettingsSubsectionDescription>
                                         {t(
-                                            "myVirtualApiKeysManualResourceDescription"
+                                            "myVirtualApiKeysManualResourceDescription",
+                                            {
+                                                resourceName:
+                                                    data.resourceName ??
+                                                    t("resource")
+                                            }
                                         )}
                                     </SettingsSubsectionDescription>
                                 </SettingsSubsectionHeader>
