@@ -47,27 +47,21 @@ export type AiModelCatalogEntry = {
     provider: CatalogProvider;
     model: string;
     pricing: {
-        input: number | null;
-        output: number | null;
-        cacheRead: number | null;
-        reasoningOutput: number | null;
+        in: number | null;
+        out: number | null;
+        cache: number | null;
+        reasoning: number | null;
     };
 };
 
 type RawCatalogEntry = {
-    id?: string;
-    name?: string;
-    model?: string;
+    model: string;
     provider: string;
-    input_cost_per_token?: number | null;
-    output_cost_per_token?: number | null;
-    cache_read_input_token_cost?: number | null;
-    output_cost_per_reasoning_token?: number | null;
     pricing?: {
-        input?: number | null;
-        output?: number | null;
-        cacheRead?: number | null;
-        reasoningOutput?: number | null;
+        in?: number | null;
+        out?: number | null;
+        cache?: number | null;
+        reasoning?: number | null;
     };
 };
 
@@ -93,25 +87,18 @@ function normalizeEntry(raw: RawCatalogEntry): AiModelCatalogEntry | null {
         return null;
     }
 
-    const model = raw.model ?? raw.name ?? raw.id;
-    if (!model) {
+    if (!raw.model) {
         return null;
     }
 
     return {
         provider,
-        model,
+        model: raw.model,
         pricing: {
-            input: raw.pricing?.input ?? raw.input_cost_per_token ?? null,
-            output: raw.pricing?.output ?? raw.output_cost_per_token ?? null,
-            cacheRead:
-                raw.pricing?.cacheRead ??
-                raw.cache_read_input_token_cost ??
-                null,
-            reasoningOutput:
-                raw.pricing?.reasoningOutput ??
-                raw.output_cost_per_reasoning_token ??
-                null
+            in: raw.pricing?.in ?? null,
+            out: raw.pricing?.out ?? null,
+            cache: raw.pricing?.cache ?? null,
+            reasoning: raw.pricing?.reasoning ?? null
         }
     };
 }

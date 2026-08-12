@@ -33,10 +33,10 @@ function toPricing(
     approximate: boolean
 ): AiModelPricing {
     return {
-        inputCostPerToken: entry.pricing.input,
-        outputCostPerToken: entry.pricing.output,
-        cacheReadInputTokenCost: entry.pricing.cacheRead,
-        outputCostPerReasoningToken: entry.pricing.reasoningOutput,
+        inputCostPerToken: entry.pricing.in,
+        outputCostPerToken: entry.pricing.out,
+        cacheReadInputTokenCost: entry.pricing.cache,
+        outputCostPerReasoningToken: entry.pricing.reasoning,
         approximate
     };
 }
