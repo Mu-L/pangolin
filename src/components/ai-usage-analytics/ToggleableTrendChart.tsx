@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@app/lib/cn";
+import { useTranslations } from "next-intl";
 import { BarChart3, LineChart as LineChartIcon, LoaderIcon } from "lucide-react";
 import {
     Bar,
@@ -34,6 +35,7 @@ export interface TrendChartRow {
 }
 
 type ToggleableTrendChartProps = {
+    title: string;
     data: TrendChartRow[];
     series: TrendSeries[];
     isLoading?: boolean;
@@ -48,6 +50,7 @@ const compactFormatter = new Intl.NumberFormat(undefined, {
 });
 
 export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
+    const t = useTranslations();
     const [chartType, setChartType] = useState<"bar" | "line">("bar");
 
     const valueFormatter = props.valueFormatter ?? compactFormatter.format;
@@ -61,25 +64,28 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
 
     return (
         <div className={cn("relative flex flex-col gap-2", props.className)}>
-            <div className="flex justify-end gap-1">
-                <Button
-                    type="button"
-                    size="sm"
-                    variant={chartType === "bar" ? "secondary" : "ghost"}
-                    onClick={() => setChartType("bar")}
-                    className="gap-1.5 px-2"
-                >
-                    <BarChart3 className="size-3.5" />
-                </Button>
-                <Button
-                    type="button"
-                    size="sm"
-                    variant={chartType === "line" ? "secondary" : "ghost"}
-                    onClick={() => setChartType("line")}
-                    className="gap-1.5 px-2"
-                >
-                    <LineChartIcon className="size-3.5" />
-                </Button>
+            <div className="flex items-center justify-between gap-2">
+                <h3 className="font-semibold">{props.title}</h3>
+                <div className="flex gap-1">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={chartType === "bar" ? "secondary" : "ghost"}
+                        onClick={() => setChartType("bar")}
+                        className="gap-1.5 px-2"
+                    >
+                        <BarChart3 className="size-3.5" />
+                    </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={chartType === "line" ? "secondary" : "ghost"}
+                        onClick={() => setChartType("line")}
+                        className="gap-1.5 px-2"
+                    >
+                        <LineChartIcon className="size-3.5" />
+                    </Button>
+                </div>
             </div>
 
             {!hasData ? (
@@ -87,10 +93,10 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
                     {props.isLoading ? (
                         <>
                             <LoaderIcon className="size-4 animate-spin" />
-                            Loading...
+                            {t("aiUsageLoading")}
                         </>
                     ) : (
-                        "No data"
+                        t("aiUsageNoData")
                     )}
                 </div>
             ) : (

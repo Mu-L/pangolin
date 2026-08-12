@@ -1,6 +1,7 @@
 "use client";
 
 import { LoaderIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { compactNumberFormatter, formatCost } from "./shared";
 
 export type TopEntity = {
@@ -20,6 +21,7 @@ type TopEntitiesListProps = {
 };
 
 export function TopEntitiesList(props: TopEntitiesListProps) {
+    const t = useTranslations();
     const totalCost = props.entities.reduce(
         (sum, e) => sum + (e.costUsd ?? 0),
         0
@@ -30,9 +32,15 @@ export function TopEntitiesList(props: TopEntitiesListProps) {
             {props.entities.length > 0 && (
                 <div className="grid grid-cols-12 text-sm text-muted-foreground font-semibold h-4">
                     <div className="col-span-5">{props.nameColumnLabel}</div>
-                    <div className="col-span-2 text-end">Requests</div>
-                    <div className="col-span-2 text-end">Tokens</div>
-                    <div className="col-span-2 text-end">Cost</div>
+                    <div className="col-span-2 text-end">
+                        {t("aiUsageRequests")}
+                    </div>
+                    <div className="col-span-2 text-end">
+                        {t("aiUsageTokens")}
+                    </div>
+                    <div className="col-span-2 text-end">
+                        {t("aiUsageCost")}
+                    </div>
                     <div className="col-span-1 text-end">%</div>
                 </div>
             )}
@@ -42,10 +50,10 @@ export function TopEntitiesList(props: TopEntitiesListProps) {
                         {props.isLoading ? (
                             <>
                                 <LoaderIcon className="size-4 animate-spin" />
-                                Loading...
+                                {t("aiUsageLoading")}
                             </>
                         ) : (
-                            (props.emptyLabel ?? "No data")
+                            (props.emptyLabel ?? t("aiUsageNoData"))
                         )}
                     </div>
                 )}

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { aiUsageAnalyticsQueries } from "@app/lib/queries";
 import type { AiUsageAnalyticsFilters } from "@app/lib/queries";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader } from "@app/components/ui/card";
 import {
     InfoSection,
@@ -24,15 +25,8 @@ type OverviewTabProps = {
     filters: AiUsageAnalyticsFilters;
 };
 
-const TOKEN_TYPE_LABELS: Record<string, string> = {
-    promptTokens: "Prompt",
-    cacheReadTokens: "Cache read",
-    cacheWriteTokens: "Cache write",
-    completionTokens: "Completion",
-    reasoningTokens: "Reasoning"
-};
-
 export function OverviewTab(props: OverviewTabProps) {
+    const t = useTranslations();
     const { data, isLoading } = useQuery(
         aiUsageAnalyticsQueries.overview({
             orgId: props.orgId,
@@ -40,8 +34,16 @@ export function OverviewTab(props: OverviewTabProps) {
         })
     );
 
+    const TOKEN_TYPE_LABELS: Record<string, string> = {
+        promptTokens: t("aiUsageTokenTypePrompt"),
+        cacheReadTokens: t("aiUsageTokenTypeCacheRead"),
+        cacheWriteTokens: t("aiUsageTokenTypeCacheWrite"),
+        completionTokens: t("aiUsageTokenTypeCompletion"),
+        reasoningTokens: t("aiUsageTokenTypeReasoning")
+    };
+
     const requestsSeries = [
-        { key: "requests", label: "Requests", color: SERIES_COLORS[0] }
+        { key: "requests", label: t("aiUsageRequests"), color: SERIES_COLORS[0] }
     ];
     const tokensSeries = Object.keys(TOKEN_TYPE_LABELS).map((key, i) => ({
         key,
@@ -49,16 +51,18 @@ export function OverviewTab(props: OverviewTabProps) {
         color: SERIES_COLORS[i % SERIES_COLORS.length]
     }));
     const costSeries = [
-        { key: "cost", label: "Cost", color: SERIES_COLORS[0] }
+        { key: "cost", label: t("aiUsageCost"), color: SERIES_COLORS[0] }
     ];
 
     const modelCostSeries = buildSeriesFromData(
         data?.modelCostPerDay ?? [],
-        (key) => key
+        (key) => key,
+        t("aiUsageOther")
     );
     const modelTokensSeries = buildSeriesFromData(
         data?.modelTokensPerDay ?? [],
-        (key) => key
+        (key) => key,
+        t("aiUsageOther")
     );
 
     const topModels: TopEntity[] = (data?.topModels ?? []).map((m) => ({
@@ -75,7 +79,9 @@ export function OverviewTab(props: OverviewTabProps) {
                 <CardHeader>
                     <InfoSections cols={4}>
                         <InfoSection>
-                            <InfoSectionTitle>Total Requests</InfoSectionTitle>
+                            <InfoSectionTitle>
+                                {t("aiUsageTotalRequests")}
+                            </InfoSectionTitle>
                             <InfoSectionContent>
                                 {data
                                     ? compactNumberFormatter.format(
@@ -85,7 +91,9 @@ export function OverviewTab(props: OverviewTabProps) {
                             </InfoSectionContent>
                         </InfoSection>
                         <InfoSection>
-                            <InfoSectionTitle>Total Tokens</InfoSectionTitle>
+                            <InfoSectionTitle>
+                                {t("aiUsageTotalTokens")}
+                            </InfoSectionTitle>
                             <InfoSectionContent>
                                 {data
                                     ? compactNumberFormatter.format(
@@ -95,13 +103,17 @@ export function OverviewTab(props: OverviewTabProps) {
                             </InfoSectionContent>
                         </InfoSection>
                         <InfoSection>
-                            <InfoSectionTitle>Total Cost</InfoSectionTitle>
+                            <InfoSectionTitle>
+                                {t("aiUsageTotalCost")}
+                            </InfoSectionTitle>
                             <InfoSectionContent>
                                 {data ? formatCost(data.totalCost) : "--"}
                             </InfoSectionContent>
                         </InfoSection>
                         <InfoSection>
-                            <InfoSectionTitle>Estimated</InfoSectionTitle>
+                            <InfoSectionTitle>
+                                {t("aiUsageEstimated")}
+                            </InfoSectionTitle>
                             <InfoSectionContent>
                                 {data
                                     ? `${Math.round(data.estimatedPercent)}%`
@@ -114,11 +126,9 @@ export function OverviewTab(props: OverviewTabProps) {
 
             <div className="grid lg:grid-cols-3 gap-5">
                 <Card>
-                    <CardHeader>
-                        <h3 className="font-semibold">Request Volume</h3>
-                    </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6">
                         <ToggleableTrendChart
+                            title={t("aiUsageRequestVolume")}
                             data={data?.requestsPerDay ?? []}
                             series={requestsSeries}
                             isLoading={isLoading}
@@ -126,11 +136,9 @@ export function OverviewTab(props: OverviewTabProps) {
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader>
-                        <h3 className="font-semibold">Token Usage</h3>
-                    </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6">
                         <ToggleableTrendChart
+                            title={t("aiUsageTokenUsage")}
                             data={data?.tokensPerDay ?? []}
                             series={tokensSeries}
                             isLoading={isLoading}
@@ -138,11 +146,9 @@ export function OverviewTab(props: OverviewTabProps) {
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader>
-                        <h3 className="font-semibold">Cost</h3>
-                    </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6">
                         <ToggleableTrendChart
+                            title={t("aiUsageCost")}
                             data={data?.costPerDay ?? []}
                             series={costSeries}
                             isLoading={isLoading}
@@ -154,11 +160,9 @@ export function OverviewTab(props: OverviewTabProps) {
 
             <div className="grid lg:grid-cols-2 gap-5">
                 <Card>
-                    <CardHeader>
-                        <h3 className="font-semibold">Model Cost</h3>
-                    </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6">
                         <ToggleableTrendChart
+                            title={t("aiUsageModelCost")}
                             data={data?.modelCostPerDay ?? []}
                             series={modelCostSeries}
                             isLoading={isLoading}
@@ -167,11 +171,9 @@ export function OverviewTab(props: OverviewTabProps) {
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader>
-                        <h3 className="font-semibold">Model Tokens</h3>
-                    </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6">
                         <ToggleableTrendChart
+                            title={t("aiUsageModelTokens")}
                             data={data?.modelTokensPerDay ?? []}
                             series={modelTokensSeries}
                             isLoading={isLoading}
@@ -182,13 +184,13 @@ export function OverviewTab(props: OverviewTabProps) {
 
             <Card>
                 <CardHeader>
-                    <h3 className="font-semibold">Top Models</h3>
+                    <h3 className="font-semibold">{t("aiUsageTopModels")}</h3>
                 </CardHeader>
                 <CardContent>
                     <TopEntitiesList
                         entities={topModels}
                         isLoading={isLoading}
-                        nameColumnLabel="Model"
+                        nameColumnLabel={t("aiUsageFilterModel")}
                     />
                 </CardContent>
             </Card>

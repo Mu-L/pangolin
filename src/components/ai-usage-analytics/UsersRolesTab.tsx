@@ -3,7 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { aiUsageAnalyticsQueries } from "@app/lib/queries";
 import type { AiUsageAnalyticsFilters } from "@app/lib/queries";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader } from "@app/components/ui/card";
+import { HorizontalTabs, type TabItem } from "@app/components/HorizontalTabs";
 import { ToggleableTrendChart } from "./ToggleableTrendChart";
 import { TopEntitiesList, type TopEntity } from "./TopEntitiesList";
 import { buildSeriesFromData, formatCost } from "./shared";
@@ -16,6 +18,7 @@ type UsersRolesTabProps = {
 const UNKNOWN_USER_KEY = "unknown";
 
 export function UsersRolesTab(props: UsersRolesTabProps) {
+    const t = useTranslations();
     const { data, isLoading } = useQuery(
         aiUsageAnalyticsQueries.usersRoles({
             orgId: props.orgId,
@@ -38,24 +41,28 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
     }
     const userLabelFor = (key: string) =>
         key === UNKNOWN_USER_KEY
-            ? "Unknown user"
+            ? t("aiUsageUnknownUser")
             : (userEmailByKey.get(key) ?? key);
 
     const roleCostSeries = buildSeriesFromData(
         data?.roleCostPerDay ?? [],
-        roleLabelFor
+        roleLabelFor,
+        t("aiUsageOther")
     );
     const roleTokensSeries = buildSeriesFromData(
         data?.roleTokensPerDay ?? [],
-        roleLabelFor
+        roleLabelFor,
+        t("aiUsageOther")
     );
     const userCostSeries = buildSeriesFromData(
         data?.userCostPerDay ?? [],
-        userLabelFor
+        userLabelFor,
+        t("aiUsageOther")
     );
     const userTokensSeries = buildSeriesFromData(
         data?.userTokensPerDay ?? [],
-        userLabelFor
+        userLabelFor,
+        t("aiUsageOther")
     );
 
     const topRoles: TopEntity[] = (data?.topRoles ?? []).map((r) => ({
@@ -68,35 +75,39 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
 
     const topUsers: TopEntity[] = (data?.topUsers ?? []).map((u) => ({
         key: u.userId ?? UNKNOWN_USER_KEY,
-        label: u.email ?? u.userId ?? "Unknown user",
+        label: u.email ?? u.userId ?? t("aiUsageUnknownUser"),
         requests: u.requests,
         totalTokens: u.totalTokens,
         costUsd: u.costUsd
     }));
 
+    const tabs: TabItem[] = [
+        { title: t("aiUsageRolesTab"), href: "#" },
+        { title: t("aiUsageUsersTab"), href: "#" }
+    ];
+
     return (
-        <div className="flex flex-col gap-8">
+        <HorizontalTabs items={tabs} clientSide>
             <div className="flex flex-col gap-5">
-                <h3 className="font-semibold text-muted-foreground">Roles</h3>
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Top Roles</h3>
+                        <h3 className="font-semibold">
+                            {t("aiUsageTopRoles")}
+                        </h3>
                     </CardHeader>
                     <CardContent>
                         <TopEntitiesList
                             entities={topRoles}
                             isLoading={isLoading}
-                            nameColumnLabel="Role"
+                            nameColumnLabel={t("aiUsageFilterRole")}
                         />
                     </CardContent>
                 </Card>
                 <div className="grid lg:grid-cols-2 gap-5">
                     <Card>
-                        <CardHeader>
-                            <h3 className="font-semibold">Role Cost</h3>
-                        </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-6">
                             <ToggleableTrendChart
+                                title={t("aiUsageRoleCost")}
                                 data={data?.roleCostPerDay ?? []}
                                 series={roleCostSeries}
                                 isLoading={isLoading}
@@ -105,11 +116,9 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader>
-                            <h3 className="font-semibold">Role Token Usage</h3>
-                        </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-6">
                             <ToggleableTrendChart
+                                title={t("aiUsageRoleTokenUsage")}
                                 data={data?.roleTokensPerDay ?? []}
                                 series={roleTokensSeries}
                                 isLoading={isLoading}
@@ -120,26 +129,25 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
             </div>
 
             <div className="flex flex-col gap-5">
-                <h3 className="font-semibold text-muted-foreground">Users</h3>
                 <Card>
                     <CardHeader>
-                        <h3 className="font-semibold">Top Users</h3>
+                        <h3 className="font-semibold">
+                            {t("aiUsageTopUsers")}
+                        </h3>
                     </CardHeader>
                     <CardContent>
                         <TopEntitiesList
                             entities={topUsers}
                             isLoading={isLoading}
-                            nameColumnLabel="User"
+                            nameColumnLabel={t("aiUsageFilterUser")}
                         />
                     </CardContent>
                 </Card>
                 <div className="grid lg:grid-cols-2 gap-5">
                     <Card>
-                        <CardHeader>
-                            <h3 className="font-semibold">User Cost</h3>
-                        </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-6">
                             <ToggleableTrendChart
+                                title={t("aiUsageUserCost")}
                                 data={data?.userCostPerDay ?? []}
                                 series={userCostSeries}
                                 isLoading={isLoading}
@@ -148,11 +156,9 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader>
-                            <h3 className="font-semibold">User Token Usage</h3>
-                        </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-6">
                             <ToggleableTrendChart
+                                title={t("aiUsageUserTokenUsage")}
                                 data={data?.userTokensPerDay ?? []}
                                 series={userTokensSeries}
                                 isLoading={isLoading}
@@ -161,6 +167,6 @@ export function UsersRolesTab(props: UsersRolesTabProps) {
                     </Card>
                 </div>
             </div>
-        </div>
+        </HorizontalTabs>
     );
 }

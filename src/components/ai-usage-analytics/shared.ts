@@ -18,7 +18,8 @@ export const OTHER_KEY = "other";
 // top-list needed. Assigns one categorical color per key, "other" last.
 export function buildSeriesFromData(
     data: Array<Record<string, number | string>>,
-    labelFor: (key: string) => string
+    labelFor: (key: string) => string,
+    otherLabel = "Other"
 ): TrendSeries[] {
     const keys = new Set<string>();
     for (const row of data) {
@@ -37,7 +38,7 @@ export function buildSeriesFromData(
 
     const hasOther = data.some((row) => OTHER_KEY in row);
     if (hasOther) {
-        series.push({ key: OTHER_KEY, label: "Other", color: OTHER_COLOR });
+        series.push({ key: OTHER_KEY, label: otherLabel, color: OTHER_COLOR });
     }
 
     return series;

@@ -8,6 +8,7 @@ import {
 } from "@app/lib/queries";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DateRangePicker, type DateTimeValue } from "./DateTimePicker";
 import { Button } from "./ui/button";
@@ -35,6 +36,7 @@ export type AiUsageAnalyticsDataProps = {
 const AI_USAGE_ANALYTICS_QUERY_PREFIX = ["AI_USAGE_ANALYTICS"];
 
 export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
+    const t = useTranslations();
     const searchParams = useSearchParams();
     const path = usePathname();
     const router = useRouter();
@@ -139,10 +141,10 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
     }));
 
     const tabs: TabItem[] = [
-        { title: "Overview", href: "#" },
-        { title: "Provider Usage", href: "#" },
-        { title: "Resources", href: "#" },
-        { title: "Users & Roles", href: "#" }
+        { title: t("aiUsageTabOverview"), href: "#" },
+        { title: t("aiUsageTabProviders"), href: "#" },
+        { title: t("aiUsageTabResources"), href: "#" },
+        { title: t("aiUsageTabUsersRoles"), href: "#" }
     ];
 
     return (
@@ -172,42 +174,42 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                         <div className="flex flex-wrap items-end gap-2">
                             <FilterSelect
                                 id="providerId"
-                                label="Provider"
+                                label={t("aiUsageFilterProvider")}
                                 value={filters.providerId?.toString()}
                                 options={providerOptions}
-                                placeholder="All Providers"
+                                placeholder={t("aiUsageFilterAllProviders")}
                                 onValueChange={(v) => setFilter("providerId", v)}
                             />
                             <FilterSelect
                                 id="model"
-                                label="Model"
+                                label={t("aiUsageFilterModel")}
                                 value={filters.model}
                                 options={modelOptions}
-                                placeholder="All Models"
+                                placeholder={t("aiUsageFilterAllModels")}
                                 onValueChange={(v) => setFilter("model", v)}
                             />
                             <FilterSelect
                                 id="resourceId"
-                                label="Resource"
+                                label={t("aiUsageFilterResource")}
                                 value={filters.resourceId?.toString()}
                                 options={resourceOptions}
-                                placeholder="All Resources"
+                                placeholder={t("aiUsageFilterAllResources")}
                                 onValueChange={(v) => setFilter("resourceId", v)}
                             />
                             <FilterSelect
                                 id="roleId"
-                                label="Role"
+                                label={t("aiUsageFilterRole")}
                                 value={filters.roleId?.toString()}
                                 options={roleOptions}
-                                placeholder="All Roles"
+                                placeholder={t("aiUsageFilterAllRoles")}
                                 onValueChange={(v) => setFilter("roleId", v)}
                             />
                             <FilterSelect
                                 id="userId"
-                                label="User"
+                                label={t("aiUsageFilterUser")}
                                 value={filters.userId}
                                 options={userOptions}
-                                placeholder="All Users"
+                                placeholder={t("aiUsageFilterAllUsers")}
                                 onValueChange={(v) => setFilter("userId", v)}
                             />
 
@@ -218,7 +220,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                     className="gap-2"
                                 >
                                     <XIcon className="size-4" />
-                                    Reset Filters
+                                    {t("aiUsageResetFilters")}
                                 </Button>
                             )}
                         </div>
@@ -243,7 +245,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                     isFetching && "animate-spin"
                                 )}
                             />
-                            Refresh
+                            {t("aiUsageRefresh")}
                         </Button>
                     </div>
                 </CardHeader>
