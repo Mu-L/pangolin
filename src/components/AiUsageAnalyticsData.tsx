@@ -27,7 +27,8 @@ import { HorizontalTabs, type TabItem } from "./HorizontalTabs";
 import { OverviewTab } from "./ai-usage-analytics/OverviewTab";
 import { ProvidersTab } from "./ai-usage-analytics/ProvidersTab";
 import { ResourcesTab } from "./ai-usage-analytics/ResourcesTab";
-import { UsersRolesTab } from "./ai-usage-analytics/UsersRolesTab";
+import { RolesTab } from "./ai-usage-analytics/RolesTab";
+import { UsersTab } from "./ai-usage-analytics/UsersTab";
 
 export type AiUsageAnalyticsDataProps = {
     orgId: string;
@@ -144,7 +145,8 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
         { title: t("aiUsageTabOverview"), href: "#" },
         { title: t("aiUsageTabProviders"), href: "#" },
         { title: t("aiUsageTabResources"), href: "#" },
-        { title: t("aiUsageTabUsersRoles"), href: "#" }
+        { title: t("aiUsageRolesTab"), href: "#" },
+        { title: t("aiUsageUsersTab"), href: "#" }
     ];
 
     return (
@@ -255,7 +257,8 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                 <OverviewTab orgId={props.orgId} filters={filters} />
                 <ProvidersTab orgId={props.orgId} filters={filters} />
                 <ResourcesTab orgId={props.orgId} filters={filters} />
-                <UsersRolesTab orgId={props.orgId} filters={filters} />
+                <RolesTab orgId={props.orgId} filters={filters} />
+                <UsersTab orgId={props.orgId} filters={filters} />
             </HorizontalTabs>
         </div>
     );
