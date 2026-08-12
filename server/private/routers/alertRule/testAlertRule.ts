@@ -11,29 +11,17 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import { db } from "@server/db";
-import {
-    alertRules,
-    alertSites,
-    alertHealthChecks,
-    alertResources
-} from "@server/db";
-import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import logger from "@server/logger";
-import { fromError } from "zod-validation-error";
-import { OpenAPITags, registry } from "@server/openApi";
-import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
-import {
-    ListAlertRulesResponse,
-    type AlertAction,
-    type EmailAlertAction
-} from "@server/routers/alertRule/types";
-import { processTestAlerts } from "@server/private/lib/alerts/processTestAlerts";
 import { getRandomItemInArray } from "@app/lib/getRandomItemInArray";
+import response from "@server/lib/response";
+import logger from "@server/logger";
+import { processTestAlerts } from "@server/private/lib/alerts/processTestAlerts";
+import { type AlertAction } from "@server/routers/alertRule/types";
+import HttpCode from "@server/types/HttpCode";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
+import type { TriggerSiteAlertResponse } from "../alertEvents";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -202,6 +190,14 @@ export async function testAlertRule(
             orgId,
             actions: collectedActions,
             data
+        });
+
+        return response<TriggerSiteAlertResponse>(res, {
+            data: { success: true },
+            success: true,
+            error: false,
+            message: "Alert triggered successfully",
+            status: HttpCode.OK
         });
     } catch (error) {
         logger.error(error);
