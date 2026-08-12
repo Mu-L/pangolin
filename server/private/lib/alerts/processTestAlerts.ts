@@ -7,15 +7,13 @@ import type {
 } from "@server/routers/alertRule/types";
 import { eq, inArray } from "drizzle-orm";
 import { sendAlertEmail } from "./sendAlertEmail";
-import { decrypt } from "@server/lib/crypto";
-import config from "@server/lib/config";
 import { sendAlertWebhook } from "./sendAlertWebhook";
 
 export async function processTestAlerts(context: TestAlertContext) {
+    // Process email actions
     const emailActions = context.actions.filter(
         (action) => action.type === "email"
     );
-    // Process email actions
     for (const action of emailActions) {
         try {
             const recipients = await resolveEmailRecipients(action);
@@ -30,10 +28,10 @@ export async function processTestAlerts(context: TestAlertContext) {
         }
     }
 
+    // Process webhook actions
     const webhookActions = context.actions.filter(
         (action) => action.type === "webhook"
     );
-    const serverSecret = config.getRawConfig().server.secret!;
 
     for (const action of webhookActions) {
         try {
@@ -41,8 +39,9 @@ export async function processTestAlerts(context: TestAlertContext) {
 
             if (action.config) {
                 try {
-                    const decrypted = decrypt(action.config, serverSecret);
-                    webhookConfig = JSON.parse(decrypted) as WebhookAlertConfig;
+                    webhookConfig = JSON.parse(
+                        action.config
+                    ) as WebhookAlertConfig;
                 } catch (err) {
                     logger.error(
                         `processTestAlerts: failed to decrypt webhook`,
@@ -52,7 +51,10 @@ export async function processTestAlerts(context: TestAlertContext) {
                 }
             }
 
-            await sendAlertWebhook(action.webhookUrl, webhookConfig, context);
+            await sendAlertWebhook(action.webhookUrl, webhookConfig, {
+                ...context,
+                isTest: true
+            });
         } catch (err) {
             logger.error(
                 `processTestAlerts: failed to send alert webhook `,

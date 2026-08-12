@@ -180,8 +180,9 @@ export default function AlertRuleGraphEditor({
 
     const testAlert = async () => {
         const isValid = await form.trigger();
+        const values = form.getValues();
+
         if (!isValid) {
-            const values = form.getValues();
             if (values.actions.length === 0) {
                 toast({
                     variant: "warning",
@@ -193,27 +194,14 @@ export default function AlertRuleGraphEditor({
             return;
         }
 
-        const values = form.getValues();
         try {
             const payload = formValuesToApiPayload(values);
-            if (isNew) {
-                const res = await api.post<
-                    AxiosResponse<CreateAlertRuleResponse>
-                >(`/org/${orgId}/test-alert-rule`, payload);
-                toast({
-                    title: t("alertingTestAlertSent"),
-                    description: t("alertingTestAlertSentDescription")
-                });
-            } else {
-                await api.post(
-                    `/org/${orgId}/alert-rule/${alertRuleId}`,
-                    payload
-                );
-                toast({
-                    title: t("alertingTestAlertSent"),
-                    description: t("alertingTestAlertSentDescription")
-                });
-            }
+            await api.post(`/org/${orgId}/test-alert-rule`, payload);
+
+            toast({
+                title: t("alertingTestAlertSent"),
+                description: t("alertingTestAlertSentDescription")
+            });
         } catch (e) {
             toast({
                 title: t("error"),

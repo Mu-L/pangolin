@@ -1371,7 +1371,7 @@ export const approvalQueries = {
             },
             refetchInterval: (query) => {
                 if (query.state.data) {
-                    return durationToMs(30, "seconds");
+                    return durationToMs(1.5, "minutes");
                 }
                 return false;
             }
