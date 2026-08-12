@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
     db,
     resources,
+    users,
     virtualApiKeyResources,
     virtualApiKeys,
     type VirtualApiKey
@@ -152,9 +153,24 @@ export async function listMyVirtualApiKeys(
             resourceName = resource.name;
         }
 
+        const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.userId, userId))
+            .limit(1);
+
+        if (!user) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `User with ID ${userId} not found`
+                )
+            );
+        }
+
         const { key: userKeyRow } = await getOrCreateUserVirtualApiKey({
             orgId,
-            userId,
+            user,
             createdByUserId: userId
         });
 

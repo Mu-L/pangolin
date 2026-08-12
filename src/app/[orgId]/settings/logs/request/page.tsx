@@ -247,6 +247,7 @@ export default function GeneralPage() {
     // 106 - Valid email
     // 107 - Valid SSO
     // 108 - Connected Client
+    // 109 - Valid Virtual API Key
 
     // 201 - Resource Not Found
     // 202 - Resource Blocked
@@ -265,6 +266,7 @@ export default function GeneralPage() {
         106: t("validEmail"),
         107: t("validSSO"),
         108: t("connectedClient"),
+        109: t("validVirtualAPIKey"),
         201: t("resourceNotFound"),
         202: t("resourceBlocked"),
         203: t("droppedByRule"),

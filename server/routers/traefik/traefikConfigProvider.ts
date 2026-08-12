@@ -68,7 +68,27 @@ export async function traefikConfigProvider(
 
                         resourceSessionRequestParam:
                             config.getRawConfig().server
-                                .resource_session_request_param
+                                .resource_session_request_param,
+
+                        remoteUserIdHeader:
+                            config.getRawConfig().server.remote_headers
+                                .user_id,
+
+                        remoteVirtualApiKeyIdHeader:
+                            config.getRawConfig().server.remote_headers
+                                .virtual_api_key_id,
+
+                        remoteUserHeader:
+                            config.getRawConfig().server.remote_headers.user,
+
+                        remoteEmailHeader:
+                            config.getRawConfig().server.remote_headers.email,
+
+                        remoteNameHeader:
+                            config.getRawConfig().server.remote_headers.name,
+
+                        remoteRoleHeader:
+                            config.getRawConfig().server.remote_headers.role
                     }
                 }
             };

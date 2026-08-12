@@ -3437,6 +3437,7 @@
     "validPassword": "Valid Password",
     "validEmail": "Valid email",
     "validSSO": "Valid SSO",
+    "validVirtualAPIKey": "Valid Virtual API Key",
     "view": "View",
     "configManaged": "Config Managed",
     "connectedClient": "Connected Client",

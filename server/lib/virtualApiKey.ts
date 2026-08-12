@@ -5,6 +5,7 @@ import {
 import {
     db,
     resources,
+    User,
     virtualApiKeyResources,
     virtualApiKeys,
     type Transaction,
@@ -148,12 +149,12 @@ async function selectUserVirtualApiKey(
 
 export async function getOrCreateUserVirtualApiKey(params: {
     orgId: string;
-    userId: string;
+    user: User;
     createdByUserId?: string | null;
 }): Promise<{ key: VirtualApiKey; secret: string }> {
-    const { orgId, userId, createdByUserId } = params;
+    const { orgId, user, createdByUserId } = params;
 
-    const existing = await selectUserVirtualApiKey(orgId, userId);
+    const existing = await selectUserVirtualApiKey(orgId, user.userId);
     if (existing) {
         return {
             key: existing,
@@ -171,8 +172,8 @@ export async function getOrCreateUserVirtualApiKey(params: {
                 virtualApiKeyId: minted.virtualApiKeyId,
                 orgId,
                 kind: "user",
-                userId,
-                name: null,
+                userId: user.userId,
+                name: `${user.name ?? user.username}'s API Key`,
                 description: null,
                 token: encryptVirtualApiKeyToken(minted.secret),
                 lastChars: minted.lastChars,
@@ -186,7 +187,7 @@ export async function getOrCreateUserVirtualApiKey(params: {
 
         return { key: created, secret: minted.secret };
     } catch {
-        const raced = await selectUserVirtualApiKey(orgId, userId);
+        const raced = await selectUserVirtualApiKey(orgId, user.userId);
         if (raced) {
             return {
                 key: raced,
@@ -199,11 +200,11 @@ export async function getOrCreateUserVirtualApiKey(params: {
 
 export async function rotateUserVirtualApiKey(params: {
     orgId: string;
-    userId: string;
+    user: User;
     createdByUserId?: string | null;
 }): Promise<{ key: VirtualApiKey; secret: string }> {
-    const { orgId, userId, createdByUserId } = params;
-    const existing = await selectUserVirtualApiKey(orgId, userId);
+    const { orgId, user, createdByUserId } = params;
+    const existing = await selectUserVirtualApiKey(orgId, user.userId);
 
     if (!existing) {
         return getOrCreateUserVirtualApiKey(params);

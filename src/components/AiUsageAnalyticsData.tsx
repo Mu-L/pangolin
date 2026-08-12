@@ -161,120 +161,107 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
     return (
         <div className="flex flex-col gap-5">
             <Card>
-                <CardHeader className="flex flex-col gap-4">
-                    <div className="flex flex-col lg:flex-row items-start lg:items-end w-full gap-2">
-                        <DateRangePicker
-                            startValue={{
-                                date: dateRange.startDate,
-                                time: dateRange.startDate
-                                    ? getDateTime(dateRange.startDate)
-                                    : undefined
-                            }}
-                            endValue={{
-                                date: dateRange.endDate,
-                                time: dateRange.endDate
-                                    ? getDateTime(dateRange.endDate)
-                                    : undefined
-                            }}
-                            onRangeChange={handleTimeRangeUpdate}
-                            className="flex-wrap gap-2"
-                        />
+                <CardHeader className="flex flex-row flex-wrap items-end gap-x-3 gap-y-3">
+                    <DateRangePicker
+                        startValue={{
+                            date: dateRange.startDate,
+                            time: dateRange.startDate
+                                ? getDateTime(dateRange.startDate)
+                                : undefined
+                        }}
+                        endValue={{
+                            date: dateRange.endDate,
+                            time: dateRange.endDate
+                                ? getDateTime(dateRange.endDate)
+                                : undefined
+                        }}
+                        onRangeChange={handleTimeRangeUpdate}
+                        className="flex-wrap gap-2"
+                    />
 
-                        <Separator className="w-px h-6 self-end relative bottom-1.5 hidden lg:block" />
+                    <Separator className="w-px h-6 self-end relative bottom-1.5 hidden lg:block" />
 
-                        <div className="flex flex-wrap items-end gap-2">
-                            <FilterSelect
-                                id="providerId"
-                                label={t("aiUsageFilterProvider")}
-                                value={filters.providerId?.toString()}
-                                options={providerOptions}
-                                placeholder={t("aiUsageFilterAllProviders")}
-                                onValueChange={(v) =>
-                                    setFilter("providerId", v)
-                                }
-                            />
-                            <FilterSelect
-                                id="model"
-                                label={t("aiUsageFilterModel")}
-                                value={filters.model}
-                                options={modelOptions}
-                                placeholder={t("aiUsageFilterAllModels")}
-                                onValueChange={(v) => setFilter("model", v)}
-                            />
-                            <FilterSelect
-                                id="resourceId"
-                                label={t("aiUsageFilterResource")}
-                                value={filters.resourceId?.toString()}
-                                options={resourceOptions}
-                                placeholder={t("aiUsageFilterAllResources")}
-                                onValueChange={(v) =>
-                                    setFilter("resourceId", v)
-                                }
-                            />
-                            <FilterSelect
-                                id="roleId"
-                                label={t("aiUsageFilterRole")}
-                                value={filters.roleId?.toString()}
-                                options={roleOptions}
-                                placeholder={t("aiUsageFilterAllRoles")}
-                                onValueChange={(v) => setFilter("roleId", v)}
-                            />
-                            <FilterSelect
-                                id="userId"
-                                label={t("aiUsageFilterUser")}
-                                value={filters.userId}
-                                options={userOptions}
-                                placeholder={t("aiUsageFilterAllUsers")}
-                                onValueChange={(v) => setFilter("userId", v)}
-                            />
-                            <FilterSelect
-                                id="virtualApiKeyId"
-                                label={t("aiUsageFilterVirtualApiKey")}
-                                value={filters.virtualApiKeyId}
-                                options={virtualApiKeyOptions}
-                                placeholder={t(
-                                    "aiUsageFilterAllVirtualApiKeys"
-                                )}
-                                onValueChange={(v) =>
-                                    setFilter("virtualApiKeyId", v)
-                                }
-                            />
+                    <FilterSelect
+                        id="providerId"
+                        label={t("aiUsageFilterProvider")}
+                        value={filters.providerId?.toString()}
+                        options={providerOptions}
+                        placeholder={t("aiUsageFilterAllProviders")}
+                        onValueChange={(v) => setFilter("providerId", v)}
+                    />
+                    <FilterSelect
+                        id="model"
+                        label={t("aiUsageFilterModel")}
+                        value={filters.model}
+                        options={modelOptions}
+                        placeholder={t("aiUsageFilterAllModels")}
+                        onValueChange={(v) => setFilter("model", v)}
+                    />
+                    <FilterSelect
+                        id="resourceId"
+                        label={t("aiUsageFilterResource")}
+                        value={filters.resourceId?.toString()}
+                        options={resourceOptions}
+                        placeholder={t("aiUsageFilterAllResources")}
+                        onValueChange={(v) => setFilter("resourceId", v)}
+                    />
+                    <FilterSelect
+                        id="roleId"
+                        label={t("aiUsageFilterRole")}
+                        value={filters.roleId?.toString()}
+                        options={roleOptions}
+                        placeholder={t("aiUsageFilterAllRoles")}
+                        onValueChange={(v) => setFilter("roleId", v)}
+                    />
+                    <FilterSelect
+                        id="userId"
+                        label={t("aiUsageFilterUser")}
+                        value={filters.userId}
+                        options={userOptions}
+                        placeholder={t("aiUsageFilterAllUsers")}
+                        onValueChange={(v) => setFilter("userId", v)}
+                    />
+                    <FilterSelect
+                        id="virtualApiKeyId"
+                        label={t("aiUsageFilterVirtualApiKey")}
+                        value={filters.virtualApiKeyId}
+                        options={virtualApiKeyOptions}
+                        placeholder={t("aiUsageFilterAllVirtualApiKeys")}
+                        onValueChange={(v) => setFilter("virtualApiKeyId", v)}
+                    />
 
-                            {!isEmptySearchParams && (
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => router.replace(path)}
-                                    className="gap-2"
-                                >
-                                    <XIcon className="size-4" />
-                                    {t("aiUsageResetFilters")}
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                    <div className="flex justify-end">
+                    {!isEmptySearchParams && (
                         <Button
-                            variant="outline"
-                            onClick={() =>
-                                queryClient.invalidateQueries({
-                                    queryKey: [
-                                        ...AI_USAGE_ANALYTICS_QUERY_PREFIX,
-                                        props.orgId
-                                    ]
-                                })
-                            }
-                            disabled={isFetching}
+                            variant="ghost"
+                            onClick={() => router.replace(path)}
                             className="gap-2"
                         >
-                            <RefreshCw
-                                className={cn(
-                                    "size-4",
-                                    isFetching && "animate-spin"
-                                )}
-                            />
-                            {t("aiUsageRefresh")}
+                            <XIcon className="size-4" />
+                            {t("aiUsageResetFilters")}
                         </Button>
-                    </div>
+                    )}
+
+                    <Button
+                        variant="outline"
+                        onClick={() =>
+                            queryClient.invalidateQueries({
+                                queryKey: [
+                                    ...AI_USAGE_ANALYTICS_QUERY_PREFIX,
+                                    props.orgId
+                                ]
+                            })
+                        }
+                        disabled={isFetching}
+                        className="gap-2 ml-auto"
+                    >
+                        <RefreshCw
+                            className={cn(
+                                "size-4",
+                                isFetching && "animate-spin"
+                            )}
+                        />
+                        {t("aiUsageRefresh")}
+                    </Button>
                 </CardHeader>
             </Card>
 
@@ -301,7 +288,7 @@ type FilterSelectProps = {
 
 function FilterSelect(props: FilterSelectProps) {
     return (
-        <div className="flex flex-col items-start gap-2 w-44">
+        <div className="flex flex-col items-start gap-2 w-36">
             <Label htmlFor={props.id}>{props.label}</Label>
             <Select
                 onValueChange={(newValue) =>

@@ -111,6 +111,20 @@ export const configSchema = z
                     })
                     .optional()
                     .prefault({}),
+                remote_headers: z
+                    .object({
+                        user_id: z.string().optional().default("Remote-User-Id"),
+                        virtual_api_key_id: z
+                            .string()
+                            .optional()
+                            .default("Remote-Virtual-Api-Key-Id"),
+                        user: z.string().optional().default("Remote-User"),
+                        email: z.string().optional().default("Remote-Email"),
+                        name: z.string().optional().default("Remote-Name"),
+                        role: z.string().optional().default("Remote-Role")
+                    })
+                    .optional()
+                    .prefault({}),
                 resource_session_request_param: z
                     .string()
                     .optional()
@@ -153,6 +167,14 @@ export const configSchema = z
                 resource_access_token_headers: {
                     id: "P-Access-Token-Id",
                     token: "P-Access-Token"
+                },
+                remote_headers: {
+                    user_id: "Remote-User-Id",
+                    virtual_api_key_id: "Remote-Virtual-Api-Key-Id",
+                    user: "Remote-User",
+                    email: "Remote-Email",
+                    name: "Remote-Name",
+                    role: "Remote-Role"
                 },
                 resource_session_request_param:
                     "resource_session_request_param",

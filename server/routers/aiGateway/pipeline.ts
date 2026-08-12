@@ -180,15 +180,16 @@ export function applyRequestUserHeaders(
     if (!requestUser) {
         return;
     }
-    headers["Remote-User"] = requestUser.username;
+    const remoteHeaders = config.getRawConfig().server.remote_headers;
+    headers[remoteHeaders.user] = requestUser.username;
     if (requestUser.email) {
-        headers["Remote-Email"] = requestUser.email;
+        headers[remoteHeaders.email] = requestUser.email;
     }
     if (requestUser.name) {
-        headers["Remote-Name"] = requestUser.name;
+        headers[remoteHeaders.name] = requestUser.name;
     }
     if (requestUser.role) {
-        headers["Remote-Role"] = requestUser.role;
+        headers[remoteHeaders.role] = requestUser.role;
     }
 }
 
@@ -236,14 +237,20 @@ async function resolveRequestUser(
     // Public inference: identity comes from Badger via Remote-* only when the
     // Traefik trust header proves the request passed verify-session (VAK).
     if (isAiGatewayTrustHeaderValid(req.headers as Record<string, string>)) {
+        const remoteHeaders = config.getRawConfig().server.remote_headers;
         const virtualApiKeyId =
-            getRequestHeader(req, "remote-virtual-api-key-id") || null;
-        const userId = getRequestHeader(req, "remote-user-id");
+            getRequestHeader(req, remoteHeaders.virtual_api_key_id) || null;
+        const userId = getRequestHeader(req, remoteHeaders.user_id);
+        logger.debug("+++++++AI gateway request identity from trust header", {
+            virtualApiKeyId,
+            userId
+        });
         if (userId) {
-            const username = getRequestHeader(req, "remote-user") || userId;
-            const email = getRequestHeader(req, "remote-email");
-            const name = getRequestHeader(req, "remote-name");
-            const role = getRequestHeader(req, "remote-role");
+            const username =
+                getRequestHeader(req, remoteHeaders.user) || userId;
+            const email = getRequestHeader(req, remoteHeaders.email);
+            const name = getRequestHeader(req, remoteHeaders.name);
+            const role = getRequestHeader(req, remoteHeaders.role);
             const orgRoles = orgId ? await getUserOrgRoles(userId, orgId) : [];
 
             return {
@@ -742,6 +749,9 @@ export async function handleAiGatewayProxy(
         }
 
         logger.info(`AI gateway ${capability} request for host: ${host}`);
+        logger.debug("AI gateway request headers", {
+            headers: req.headers
+        });
 
         const target = await resolveTarget(host);
         if (!target) {

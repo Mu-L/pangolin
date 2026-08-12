@@ -577,9 +577,6 @@ export default function AiSessionLogsPage() {
                 </div>
                 {row.usage && (
                     <div>
-                        <div className="text-xs font-medium mb-2">
-                            {t("tokenUsage")}
-                        </div>
                         <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 text-xs">
                             <div>
                                 <strong>{t("promptTokens")}</strong>
