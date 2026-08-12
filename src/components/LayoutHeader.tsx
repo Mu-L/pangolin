@@ -42,8 +42,8 @@ export function LayoutHeader({
     const pathname = usePathname();
 
     const logoWidth = isUnlocked()
-        ? env.branding.logo?.navbar?.width || 98
-        : 98;
+        ? env.branding.logo?.navbar?.width || 128
+        : 128;
     const logoHeight = isUnlocked()
         ? env.branding.logo?.navbar?.height || 32
         : 32;
