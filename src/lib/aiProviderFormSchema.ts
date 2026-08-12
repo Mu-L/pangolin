@@ -1,14 +1,15 @@
 import { z } from "zod";
 import {
+    AI_CAPABILITIES,
     AI_PROVIDER_AUTH_TYPES,
     AI_PROVIDER_DEFAULTS,
     authTypeRequiresApiKey,
     defaultsForProviderType,
     providerRequiresUpstreamUrl,
+    type AiCapability,
     type AiProviderAuthType,
     type AiProviderType
-} from "@server/lib/aiProviderDefaults";
-import { AI_CAPABILITIES, type AiCapability } from "@server/lib/aiCapabilities";
+} from "@app/lib/aiProviderDefaults";
 
 type TranslateFn = (key: string) => string;
 

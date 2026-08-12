@@ -46,7 +46,7 @@ export function UserSelector({
     const [debouncedValue] = useDebounce(userSearchQuery, 150);
 
     const { data: users = [] } = useQuery(
-        orgQueries.users({ orgId, perPage: 10, term: debouncedValue })
+        orgQueries.users({ orgId, perPage: 10, query: debouncedValue })
     );
 
     const usersShown = useMemo(() => {

@@ -49,7 +49,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type {
     AiProviderAuthType,
     AiProviderType
-} from "@server/lib/aiProviderDefaults";
+} from "@app/lib/aiProviderDefaults";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";

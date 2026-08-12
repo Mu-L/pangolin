@@ -40,6 +40,7 @@ import { Checkbox } from "@app/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { UserSelector, type SelectedUser } from "@app/components/user-selector";
 import type { CreateOrEditVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
+import { formatVirtualApiKeyCredential } from "@app/lib/virtualApiKeyFormat";
 import {
     MultiResourcesSelector,
     formatMultiResourcesSelectorLabel
@@ -151,7 +152,10 @@ export default function EditVirtualApiKeyForm({
                 const secret = res.data.data.virtualApiKey.secret;
                 if (secret) {
                     setCredential(
-                        `vk-${virtualApiKey.virtualApiKeyId}.${secret}`
+                        formatVirtualApiKeyCredential(
+                            virtualApiKey.virtualApiKeyId,
+                            secret
+                        )
                     );
                 } else {
                     toast({

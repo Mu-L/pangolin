@@ -18,7 +18,7 @@ import { cn } from "@app/lib/cn";
 import {
     AI_PROVIDER_AUTH_TYPES,
     type AiProviderAuthType
-} from "@server/lib/aiProviderDefaults";
+} from "@app/lib/aiProviderDefaults";
 import { CheckIcon, ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";

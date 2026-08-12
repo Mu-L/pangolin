@@ -42,6 +42,7 @@ import { Checkbox } from "@app/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { UserSelector, type SelectedUser } from "@app/components/user-selector";
 import type { CreateOrEditVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
+import { formatVirtualApiKeyCredential } from "@app/lib/virtualApiKeyFormat";
 import {
     MultiResourcesSelector,
     formatMultiResourcesSelectorLabel
@@ -146,7 +147,12 @@ export default function CreateVirtualApiKeyForm({
         if (res?.data.data.virtualApiKey) {
             const key = res.data.data.virtualApiKey;
             if (key.secret) {
-                setCredential(`vk-${key.virtualApiKeyId}.${key.secret}`);
+                setCredential(
+                    formatVirtualApiKeyCredential(
+                        key.virtualApiKeyId,
+                        key.secret
+                    )
+                );
             }
 
             const resourceLookup = new Map(

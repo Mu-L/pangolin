@@ -1,7 +1,7 @@
 "use client";
 
 import { MultiSelectTagInput } from "@app/components/multi-select/multi-select-tag-input";
-import { AI_CAPABILITIES, type AiCapability } from "@server/lib/aiCapabilities";
+import { AI_CAPABILITIES, type AiCapability } from "@app/lib/aiCapabilities";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 

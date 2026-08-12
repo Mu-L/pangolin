@@ -16,7 +16,7 @@ import {
 } from "@app/components/ui/popover";
 import { cn } from "@app/lib/cn";
 import { aiProviderTypeValues } from "@app/lib/aiProviderFormSchema";
-import type { AiProviderType } from "@server/lib/aiProviderDefaults";
+import type { AiProviderType } from "@app/lib/aiProviderDefaults";
 import { CheckIcon, ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";

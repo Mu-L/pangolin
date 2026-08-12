@@ -39,6 +39,10 @@ import {
 import { getUserOrgRoles } from "@server/lib/userOrgRoles";
 import { isIpInCidr } from "@server/lib/ip";
 import { localCache } from "@server/lib/cache";
+import {
+    AI_GATEWAY_TRUST_HEADER,
+    isAiGatewayTrustHeaderValid
+} from "@server/lib/aiGatewayTrust";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import {
@@ -217,9 +221,42 @@ async function buildRequestUser(
 
 async function resolveRequestUser(
     req: Request,
-    _resourceId: number | null,
+    resourceId: number | null,
     orgId: string | null
 ): Promise<RequestUser | null> {
+    // Public inference: identity comes from Badger via Remote-* only when the
+    // Traefik trust header proves the request passed verify-session (VAK).
+    if (isAiGatewayTrustHeaderValid(req.headers as Record<string, string>)) {
+        const userId = getRequestHeader(req, "remote-user-id");
+        if (userId) {
+            const username = getRequestHeader(req, "remote-user") || userId;
+            const email = getRequestHeader(req, "remote-email");
+            const name = getRequestHeader(req, "remote-name");
+            const role = getRequestHeader(req, "remote-role");
+            const orgRoles = orgId ? await getUserOrgRoles(userId, orgId) : [];
+
+            return {
+                userId,
+                username,
+                email: email || null,
+                name: name || null,
+                role:
+                    role || orgRoles.map((r) => r.roleName).join(", ") || null,
+                roleIds: orgRoles.map((r) => r.roleId)
+            };
+        }
+
+        // Trusted request with no associated user (manual key without userId).
+        if (resourceId != null) {
+            return null;
+        }
+    }
+
+    // Public inference must come through Badger; do not authorize via app session.
+    if (resourceId != null) {
+        return null;
+    }
+
     const sessionToken = req.cookies?.[SESSION_COOKIE_NAME];
     if (sessionToken) {
         const { session, user } = await validateSessionToken(sessionToken);
@@ -249,6 +286,14 @@ async function resolveRequestUser(
     }
 
     return buildRequestUser(client.userId, orgId);
+}
+
+function getRequestHeader(req: Request, name: string): string | undefined {
+    const raw = req.headers[name.toLowerCase()];
+    if (Array.isArray(raw)) {
+        return raw[0];
+    }
+    return raw;
 }
 
 async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
@@ -696,6 +741,21 @@ export async function handleAiGatewayProxy(
             orgId
         } = target;
 
+        // Public inference must pass Badger verify-session first. Traefik
+        // injects the trust header only on that path; the gateway trusts it
+        // and does not re-verify the virtual API key.
+        if (
+            resourceId != null &&
+            !isAiGatewayTrustHeaderValid(req.headers as Record<string, string>)
+        ) {
+            return res.status(HttpCode.UNAUTHORIZED).json({
+                error: {
+                    message:
+                        "Request must be authenticated via the inference resource"
+                }
+            });
+        }
+
         const capableAttachments = attachments.filter((a) =>
             providerHasCapability(a.provider.capabilities, capability)
         );
@@ -823,7 +883,8 @@ export async function handleAiGatewayProxy(
             "transfer-encoding",
             "upgrade",
             "content-length",
-            "accept-encoding"
+            "accept-encoding",
+            AI_GATEWAY_TRUST_HEADER.toLowerCase()
         ]);
 
         const headers: Record<string, string> = {};

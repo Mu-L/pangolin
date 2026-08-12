@@ -46,6 +46,10 @@ import {
 import { cn } from "@app/lib/cn";
 import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import type { GetVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
+import {
+    formatVirtualApiKeyCredential,
+    formatVirtualApiKeyPreview
+} from "@app/lib/virtualApiKeyFormat";
 import { AxiosResponse } from "axios";
 
 export type VirtualApiKeyRow = CreatedVirtualApiKey;
@@ -507,7 +511,7 @@ function VirtualApiKeySecretCell({
 }) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
-    const preview = `vk-${virtualApiKeyId}••••${lastChars}`;
+    const preview = formatVirtualApiKeyPreview(virtualApiKeyId, lastChars);
     const [credential, setCredential] = useState<string | null>(null);
 
     useEffect(() => {
@@ -522,7 +526,9 @@ function VirtualApiKeySecretCell({
                 }
                 const secret = res.data.data.virtualApiKey.secret;
                 if (secret) {
-                    setCredential(`vk-${virtualApiKeyId}.${secret}`);
+                    setCredential(
+                        formatVirtualApiKeyCredential(virtualApiKeyId, secret)
+                    );
                 }
             })
             .catch((e) => {

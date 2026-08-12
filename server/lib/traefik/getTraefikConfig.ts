@@ -24,6 +24,10 @@ import { resources, sites, Target, targets } from "@server/db";
 import createPathRewriteMiddleware from "./middleware";
 import { sanitize, encodePath, validatePathRewriteConfig } from "./utils";
 import regionalCache from "@server/lib/cache";
+import {
+    AI_GATEWAY_TRUST_HEADER,
+    getAiGatewayTrustToken
+} from "@server/lib/aiGatewayTrust";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const badgerMiddlewareName = "badger";
@@ -808,7 +812,8 @@ export async function getTraefikConfig(
                 headers: {
                     customRequestHeaders: {
                         ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                        "p-host": fullDomain
+                        "p-host": fullDomain,
+                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
                     }
                 }
             };
@@ -911,7 +916,8 @@ export async function getTraefikConfig(
                 headers: {
                     customRequestHeaders: {
                         ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                        "p-host": fullDomain
+                        "p-host": fullDomain,
+                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
                     }
                 }
             };

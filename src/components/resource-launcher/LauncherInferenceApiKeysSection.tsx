@@ -20,6 +20,10 @@ import type {
     GetMyVirtualApiKeyResponse,
     VirtualApiKeyWithResources
 } from "@server/routers/virtualApiKey/types";
+import {
+    formatVirtualApiKeyCredential,
+    formatVirtualApiKeyPreview
+} from "@app/lib/virtualApiKeyFormat";
 import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import { Loader2 } from "lucide-react";
@@ -30,10 +34,6 @@ type LauncherInferenceApiKeysSectionProps = {
     orgId: string;
     resourceGuid: string;
 };
-
-function keyPreview(virtualApiKeyId: string, lastChars: string): string {
-    return `vk-${virtualApiKeyId}••••${lastChars}`;
-}
 
 function useRevealSecret(orgId: string, virtualApiKeyId: string) {
     const t = useTranslations();
@@ -53,7 +53,9 @@ function useRevealSecret(orgId: string, virtualApiKeyId: string) {
             .then((res) => {
                 const secret = res.data.data.virtualApiKey.secret;
                 if (secret) {
-                    setCredential(`vk-${virtualApiKeyId}.${secret}`);
+                    setCredential(
+                        formatVirtualApiKeyCredential(virtualApiKeyId, secret)
+                    );
                 } else {
                     toast({
                         variant: "destructive",
@@ -92,7 +94,7 @@ function PanelKeySecret({
     lastChars: string;
 }) {
     const t = useTranslations();
-    const preview = keyPreview(virtualApiKeyId, lastChars);
+    const preview = formatVirtualApiKeyPreview(virtualApiKeyId, lastChars);
     const { credential, loading, revealSecret } = useRevealSecret(
         orgId,
         virtualApiKeyId

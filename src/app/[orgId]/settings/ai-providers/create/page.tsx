@@ -50,7 +50,7 @@ import {
     type AiProviderFormValues
 } from "@app/lib/aiProviderFormSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { authTypeRequiresApiKey } from "@server/lib/aiProviderDefaults";
+import { authTypeRequiresApiKey } from "@app/lib/aiProviderDefaults";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";

@@ -6,6 +6,10 @@ import {
 import { generateSessionToken } from "@server/auth/sessions/app";
 import { verifyResourceAccessToken } from "@server/auth/verifyResourceAccessToken";
 import {
+    extractVirtualApiKeyCredential,
+    verifyVirtualApiKey
+} from "@server/auth/verifyVirtualApiKey";
+import {
     getResourceByDomain,
     getResourceRules,
     getRoleResourceAccess,
@@ -127,7 +131,8 @@ export async function verifyResourceSession(
         // Extract HTTP Basic Auth credentials if present
         const clientHeaderAuth = extractBasicAuth(headers);
 
-        const clientUserAgent = headers?.["user-agent"] || headers?.["User-Agent"];
+        const clientUserAgent =
+            headers?.["user-agent"] || headers?.["User-Agent"];
         const clientIsBrowser = isBrowserUserAgent(clientUserAgent);
 
         const clientIp = requestIp
@@ -254,20 +259,28 @@ export async function verifyResourceSession(
             );
 
             if (action == "ACCEPT") {
-                logger.debug("Resource allowed by rule");
+                // Public inference still requires a virtual API key; do not
+                // bypass that with an allow rule.
+                if (mode === "inference") {
+                    logger.debug(
+                        "Rule ACCEPT ignored for inference; continuing to virtual API key check"
+                    );
+                } else {
+                    logger.debug("Resource allowed by rule");
 
-                logRequestAudit(
-                    {
-                        action: true,
-                        reason: 100, // allowed by rule
-                        resourceId: resource.resourceId,
-                        orgId: resource.orgId,
-                        location: ipCC
-                    },
-                    parsedBody.data
-                );
+                    logRequestAudit(
+                        {
+                            action: true,
+                            reason: 100, // allowed by rule
+                            resourceId: resource.resourceId,
+                            orgId: resource.orgId,
+                            location: ipCC
+                        },
+                        parsedBody.data
+                    );
 
-                return allowed(res, undefined, dontStripSession);
+                    return allowed(res, undefined, dontStripSession);
+                }
             } else if (action == "DROP") {
                 logger.debug("Resource denied by rule");
 
@@ -302,20 +315,23 @@ export async function verifyResourceSession(
             !emailWhitelistEnabled &&
             !headerAuth
         ) {
-            logger.debug("Resource allowed because no auth");
+            // Public inference always requires a virtual API key.
+            if (mode !== "inference") {
+                logger.debug("Resource allowed because no auth");
 
-            logRequestAudit(
-                {
-                    action: true,
-                    reason: 101, // allowed no auth
-                    resourceId: resource.resourceId,
-                    orgId: resource.orgId,
-                    location: ipCC
-                },
-                parsedBody.data
-            );
+                logRequestAudit(
+                    {
+                        action: true,
+                        reason: 101, // allowed no auth
+                        resourceId: resource.resourceId,
+                        orgId: resource.orgId,
+                        location: ipCC
+                    },
+                    parsedBody.data
+                );
 
-            return allowed(res, undefined, dontStripSession);
+                return allowed(res, undefined, dontStripSession);
+            }
         }
 
         // Only offer a browser redirect to clients that can actually follow one and log in
@@ -326,6 +342,82 @@ export async function verifyResourceSession(
                   resource.resourceGuid
               )}?redirect=${encodeURIComponent(originalRequestURL)}`
             : undefined;
+
+        // Virtual API keys for public inference resources (provider-style auth headers).
+        // Session/SSO may authenticate users elsewhere (e.g. dashboard key pages), but
+        // only a valid virtual API key is allowed through to the AI gateway.
+        if (mode === "inference") {
+            const vakCredential = extractVirtualApiKeyCredential(headers);
+            if (vakCredential) {
+                const {
+                    valid,
+                    error,
+                    key,
+                    userData: vakUserData
+                } = await verifyVirtualApiKey({
+                    credential: vakCredential,
+                    resourceId: resource.resourceId,
+                    orgId: resource.orgId
+                });
+
+                if (error) {
+                    logger.debug("Virtual API key invalid: " + error);
+                }
+
+                if (!valid) {
+                    if (config.getRawConfig().app.log_failed_attempts) {
+                        logger.info(
+                            `Virtual API key is invalid. Resource ID: ${resource.resourceId}. IP: ${clientIp}.`
+                        );
+                    }
+                }
+
+                if (valid && key) {
+                    logRequestAudit(
+                        {
+                            action: true,
+                            reason: 109, // valid virtual API key
+                            resourceId: resource.resourceId,
+                            orgId: resource.orgId,
+                            location: ipCC,
+                            ...(vakUserData
+                                ? {
+                                      user: {
+                                          username: vakUserData.username,
+                                          userId: vakUserData.userId
+                                      }
+                                  }
+                                : {
+                                      apiKey: {
+                                          name: key.name,
+                                          apiKeyId: key.virtualApiKeyId
+                                      }
+                                  }),
+                            metadata: {
+                                virtualApiKeyId: key.virtualApiKeyId,
+                                virtualApiKeyKind: key.kind
+                            }
+                        },
+                        parsedBody.data
+                    );
+
+                    return allowed(res, vakUserData, dontStripSession);
+                }
+            }
+
+            logRequestAudit(
+                {
+                    action: false,
+                    reason: 299, // no more auth methods / VAK required
+                    resourceId: resource.resourceId,
+                    orgId: resource.orgId,
+                    location: ipCC
+                },
+                parsedBody.data
+            );
+
+            return notAllowed(res, redirectPath);
+        }
 
         // check for access token in headers
         if (

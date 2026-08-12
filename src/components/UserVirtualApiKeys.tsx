@@ -27,16 +27,16 @@ import type {
     ListMyVirtualApiKeysResponse,
     VirtualApiKeyWithResources
 } from "@server/routers/virtualApiKey/types";
+import {
+    formatVirtualApiKeyCredential,
+    formatVirtualApiKeyPreview
+} from "@app/lib/virtualApiKeyFormat";
 
 type UserVirtualApiKeysProps = {
     orgId: string;
     resourceGuid?: string;
     initialData: ListMyVirtualApiKeysResponse;
 };
-
-function keyPreview(virtualApiKeyId: string, lastChars: string): string {
-    return `vk-${virtualApiKeyId}••••${lastChars}`;
-}
 
 function useRevealSecret(orgId: string, virtualApiKeyId: string) {
     const t = useTranslations();
@@ -56,7 +56,9 @@ function useRevealSecret(orgId: string, virtualApiKeyId: string) {
             .then((res) => {
                 const secret = res.data.data.virtualApiKey.secret;
                 if (secret) {
-                    setCredential(`vk-${virtualApiKeyId}.${secret}`);
+                    setCredential(
+                        formatVirtualApiKeyCredential(virtualApiKeyId, secret)
+                    );
                 } else {
                     toast({
                         variant: "destructive",
@@ -95,7 +97,7 @@ function OwnedKeySecret({
     lastChars: string;
 }) {
     const t = useTranslations();
-    const preview = keyPreview(virtualApiKeyId, lastChars);
+    const preview = formatVirtualApiKeyPreview(virtualApiKeyId, lastChars);
     const { credential, loading, revealSecret } = useRevealSecret(
         orgId,
         virtualApiKeyId
@@ -137,7 +139,7 @@ function IdentityKeyCenterpiece({
     resourceGuid?: string;
 }) {
     const t = useTranslations();
-    const preview = keyPreview(virtualApiKeyId, lastChars);
+    const preview = formatVirtualApiKeyPreview(virtualApiKeyId, lastChars);
     const { credential, loading, revealSecret } = useRevealSecret(
         orgId,
         virtualApiKeyId

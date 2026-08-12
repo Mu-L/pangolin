@@ -30,7 +30,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AI_CAPABILITIES, type AiCapability } from "@server/lib/aiCapabilities";
+import { AI_CAPABILITIES, type AiCapability } from "@app/lib/aiCapabilities";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";

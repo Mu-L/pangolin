@@ -14,6 +14,14 @@ import config from "@server/lib/config";
 import { decrypt, encrypt } from "@server/lib/crypto";
 import { and, eq, inArray } from "drizzle-orm";
 
+export {
+    VIRTUAL_API_KEY_PREFIX,
+    formatVirtualApiKeyCredential,
+    formatVirtualApiKeyPreview,
+    looksLikeVirtualApiKeyCredential,
+    stripVirtualApiKeyAuthHeaders
+} from "@app/lib/virtualApiKeyFormat";
+
 export type MintedVirtualApiKeySecret = {
     virtualApiKeyId: string;
     secret: string;

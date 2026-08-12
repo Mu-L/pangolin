@@ -59,6 +59,10 @@ import {
 } from "#private/lib/certificates";
 import { build } from "@server/build";
 import regionalCache from "#private/lib/cache";
+import {
+    AI_GATEWAY_TRUST_HEADER,
+    getAiGatewayTrustToken
+} from "@server/lib/aiGatewayTrust";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const redirectToRootMiddlewareName = "redirect-to-root";
@@ -1634,18 +1638,19 @@ export async function getTraefikConfig(
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [badgerMiddlewareName];
 
-            if (aiGatewayOverride) {
-                const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
-                config_output.http.middlewares[irHeadersMiddlewareName] = {
-                    headers: {
-                        customRequestHeaders: {
-                            ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                            "p-host": fullDomain
-                        }
+            const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
+            config_output.http.middlewares[irHeadersMiddlewareName] = {
+                headers: {
+                    customRequestHeaders: {
+                        ...(aiGatewayOverride && aiGatewayHost
+                            ? { Host: aiGatewayHost }
+                            : {}),
+                        ...(aiGatewayOverride ? { "p-host": fullDomain } : {}),
+                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
                     }
-                };
-                routerMiddlewares.push(irHeadersMiddlewareName);
-            }
+                }
+            };
+            routerMiddlewares.push(irHeadersMiddlewareName);
 
             routerMiddlewares.push(...additionalMiddlewares);
 
@@ -1733,18 +1738,19 @@ export async function getTraefikConfig(
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares: string[] = [];
 
-            if (aiGatewayOverride) {
-                const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
-                config_output.http.middlewares[srHeadersMiddlewareName] = {
-                    headers: {
-                        customRequestHeaders: {
-                            ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                            "p-host": fullDomain
-                        }
+            const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
+            config_output.http.middlewares[srHeadersMiddlewareName] = {
+                headers: {
+                    customRequestHeaders: {
+                        ...(aiGatewayOverride && aiGatewayHost
+                            ? { Host: aiGatewayHost }
+                            : {}),
+                        ...(aiGatewayOverride ? { "p-host": fullDomain } : {}),
+                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
                     }
-                };
-                routerMiddlewares.push(srHeadersMiddlewareName);
-            }
+                }
+            };
+            routerMiddlewares.push(srHeadersMiddlewareName);
 
             routerMiddlewares.push(...additionalMiddlewares);
 

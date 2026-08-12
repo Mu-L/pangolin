@@ -3,82 +3,29 @@ import {
     parseCapabilities,
     type AiCapability
 } from "@server/lib/aiCapabilities";
+import { stripVirtualApiKeyAuthHeaders } from "@app/lib/virtualApiKeyFormat";
+import {
+    AI_PROVIDER_AUTH_TYPES,
+    AI_PROVIDER_DEFAULTS,
+    authTypeRequiresApiKey,
+    defaultsForProviderType,
+    providerRequiresUpstreamUrl,
+    type AiBudgetUnit,
+    type AiProviderAuthType,
+    type AiProviderRoutingMode,
+    type AiProviderType
+} from "@app/lib/aiProviderDefaults";
 
-export type AiProviderType =
-    | "openai"
-    | "anthropic"
-    | "googleGemini"
-    | "vertexAi"
-    | "bedrock"
-    | "microsoftFoundry"
-    | "openRouter"
-    | "vercelAiGateway"
-    | "custom";
-
-export const AI_PROVIDER_AUTH_TYPES = [
-    "bearer",
-    "x-api-key",
-    "x-goog-api-key",
-    "hec",
-    "cf-aig-authorization",
-    "none",
-    "passthrough"
-] as const;
-
-export type AiProviderAuthType = (typeof AI_PROVIDER_AUTH_TYPES)[number];
-export type AiBudgetUnit = "usd" | "tokens";
-export type AiProviderRoutingMode = "url" | "target";
-
-type AiProviderDefaults = {
-    upstreamUrl: string | null;
-    authType: AiProviderAuthType;
-    capabilities: readonly AiCapability[];
-};
-
-export const AI_PROVIDER_DEFAULTS: Record<
-    Exclude<AiProviderType, "custom">,
-    AiProviderDefaults
-> = {
-    openai: {
-        upstreamUrl: "https://api.openai.com/v1",
-        authType: "bearer",
-        capabilities: ["openai_chat", "openai_responses"]
-    },
-    anthropic: {
-        upstreamUrl: "https://api.anthropic.com",
-        authType: "x-api-key",
-        capabilities: ["anthropic_messages"]
-    },
-    googleGemini: {
-        upstreamUrl: "https://generativelanguage.googleapis.com",
-        authType: "x-goog-api-key",
-        capabilities: ["gemini_generate_content"]
-    },
-    vertexAi: {
-        upstreamUrl: null,
-        authType: "bearer",
-        capabilities: ["google_generate_content", "google_raw_predict"]
-    },
-    bedrock: {
-        upstreamUrl: "https://bedrock-runtime.us-east-1.amazonaws.com",
-        authType: "bearer",
-        capabilities: ["bedrock_converse"]
-    },
-    microsoftFoundry: {
-        upstreamUrl: null,
-        authType: "bearer",
-        capabilities: ["openai_chat", "openai_responses", "anthropic_messages"]
-    },
-    openRouter: {
-        upstreamUrl: "https://openrouter.ai/api/v1",
-        authType: "bearer",
-        capabilities: ["openai_chat"]
-    },
-    vercelAiGateway: {
-        upstreamUrl: "https://ai-gateway.vercel.sh/v1",
-        authType: "bearer",
-        capabilities: ["openai_chat", "openai_responses"]
-    }
+export {
+    AI_PROVIDER_AUTH_TYPES,
+    AI_PROVIDER_DEFAULTS,
+    authTypeRequiresApiKey,
+    defaultsForProviderType,
+    providerRequiresUpstreamUrl,
+    type AiBudgetUnit,
+    type AiProviderAuthType,
+    type AiProviderRoutingMode,
+    type AiProviderType
 };
 
 const CONFLICTING_AUTH_HEADERS = [
@@ -87,23 +34,6 @@ const CONFLICTING_AUTH_HEADERS = [
     "x-goog-api-key",
     "cf-aig-authorization"
 ] as const;
-
-export function authTypeRequiresApiKey(authType: AiProviderAuthType): boolean {
-    return authType !== "none" && authType !== "passthrough";
-}
-
-export function providerRequiresUpstreamUrl(
-    type: AiProviderType,
-    routingMode: AiProviderRoutingMode = "url"
-): boolean {
-    if (routingMode === "target") {
-        return false;
-    }
-    if (type === "custom") {
-        return true;
-    }
-    return AI_PROVIDER_DEFAULTS[type].upstreamUrl === null;
-}
 
 export function resolveAiProviderCreateFields(input: {
     type: AiProviderType;
@@ -191,15 +121,18 @@ export function applyAiProviderCustomHeaders(
 
 /**
  * Apply provider auth to upstream headers.
- * - Injected modes: strip client auth headers, then set the provider key.
- * - none: strip client auth headers, send no auth.
- * - passthrough: leave client auth headers as-is.
+ * - Always strips Pangolin virtual API key credentials from client auth headers.
+ * - Injected modes: strip conflicting client auth headers, then set the provider key.
+ * - none: strip conflicting client auth headers, send no auth.
+ * - passthrough: leave remaining client auth headers as-is (after VAK strip).
  */
 export function applyAiProviderAuthHeaders(
     headers: Record<string, string>,
     authType: AiProviderAuthType,
     apiKey: string | null
 ): void {
+    stripVirtualApiKeyAuthHeaders(headers);
+
     if (authType === "passthrough") {
         return;
     }
@@ -250,13 +183,4 @@ export function resolveCapabilitiesForCreate(input: {
         return [];
     }
     return [...AI_PROVIDER_DEFAULTS[input.type].capabilities];
-}
-
-export function defaultsForProviderType(
-    type: AiProviderType
-): readonly AiCapability[] {
-    if (type === "custom") {
-        return [];
-    }
-    return AI_PROVIDER_DEFAULTS[type].capabilities;
 }

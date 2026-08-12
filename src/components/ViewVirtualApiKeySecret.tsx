@@ -19,6 +19,7 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import type { GetVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
+import { formatVirtualApiKeyCredential } from "@app/lib/virtualApiKeyFormat";
 
 type ViewVirtualApiKeySecretProps = {
     open: boolean;
@@ -56,7 +57,12 @@ export default function ViewVirtualApiKeySecret({
                 }
                 const key = res.data.data.virtualApiKey;
                 if (key.secret) {
-                    setCredential(`vk-${key.virtualApiKeyId}.${key.secret}`);
+                    setCredential(
+                        formatVirtualApiKeyCredential(
+                            key.virtualApiKeyId,
+                            key.secret
+                        )
+                    );
                 } else {
                     toast({
                         variant: "destructive",

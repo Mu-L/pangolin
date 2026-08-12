@@ -38,7 +38,7 @@ import {
     authTypeRequiresApiKey,
     type AiProviderAuthType,
     type AiProviderType
-} from "@server/lib/aiProviderDefaults";
+} from "@app/lib/aiProviderDefaults";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
