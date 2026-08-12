@@ -50,6 +50,16 @@ import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import CopyTextBox from "@app/components/CopyTextBox";
 import type { CreatedVirtualApiKey } from "@app/components/CreateVirtualApiKeyForm";
 import type { GetVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
+import { HorizontalTabs } from "@app/components/HorizontalTabs";
+import {
+    BudgetRowsFields,
+    getBudgetRowsErrors,
+    rowsFromBudgets,
+    saveBudgetRows,
+    type BudgetRow
+} from "@app/components/BudgetsEditor";
+import { aiBudgetQueries } from "@app/lib/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type FormProps = {
     open: boolean;
@@ -93,6 +103,7 @@ export default function EditVirtualApiKeyForm({
     const { env } = useEnvContext();
     const api = createApiClient({ env });
     const t = useTranslations();
+    const queryClient = useQueryClient();
 
     const [loading, setLoading] = useState(false);
     const [selectedUser, setSelectedUser] = useState<SelectedUser | null>(null);
@@ -101,6 +112,19 @@ export default function EditVirtualApiKeyForm({
     >([]);
     const [credential, setCredential] = useState<string | null>(null);
     const [credentialLoading, setCredentialLoading] = useState(false);
+    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>(
+        []
+    );
+    const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
+
+    const budgetScope = {
+        type: "virtualApiKey" as const,
+        id: virtualApiKey?.virtualApiKeyId ?? ""
+    };
+    const budgetsQuery = useQuery({
+        ...aiBudgetQueries.scoped({ scope: budgetScope }),
+        enabled: open && !!virtualApiKey
+    });
 
     const formSchema = z
         .object({
@@ -191,6 +215,32 @@ export default function EditVirtualApiKeyForm({
         };
     }, [open, virtualApiKey, form]);
 
+    useEffect(() => {
+        if (!open || !budgetsQuery.data) {
+            return;
+        }
+        setPendingBudgetRows(rowsFromBudgets(budgetsQuery.data));
+        setAttemptedBudgetsSave(false);
+    }, [open, budgetsQuery.data]);
+
+    function handleFormSubmit(values: z.infer<typeof formSchema>) {
+        const { conflictingKeys, invalidAmountKeys } =
+            getBudgetRowsErrors(pendingBudgetRows);
+        if (conflictingKeys.size > 0 || invalidAmountKeys.size > 0) {
+            setAttemptedBudgetsSave(true);
+            toast({
+                variant: "destructive",
+                title: t("aiBudgetErrorSave"),
+                description: conflictingKeys.size
+                    ? t("aiBudgetConflictError")
+                    : t("aiBudgetInvalidAmountError")
+            });
+            return;
+        }
+
+        return onSubmit(values);
+    }
+
     async function onSubmit(values: z.infer<typeof formSchema>) {
         if (!virtualApiKey) {
             return;
@@ -223,6 +273,26 @@ export default function EditVirtualApiKeyForm({
 
         if (res?.data.data.virtualApiKey) {
             const key = res.data.data.virtualApiKey;
+
+            try {
+                await saveBudgetRows({
+                    api,
+                    orgId: virtualApiKey.orgId,
+                    scope: budgetScope,
+                    existingBudgets: budgetsQuery.data ?? [],
+                    rows: pendingBudgetRows
+                });
+                await queryClient.invalidateQueries(
+                    aiBudgetQueries.scoped({ scope: budgetScope })
+                );
+            } catch (e) {
+                toast({
+                    variant: "destructive",
+                    title: t("aiBudgetErrorSave"),
+                    description: formatAxiosError(e, t("aiBudgetErrorSave"))
+                });
+            }
+
             const resourceLookup = new Map(
                 selectedResources.map((r) => [
                     r.resourceId,
@@ -280,10 +350,26 @@ export default function EditVirtualApiKeyForm({
                     <div className="flex flex-col gap-y-4 px-1">
                         <Form {...form}>
                             <form
-                                onSubmit={form.handleSubmit(onSubmit)}
+                                onSubmit={form.handleSubmit(
+                                    handleFormSubmit
+                                )}
                                 className="space-y-4"
                                 id="edit-virtual-api-key-form"
                             >
+                                <HorizontalTabs
+                                    clientSide={true}
+                                    defaultTab={0}
+                                    items={[
+                                        { title: t("general"), href: "#" },
+                                        {
+                                            title: t(
+                                                "virtualApiKeysInferenceBudget"
+                                            ),
+                                            href: "#"
+                                        }
+                                    ]}
+                                >
+                                <div className="space-y-4 mt-4">
                                 <div className="space-y-2">
                                     <Label>
                                         {t(
@@ -430,6 +516,22 @@ export default function EditVirtualApiKeyForm({
                                         </div>
                                     )}
                                 </div>
+                                </div>
+
+                                <div className="space-y-4 mt-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        {t(
+                                            "virtualApiKeysInferenceBudgetDescription"
+                                        )}
+                                    </p>
+                                    <BudgetRowsFields
+                                        rows={pendingBudgetRows}
+                                        onChange={setPendingBudgetRows}
+                                        disabled={budgetsQuery.isLoading}
+                                        attemptedSave={attemptedBudgetsSave}
+                                    />
+                                </div>
+                                </HorizontalTabs>
                             </form>
                         </Form>
                     </div>

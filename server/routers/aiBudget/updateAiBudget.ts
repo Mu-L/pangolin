@@ -7,7 +7,8 @@ import {
     db,
     resources,
     roles,
-    siteResources
+    siteResources,
+    virtualApiKeys
 } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -34,6 +35,7 @@ const bodySchema = z.strictObject({
     resourceId: z.coerce.number().int().positive().nullable().optional(),
     siteResourceId: z.coerce.number().int().positive().nullable().optional(),
     roleId: z.coerce.number().int().positive().nullable().optional(),
+    virtualApiKeyId: z.string().nonempty().nullable().optional(),
     amount: z.number().positive().optional(),
     unit: aiBudgetUnitSchema.optional(),
     period: aiBudgetPeriodSchema.optional(),
@@ -128,6 +130,10 @@ export async function updateAiBudget(
                 : existing.siteResourceId;
         const nextRoleId =
             body.roleId !== undefined ? body.roleId : existing.roleId;
+        const nextVirtualApiKeyId =
+            body.virtualApiKeyId !== undefined
+                ? body.virtualApiKeyId
+                : existing.virtualApiKeyId;
         const nextUnit = body.unit !== undefined ? body.unit : existing.unit;
         const nextPeriod =
             body.period !== undefined ? body.period : existing.period;
@@ -138,7 +144,8 @@ export async function updateAiBudget(
                 modelId: z.number().nullable().optional(),
                 resourceId: z.number().nullable().optional(),
                 siteResourceId: z.number().nullable().optional(),
-                roleId: z.number().nullable().optional()
+                roleId: z.number().nullable().optional(),
+                virtualApiKeyId: z.string().nullable().optional()
             })
             .superRefine((data, ctx) => refineBudgetScopeFields(data, ctx))
             .safeParse({
@@ -146,7 +153,8 @@ export async function updateAiBudget(
                 modelId: nextModelId,
                 resourceId: nextResourceId,
                 siteResourceId: nextSiteResourceId,
-                roleId: nextRoleId
+                roleId: nextRoleId,
+                virtualApiKeyId: nextVirtualApiKeyId
             });
 
         if (!scopeValidation.success) {
@@ -245,6 +253,30 @@ export async function updateAiBudget(
             }
         }
 
+        if (
+            body.virtualApiKeyId !== undefined &&
+            body.virtualApiKeyId !== null
+        ) {
+            const [key] = await db
+                .select({ orgId: virtualApiKeys.orgId })
+                .from(virtualApiKeys)
+                .where(
+                    eq(
+                        virtualApiKeys.virtualApiKeyId,
+                        body.virtualApiKeyId
+                    )
+                )
+                .limit(1);
+            if (!key || key.orgId !== orgId) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `Virtual API key with ID ${body.virtualApiKeyId} not found in this organization`
+                    )
+                );
+            }
+        }
+
         const scopeCondition =
             nextProviderId !== null
                 ? eq(aiBudgets.providerId, nextProviderId)
@@ -256,14 +288,20 @@ export async function updateAiBudget(
                       ? eq(aiBudgets.siteResourceId, nextSiteResourceId)
                       : nextRoleId !== null
                         ? eq(aiBudgets.roleId, nextRoleId)
-                        : and(
-                              eq(aiBudgets.orgId, orgId),
-                              isNull(aiBudgets.providerId),
-                              isNull(aiBudgets.modelId),
-                              isNull(aiBudgets.resourceId),
-                              isNull(aiBudgets.siteResourceId),
-                              isNull(aiBudgets.roleId)
-                          );
+                        : nextVirtualApiKeyId !== null
+                          ? eq(
+                                aiBudgets.virtualApiKeyId,
+                                nextVirtualApiKeyId
+                            )
+                          : and(
+                                eq(aiBudgets.orgId, orgId),
+                                isNull(aiBudgets.providerId),
+                                isNull(aiBudgets.modelId),
+                                isNull(aiBudgets.resourceId),
+                                isNull(aiBudgets.siteResourceId),
+                                isNull(aiBudgets.roleId),
+                                isNull(aiBudgets.virtualApiKeyId)
+                            );
 
         const [conflict] = await db
             .select({ budgetId: aiBudgets.budgetId })
@@ -304,6 +342,9 @@ export async function updateAiBudget(
         }
         if (body.roleId !== undefined) {
             updateData.roleId = body.roleId;
+        }
+        if (body.virtualApiKeyId !== undefined) {
+            updateData.virtualApiKeyId = body.virtualApiKeyId;
         }
         if (body.amount !== undefined) {
             updateData.amount = body.amount;

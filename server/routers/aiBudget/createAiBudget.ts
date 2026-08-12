@@ -7,7 +7,8 @@ import {
     db,
     resources,
     roles,
-    siteResources
+    siteResources,
+    virtualApiKeys
 } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -35,6 +36,7 @@ const bodySchema = z
         resourceId: z.coerce.number().int().positive().optional(),
         siteResourceId: z.coerce.number().int().positive().optional(),
         roleId: z.coerce.number().int().positive().optional(),
+        virtualApiKeyId: z.string().nonempty().optional(),
         amount: z.number().positive(),
         unit: aiBudgetUnitSchema,
         period: aiBudgetPeriodSchema.optional().default("monthly"),
@@ -98,6 +100,7 @@ export async function createAiBudget(
             resourceId,
             siteResourceId,
             roleId,
+            virtualApiKeyId,
             amount,
             unit,
             period,
@@ -189,6 +192,22 @@ export async function createAiBudget(
             }
         }
 
+        if (virtualApiKeyId !== undefined) {
+            const [key] = await db
+                .select({ orgId: virtualApiKeys.orgId })
+                .from(virtualApiKeys)
+                .where(eq(virtualApiKeys.virtualApiKeyId, virtualApiKeyId))
+                .limit(1);
+            if (!key || key.orgId !== orgId) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `Virtual API key with ID ${virtualApiKeyId} not found in this organization`
+                    )
+                );
+            }
+        }
+
         const scopeCondition =
             providerId !== undefined
                 ? eq(aiBudgets.providerId, providerId)
@@ -200,14 +219,17 @@ export async function createAiBudget(
                       ? eq(aiBudgets.siteResourceId, siteResourceId)
                       : roleId !== undefined
                         ? eq(aiBudgets.roleId, roleId)
-                        : and(
-                              eq(aiBudgets.orgId, orgId),
-                              isNull(aiBudgets.providerId),
-                              isNull(aiBudgets.modelId),
-                              isNull(aiBudgets.resourceId),
-                              isNull(aiBudgets.siteResourceId),
-                              isNull(aiBudgets.roleId)
-                          );
+                        : virtualApiKeyId !== undefined
+                          ? eq(aiBudgets.virtualApiKeyId, virtualApiKeyId)
+                          : and(
+                                eq(aiBudgets.orgId, orgId),
+                                isNull(aiBudgets.providerId),
+                                isNull(aiBudgets.modelId),
+                                isNull(aiBudgets.resourceId),
+                                isNull(aiBudgets.siteResourceId),
+                                isNull(aiBudgets.roleId),
+                                isNull(aiBudgets.virtualApiKeyId)
+                            );
 
         const [existing] = await db
             .select({ budgetId: aiBudgets.budgetId })
@@ -239,6 +261,7 @@ export async function createAiBudget(
                 resourceId: resourceId ?? null,
                 siteResourceId: siteResourceId ?? null,
                 roleId: roleId ?? null,
+                virtualApiKeyId: virtualApiKeyId ?? null,
                 amount,
                 unit,
                 period,

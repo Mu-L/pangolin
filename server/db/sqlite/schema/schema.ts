@@ -1762,6 +1762,10 @@ export const aiBudgets = sqliteTable(
         roleId: integer("roleId").references(() => roles.roleId, {
             onDelete: "cascade"
         }),
+        virtualApiKeyId: text("virtualApiKeyId").references(
+            () => virtualApiKeys.virtualApiKeyId,
+            { onDelete: "cascade" }
+        ),
         amount: real("amount").notNull(),
         unit: text("unit").$type<"usd" | "tokens">().notNull(),
         period: text("period")
@@ -1794,7 +1798,12 @@ export const aiBudgets = sqliteTable(
             t.unit,
             t.period
         ),
-        unique("ai_budget_role_uniq").on(t.roleId, t.unit, t.period)
+        unique("ai_budget_role_uniq").on(t.roleId, t.unit, t.period),
+        unique("ai_budget_virtual_api_key_uniq").on(
+            t.virtualApiKeyId,
+            t.unit,
+            t.period
+        )
     ]
 );
 

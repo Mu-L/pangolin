@@ -1792,6 +1792,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/virtual-api-key/:virtualApiKeyId/ai-budgets",
+    verifyVirtualApiKeyAccess,
+    verifyUserHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForVirtualApiKey
+);
+
+authenticated.get(
     "/org/:orgId/labels",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listOrgLabels),

@@ -5,11 +5,12 @@ export type AiBudgetScopeType =
     | "model"
     | "resource"
     | "siteResource"
-    | "role";
+    | "role"
+    | "virtualApiKey";
 
 export type AiBudgetScope = {
     type: AiBudgetScopeType;
-    id: number;
+    id: number | string;
 };
 
 export type AiBudgetScopeBodyField =
@@ -17,11 +18,15 @@ export type AiBudgetScopeBodyField =
     | "modelId"
     | "resourceId"
     | "siteResourceId"
-    | "roleId";
+    | "roleId"
+    | "virtualApiKeyId";
 
 const scopeConfig: Record<
     AiBudgetScopeType,
-    { listPath: (id: number) => string; bodyField: AiBudgetScopeBodyField }
+    {
+        listPath: (id: number | string) => string;
+        bodyField: AiBudgetScopeBodyField;
+    }
 > = {
     provider: {
         listPath: (id) => `/ai-provider/${id}/ai-budgets`,
@@ -42,6 +47,10 @@ const scopeConfig: Record<
     role: {
         listPath: (id) => `/role/${id}/ai-budgets`,
         bodyField: "roleId"
+    },
+    virtualApiKey: {
+        listPath: (id) => `/virtual-api-key/${id}/ai-budgets`,
+        bodyField: "virtualApiKeyId"
     }
 };
 

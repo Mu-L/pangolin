@@ -20,6 +20,7 @@ export function refineBudgetScopeFields(
         resourceId?: number | null;
         siteResourceId?: number | null;
         roleId?: number | null;
+        virtualApiKeyId?: string | null;
     },
     ctx: z.RefinementCtx
 ) {
@@ -28,7 +29,8 @@ export function refineBudgetScopeFields(
         data.modelId,
         data.resourceId,
         data.siteResourceId,
-        data.roleId
+        data.roleId,
+        data.virtualApiKeyId
     ];
 
     const setCount = scopeFields.filter(
@@ -39,7 +41,7 @@ export function refineBudgetScopeFields(
         ctx.addIssue({
             code: "custom",
             message:
-                "Only one of providerId, modelId, resourceId, siteResourceId, or roleId may be set on a budget",
+                "Only one of providerId, modelId, resourceId, siteResourceId, roleId, or virtualApiKeyId may be set on a budget",
             path: ["providerId"]
         });
     }

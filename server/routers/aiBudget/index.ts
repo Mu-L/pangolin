@@ -5,6 +5,7 @@ export * from "./listAiBudgetsForModel";
 export * from "./listAiBudgetsForResource";
 export * from "./listAiBudgetsForSiteResource";
 export * from "./listAiBudgetsForRole";
+export * from "./listAiBudgetsForVirtualApiKey";
 export * from "./getAiBudget";
 export * from "./updateAiBudget";
 export * from "./deleteAiBudget";

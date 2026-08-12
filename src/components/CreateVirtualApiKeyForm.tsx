@@ -48,6 +48,12 @@ import {
     formatMultiResourcesSelectorLabel
 } from "@app/components/multi-resource-selector";
 import type { SelectedResource } from "@app/components/resource-selector";
+import { HorizontalTabs } from "@app/components/HorizontalTabs";
+import {
+    BudgetRowsFields,
+    getBudgetRowsErrors,
+    type BudgetRow
+} from "@app/components/BudgetsEditor";
 
 export type CreatedVirtualApiKey = {
     virtualApiKeyId: string;
@@ -93,6 +99,10 @@ export default function CreateVirtualApiKeyForm({
     const [selectedResources, setSelectedResources] = useState<
         SelectedResource[]
     >([]);
+    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>(
+        []
+    );
+    const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
 
     const formSchema = z.object({
         name: z.string().min(1),
@@ -113,7 +123,27 @@ export default function CreateVirtualApiKeyForm({
         setAllResources(false);
         setSelectedUser(null);
         setSelectedResources([]);
+        setPendingBudgetRows([]);
+        setAttemptedBudgetsSave(false);
         form.reset();
+    }
+
+    function handleFormSubmit(values: z.infer<typeof formSchema>) {
+        const { conflictingKeys, invalidAmountKeys } =
+            getBudgetRowsErrors(pendingBudgetRows);
+        if (conflictingKeys.size > 0 || invalidAmountKeys.size > 0) {
+            setAttemptedBudgetsSave(true);
+            toast({
+                variant: "destructive",
+                title: t("aiBudgetErrorSave"),
+                description: conflictingKeys.size
+                    ? t("aiBudgetConflictError")
+                    : t("aiBudgetInvalidAmountError")
+            });
+            return;
+        }
+
+        return onSubmit(values);
     }
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -153,6 +183,33 @@ export default function CreateVirtualApiKeyForm({
                         key.secret
                     )
                 );
+            }
+
+            const pendingBudgets = pendingBudgetRows.filter(
+                (budget) => budget.amount.trim() !== ""
+            );
+            if (pendingBudgets.length > 0) {
+                try {
+                    await Promise.all(
+                        pendingBudgets.map((budget) =>
+                            api.put(`/org/${org.org.orgId}/ai-budget`, {
+                                virtualApiKeyId: key.virtualApiKeyId,
+                                amount: Number(budget.amount),
+                                unit: budget.unit,
+                                period: budget.period
+                            })
+                        )
+                    );
+                } catch (e) {
+                    toast({
+                        variant: "destructive",
+                        title: t("aiBudgetErrorSave"),
+                        description: formatAxiosError(
+                            e,
+                            t("aiBudgetErrorSave")
+                        )
+                    });
+                }
             }
 
             const resourceLookup = new Map(
@@ -219,10 +276,26 @@ export default function CreateVirtualApiKeyForm({
                         {!credential && (
                             <Form {...form}>
                                 <form
-                                    onSubmit={form.handleSubmit(onSubmit)}
+                                    onSubmit={form.handleSubmit(
+                                        handleFormSubmit
+                                    )}
                                     className="space-y-4"
                                     id="virtual-api-key-form"
                                 >
+                                    <HorizontalTabs
+                                        clientSide={true}
+                                        defaultTab={0}
+                                        items={[
+                                            { title: t("general"), href: "#" },
+                                            {
+                                                title: t(
+                                                    "virtualApiKeysInferenceBudget"
+                                                ),
+                                                href: "#"
+                                            }
+                                        ]}
+                                    >
+                                    <div className="space-y-4 mt-4">
                                     <FormField
                                         control={form.control}
                                         name="name"
@@ -392,6 +465,23 @@ export default function CreateVirtualApiKeyForm({
                                             </div>
                                         )}
                                     </div>
+                                    </div>
+
+                                    <div className="space-y-4 mt-4">
+                                        <p className="text-sm text-muted-foreground">
+                                            {t(
+                                                "virtualApiKeysInferenceBudgetDescription"
+                                            )}
+                                        </p>
+                                        <BudgetRowsFields
+                                            rows={pendingBudgetRows}
+                                            onChange={setPendingBudgetRows}
+                                            attemptedSave={
+                                                attemptedBudgetsSave
+                                            }
+                                        />
+                                    </div>
+                                    </HorizontalTabs>
                                 </form>
                             </Form>
                         )}

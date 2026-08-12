@@ -830,7 +830,8 @@ export async function handleAiGatewayProxy(
                 resourceId,
                 siteResourceId,
                 roleIds: requestUser?.roleIds ?? [],
-                requestUserId: requestUser?.userId ?? null
+                requestUserId: requestUser?.userId ?? null,
+                virtualApiKeyId: identity.virtualApiKeyId
             });
             appliedBudgets = budgetCheck.budgets;
 

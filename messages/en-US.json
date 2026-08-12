@@ -1697,6 +1697,8 @@
     "virtualApiKeysErrorFetchSecret": "Error loading secret",
     "virtualApiKeysErrorFetchSecretDescription": "Failed to load the virtual API key secret",
     "virtualApiKeysFilterUnassigned": "Unassigned",
+    "virtualApiKeysInferenceBudget": "Inference Budget",
+    "virtualApiKeysInferenceBudgetDescription": "Configure how this key restricts AI usage based on spending or token limits",
     "myVirtualApiKeysTitle": "Your API Keys",
     "myVirtualApiKeysDescription": "View your identity key and any virtual API keys attributed to you in this organization",
     "myVirtualApiKeysResourceTitle": "Your API Keys for {resourceName}",

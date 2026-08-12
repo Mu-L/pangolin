@@ -53,7 +53,8 @@ function applicableBudgetsCacheKey(ctx: BudgetScopeContext): string {
         ctx.requestedModel,
         ctx.resourceId ?? "",
         ctx.siteResourceId ?? "",
-        roleKey
+        roleKey,
+        ctx.virtualApiKeyId ?? ""
     ].join(":");
 }
 
@@ -83,6 +84,7 @@ export type BudgetScopeContext = {
     siteResourceId: number | null;
     roleIds: number[];
     requestUserId: string | null;
+    virtualApiKeyId: string | null;
 };
 
 /**
@@ -141,6 +143,11 @@ async function fetchApplicableBudgets(
     }
     if (ctx.roleIds.length > 0) {
         scopeConditions.push(inArray(aiBudgets.roleId, ctx.roleIds));
+    }
+    if (ctx.virtualApiKeyId != null) {
+        scopeConditions.push(
+            eq(aiBudgets.virtualApiKeyId, ctx.virtualApiKeyId)
+        );
     }
 
     return db
@@ -268,6 +275,17 @@ export async function sumUsageForBudget(
             and(
                 eq(aiUsageRecords.orgId, ctx.orgId),
                 inArray(aiUsageRecords.userId, userIds),
+                gte(aiUsageRecords.createdAt, start)
+            )!,
+            budget.unit
+        );
+    }
+
+    if (budget.virtualApiKeyId != null) {
+        return sumUsageAmount(
+            and(
+                eq(aiUsageRecords.orgId, ctx.orgId),
+                eq(aiUsageRecords.virtualApiKeyId, budget.virtualApiKeyId),
                 gte(aiUsageRecords.createdAt, start)
             )!,
             budget.unit

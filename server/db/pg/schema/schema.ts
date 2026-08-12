@@ -1776,6 +1776,10 @@ export const aiBudgets = pgTable(
         roleId: integer("roleId").references(() => roles.roleId, {
             onDelete: "cascade"
         }),
+        virtualApiKeyId: varchar("virtualApiKeyId").references(
+            () => virtualApiKeys.virtualApiKeyId,
+            { onDelete: "cascade" }
+        ),
         amount: real("amount").notNull(),
         unit: varchar("unit").$type<"usd" | "tokens">().notNull(),
         period: varchar("period")
@@ -1806,7 +1810,12 @@ export const aiBudgets = pgTable(
             t.unit,
             t.period
         ),
-        unique("ai_budget_role_uniq").on(t.roleId, t.unit, t.period)
+        unique("ai_budget_role_uniq").on(t.roleId, t.unit, t.period),
+        unique("ai_budget_virtual_api_key_uniq").on(
+            t.virtualApiKeyId,
+            t.unit,
+            t.period
+        )
     ]
 );
 
