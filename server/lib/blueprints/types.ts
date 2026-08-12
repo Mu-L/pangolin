@@ -632,7 +632,6 @@ export const ResourcePolicySchema = z.object({
                 })
             )
         )
-        .max(50)
         .transform((v) => v.map((e) => e.toLowerCase()))
         .optional()
         .default([]),
