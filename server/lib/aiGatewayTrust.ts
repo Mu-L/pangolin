@@ -3,6 +3,15 @@ import config from "@server/lib/config";
 
 export const AI_GATEWAY_TRUST_HEADER = "X-Pangolin-Ai-Gateway-Auth";
 
+// Injected by the same Traefik trust middleware as AI_GATEWAY_TRUST_HEADER,
+// but its value differs per router (public inference resource vs. private
+// siteResource) so the gateway can tell which kind of resource a trusted
+// request arrived on without re-deriving it from resourceId/siteResourceId.
+export const AI_GATEWAY_RESOURCE_TYPE_HEADER =
+    "X-Pangolin-Ai-Gateway-Resource-Type";
+
+export type AiGatewayResourceType = "resource" | "site-resource";
+
 /**
  * Derive a Traefik-injected trust token from the server secret.
  * Traefik overwrites this header on inference routes so the AI gateway can
@@ -35,4 +44,17 @@ export function isAiGatewayTrustHeaderValid(
         headers[AI_GATEWAY_TRUST_HEADER.toLowerCase()];
     const value = Array.isArray(raw) ? raw[0] : raw;
     return typeof value === "string" && value === expected;
+}
+
+export function getAiGatewayResourceType(
+    headers: Record<string, string | string[] | undefined> | undefined
+): AiGatewayResourceType | null {
+    if (!headers) {
+        return null;
+    }
+    const raw =
+        headers[AI_GATEWAY_RESOURCE_TYPE_HEADER] ??
+        headers[AI_GATEWAY_RESOURCE_TYPE_HEADER.toLowerCase()];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return value === "resource" || value === "site-resource" ? value : null;
 }

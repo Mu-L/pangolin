@@ -41,7 +41,10 @@ import { isIpInCidr } from "@server/lib/ip";
 import { localCache } from "@server/lib/cache";
 import {
     AI_GATEWAY_TRUST_HEADER,
-    isAiGatewayTrustHeaderValid
+    AI_GATEWAY_RESOURCE_TYPE_HEADER,
+    isAiGatewayTrustHeaderValid,
+    getAiGatewayResourceType,
+    type AiGatewayResourceType
 } from "@server/lib/aiGatewayTrust";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
@@ -232,7 +235,8 @@ async function buildRequestUser(
 async function resolveRequestUser(
     req: Request,
     resourceId: number | null,
-    orgId: string | null
+    orgId: string | null,
+    resourceType: AiGatewayResourceType | null
 ): Promise<RequestIdentity> {
     // Public inference: identity comes from Badger via Remote-* only when the
     // Traefik trust header proves the request passed verify-session (VAK).
@@ -241,10 +245,7 @@ async function resolveRequestUser(
         const virtualApiKeyId =
             getRequestHeader(req, remoteHeaders.virtual_api_key_id) || null;
         const userId = getRequestHeader(req, remoteHeaders.user_id);
-        logger.debug("+++++++AI gateway request identity from trust header", {
-            virtualApiKeyId,
-            userId
-        });
+
         if (userId) {
             const username =
                 getRequestHeader(req, remoteHeaders.user) || userId;
@@ -294,6 +295,14 @@ async function resolveRequestUser(
 
     // TODO: MAKE SURE THIS CAN NOT BE SPOOFED AND CAN BE TRUSTED AS AN INTERNAL ADDRESS FROM A NODE
 
+    // Only siteResources are reached over a client's exit-node tunnel, so
+    // only they can be attributed to a user by IP. Public resources must be
+    // authenticated via Badger above; the trust middleware stamps this
+    // header per-router so we don't need to re-derive it from resourceId.
+    if (resourceType !== "site-resource") {
+        return { user: null, virtualApiKeyId: null };
+    }
+
     const ip = req.ip;
     if (!ip) {
         return { user: null, virtualApiKeyId: null };
@@ -326,39 +335,46 @@ function getRequestHeader(req: Request, name: string): string | undefined {
     return raw;
 }
 
-async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
-    const [[resourceRow], [siteResourceRow]] = await Promise.all([
-        db
-            .select({
-                resourceId: resources.resourceId,
-                orgId: resources.orgId
-            })
-            .from(resources)
-            .where(
-                and(
-                    eq(resources.fullDomain, host),
-                    eq(resources.mode, "inference"),
-                    eq(resources.enabled, true)
-                )
-            )
-            .limit(1),
-        db
-            .select({
-                siteResourceId: siteResources.siteResourceId,
-                orgId: siteResources.orgId
-            })
-            .from(siteResources)
-            .where(
-                and(
-                    eq(siteResources.fullDomain, host),
-                    eq(siteResources.mode, "inference"),
-                    eq(siteResources.enabled, true)
-                )
-            )
-            .limit(1)
-    ]);
+// Which table a host is looked up in depends on which Traefik router the
+// request came through, per the trust middleware's resource-type header -
+// falls back to checking both (public preferred on overlap) only when that
+// header is absent, e.g. a request that reached the gateway outside Traefik.
+async function resolveTarget(
+    host: string,
+    resourceType: AiGatewayResourceType | null
+): Promise<ResolvedTarget | null> {
+    if (resourceType === "resource") {
+        return resolveResourceTarget(host);
+    }
+    if (resourceType === "site-resource") {
+        return resolveSiteResourceTarget(host);
+    }
 
-    // Prefer public inference resources when both match the same host.
+    const [resourceTarget, siteResourceTarget] = await Promise.all([
+        resolveResourceTarget(host),
+        resolveSiteResourceTarget(host)
+    ]);
+    return resourceTarget ?? siteResourceTarget;
+}
+
+async function resolveResourceTarget(
+    host: string
+): Promise<ResolvedTarget | null> {
+    const [resourceRow] = await db
+        .select({
+            resourceId: resources.resourceId,
+            orgId: resources.orgId
+        })
+        .from(resources)
+        .where(
+            and(
+                eq(resources.fullDomain, host),
+                eq(resources.mode, "inference"),
+                eq(resources.enabled, true)
+            )
+        )
+        .limit(1);
+
     if (resourceRow) {
         const [attachmentRows, resourcePatterns] = await Promise.all([
             db
@@ -407,6 +423,27 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
             resourceListsByProvider: groupPatternsByProvider(resourcePatterns)
         };
     }
+
+    return null;
+}
+
+async function resolveSiteResourceTarget(
+    host: string
+): Promise<ResolvedTarget | null> {
+    const [siteResourceRow] = await db
+        .select({
+            siteResourceId: siteResources.siteResourceId,
+            orgId: siteResources.orgId
+        })
+        .from(siteResources)
+        .where(
+            and(
+                eq(siteResources.fullDomain, host),
+                eq(siteResources.mode, "inference"),
+                eq(siteResources.enabled, true)
+            )
+        )
+        .limit(1);
 
     if (siteResourceRow) {
         const [attachmentRows, resourcePatterns] = await Promise.all([
@@ -753,7 +790,10 @@ export async function handleAiGatewayProxy(
             headers: req.headers
         });
 
-        const target = await resolveTarget(host);
+        const resourceType = getAiGatewayResourceType(
+            req.headers as Record<string, string>
+        );
+        const target = await resolveTarget(host, resourceType);
         if (!target) {
             return res.status(HttpCode.NOT_FOUND).json({
                 error: {
@@ -808,7 +848,7 @@ export async function handleAiGatewayProxy(
         const requestedModel = def.extractModel(req);
 
         const [identity, selection] = await Promise.all([
-            resolveRequestUser(req, resourceId, orgId),
+            resolveRequestUser(req, resourceId, orgId, resourceType),
             selectProvider(
                 capableAttachments,
                 resourceListsByProvider,
@@ -924,7 +964,8 @@ export async function handleAiGatewayProxy(
             "upgrade",
             "content-length",
             "accept-encoding",
-            AI_GATEWAY_TRUST_HEADER.toLowerCase()
+            AI_GATEWAY_TRUST_HEADER.toLowerCase(),
+            AI_GATEWAY_RESOURCE_TYPE_HEADER.toLowerCase()
         ]);
 
         const headers: Record<string, string> = {};

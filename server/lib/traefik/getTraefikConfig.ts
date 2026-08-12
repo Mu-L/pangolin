@@ -26,6 +26,7 @@ import { sanitize, encodePath, validatePathRewriteConfig } from "./utils";
 import regionalCache from "@server/lib/cache";
 import {
     AI_GATEWAY_TRUST_HEADER,
+    AI_GATEWAY_RESOURCE_TYPE_HEADER,
     getAiGatewayTrustToken
 } from "@server/lib/aiGatewayTrust";
 
@@ -752,17 +753,35 @@ export async function getTraefikConfig(
             aiGatewayHost = undefined;
         }
 
-        // The trust header is the same for every inference route on this
-        // exit node, so it's defined once here and attached to each router
-        // below instead of being duplicated into a per-resource middleware.
-        const aiGatewayTrustMiddlewareName = "ai-gateway-trust-headers";
+        // The trust token is the same for every inference route on this exit
+        // node, so it's defined once here and attached to each router below
+        // instead of being duplicated into a per-resource middleware. Two
+        // variants exist (public resource vs. siteResource) so the resource
+        // type header lets the gateway know which kind of router the
+        // request came through without re-deriving it from resourceId.
+        const aiGatewayTrustMiddlewareNameResource =
+            "ai-gateway-trust-headers-resource";
+        const aiGatewayTrustMiddlewareNameSiteResource =
+            "ai-gateway-trust-headers-site-resource";
         if (!config_output.http.middlewares) {
             config_output.http.middlewares = {};
         }
-        config_output.http.middlewares[aiGatewayTrustMiddlewareName] = {
+        config_output.http.middlewares[aiGatewayTrustMiddlewareNameResource] =
+            {
+                headers: {
+                    customRequestHeaders: {
+                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken(),
+                        [AI_GATEWAY_RESOURCE_TYPE_HEADER]: "resource"
+                    }
+                }
+            };
+        config_output.http.middlewares[
+            aiGatewayTrustMiddlewareNameSiteResource
+        ] = {
             headers: {
                 customRequestHeaders: {
-                    [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
+                    [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken(),
+                    [AI_GATEWAY_RESOURCE_TYPE_HEADER]: "site-resource"
                 }
             }
         };
@@ -836,7 +855,7 @@ export async function getTraefikConfig(
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [
                 badgerMiddlewareName,
-                aiGatewayTrustMiddlewareName,
+                aiGatewayTrustMiddlewareNameResource,
                 irHeadersMiddlewareName,
                 ...additionalMiddlewares
             ];
@@ -939,7 +958,7 @@ export async function getTraefikConfig(
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [
-                aiGatewayTrustMiddlewareName,
+                aiGatewayTrustMiddlewareNameSiteResource,
                 srHeadersMiddlewareName,
                 ...additionalMiddlewares
             ];
@@ -952,7 +971,7 @@ export async function getTraefikConfig(
                     middlewares: [redirectHttpsMiddlewareName],
                     service: serviceName,
                     rule,
-                    priority: 100
+                    priority: 200 // we want to match on the site resource first because the clientIP rule is more specific than the public inference resource rule, which is just the exit node IP range. so we give it a higher priority to ensure it matches first.
                 };
             }
 
@@ -965,7 +984,7 @@ export async function getTraefikConfig(
                 middlewares: routerMiddlewares,
                 service: serviceName,
                 rule,
-                priority: 100,
+                priority: 200, // we want to match on the site resource first because the clientIP rule is more specific than the public inference resource rule, which is just the exit node IP range. so we give it a higher priority to ensure it matches first.
                 ...(sr.ssl ? { tls } : {})
             };
 
