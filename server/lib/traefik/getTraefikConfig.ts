@@ -752,6 +752,21 @@ export async function getTraefikConfig(
             aiGatewayHost = undefined;
         }
 
+        // The trust header is the same for every inference route on this
+        // exit node, so it's defined once here and attached to each router
+        // below instead of being duplicated into a per-resource middleware.
+        const aiGatewayTrustMiddlewareName = "ai-gateway-trust-headers";
+        if (!config_output.http.middlewares) {
+            config_output.http.middlewares = {};
+        }
+        config_output.http.middlewares[aiGatewayTrustMiddlewareName] = {
+            headers: {
+                customRequestHeaders: {
+                    [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
+                }
+            }
+        };
+
         // Public inference resources: same TLS/cert-resolver handling as
         // plain http-mode resources, but the service points at the AI
         // gateway instead of any real backend targets.
@@ -812,8 +827,7 @@ export async function getTraefikConfig(
                 headers: {
                     customRequestHeaders: {
                         ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                        "p-host": fullDomain,
-                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
+                        "p-host": fullDomain
                     }
                 }
             };
@@ -822,6 +836,7 @@ export async function getTraefikConfig(
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [
                 badgerMiddlewareName,
+                aiGatewayTrustMiddlewareName,
                 irHeadersMiddlewareName,
                 ...additionalMiddlewares
             ];
@@ -916,8 +931,7 @@ export async function getTraefikConfig(
                 headers: {
                     customRequestHeaders: {
                         ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                        "p-host": fullDomain,
-                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
+                        "p-host": fullDomain
                     }
                 }
             };
@@ -925,6 +939,7 @@ export async function getTraefikConfig(
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [
+                aiGatewayTrustMiddlewareName,
                 srHeadersMiddlewareName,
                 ...additionalMiddlewares
             ];

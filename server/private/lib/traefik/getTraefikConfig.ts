@@ -1569,6 +1569,18 @@ export async function getTraefikConfig(
         const aiGatewayOverride =
             config.getRawConfig().server.ai_gateway_override;
 
+        // The trust header is the same for every inference route on this
+        // exit node, so it's defined once here and attached to each router
+        // below instead of being duplicated into a per-resource middleware.
+        const aiGatewayTrustMiddlewareName = "ai-gateway-trust-headers";
+        config_output.http.middlewares[aiGatewayTrustMiddlewareName] = {
+            headers: {
+                customRequestHeaders: {
+                    [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
+                }
+            }
+        };
+
         // Public inference resources: same TLS/cert-resolver handling as
         // plain http-mode resources, but the service points at the AI
         // gateway instead of any real backend targets.
@@ -1636,21 +1648,23 @@ export async function getTraefikConfig(
 
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
-            const routerMiddlewares = [badgerMiddlewareName];
+            const routerMiddlewares = [
+                badgerMiddlewareName,
+                aiGatewayTrustMiddlewareName
+            ];
 
-            const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
-            config_output.http.middlewares[irHeadersMiddlewareName] = {
-                headers: {
-                    customRequestHeaders: {
-                        ...(aiGatewayOverride && aiGatewayHost
-                            ? { Host: aiGatewayHost }
-                            : {}),
-                        ...(aiGatewayOverride ? { "p-host": fullDomain } : {}),
-                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
+            if (aiGatewayOverride) {
+                const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
+                config_output.http.middlewares[irHeadersMiddlewareName] = {
+                    headers: {
+                        customRequestHeaders: {
+                            ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
+                            "p-host": fullDomain
+                        }
                     }
-                }
-            };
-            routerMiddlewares.push(irHeadersMiddlewareName);
+                };
+                routerMiddlewares.push(irHeadersMiddlewareName);
+            }
 
             routerMiddlewares.push(...additionalMiddlewares);
 
@@ -1736,21 +1750,20 @@ export async function getTraefikConfig(
 
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
-            const routerMiddlewares: string[] = [];
+            const routerMiddlewares: string[] = [aiGatewayTrustMiddlewareName];
 
-            const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
-            config_output.http.middlewares[srHeadersMiddlewareName] = {
-                headers: {
-                    customRequestHeaders: {
-                        ...(aiGatewayOverride && aiGatewayHost
-                            ? { Host: aiGatewayHost }
-                            : {}),
-                        ...(aiGatewayOverride ? { "p-host": fullDomain } : {}),
-                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
+            if (aiGatewayOverride) {
+                const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
+                config_output.http.middlewares[srHeadersMiddlewareName] = {
+                    headers: {
+                        customRequestHeaders: {
+                            ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
+                            "p-host": fullDomain
+                        }
                     }
-                }
-            };
-            routerMiddlewares.push(srHeadersMiddlewareName);
+                };
+                routerMiddlewares.push(srHeadersMiddlewareName);
+            }
 
             routerMiddlewares.push(...additionalMiddlewares);
 
