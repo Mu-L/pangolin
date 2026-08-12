@@ -161,6 +161,15 @@ export type RequestUser = {
     roleIds: number[];
 };
 
+// Identity resolved for a gateway request: the app/session or virtual-API-key
+// user (if any) plus the virtual API key that authenticated the request (if
+// any) - a manual virtual API key with no associated user has a
+// virtualApiKeyId but no user.
+export type RequestIdentity = {
+    user: RequestUser | null;
+    virtualApiKeyId: string | null;
+};
+
 // Identity headers forwarded to the upstream inference endpoint when the
 // requesting user is known. Omitted entirely (not sent empty) when we
 // couldn't resolve a user for the request.
@@ -223,10 +232,12 @@ async function resolveRequestUser(
     req: Request,
     resourceId: number | null,
     orgId: string | null
-): Promise<RequestUser | null> {
+): Promise<RequestIdentity> {
     // Public inference: identity comes from Badger via Remote-* only when the
     // Traefik trust header proves the request passed verify-session (VAK).
     if (isAiGatewayTrustHeaderValid(req.headers as Record<string, string>)) {
+        const virtualApiKeyId =
+            getRequestHeader(req, "remote-virtual-api-key-id") || null;
         const userId = getRequestHeader(req, "remote-user-id");
         if (userId) {
             const username = getRequestHeader(req, "remote-user") || userId;
@@ -236,32 +247,41 @@ async function resolveRequestUser(
             const orgRoles = orgId ? await getUserOrgRoles(userId, orgId) : [];
 
             return {
-                userId,
-                username,
-                email: email || null,
-                name: name || null,
-                role:
-                    role || orgRoles.map((r) => r.roleName).join(", ") || null,
-                roleIds: orgRoles.map((r) => r.roleId)
+                user: {
+                    userId,
+                    username,
+                    email: email || null,
+                    name: name || null,
+                    role:
+                        role ||
+                        orgRoles.map((r) => r.roleName).join(", ") ||
+                        null,
+                    roleIds: orgRoles.map((r) => r.roleId)
+                },
+                virtualApiKeyId
             };
         }
 
-        // Trusted request with no associated user (manual key without userId).
+        // Trusted request with no associated user (manual key without
+        // userId) - still attribute usage to the virtual API key itself.
         if (resourceId != null) {
-            return null;
+            return { user: null, virtualApiKeyId };
         }
     }
 
     // Public inference must come through Badger; do not authorize via app session.
     if (resourceId != null) {
-        return null;
+        return { user: null, virtualApiKeyId: null };
     }
 
     const sessionToken = req.cookies?.[SESSION_COOKIE_NAME];
     if (sessionToken) {
         const { session, user } = await validateSessionToken(sessionToken);
         if (session && user) {
-            return buildRequestUser(user.userId, orgId);
+            return {
+                user: await buildRequestUser(user.userId, orgId),
+                virtualApiKeyId: null
+            };
         }
     }
 
@@ -269,7 +289,7 @@ async function resolveRequestUser(
 
     const ip = req.ip;
     if (!ip) {
-        return null;
+        return { user: null, virtualApiKeyId: null };
     }
 
     const exitNodeRanges = await getExitNodeRanges();
@@ -277,15 +297,18 @@ async function resolveRequestUser(
         isIpInCidr(ip, range)
     );
     if (!inExitNodeRange) {
-        return null;
+        return { user: null, virtualApiKeyId: null };
     }
 
     const client = await findClientByIp(ip);
     if (!client || !client.userId) {
-        return null;
+        return { user: null, virtualApiKeyId: null };
     }
 
-    return buildRequestUser(client.userId, orgId);
+    return {
+        user: await buildRequestUser(client.userId, orgId),
+        virtualApiKeyId: null
+    };
 }
 
 function getRequestHeader(req: Request, name: string): string | undefined {
@@ -608,6 +631,7 @@ export function recordAiGatewayCompletion(args: {
     resourceId: number | null;
     siteResourceId: number | null;
     requestUserId: string | null;
+    virtualApiKeyId: string | null;
     budgets: AiBudget[];
 }): void {
     const {
@@ -623,6 +647,7 @@ export function recordAiGatewayCompletion(args: {
         resourceId,
         siteResourceId,
         requestUserId,
+        virtualApiKeyId,
         budgets
     } = args;
 
@@ -668,6 +693,7 @@ export function recordAiGatewayCompletion(args: {
             resourceId,
             siteResourceId,
             userId: requestUserId,
+            virtualApiKeyId,
             requestedModel: model ?? "unknown",
             usage,
             costUsd: cost?.totalCost ?? null,
@@ -699,7 +725,8 @@ export function recordAiGatewayCompletion(args: {
         orgId,
         resourceId,
         siteResourceId,
-        requestUserId
+        requestUserId,
+        virtualApiKeyId
     });
 }
 
@@ -770,7 +797,7 @@ export async function handleAiGatewayProxy(
 
         const requestedModel = def.extractModel(req);
 
-        const [requestUser, selection] = await Promise.all([
+        const [identity, selection] = await Promise.all([
             resolveRequestUser(req, resourceId, orgId),
             selectProvider(
                 capableAttachments,
@@ -778,6 +805,7 @@ export async function handleAiGatewayProxy(
                 requestedModel
             )
         ]);
+        const requestUser = identity.user;
 
         if (requestUser) {
             logger.debug(
@@ -836,7 +864,8 @@ export async function handleAiGatewayProxy(
                     resourceId,
                     siteResourceId,
                     requestedModel,
-                    budgets: appliedBudgets
+                    budgets: appliedBudgets,
+                    virtualApiKeyId: identity.virtualApiKeyId
                 }
             );
         }
@@ -987,6 +1016,7 @@ export async function handleAiGatewayProxy(
                 resourceId,
                 siteResourceId,
                 requestUserId: requestUser?.userId ?? null,
+                virtualApiKeyId: identity.virtualApiKeyId,
                 budgets: appliedBudgets
             });
         }

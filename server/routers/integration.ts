@@ -1581,6 +1581,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/logs/ai/usage/virtual-api-keys",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageVirtualApiKeys
+);
+
+authenticated.get(
     "/org/:orgId/logs/analytics",
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.viewLogs),

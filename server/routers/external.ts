@@ -1538,6 +1538,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/logs/ai/usage/virtual-api-keys",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageVirtualApiKeys
+);
+
+authenticated.get(
     "/org/:orgId/blueprints",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listBlueprints),

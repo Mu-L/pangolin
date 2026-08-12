@@ -1807,18 +1807,22 @@ export const aiUsageRecords = sqliteTable(
             .references(() => orgs.orgId, { onDelete: "cascade" }),
         providerId: integer("providerId")
             .notNull()
-            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+            .references(() => aiProviders.providerId, { onDelete: "set null" }),
         resourceId: integer("resourceId").references(
             () => resources.resourceId,
-            { onDelete: "cascade" }
+            { onDelete: "set null" }
         ),
         siteResourceId: integer("siteResourceId").references(
             () => siteResources.siteResourceId,
-            { onDelete: "cascade" }
+            { onDelete: "set null" }
         ),
         userId: text("userId").references(() => users.userId, {
             onDelete: "set null"
         }),
+        virtualApiKeyId: text("virtualApiKeyId").references(
+            () => virtualApiKeys.virtualApiKeyId,
+            { onDelete: "set null" }
+        ),
         // Links this usage record back to the aiSessionLog row for the same
         // request (aiSessionLog.sessionId), so token/cost usage can be shown
         // alongside the session transcript. Not a DB-level FK - aiSessionLog
@@ -1858,6 +1862,11 @@ export const aiUsageRecords = sqliteTable(
         index("idx_ai_usage_records_org_user_created").on(
             t.orgId,
             t.userId,
+            t.createdAt
+        ),
+        index("idx_ai_usage_records_org_virtual_api_key_created").on(
+            t.orgId,
+            t.virtualApiKeyId,
             t.createdAt
         ),
         index("idx_ai_usage_records_session").on(t.sessionId)
@@ -1917,19 +1926,23 @@ export const aiSessionLog = sqliteTable(
         }),
         providerId: integer("providerId")
             .notNull()
-            .references(() => aiProviders.providerId, { onDelete: "cascade" }),
+            .references(() => aiProviders.providerId, { onDelete: "set null" }),
         capability: text("capability").notNull(),
         resourceId: integer("resourceId").references(
             () => resources.resourceId,
-            { onDelete: "cascade" }
+            { onDelete: "set null" }
         ),
         siteResourceId: integer("siteResourceId").references(
             () => siteResources.siteResourceId,
-            { onDelete: "cascade" }
+            { onDelete: "set null" }
         ),
         userId: text("userId").references(() => users.userId, {
             onDelete: "set null"
         }),
+        virtualApiKeyId: text("virtualApiKeyId").references(
+            () => virtualApiKeys.virtualApiKeyId,
+            { onDelete: "set null" }
+        ),
         requestedModel: text("requestedModel"),
         isStream: integer("isStream", { mode: "boolean" })
             .notNull()
@@ -1971,6 +1984,11 @@ export const aiSessionLog = sqliteTable(
         index("idx_ai_session_log_org_user_created").on(
             t.orgId,
             t.userId,
+            t.createdAt
+        ),
+        index("idx_ai_session_log_org_virtual_api_key_created").on(
+            t.orgId,
+            t.virtualApiKeyId,
             t.createdAt
         ),
         index("idx_ai_session_log_session").on(t.sessionId)

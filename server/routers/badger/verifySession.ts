@@ -96,6 +96,10 @@ export type VerifyUserResponse = {
     userData?: BasicUserData;
     pangolinVersion?: string;
     dontStripSession?: boolean;
+    // Set independently of userData so a manual virtual API key with no
+    // associated user still gets attributed to the key that authenticated
+    // the request (see the mode === "inference" branch below).
+    virtualApiKeyId?: string;
 };
 
 export async function verifyResourceSession(
@@ -401,7 +405,12 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res, vakUserData, dontStripSession);
+                    return allowed(
+                        res,
+                        vakUserData,
+                        dontStripSession,
+                        key.virtualApiKeyId
+                    );
                 }
             }
 
@@ -987,16 +996,20 @@ async function notAllowed(
 function allowed(
     res: Response,
     userData?: BasicUserData,
-    dontStripSession?: boolean
+    dontStripSession?: boolean,
+    virtualApiKeyId?: string
 ) {
     const baseData =
         userData !== undefined && userData !== null
             ? { valid: true, ...userData, pangolinVersion: APP_VERSION }
             : { valid: true, pangolinVersion: APP_VERSION };
+    const withVirtualApiKey = virtualApiKeyId
+        ? { ...baseData, virtualApiKeyId }
+        : baseData;
     const data = {
         data: dontStripSession
-            ? { ...baseData, dontStripSession: true }
-            : baseData,
+            ? { ...withVirtualApiKey, dontStripSession: true }
+            : withVirtualApiKey,
         success: true,
         error: false,
         message: "Access allowed",

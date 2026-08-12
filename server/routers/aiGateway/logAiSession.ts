@@ -180,6 +180,7 @@ export function logAiSession(data: {
     resourceId: number | null;
     siteResourceId: number | null;
     requestUserId: string | null;
+    virtualApiKeyId: string | null;
 }): void {
     (async () => {
         try {
@@ -237,6 +238,9 @@ export function logAiSession(data: {
                 resourceId: data.resourceId ?? undefined,
                 siteResourceId: data.siteResourceId ?? undefined,
                 userId: sanitizeString(data.requestUserId ?? undefined),
+                virtualApiKeyId: sanitizeString(
+                    data.virtualApiKeyId ?? undefined
+                ),
                 requestedModel: sanitizeString(data.requestedModel),
                 isStream: data.isStream,
                 requestBody: sanitizeString(requestBodyText.value),

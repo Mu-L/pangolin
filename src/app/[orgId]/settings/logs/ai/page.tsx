@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
 import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHref";
 import { logQueries } from "@app/lib/queries";
+import { formatVirtualApiKeyPreview } from "@app/lib/virtualApiKeyFormat";
 import { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -50,6 +51,7 @@ export default function AiSessionLogsPage() {
         capability?: string;
         resourceId?: string;
         actor?: string;
+        virtualApiKeyId?: string;
         model?: string;
         isStream?: string;
     }>({
@@ -57,6 +59,7 @@ export default function AiSessionLogsPage() {
         capability: searchParams.get("capability") || undefined,
         resourceId: searchParams.get("resourceId") || undefined,
         actor: searchParams.get("actor") || undefined,
+        virtualApiKeyId: searchParams.get("virtualApiKeyId") || undefined,
         model: searchParams.get("model") || undefined,
         isStream: searchParams.get("isStream") || undefined
     });
@@ -135,6 +138,7 @@ export default function AiSessionLogsPage() {
         providers: [],
         resources: [],
         users: [],
+        virtualApiKeys: [],
         models: []
     };
 
@@ -358,7 +362,9 @@ export default function AiSessionLogsPage() {
             },
             cell: ({ row }) => {
                 if (!row.original.resourceNiceId) {
-                    return <span className="text-xs text-muted-foreground">-</span>;
+                    return (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    );
                 }
                 return (
                     <Link
@@ -453,13 +459,67 @@ export default function AiSessionLogsPage() {
                     </span>
                 );
             }
+        },
+        {
+            accessorKey: "virtualApiKeyId",
+            header: ({ column }) => {
+                return (
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
+                            options={filterAttributes.virtualApiKeys.map(
+                                (key) => ({
+                                    value: key.id,
+                                    label:
+                                        key.name ??
+                                        (key.lastChars
+                                            ? formatVirtualApiKeyPreview(
+                                                  key.id,
+                                                  key.lastChars
+                                              )
+                                            : key.id)
+                                })
+                            )}
+                            selectedValue={filters.virtualApiKeyId}
+                            onValueChange={(value) =>
+                                handleFilterChange("virtualApiKeyId", value)
+                            }
+                            label={t("virtualApiKey")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
+                        />
+                    </div>
+                );
+            },
+            cell: ({ row }) => {
+                if (!row.original.virtualApiKeyId) {
+                    return (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    );
+                }
+                return (
+                    <div className="flex flex-col min-w-0">
+                        <span className="truncate">
+                            {row.original.virtualApiKeyName ??
+                                t("aiUsageUnnamedVirtualApiKey")}
+                        </span>
+                        {row.original.virtualApiKeyLastChars && (
+                            <span className="text-xs text-muted-foreground truncate">
+                                {formatVirtualApiKeyPreview(
+                                    row.original.virtualApiKeyId,
+                                    row.original.virtualApiKeyLastChars
+                                )}
+                            </span>
+                        )}
+                    </div>
+                );
+            }
         }
     ];
 
     const renderExpandedRow = (row: any) => {
         return (
             <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-xs">
                     <div>
                         <strong>{t("aiSessionId")}</strong>
                         <p className="text-muted-foreground mt-1 break-all">
@@ -488,6 +548,30 @@ export default function AiSessionLogsPage() {
                                     ? t("yes")
                                     : t("no")
                                 : "N/A"}
+                        </p>
+                    </div>
+                    <div>
+                        <strong>{t("virtualApiKey")}</strong>
+                        <p className="text-muted-foreground mt-1 break-all">
+                            {row.virtualApiKeyId ? (
+                                <>
+                                    {row.virtualApiKeyName ??
+                                        t("aiUsageUnnamedVirtualApiKey")}
+                                    {row.virtualApiKeyLastChars && (
+                                        <>
+                                            {" "}
+                                            (
+                                            {formatVirtualApiKeyPreview(
+                                                row.virtualApiKeyId,
+                                                row.virtualApiKeyLastChars
+                                            )}
+                                            )
+                                        </>
+                                    )}
+                                </>
+                            ) : (
+                                t("noVirtualApiKey")
+                            )}
                         </p>
                     </div>
                 </div>
@@ -599,15 +683,25 @@ function generateSampleAiSessionLogs(): QueryAiSessionLogResponse["log"] {
     ];
     const actors = ["alice@example.com", "bob@example.com", null];
     const models = ["gpt-4o", "claude-sonnet-5", "gemini-2.5-pro"];
+    const virtualApiKeysSample = [
+        { id: "vak00001", name: "CI pipeline", lastChars: "ab12" },
+        { id: "vak00002", name: null, lastChars: "cd34" },
+        null
+    ];
 
     const now = Date.now();
     const sevenDaysAgoMs = now - 7 * 24 * 60 * 60 * 1000;
 
     return Array.from({ length: 10 }, (_, i) => {
-        const provider = providers[Math.floor(Math.random() * providers.length)];
+        const provider =
+            providers[Math.floor(Math.random() * providers.length)];
         const resource =
             resourcesSample[Math.floor(Math.random() * resourcesSample.length)];
         const actor = actors[Math.floor(Math.random() * actors.length)];
+        const virtualApiKey =
+            virtualApiKeysSample[
+                Math.floor(Math.random() * virtualApiKeysSample.length)
+            ];
 
         return {
             id: i,
@@ -625,6 +719,9 @@ function generateSampleAiSessionLogs(): QueryAiSessionLogResponse["log"] {
             resourceType: "public",
             userId: actor ? `user-${i}` : null,
             userEmail: actor,
+            virtualApiKeyId: virtualApiKey?.id ?? null,
+            virtualApiKeyName: virtualApiKey?.name ?? null,
+            virtualApiKeyLastChars: virtualApiKey?.lastChars ?? null,
             requestedModel: models[Math.floor(Math.random() * models.length)],
             isStream: Math.random() > 0.5,
             requestBody: null,

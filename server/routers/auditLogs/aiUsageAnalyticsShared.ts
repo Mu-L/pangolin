@@ -58,7 +58,8 @@ export const aiUsageAnalyticsFiltersQuery = z.object({
         .transform(Number)
         .pipe(z.int().positive())
         .optional(),
-    userId: z.string().optional()
+    userId: z.string().optional(),
+    virtualApiKeyId: z.string().optional()
 });
 
 export const aiUsageAnalyticsParams = z.object({
@@ -114,6 +115,9 @@ export function buildAiUsageWhere(
               )
             : undefined,
         data.userId ? eq(aiUsageRecords.userId, data.userId) : undefined,
+        data.virtualApiKeyId
+            ? eq(aiUsageRecords.virtualApiKeyId, data.virtualApiKeyId)
+            : undefined,
         roleUserIds ? inArray(aiUsageRecords.userId, roleUserIds) : undefined
     );
 }

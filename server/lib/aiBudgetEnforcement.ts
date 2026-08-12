@@ -1,4 +1,14 @@
-import { and, eq, gte, inArray, isNull, or, sql, SQL, type InferInsertModel } from "drizzle-orm";
+import {
+    and,
+    eq,
+    gte,
+    inArray,
+    isNull,
+    or,
+    sql,
+    SQL,
+    type InferInsertModel
+} from "drizzle-orm";
 import {
     AiBudget,
     aiBudgetBreachEvents,
@@ -424,6 +434,7 @@ export type UsageRecordInput = {
     resourceId: number | null;
     siteResourceId: number | null;
     userId: string | null;
+    virtualApiKeyId: string | null;
     requestedModel: string;
     usage: AiUsage;
     costUsd: number | null;
@@ -460,7 +471,10 @@ async function flushUsageRecords() {
 
     isUsageFlushInProgress = true;
 
-    const recordsToWrite = usageRecordBuffer.splice(0, usageRecordBuffer.length);
+    const recordsToWrite = usageRecordBuffer.splice(
+        0,
+        usageRecordBuffer.length
+    );
 
     try {
         // Use a transaction to ensure all inserts succeed or fail together
@@ -472,16 +486,25 @@ async function flushUsageRecords() {
                 await tx.insert(aiUsageRecords).values(batch);
             }
         });
-        logger.debug(`Flushed ${recordsToWrite.length} AI usage records to database`);
+        logger.debug(
+            `Flushed ${recordsToWrite.length} AI usage records to database`
+        );
     } catch (error) {
         logger.error("Error flushing AI usage records:", error);
         // On transaction error, put records back at the front of the buffer
         // to retry, but only if the buffer isn't too large
-        if (usageRecordBuffer.length < USAGE_MAX_BUFFER_SIZE - recordsToWrite.length) {
+        if (
+            usageRecordBuffer.length <
+            USAGE_MAX_BUFFER_SIZE - recordsToWrite.length
+        ) {
             usageRecordBuffer.unshift(...recordsToWrite);
-            logger.info(`Re-queued ${recordsToWrite.length} AI usage records for retry`);
+            logger.info(
+                `Re-queued ${recordsToWrite.length} AI usage records for retry`
+            );
         } else {
-            logger.error(`Buffer full, dropped ${recordsToWrite.length} AI usage records`);
+            logger.error(
+                `Buffer full, dropped ${recordsToWrite.length} AI usage records`
+            );
         }
     } finally {
         isUsageFlushInProgress = false;
@@ -544,6 +567,7 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
             resourceId: input.resourceId,
             siteResourceId: input.siteResourceId,
             userId: input.userId,
+            virtualApiKeyId: input.virtualApiKeyId,
             sessionId: input.sessionId,
             requestedModel: input.requestedModel,
             promptTokens: usage.promptTokens,
