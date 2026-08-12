@@ -71,6 +71,9 @@ export default async function ResourceAuthPage(props: {
         );
     }
 
+    const isInference = authInfo.mode === "inference";
+    const keysPath = `/${authInfo.orgId}/resource/${authInfo.resourceGuid}/keys`;
+
     const hasLoginPageDomain = await isOrgSubscribed(
         authInfo.orgId,
         tierMatrix.loginPageDomain
@@ -159,8 +162,16 @@ export default async function ResourceAuthPage(props: {
 
     if (user && !user.emailVerified && env.flags.emailVerificationRequired) {
         redirect(
-            `/auth/verify-email?redirect=/auth/resource/${authInfo.resourceGuid}`
+            `/auth/verify-email?redirect=${encodeURIComponent(
+                isInference
+                    ? keysPath
+                    : `/auth/resource/${authInfo.resourceGuid}`
+            )}`
         );
+    }
+
+    if (isInference && !user) {
+        redirect(`/auth/login?redirect=${encodeURIComponent(keysPath)}`);
     }
 
     const cookie = await authCookieHeader();
@@ -181,7 +192,9 @@ export default async function ResourceAuthPage(props: {
 
     // If user is not compliant with org policies, show policy requirements
     if (orgPolicyCheck && !orgPolicyCheck.allowed && orgPolicyCheck.policies) {
-        const resourceAuthPageUrl = `/auth/resource/${authInfo.resourceGuid}${redirectUrl !== authInfo.url ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""}`;
+        const resourceAuthPageUrl = isInference
+            ? keysPath
+            : `/auth/resource/${authInfo.resourceGuid}${redirectUrl !== authInfo.url ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""}`;
         return (
             <div className="w-full max-w-md">
                 <OrgPolicyRequired
@@ -191,6 +204,12 @@ export default async function ResourceAuthPage(props: {
                 />
             </div>
         );
+    }
+
+    // Inference resources never establish a resource session on the inference
+    // host. Authenticated users retrieve their virtual API key on the dashboard.
+    if (isInference) {
+        redirect(keysPath);
     }
 
     if (!hasAuth) {

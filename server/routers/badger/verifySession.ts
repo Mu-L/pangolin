@@ -337,10 +337,16 @@ export async function verifyResourceSession(
         // Only offer a browser redirect to clients that can actually follow one and log in
         // (an interactive browser). Non-browser clients (curl, scripts, bots, etc.) just get
         // an unauthorized response from Badger instead of a login redirect URL.
+        // Inference browsers go to the dashboard keys page (not back to the inference host)
+        // so a valid session cannot create a redirect loop.
         const redirectPath = clientIsBrowser
-            ? `/auth/resource/${encodeURIComponent(
-                  resource.resourceGuid
-              )}?redirect=${encodeURIComponent(originalRequestURL)}`
+            ? mode === "inference"
+                ? `/${resource.orgId}/resource/${encodeURIComponent(
+                      resource.resourceGuid
+                  )}/keys`
+                : `/auth/resource/${encodeURIComponent(
+                      resource.resourceGuid
+                  )}?redirect=${encodeURIComponent(originalRequestURL)}`
             : undefined;
 
         // Virtual API keys for public inference resources (provider-style auth headers).

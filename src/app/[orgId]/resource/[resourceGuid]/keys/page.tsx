@@ -41,7 +41,9 @@ export default async function ResourceKeysPage(props: ResourceKeysPageProps) {
     const user = await getUser();
 
     if (!user) {
-        redirect("/");
+        redirect(
+            `/auth/login?redirect=/${orgId}/resource/${resourceGuid}/keys`
+        );
     }
 
     const cookieHeader = await authCookieHeader();
