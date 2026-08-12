@@ -163,15 +163,9 @@ export default async function ResourceAuthPage(props: {
     if (user && !user.emailVerified && env.flags.emailVerificationRequired) {
         redirect(
             `/auth/verify-email?redirect=${encodeURIComponent(
-                isInference
-                    ? keysPath
-                    : `/auth/resource/${authInfo.resourceGuid}`
+                `/auth/resource/${authInfo.resourceGuid}`
             )}`
         );
-    }
-
-    if (isInference && !user) {
-        redirect(`/auth/login?redirect=${encodeURIComponent(keysPath)}`);
     }
 
     const cookie = await authCookieHeader();
@@ -192,9 +186,7 @@ export default async function ResourceAuthPage(props: {
 
     // If user is not compliant with org policies, show policy requirements
     if (orgPolicyCheck && !orgPolicyCheck.allowed && orgPolicyCheck.policies) {
-        const resourceAuthPageUrl = isInference
-            ? keysPath
-            : `/auth/resource/${authInfo.resourceGuid}${redirectUrl !== authInfo.url ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""}`;
+        const resourceAuthPageUrl = `/auth/resource/${authInfo.resourceGuid}${redirectUrl !== authInfo.url ? `?redirect=${encodeURIComponent(redirectUrl)}` : ""}`;
         return (
             <div className="w-full max-w-md">
                 <OrgPolicyRequired
@@ -208,9 +200,13 @@ export default async function ResourceAuthPage(props: {
 
     // Inference resources never establish a resource session on the inference
     // host. Authenticated users retrieve their virtual API key on the dashboard.
-    if (isInference) {
+    if (isInference && user) {
         redirect(keysPath);
     }
+
+    // After password/pincode/SSO, do not send the browser back to the
+    // inference host (session alone cannot pass Badger). Land on keys instead.
+    const postAuthRedirect = isInference ? keysPath : redirectUrl;
 
     if (!hasAuth) {
         // no authentication so always go straight to the resource
@@ -296,7 +292,7 @@ export default async function ResourceAuthPage(props: {
                 <AutoLoginHandler
                     resourceId={authInfo.resourceId}
                     skipToIdpId={authInfo.skipToIdpId}
-                    redirectUrl={redirectUrl}
+                    redirectUrl={postAuthRedirect}
                     orgId={build === "saas" ? authInfo.orgId : undefined}
                 />
             );
@@ -334,7 +330,7 @@ export default async function ResourceAuthPage(props: {
                             name: authInfo.resourceName,
                             id: authInfo.resourceId
                         }}
-                        redirect={redirectUrl}
+                        redirect={postAuthRedirect}
                         idps={loginIdps}
                         orgId={build === "saas" ? authInfo.orgId : undefined}
                         branding={

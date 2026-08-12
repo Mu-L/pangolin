@@ -4,11 +4,9 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { AxiosResponse } from "axios";
 import moment from "moment";
-import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import CopyTextBox from "@app/components/CopyTextBox";
 import CopyToClipboard from "@app/components/CopyToClipboard";
-import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import {
     SettingsContainer,
     SettingsFormCell,
@@ -34,7 +32,6 @@ import {
 
 type UserVirtualApiKeysProps = {
     orgId: string;
-    resourceGuid?: string;
     initialData: ListMyVirtualApiKeysResponse;
 };
 
@@ -131,12 +128,12 @@ function IdentityKeyCenterpiece({
     orgId,
     virtualApiKeyId,
     lastChars,
-    resourceGuid
+    resourceName
 }: {
     orgId: string;
     virtualApiKeyId: string;
     lastChars: string;
-    resourceGuid?: string;
+    resourceName?: string | null;
 }) {
     const t = useTranslations();
     const preview = formatVirtualApiKeyPreview(virtualApiKeyId, lastChars);
@@ -145,11 +142,11 @@ function IdentityKeyCenterpiece({
         virtualApiKeyId
     );
     const displayValue = credential ?? preview;
-    const headline = resourceGuid
-        ? t("myVirtualApiKeysIdentityResourceHeadline")
+    const headline = resourceName
+        ? t("myVirtualApiKeysIdentityResourceHeadline", { resourceName })
         : t("myVirtualApiKeysIdentityHeadline");
-    const description = resourceGuid
-        ? t("myVirtualApiKeysIdentityResourceDescription")
+    const description = resourceName
+        ? t("myVirtualApiKeysIdentityResourceDescription", { resourceName })
         : t("myVirtualApiKeysIdentityDescription");
 
     return (
@@ -220,17 +217,10 @@ function ManualKeyRow({
 
 export default function UserVirtualApiKeys({
     orgId,
-    resourceGuid,
     initialData
 }: UserVirtualApiKeysProps) {
     const t = useTranslations();
-
-    const title = resourceGuid
-        ? t("myVirtualApiKeysResourceTitle")
-        : t("myVirtualApiKeysTitle");
-    const description = resourceGuid
-        ? t("myVirtualApiKeysResourceDescription")
-        : t("myVirtualApiKeysDescription");
+    const resourceName = initialData.resourceName;
 
     return (
         <>
@@ -239,7 +229,7 @@ export default function UserVirtualApiKeys({
                     orgId={orgId}
                     virtualApiKeyId={initialData.userKey.virtualApiKeyId}
                     lastChars={initialData.userKey.lastChars}
-                    resourceGuid={resourceGuid}
+                    resourceName={resourceName}
                 />
 
                 {initialData.manualKeys.length > 0 ? (
@@ -249,9 +239,10 @@ export default function UserVirtualApiKeys({
                                 {t("myVirtualApiKeysManualTitle")}
                             </SectionTitle>
                             <SettingsSectionDescription>
-                                {resourceGuid
+                                {resourceName
                                     ? t(
-                                          "myVirtualApiKeysManualResourceDescription"
+                                          "myVirtualApiKeysManualResourceDescription",
+                                          { resourceName }
                                       )
                                     : t("myVirtualApiKeysManualDescription")}
                             </SettingsSectionDescription>
