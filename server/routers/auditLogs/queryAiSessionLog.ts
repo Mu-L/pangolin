@@ -6,6 +6,7 @@ import {
     resources,
     siteResources,
     users,
+    virtualApiKeys,
     db,
     primaryDb
 } from "@server/db";
@@ -67,6 +68,7 @@ export const queryAiSessionLogsQuery = z.strictObject({
         .pipe(z.int().positive())
         .optional(),
     actor: z.string().optional(),
+    virtualApiKeyId: z.string().optional(),
     model: z.string().optional(),
     isStream: z
         .union([z.boolean(), z.string()])
@@ -117,7 +119,9 @@ function getWhere(data: Q) {
         data.providerId
             ? eq(aiSessionLog.providerId, data.providerId)
             : undefined,
-        data.capability ? eq(aiSessionLog.capability, data.capability) : undefined,
+        data.capability
+            ? eq(aiSessionLog.capability, data.capability)
+            : undefined,
         data.resourceId
             ? or(
                   eq(aiSessionLog.resourceId, data.resourceId),
@@ -125,9 +129,10 @@ function getWhere(data: Q) {
               )
             : undefined,
         data.actor ? eq(aiSessionLog.userId, data.actor) : undefined,
-        data.model
-            ? eq(aiSessionLog.requestedModel, data.model)
+        data.virtualApiKeyId
+            ? eq(aiSessionLog.virtualApiKeyId, data.virtualApiKeyId)
             : undefined,
+        data.model ? eq(aiSessionLog.requestedModel, data.model) : undefined,
         data.isStream !== undefined
             ? eq(aiSessionLog.isStream, data.isStream)
             : undefined
@@ -145,6 +150,7 @@ export function queryAiSession(data: Q) {
             resourceId: aiSessionLog.resourceId,
             siteResourceId: aiSessionLog.siteResourceId,
             userId: aiSessionLog.userId,
+            virtualApiKeyId: aiSessionLog.virtualApiKeyId,
             requestedModel: aiSessionLog.requestedModel,
             isStream: aiSessionLog.isStream,
             requestBody: aiSessionLog.requestBody,
@@ -178,6 +184,14 @@ async function enrichWithDetails(
         ...new Set(
             logs
                 .map((log) => log.userId)
+                .filter((id): id is string => id !== null && id !== undefined)
+        )
+    ];
+
+    const virtualApiKeyIds = [
+        ...new Set(
+            logs
+                .map((log) => log.virtualApiKeyId)
                 .filter((id): id is string => id !== null && id !== undefined)
         )
     ];
@@ -251,6 +265,28 @@ async function enrichWithDetails(
 
         for (const u of userDetails) {
             userMap.set(u.userId, u.email);
+        }
+    }
+
+    const virtualApiKeyMap = new Map<
+        string,
+        { name: string | null; lastChars: string }
+    >();
+    if (virtualApiKeyIds.length > 0) {
+        const virtualApiKeyDetails = await db
+            .select({
+                virtualApiKeyId: virtualApiKeys.virtualApiKeyId,
+                name: virtualApiKeys.name,
+                lastChars: virtualApiKeys.lastChars
+            })
+            .from(virtualApiKeys)
+            .where(inArray(virtualApiKeys.virtualApiKeyId, virtualApiKeyIds));
+
+        for (const k of virtualApiKeyDetails) {
+            virtualApiKeyMap.set(k.virtualApiKeyId, {
+                name: k.name,
+                lastChars: k.lastChars
+            });
         }
     }
 
@@ -328,6 +364,12 @@ async function enrichWithDetails(
             resourceName,
             resourceNiceId,
             userEmail: log.userId ? (userMap.get(log.userId) ?? null) : null,
+            virtualApiKeyName: log.virtualApiKeyId
+                ? (virtualApiKeyMap.get(log.virtualApiKeyId)?.name ?? null)
+                : null,
+            virtualApiKeyLastChars: log.virtualApiKeyId
+                ? (virtualApiKeyMap.get(log.virtualApiKeyId)?.lastChars ?? null)
+                : null,
             usage: usageMap.get(log.sessionId) ?? null
         };
     });
@@ -385,7 +427,8 @@ async function queryUniqueFilterAttributes(
         uniqueUsers,
         uniqueResources,
         uniqueSiteResources,
-        uniqueModels
+        uniqueModels,
+        uniqueVirtualApiKeys
     ] = await Promise.all([
         logsDb
             .selectDistinct({ id: aiSessionLog.providerId })
@@ -409,6 +452,11 @@ async function queryUniqueFilterAttributes(
             .limit(DISTINCT_LIMIT + 1),
         logsDb
             .selectDistinct({ model: aiSessionLog.requestedModel })
+            .from(aiSessionLog)
+            .where(baseConditions)
+            .limit(DISTINCT_LIMIT + 1),
+        logsDb
+            .selectDistinct({ id: aiSessionLog.virtualApiKeyId })
             .from(aiSessionLog)
             .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1)
@@ -498,10 +546,37 @@ async function queryUniqueFilterAttributes(
         ];
     }
 
+    const virtualApiKeyIds = uniqueVirtualApiKeys
+        .map((row) => row.id)
+        .filter((id): id is string => id !== null);
+
+    let virtualApiKeyList: Array<{
+        id: string;
+        name: string | null;
+        lastChars: string | null;
+    }> = [];
+    if (virtualApiKeyIds.length > 0) {
+        const virtualApiKeyDetails = await primaryDb
+            .select({
+                virtualApiKeyId: virtualApiKeys.virtualApiKeyId,
+                name: virtualApiKeys.name,
+                lastChars: virtualApiKeys.lastChars
+            })
+            .from(virtualApiKeys)
+            .where(inArray(virtualApiKeys.virtualApiKeyId, virtualApiKeyIds));
+
+        virtualApiKeyList = virtualApiKeyDetails.map((k) => ({
+            id: k.virtualApiKeyId,
+            name: k.name,
+            lastChars: k.lastChars
+        }));
+    }
+
     return {
         providers: sortNamedFilterOptions(providers),
         resources: sortNamedFilterOptions(resourcesWithNames),
         users: userList,
+        virtualApiKeys: virtualApiKeyList,
         models: models.sort()
     };
 }

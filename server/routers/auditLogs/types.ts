@@ -110,6 +110,9 @@ export type QueryAiSessionLogResponse = {
         resourceType: "public" | "site" | null;
         userId: string | null;
         userEmail: string | null;
+        virtualApiKeyId: string | null;
+        virtualApiKeyName: string | null;
+        virtualApiKeyLastChars: string | null;
         requestedModel: string | null;
         isStream: boolean;
         requestBody: string | null;
@@ -147,6 +150,11 @@ export type QueryAiSessionLogResponse = {
         users: {
             id: string;
             email: string | null;
+        }[];
+        virtualApiKeys: {
+            id: string;
+            name: string | null;
+            lastChars: string | null;
         }[];
         models: string[];
     };

@@ -12,7 +12,8 @@ import type {
     QueryAiUsageOverviewResponse,
     QueryAiUsageProvidersResponse,
     QueryAiUsageResourcesResponse,
-    QueryAiUsageUsersRolesResponse
+    QueryAiUsageUsersRolesResponse,
+    QueryAiUsageVirtualApiKeysResponse
 } from "@server/routers/auditLogs";
 import type {
     QueryAccessAuditLogResponse,
@@ -954,7 +955,8 @@ export const aiUsageAnalyticsFiltersSchema = z.object({
     model: z.string().optional().catch(undefined),
     resourceId: z.coerce.number().optional().catch(undefined),
     roleId: z.coerce.number().optional().catch(undefined),
-    userId: z.string().optional().catch(undefined)
+    userId: z.string().optional().catch(undefined),
+    virtualApiKeyId: z.string().optional().catch(undefined)
 });
 
 export type AiUsageAnalyticsFilters = z.output<
@@ -1086,6 +1088,7 @@ export const aiSessionLogsFiltersSchema = z.object({
     capability: z.string().optional().catch(undefined),
     resourceId: z.string().optional().catch(undefined),
     actor: z.string().optional().catch(undefined),
+    virtualApiKeyId: z.string().optional().catch(undefined),
     model: z.string().optional().catch(undefined),
     isStream: z.string().optional().catch(undefined)
 });
@@ -1284,7 +1287,12 @@ export const aiUsageAnalyticsQueries = {
         filters: Pick<AiUsageAnalyticsFilters, "timeStart" | "timeEnd">;
     }) =>
         queryOptions({
-            queryKey: ["AI_USAGE_ANALYTICS", orgId, "FILTERS", filters] as const,
+            queryKey: [
+                "AI_USAGE_ANALYTICS",
+                orgId,
+                "FILTERS",
+                filters
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryAiUsageFilterOptionsResponse>
@@ -1304,7 +1312,12 @@ export const aiUsageAnalyticsQueries = {
         filters: AiUsageAnalyticsFilters;
     }) =>
         queryOptions({
-            queryKey: ["AI_USAGE_ANALYTICS", orgId, "OVERVIEW", filters] as const,
+            queryKey: [
+                "AI_USAGE_ANALYTICS",
+                orgId,
+                "OVERVIEW",
+                filters
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryAiUsageOverviewResponse>
@@ -1330,7 +1343,12 @@ export const aiUsageAnalyticsQueries = {
         filters: AiUsageAnalyticsFilters;
     }) =>
         queryOptions({
-            queryKey: ["AI_USAGE_ANALYTICS", orgId, "PROVIDERS", filters] as const,
+            queryKey: [
+                "AI_USAGE_ANALYTICS",
+                orgId,
+                "PROVIDERS",
+                filters
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryAiUsageProvidersResponse>
@@ -1356,7 +1374,12 @@ export const aiUsageAnalyticsQueries = {
         filters: AiUsageAnalyticsFilters;
     }) =>
         queryOptions({
-            queryKey: ["AI_USAGE_ANALYTICS", orgId, "RESOURCES", filters] as const,
+            queryKey: [
+                "AI_USAGE_ANALYTICS",
+                orgId,
+                "RESOURCES",
+                filters
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryAiUsageResourcesResponse>
@@ -1392,6 +1415,37 @@ export const aiUsageAnalyticsQueries = {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryAiUsageUsersRolesResponse>
                 >(`/org/${orgId}/logs/ai/usage/users-roles`, {
+                    params: filters,
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    virtualApiKeys: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: AiUsageAnalyticsFilters;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "AI_USAGE_ANALYTICS",
+                orgId,
+                "VIRTUAL_API_KEYS",
+                filters
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAiUsageVirtualApiKeysResponse>
+                >(`/org/${orgId}/logs/ai/usage/virtual-api-keys`, {
                     params: filters,
                     signal
                 });

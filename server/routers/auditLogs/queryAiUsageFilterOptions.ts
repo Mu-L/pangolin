@@ -6,7 +6,8 @@ import {
     siteResources,
     users,
     roles,
-    userOrgRoles
+    userOrgRoles,
+    virtualApiKeys
 } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
@@ -43,8 +44,9 @@ const queryAiUsageFilterOptionsParams = z.object({
     orgId: z.string()
 });
 
-const queryAiUsageFilterOptionsCombined =
-    queryAiUsageFilterOptionsQuery.merge(queryAiUsageFilterOptionsParams);
+const queryAiUsageFilterOptionsCombined = queryAiUsageFilterOptionsQuery.merge(
+    queryAiUsageFilterOptionsParams
+);
 type Q = z.infer<typeof queryAiUsageFilterOptionsCombined>;
 
 function sortNamedFilterOptions<T extends { id: number; name: string | null }>(
@@ -73,7 +75,8 @@ async function query(data: Q) {
         uniqueModels,
         uniqueResources,
         uniqueSiteResources,
-        uniqueUsers
+        uniqueUsers,
+        uniqueVirtualApiKeys
     ] = await Promise.all([
         db
             .selectDistinct({ id: aiUsageRecords.providerId })
@@ -105,6 +108,13 @@ async function query(data: Q) {
             .selectDistinct({ userId: aiUsageRecords.userId })
             .from(aiUsageRecords)
             .where(and(baseConditions, not(isNull(aiUsageRecords.userId))))
+            .limit(DISTINCT_LIMIT + 1),
+        db
+            .selectDistinct({ id: aiUsageRecords.virtualApiKeyId })
+            .from(aiUsageRecords)
+            .where(
+                and(baseConditions, not(isNull(aiUsageRecords.virtualApiKeyId)))
+            )
             .limit(DISTINCT_LIMIT + 1)
     ]);
 
@@ -120,11 +130,17 @@ async function query(data: Q) {
     let providers: Array<{ id: number; name: string | null }> = [];
     if (providerIds.length > 0) {
         const providerDetails = await db
-            .select({ providerId: aiProviders.providerId, name: aiProviders.name })
+            .select({
+                providerId: aiProviders.providerId,
+                name: aiProviders.name
+            })
             .from(aiProviders)
             .where(inArray(aiProviders.providerId, providerIds));
 
-        providers = providerDetails.map((p) => ({ id: p.providerId, name: p.name }));
+        providers = providerDetails.map((p) => ({
+            id: p.providerId,
+            name: p.name
+        }));
     }
 
     const resourceIds = uniqueResources
@@ -155,7 +171,10 @@ async function query(data: Q) {
             .where(inArray(siteResources.siteResourceId, siteResourceIds));
 
         resourcesWithNames = resourcesWithNames.concat(
-            siteResourceDetails.map((r) => ({ id: r.siteResourceId, name: r.name }))
+            siteResourceDetails.map((r) => ({
+                id: r.siteResourceId,
+                name: r.name
+            }))
         );
     }
 
@@ -190,11 +209,37 @@ async function query(data: Q) {
         roleList = [...roleMap.entries()].map(([id, name]) => ({ id, name }));
     }
 
+    const virtualApiKeyIds = uniqueVirtualApiKeys
+        .map((row) => row.id)
+        .filter((id): id is string => id !== null);
+
+    let virtualApiKeyList: Array<{
+        id: string;
+        name: string | null;
+        lastChars: string;
+    }> = [];
+    if (virtualApiKeyIds.length > 0) {
+        const virtualApiKeyDetails = await db
+            .select({
+                virtualApiKeyId: virtualApiKeys.virtualApiKeyId,
+                name: virtualApiKeys.name,
+                lastChars: virtualApiKeys.lastChars
+            })
+            .from(virtualApiKeys)
+            .where(inArray(virtualApiKeys.virtualApiKeyId, virtualApiKeyIds));
+        virtualApiKeyList = virtualApiKeyDetails.map((k) => ({
+            id: k.virtualApiKeyId,
+            name: k.name,
+            lastChars: k.lastChars
+        }));
+    }
+
     return {
         providers: sortNamedFilterOptions(providers),
         resources: sortNamedFilterOptions(resourcesWithNames),
         roles: sortNamedFilterOptions(roleList),
         users: userList,
+        virtualApiKeys: virtualApiKeyList,
         models
     };
 }
@@ -227,7 +272,9 @@ registry.registerPath({
     }
 });
 
-export type QueryAiUsageFilterOptionsResponse = Awaited<ReturnType<typeof query>>;
+export type QueryAiUsageFilterOptionsResponse = Awaited<
+    ReturnType<typeof query>
+>;
 
 export async function queryAiUsageFilterOptions(
     req: Request,
@@ -238,7 +285,10 @@ export async function queryAiUsageFilterOptions(
         const parsedQuery = queryAiUsageFilterOptionsQuery.safeParse(req.query);
         if (!parsedQuery.success) {
             return next(
-                createHttpError(HttpCode.BAD_REQUEST, fromError(parsedQuery.error))
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedQuery.error)
+                )
             );
         }
 
@@ -247,7 +297,10 @@ export async function queryAiUsageFilterOptions(
         );
         if (!parsedParams.success) {
             return next(
-                createHttpError(HttpCode.BAD_REQUEST, fromError(parsedParams.error))
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedParams.error)
+                )
             );
         }
 

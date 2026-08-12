@@ -29,6 +29,8 @@ import { ProvidersTab } from "./ai-usage-analytics/ProvidersTab";
 import { ResourcesTab } from "./ai-usage-analytics/ResourcesTab";
 import { RolesTab } from "./ai-usage-analytics/RolesTab";
 import { UsersTab } from "./ai-usage-analytics/UsersTab";
+import { VirtualApiKeysTab } from "./ai-usage-analytics/VirtualApiKeysTab";
+import { formatVirtualApiKeyPreview } from "@app/lib/virtualApiKeyFormat";
 
 export type AiUsageAnalyticsDataProps = {
     orgId: string;
@@ -140,13 +142,20 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
         value: u.id,
         label: u.email ?? u.id
     }));
+    const virtualApiKeyOptions = (filterOptions?.virtualApiKeys ?? []).map(
+        (k) => ({
+            value: k.id,
+            label: k.name ?? formatVirtualApiKeyPreview(k.id, k.lastChars)
+        })
+    );
 
     const tabs: TabItem[] = [
         { title: t("aiUsageTabOverview"), href: "#" },
         { title: t("aiUsageTabProviders"), href: "#" },
         { title: t("aiUsageTabResources"), href: "#" },
         { title: t("aiUsageRolesTab"), href: "#" },
-        { title: t("aiUsageUsersTab"), href: "#" }
+        { title: t("aiUsageUsersTab"), href: "#" },
+        { title: t("aiUsageVirtualApiKeysTab"), href: "#" }
     ];
 
     return (
@@ -180,7 +189,9 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                 value={filters.providerId?.toString()}
                                 options={providerOptions}
                                 placeholder={t("aiUsageFilterAllProviders")}
-                                onValueChange={(v) => setFilter("providerId", v)}
+                                onValueChange={(v) =>
+                                    setFilter("providerId", v)
+                                }
                             />
                             <FilterSelect
                                 id="model"
@@ -196,7 +207,9 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                 value={filters.resourceId?.toString()}
                                 options={resourceOptions}
                                 placeholder={t("aiUsageFilterAllResources")}
-                                onValueChange={(v) => setFilter("resourceId", v)}
+                                onValueChange={(v) =>
+                                    setFilter("resourceId", v)
+                                }
                             />
                             <FilterSelect
                                 id="roleId"
@@ -213,6 +226,18 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                                 options={userOptions}
                                 placeholder={t("aiUsageFilterAllUsers")}
                                 onValueChange={(v) => setFilter("userId", v)}
+                            />
+                            <FilterSelect
+                                id="virtualApiKeyId"
+                                label={t("aiUsageFilterVirtualApiKey")}
+                                value={filters.virtualApiKeyId}
+                                options={virtualApiKeyOptions}
+                                placeholder={t(
+                                    "aiUsageFilterAllVirtualApiKeys"
+                                )}
+                                onValueChange={(v) =>
+                                    setFilter("virtualApiKeyId", v)
+                                }
                             />
 
                             {!isEmptySearchParams && (
@@ -259,6 +284,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                 <ResourcesTab orgId={props.orgId} filters={filters} />
                 <RolesTab orgId={props.orgId} filters={filters} />
                 <UsersTab orgId={props.orgId} filters={filters} />
+                <VirtualApiKeysTab orgId={props.orgId} filters={filters} />
             </HorizontalTabs>
         </div>
     );

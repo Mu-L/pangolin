@@ -179,6 +179,7 @@ export async function proxyAiGatewayToSiteTarget(
         siteResourceId: number | null;
         requestedModel: string | undefined;
         budgets: AiBudget[];
+        virtualApiKeyId: string | null;
     }
 ): Promise<void> {
     const providerTargets = await getProviderTargets(provider.providerId);
@@ -319,6 +320,7 @@ export async function proxyAiGatewayToSiteTarget(
             resourceId: ctx.resourceId,
             siteResourceId: ctx.siteResourceId,
             requestUserId: requestUser?.userId ?? null,
+            virtualApiKeyId: ctx.virtualApiKeyId,
             budgets: ctx.budgets
         });
     }

@@ -8,3 +8,4 @@ export * from "./queryAiUsageOverview";
 export * from "./queryAiUsageProviders";
 export * from "./queryAiUsageResources";
 export * from "./queryAiUsageUsersRoles";
+export * from "./queryAiUsageVirtualApiKeys";
