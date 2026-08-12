@@ -259,28 +259,20 @@ export async function verifyResourceSession(
             );
 
             if (action == "ACCEPT") {
-                // Public inference still requires a virtual API key; do not
-                // bypass that with an allow rule.
-                if (mode === "inference") {
-                    logger.debug(
-                        "Rule ACCEPT ignored for inference; continuing to virtual API key check"
-                    );
-                } else {
-                    logger.debug("Resource allowed by rule");
+                logger.debug("Resource allowed by rule");
 
-                    logRequestAudit(
-                        {
-                            action: true,
-                            reason: 100, // allowed by rule
-                            resourceId: resource.resourceId,
-                            orgId: resource.orgId,
-                            location: ipCC
-                        },
-                        parsedBody.data
-                    );
+                logRequestAudit(
+                    {
+                        action: true,
+                        reason: 100, // allowed by rule
+                        resourceId: resource.resourceId,
+                        orgId: resource.orgId,
+                        location: ipCC
+                    },
+                    parsedBody.data
+                );
 
-                    return allowed(res, undefined, dontStripSession);
-                }
+                return allowed(res, undefined, dontStripSession);
             } else if (action == "DROP") {
                 logger.debug("Resource denied by rule");
 
