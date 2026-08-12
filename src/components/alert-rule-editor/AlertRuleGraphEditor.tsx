@@ -171,15 +171,10 @@ export default function AlertRuleGraphEditor({
                 variant: "destructive"
             });
         }
-        // const submit = form.handleSubmit(async (values) => {
-
-        // });
-
-        // await submit();
     };
 
     const testAlert = async () => {
-        const isValid = await form.trigger();
+        const isValid = await form.trigger("actions");
         const values = form.getValues();
 
         if (!isValid) {
