@@ -113,7 +113,10 @@ export const configSchema = z
                     .prefault({}),
                 remote_headers: z
                     .object({
-                        user_id: z.string().optional().default("Remote-User-Id"),
+                        user_id: z
+                            .string()
+                            .optional()
+                            .default("Remote-User-Id"),
                         virtual_api_key_id: z
                             .string()
                             .optional()
@@ -435,6 +438,10 @@ export const configSchema = z
                         // pin the catalog to a local file instead of
                         // fetching it from upstream_url.
                         file: z.string().optional(),
+                        // No default - only used when an operator wants to
+                        // merge the content of the json file with the upstream catalog. This is useful for adding
+                        // custom models to the catalog without having to maintain a separate fork of the upstream catalog.
+                        merge_file: z.string().optional(),
                         refresh_interval_min_hours: z
                             .number()
                             .positive()

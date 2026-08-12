@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import axios from "axios";
+import { z } from "zod";
 import config from "@server/lib/config";
 import logger from "@server/logger";
 import type { AiProviderType } from "@server/lib/aiProviderDefaults";
@@ -54,16 +55,24 @@ export type AiModelCatalogEntry = {
     };
 };
 
-type RawCatalogEntry = {
-    model: string;
-    provider: string;
-    pricing?: {
-        in?: number | null;
-        out?: number | null;
-        cache?: number | null;
-        reasoning?: number | null;
-    };
-};
+const catalogEntrySchema = z.object({
+    model: z.string(),
+    provider: z.string(),
+    pricing: z
+        .object({
+            in: z.number().nullable().optional(),
+            out: z.number().nullable().optional(),
+            cache: z.number().nullable().optional(),
+            reasoning: z.number().nullable().optional()
+        })
+        .optional()
+});
+
+const catalogFileSchema = z.object({
+    data: z.array(catalogEntrySchema).optional().default([])
+});
+
+type RawCatalogEntry = z.infer<typeof catalogEntrySchema>;
 
 function normalizeCatalogProvider(raw: string): CatalogProvider | null {
     if (CATALOG_PROVIDER_SET.has(raw)) {
@@ -183,8 +192,14 @@ export class AiModelCatalog {
                 return null;
             }
             const raw = fs.readFileSync(filePath, "utf-8");
-            const parsed = JSON.parse(raw) as { data: RawCatalogEntry[] };
-            return (parsed.data ?? [])
+            const result = catalogFileSchema.safeParse(JSON.parse(raw));
+            if (!result.success) {
+                logger.warn(
+                    `AI model catalog file at ${filePath} failed validation: ${result.error.message}`
+                );
+                return null;
+            }
+            return result.data.data
                 .map(normalizeEntry)
                 .filter((e): e is AiModelCatalogEntry => e != null);
         } catch (error) {
@@ -197,11 +212,15 @@ export class AiModelCatalog {
         upstreamUrl: string
     ): Promise<AiModelCatalogEntry[] | null> {
         try {
-            const res = await axios.get<{ data: RawCatalogEntry[] }>(
-                upstreamUrl,
-                { timeout: 15_000 }
-            );
-            return (res.data?.data ?? [])
+            const res = await axios.get(upstreamUrl, { timeout: 15_000 });
+            const result = catalogFileSchema.safeParse(res.data);
+            if (!result.success) {
+                logger.warn(
+                    `AI model catalog response from ${upstreamUrl} failed validation: ${result.error.message}`
+                );
+                return null;
+            }
+            return result.data.data
                 .map(normalizeEntry)
                 .filter((e): e is AiModelCatalogEntry => e != null);
         } catch (error: any) {
@@ -213,22 +232,34 @@ export class AiModelCatalog {
     }
 
     private async refresh(): Promise<void> {
-        const { file, upstream_url } = config.getRawConfig().ai.model_catalog;
+        const { file, merge_file, upstream_url } =
+            config.getRawConfig().ai.model_catalog;
 
         const fetched = file
             ? await this.fetchFromFile(file)
             : await this.fetchFromUpstream(upstream_url);
 
-        if (fetched) {
-            this.setEntries(fetched);
-            logger.debug(
-                `AI model catalog refreshed: ${this.entries.length} models loaded`
-            );
-        } else {
+        if (!fetched) {
             logger.debug(
                 "AI model catalog refresh failed; keeping previously loaded catalog in memory"
             );
+            return;
         }
+
+        let merged = fetched;
+        if (merge_file) {
+            const mergeEntries = await this.fetchFromFile(merge_file);
+            if (mergeEntries) {
+                // Entries from the base catalog take precedence; the merge
+                // file only adds models not already present.
+                merged = [...fetched, ...mergeEntries];
+            }
+        }
+
+        this.setEntries(merged);
+        logger.debug(
+            `AI model catalog refreshed: ${this.entries.length} models loaded`
+        );
     }
 
     private scheduleNextRefresh(): void {
