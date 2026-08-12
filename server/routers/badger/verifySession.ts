@@ -48,6 +48,11 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { getCountryCodeForIp } from "@server/lib/geoip";
 import { getAsnForIp } from "@server/lib/asn";
+import {
+    buildInferenceAuthClientError,
+    type ClientErrorResponse
+} from "@server/lib/aiGatewayAuthError";
+import { resolveAiCapabilityFromPath } from "@server/lib/aiCapabilities";
 import { verifyPassword } from "@server/auth/password";
 import {
     checkOrgAccessPolicy,
@@ -89,6 +94,8 @@ type BasicUserData = {
     role: string | null;
 };
 
+export type { ClientErrorResponse };
+
 export type VerifyUserResponse = {
     valid: boolean;
     headerAuthChallenged?: boolean;
@@ -96,7 +103,26 @@ export type VerifyUserResponse = {
     userData?: BasicUserData;
     pangolinVersion?: string;
     dontStripSession?: boolean;
+    clientError?: ClientErrorResponse;
 };
+
+function notAllowedWithClientError(
+    res: Response,
+    clientError: ClientErrorResponse
+) {
+    const data = {
+        data: {
+            valid: false,
+            clientError,
+            pangolinVersion: APP_VERSION
+        },
+        success: true,
+        error: false,
+        message: "Access denied",
+        status: HttpCode.OK
+    };
+    return response<VerifyUserResponse>(res, data);
+}
 
 export async function verifyResourceSession(
     req: Request,
@@ -408,7 +434,16 @@ export async function verifyResourceSession(
                 parsedBody.data
             );
 
-            return notAllowed(res, redirectPath, resource.orgId);
+            // Browsers go to the resource auth / API key page. API clients get
+            // a capability-shaped JSON auth error instead of a redirect.
+            if (clientIsBrowser) {
+                return notAllowed(res, redirectPath, resource.orgId);
+            }
+
+            return notAllowedWithClientError(
+                res,
+                buildInferenceAuthClientError(resolveAiCapabilityFromPath(path))
+            );
         }
 
         // check for access token in headers

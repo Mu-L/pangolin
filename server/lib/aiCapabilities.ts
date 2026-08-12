@@ -18,7 +18,40 @@ export type AiCapabilityDefinition = {
         model: string
     ) => string;
     isStreaming: (req: Request, contentType: string) => boolean;
+    /** Protocol-shaped body returned when gateway auth fails for this capability. */
+    authErrorBody: Record<string, unknown>;
 };
+
+const AUTH_MESSAGE = "Invalid API key provided.";
+
+export const OPENAI_AUTH_ERROR_BODY = {
+    error: {
+        message: AUTH_MESSAGE,
+        type: "authentication_error",
+        param: null,
+        code: "invalid_api_key"
+    }
+} as const;
+
+const ANTHROPIC_AUTH_ERROR_BODY = {
+    type: "error",
+    error: {
+        type: "authentication_error",
+        message: AUTH_MESSAGE
+    }
+} as const;
+
+const GOOGLE_AUTH_ERROR_BODY = {
+    error: {
+        code: 401,
+        message: AUTH_MESSAGE,
+        status: "UNAUTHENTICATED"
+    }
+} as const;
+
+const BEDROCK_AUTH_ERROR_BODY = {
+    message: "The security token included in the request is invalid."
+} as const;
 
 function bodyModel(req: Request): string | undefined {
     return typeof req.body?.model === "string" ? req.body.model : undefined;
@@ -111,7 +144,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isBodyOrSseStreaming
+            isStreaming: isBodyOrSseStreaming,
+            authErrorBody: OPENAI_AUTH_ERROR_BODY
         },
         openai_responses: {
             id: "openai_responses",
@@ -119,7 +153,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isBodyOrSseStreaming
+            isStreaming: isBodyOrSseStreaming,
+            authErrorBody: OPENAI_AUTH_ERROR_BODY
         },
         anthropic_messages: {
             id: "anthropic_messages",
@@ -127,7 +162,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isBodyOrSseStreaming
+            isStreaming: isBodyOrSseStreaming,
+            authErrorBody: ANTHROPIC_AUTH_ERROR_BODY
         },
         gemini_generate_content: {
             id: "gemini_generate_content",
@@ -144,7 +180,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isGeminiStyleStreaming
+            isStreaming: isGeminiStyleStreaming,
+            authErrorBody: GOOGLE_AUTH_ERROR_BODY
         },
         google_generate_content: {
             id: "google_generate_content",
@@ -162,7 +199,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isGeminiStyleStreaming
+            isStreaming: isGeminiStyleStreaming,
+            authErrorBody: GOOGLE_AUTH_ERROR_BODY
         },
         google_raw_predict: {
             id: "google_raw_predict",
@@ -182,7 +220,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             isStreaming: (req, contentType) =>
                 pathIncludes(req, "streamRawPredict") ||
                 pathIncludes(req, "alt=sse") ||
-                contentTypeIsSse(contentType)
+                contentTypeIsSse(contentType),
+            authErrorBody: GOOGLE_AUTH_ERROR_BODY
         },
         bedrock_model_invoke: {
             id: "bedrock_model_invoke",
@@ -199,7 +238,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             isStreaming: (req, contentType) =>
                 pathIncludes(req, "invoke-with-response-stream") ||
                 contentTypeIsAmazonEventStream(contentType) ||
-                contentTypeIsSse(contentType)
+                contentTypeIsSse(contentType),
+            authErrorBody: BEDROCK_AUTH_ERROR_BODY
         },
         bedrock_converse: {
             id: "bedrock_converse",
@@ -213,7 +253,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             isStreaming: (req, contentType) =>
                 pathIncludes(req, "converse-stream") ||
                 contentTypeIsAmazonEventStream(contentType) ||
-                contentTypeIsSse(contentType)
+                contentTypeIsSse(contentType),
+            authErrorBody: BEDROCK_AUTH_ERROR_BODY
         }
     };
 
@@ -222,6 +263,61 @@ export function isAiCapability(value: unknown): value is AiCapability {
         typeof value === "string" &&
         (AI_CAPABILITIES as readonly string[]).includes(value)
     );
+}
+
+/**
+ * Convert an Express-style route path from AI_CAPABILITY_DEFS into a RegExp.
+ * Handles `:param` segments and escaped literal colons (`\:`).
+ */
+export function routePatternToRegExp(routePath: string): RegExp {
+    let pattern = "";
+    for (let i = 0; i < routePath.length; i++) {
+        const ch = routePath[i];
+        if (
+            ch === "\\" &&
+            i + 1 < routePath.length &&
+            routePath[i + 1] === ":"
+        ) {
+            pattern += ":";
+            i++;
+            continue;
+        }
+        if (ch === ":") {
+            // Named param: consume until next / or end
+            i++;
+            while (
+                i < routePath.length &&
+                routePath[i] !== "/" &&
+                !(routePath[i] === "\\" && routePath[i + 1] === ":")
+            ) {
+                i++;
+            }
+            i--; // loop will ++
+            pattern += "[^/]+";
+            continue;
+        }
+        // Escape regex special chars
+        if (/[.*+?^${}()|[\]\\]/.test(ch)) {
+            pattern += "\\" + ch;
+        } else {
+            pattern += ch;
+        }
+    }
+    return new RegExp(`^${pattern}$`);
+}
+
+export function resolveAiCapabilityFromPath(path: string): AiCapability | null {
+    const pathname = path.split("?")[0] || "/";
+    const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+
+    for (const def of Object.values(AI_CAPABILITY_DEFS)) {
+        for (const route of def.routes) {
+            if (routePatternToRegExp(route.path).test(normalized)) {
+                return def.id;
+            }
+        }
+    }
+    return null;
 }
 
 export function parseCapabilities(raw: unknown): AiCapability[] {

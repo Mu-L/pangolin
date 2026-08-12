@@ -366,10 +366,6 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
                 .where(eq(resourceAiModels.resourceId, resourceRow.resourceId))
         ]);
 
-        if (attachmentRows.length === 0) {
-            return null;
-        }
-
         return {
             resourceId: resourceRow.resourceId,
             siteResourceId: null,
@@ -426,10 +422,6 @@ async function resolveTarget(host: string): Promise<ResolvedTarget | null> {
                     )
                 )
         ]);
-
-        if (attachmentRows.length === 0) {
-            return null;
-        }
 
         return {
             resourceId: null,
@@ -752,6 +744,14 @@ export async function handleAiGatewayProxy(
                 error: {
                     message:
                         "Request must be authenticated via the inference resource"
+                }
+            });
+        }
+
+        if (attachments.length === 0) {
+            return res.status(HttpCode.FORBIDDEN).json({
+                error: {
+                    message: "No AI providers configured for this resource"
                 }
             });
         }
