@@ -193,7 +193,10 @@ export default async function Page(props: {
                                 redirect={redirectUrl}
                                 forceLogin={forceLogin}
                                 defaultUser={defaultUser}
-                                lastUsedIdp={lastUsedIdpForSmartLogin}
+                                inviteMode={isInvite}
+                                lastUsedIdp={
+                                    isInvite ? null : lastUsedIdpForSmartLogin
+                                }
                                 orgSignIn={
                                     !isInvite &&
                                     (build === "saas" ||
@@ -213,7 +216,7 @@ export default async function Page(props: {
             ) : (
                 <DashboardLoginForm
                     redirect={redirectUrl}
-                    idps={loginIdps}
+                    idps={isInvite ? [] : loginIdps}
                     forceLogin={forceLogin}
                     showOrgLogin={
                         !isInvite &&

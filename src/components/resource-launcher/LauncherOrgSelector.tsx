@@ -15,11 +15,14 @@ import {
 } from "@app/components/ui/popover";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import { Check, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@app/components/ui/button";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useUserContext } from "@app/hooks/useUserContext";
+import { build } from "@server/build";
 
 type LauncherOrgSelectorProps = {
     orgId?: string;
@@ -31,8 +34,15 @@ export function LauncherOrgSelector({ orgId, orgs }: LauncherOrgSelectorProps) {
     const router = useRouter();
     const pathname = usePathname();
     const t = useTranslations();
+    const { env } = useEnvContext();
+    const { user } = useUserContext();
 
     const selectedOrg = orgs?.find((org) => org.orgId === orgId);
+
+    let canCreateOrg = !env.flags.disableUserCreateOrg || user.serverAdmin;
+    if (build === "saas" && user.type !== "internal") {
+        canCreateOrg = false;
+    }
 
     const sortedOrgs = useMemo(() => {
         if (!orgs?.length) {
@@ -108,6 +118,22 @@ export function LauncherOrgSelector({ orgId, orgs }: LauncherOrgSelectorProps) {
                         </CommandGroup>
                     </CommandList>
                 </Command>
+                {canCreateOrg && (
+                    <div className="p-2 border-t border-border">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start h-8 font-normal text-muted-foreground"
+                            onClick={() => {
+                                setOpen(false);
+                                router.push("/setup");
+                            }}
+                        >
+                            <Plus className="h-3.5 w-3.5 mr-2" />
+                            {t("setupNewOrg")}
+                        </Button>
+                    </div>
+                )}
             </PopoverContent>
         </Popover>
     );

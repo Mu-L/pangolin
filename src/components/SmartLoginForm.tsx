@@ -56,6 +56,7 @@ type SmartLoginFormProps = {
     defaultUser?: string;
     orgSignIn?: OrgSignInConfig;
     lastUsedIdp?: (LoginFormIDP & { orgId?: string }) | null;
+    inviteMode?: boolean;
 };
 
 type ViewState =
@@ -93,7 +94,8 @@ export default function SmartLoginForm({
     forceLogin,
     defaultUser,
     orgSignIn,
-    lastUsedIdp
+    lastUsedIdp,
+    inviteMode = false
 }: SmartLoginFormProps) {
     const router = useRouter();
     const { env } = useEnvContext();
@@ -136,6 +138,10 @@ export default function SmartLoginForm({
             return;
         }
 
+        const signupUrl = redirect
+            ? `/auth/signup?email=${encodeURIComponent(identifier)}&redirect=${encodeURIComponent(redirect)}&fromSmartLogin=true`
+            : `/auth/signup?email=${encodeURIComponent(identifier)}&fromSmartLogin=true`;
+
         if (!result.found || result.accounts.length === 0) {
             // No accounts found
             if (!isEmail || forceLogin) {
@@ -147,10 +153,33 @@ export default function SmartLoginForm({
                 return;
             }
             // Valid email but no accounts and not forceLogin - redirect to signup
-            const signupUrl = redirect
-                ? `/auth/signup?email=${encodeURIComponent(identifier)}&redirect=${encodeURIComponent(redirect)}&fromSmartLogin=true`
-                : `/auth/signup?email=${encodeURIComponent(identifier)}&fromSmartLogin=true`;
             router.push(signupUrl);
+            return;
+        }
+
+        // Invite accept only supports internal (password) accounts
+        if (inviteMode) {
+            const internalAccount = result.accounts.find(
+                (acc) => acc.hasInternalAuth
+            );
+            if (internalAccount) {
+                setViewState({
+                    type: "password",
+                    identifier,
+                    account: internalAccount
+                });
+                return;
+            }
+
+            if (isEmail && !forceLogin) {
+                router.push(signupUrl);
+                return;
+            }
+
+            form.setError("identifier", {
+                type: "manual",
+                message: t("inviteLoginInternalOnly")
+            });
             return;
         }
 

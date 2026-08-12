@@ -1,8 +1,9 @@
 import { db, idp, idpOrg, Transaction } from "@server/db";
 import { and, eq } from "drizzle-orm";
+import { build } from "@server/build";
 
 export function isOrgIdentityProviderMode(): boolean {
-    return process.env.IDENTITY_PROVIDER_MODE === "org";
+    return build === "saas" || process.env.IDENTITY_PROVIDER_MODE === "org";
 }
 
 /**
