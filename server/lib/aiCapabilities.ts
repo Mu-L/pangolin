@@ -8,8 +8,11 @@ export type AiCapabilityRoute = {
     path: string;
 };
 
+export type AiProtocolFamily = "openai" | "anthropic" | "google" | "bedrock";
+
 export type AiCapabilityDefinition = {
     id: AiCapability;
+    protocolFamily: AiProtocolFamily;
     routes: AiCapabilityRoute[];
     extractModel: (req: Request) => string | undefined;
     resolveUpstreamUrl: (
@@ -18,40 +21,7 @@ export type AiCapabilityDefinition = {
         model: string
     ) => string;
     isStreaming: (req: Request, contentType: string) => boolean;
-    /** Protocol-shaped body returned when gateway auth fails for this capability. */
-    authErrorBody: Record<string, unknown>;
 };
-
-const AUTH_MESSAGE = "Invalid API key provided.";
-
-export const OPENAI_AUTH_ERROR_BODY = {
-    error: {
-        message: AUTH_MESSAGE,
-        type: "authentication_error",
-        param: null,
-        code: "invalid_api_key"
-    }
-} as const;
-
-const ANTHROPIC_AUTH_ERROR_BODY = {
-    type: "error",
-    error: {
-        type: "authentication_error",
-        message: AUTH_MESSAGE
-    }
-} as const;
-
-const GOOGLE_AUTH_ERROR_BODY = {
-    error: {
-        code: 401,
-        message: AUTH_MESSAGE,
-        status: "UNAUTHENTICATED"
-    }
-} as const;
-
-const BEDROCK_AUTH_ERROR_BODY = {
-    message: "The security token included in the request is invalid."
-} as const;
 
 function bodyModel(req: Request): string | undefined {
     return typeof req.body?.model === "string" ? req.body.model : undefined;
@@ -137,6 +107,7 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
     {
         openai_chat: {
             id: "openai_chat",
+            protocolFamily: "openai",
             routes: [
                 { method: "POST", path: "/v1/chat/completions" },
                 { method: "POST", path: "/chat/completions" }
@@ -144,29 +115,29 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isBodyOrSseStreaming,
-            authErrorBody: OPENAI_AUTH_ERROR_BODY
+            isStreaming: isBodyOrSseStreaming
         },
         openai_responses: {
             id: "openai_responses",
+            protocolFamily: "openai",
             routes: [{ method: "POST", path: "/v1/responses" }],
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isBodyOrSseStreaming,
-            authErrorBody: OPENAI_AUTH_ERROR_BODY
+            isStreaming: isBodyOrSseStreaming
         },
         anthropic_messages: {
             id: "anthropic_messages",
+            protocolFamily: "anthropic",
             routes: [{ method: "POST", path: "/v1/messages" }],
             extractModel: bodyModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isBodyOrSseStreaming,
-            authErrorBody: ANTHROPIC_AUTH_ERROR_BODY
+            isStreaming: isBodyOrSseStreaming
         },
         gemini_generate_content: {
             id: "gemini_generate_content",
+            protocolFamily: "google",
             routes: [
                 {
                     method: "POST",
@@ -180,11 +151,11 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isGeminiStyleStreaming,
-            authErrorBody: GOOGLE_AUTH_ERROR_BODY
+            isStreaming: isGeminiStyleStreaming
         },
         google_generate_content: {
             id: "google_generate_content",
+            protocolFamily: "google",
             routes: [
                 {
                     method: "POST",
@@ -199,11 +170,11 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             extractModel: paramModel,
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
-            isStreaming: isGeminiStyleStreaming,
-            authErrorBody: GOOGLE_AUTH_ERROR_BODY
+            isStreaming: isGeminiStyleStreaming
         },
         google_raw_predict: {
             id: "google_raw_predict",
+            protocolFamily: "google",
             routes: [
                 {
                     method: "POST",
@@ -220,11 +191,11 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             isStreaming: (req, contentType) =>
                 pathIncludes(req, "streamRawPredict") ||
                 pathIncludes(req, "alt=sse") ||
-                contentTypeIsSse(contentType),
-            authErrorBody: GOOGLE_AUTH_ERROR_BODY
+                contentTypeIsSse(contentType)
         },
         bedrock_model_invoke: {
             id: "bedrock_model_invoke",
+            protocolFamily: "bedrock",
             routes: [
                 { method: "POST", path: "/model/:model/invoke" },
                 {
@@ -238,11 +209,11 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             isStreaming: (req, contentType) =>
                 pathIncludes(req, "invoke-with-response-stream") ||
                 contentTypeIsAmazonEventStream(contentType) ||
-                contentTypeIsSse(contentType),
-            authErrorBody: BEDROCK_AUTH_ERROR_BODY
+                contentTypeIsSse(contentType)
         },
         bedrock_converse: {
             id: "bedrock_converse",
+            protocolFamily: "bedrock",
             routes: [
                 { method: "POST", path: "/model/:model/converse" },
                 { method: "POST", path: "/model/:model/converse-stream" }
@@ -253,8 +224,7 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             isStreaming: (req, contentType) =>
                 pathIncludes(req, "converse-stream") ||
                 contentTypeIsAmazonEventStream(contentType) ||
-                contentTypeIsSse(contentType),
-            authErrorBody: BEDROCK_AUTH_ERROR_BODY
+                contentTypeIsSse(contentType)
         }
     };
 

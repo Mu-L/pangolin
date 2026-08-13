@@ -21,6 +21,7 @@ import {
     AI_CAPABILITY_DEFS,
     type AiCapability
 } from "@server/lib/aiCapabilities";
+import { buildAiCapabilityErrorBody } from "@server/lib/aiGatewayAuthError";
 import {
     needsStreamUsageInjection,
     withStreamUsageOption
@@ -184,11 +185,14 @@ export async function proxyAiGatewayToSiteTarget(
 ): Promise<void> {
     const providerTargets = await getProviderTargets(provider.providerId);
     if (providerTargets.length === 0) {
-        res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
-            error: {
-                message: "AI provider has no reachable site targets configured"
-            }
-        });
+        res.status(HttpCode.INTERNAL_SERVER_ERROR).json(
+            buildAiCapabilityErrorBody(
+                capability,
+                "internal",
+                "AI provider has no reachable site targets configured",
+                HttpCode.INTERNAL_SERVER_ERROR
+            )
+        );
         return;
     }
 
@@ -207,11 +211,14 @@ export async function proxyAiGatewayToSiteTarget(
     let apiKey: string | null = null;
     if (authTypeRequiresApiKey(authType)) {
         if (!provider.apiKey) {
-            res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
-                error: {
-                    message: "AI provider has no API key configured"
-                }
-            });
+            res.status(HttpCode.INTERNAL_SERVER_ERROR).json(
+                buildAiCapabilityErrorBody(
+                    capability,
+                    "internal",
+                    "AI provider has no API key configured",
+                    HttpCode.INTERNAL_SERVER_ERROR
+                )
+            );
             return;
         }
         const secret = config.getRawConfig().server.secret!;
@@ -286,9 +293,14 @@ export async function proxyAiGatewayToSiteTarget(
                     ? (fetchError as Error & { cause?: unknown }).cause
                     : undefined
         });
-        res.status(HttpCode.BAD_GATEWAY).json({
-            error: { message: "Failed to reach AI provider target" }
-        });
+        res.status(HttpCode.BAD_GATEWAY).json(
+            buildAiCapabilityErrorBody(
+                capability,
+                "internal",
+                "Failed to reach AI provider target",
+                HttpCode.BAD_GATEWAY
+            )
+        );
         return;
     }
 

@@ -31,6 +31,10 @@ import {
     providerHasCapability,
     type AiCapability
 } from "@server/lib/aiCapabilities";
+import {
+    buildAiCapabilityErrorBody,
+    type AiCapabilityErrorKind
+} from "@server/lib/aiGatewayAuthError";
 import { proxyAiGatewayToSiteTarget } from "@server/routers/aiGateway/targetRouting";
 import {
     SESSION_COOKIE_NAME,
@@ -150,7 +154,12 @@ type ResolvedTarget = {
 
 type ProviderSelection =
     | { ok: true; provider: AiProvider }
-    | { ok: false; status: number; message: string };
+    | {
+          ok: false;
+          status: number;
+          kind: AiCapabilityErrorKind;
+          message: string;
+      };
 
 export type RequestUser = {
     userId: string;
@@ -241,10 +250,6 @@ async function resolveRequestUser(
         const virtualApiKeyId =
             getRequestHeader(req, remoteHeaders.virtual_api_key_id) || null;
         const userId = getRequestHeader(req, remoteHeaders.user_id);
-        logger.debug("+++++++AI gateway request identity from trust header", {
-            virtualApiKeyId,
-            userId
-        });
         if (userId) {
             const username =
                 getRequestHeader(req, remoteHeaders.user) || userId;
@@ -499,6 +504,7 @@ async function selectProvider(
         return {
             ok: false,
             status: HttpCode.FORBIDDEN,
+            kind: "invalid_request",
             message: "A model must be specified for this resource"
         };
     }
@@ -511,6 +517,7 @@ async function selectProvider(
         return {
             ok: false,
             status: HttpCode.FORBIDDEN,
+            kind: "permission",
             message: `Model "${requestedModel}" is not permitted on this resource`
         };
     }
@@ -571,6 +578,7 @@ async function selectProvider(
         return {
             ok: false,
             status: HttpCode.FORBIDDEN,
+            kind: "permission",
             message: `Model "${requestedModel}" is not permitted on this resource`
         };
     }
@@ -607,6 +615,7 @@ async function selectProvider(
     return {
         ok: false,
         status: HttpCode.FORBIDDEN,
+        kind: "permission",
         message: `Model "${requestedModel}" is ambiguous across multiple AI providers on this resource. Ask your administrator to configure a more specific allow pattern for this model.`
     };
 }
@@ -745,21 +754,29 @@ export async function handleAiGatewayProxy(
         if (!host) {
             return res
                 .status(HttpCode.BAD_REQUEST)
-                .json({ error: { message: "Missing Host header" } });
+                .json(
+                    buildAiCapabilityErrorBody(
+                        capability,
+                        "invalid_request",
+                        "Missing Host header",
+                        HttpCode.BAD_REQUEST
+                    )
+                );
         }
 
-        logger.info(`AI gateway ${capability} request for host: ${host}`);
-        logger.debug("AI gateway request headers", {
-            headers: req.headers
-        });
-
+        logger.debug(`AI gateway ${capability} request for host: ${host}`);
         const target = await resolveTarget(host);
         if (!target) {
-            return res.status(HttpCode.NOT_FOUND).json({
-                error: {
-                    message: "No inference resource found for this host"
-                }
-            });
+            return res
+                .status(HttpCode.NOT_FOUND)
+                .json(
+                    buildAiCapabilityErrorBody(
+                        capability,
+                        "not_found",
+                        "No inference resource found for this host",
+                        HttpCode.NOT_FOUND
+                    )
+                );
         }
 
         const {
@@ -777,20 +794,29 @@ export async function handleAiGatewayProxy(
             resourceId != null &&
             !isAiGatewayTrustHeaderValid(req.headers as Record<string, string>)
         ) {
-            return res.status(HttpCode.UNAUTHORIZED).json({
-                error: {
-                    message:
-                        "Request must be authenticated via the inference resource"
-                }
-            });
+            return res
+                .status(HttpCode.UNAUTHORIZED)
+                .json(
+                    buildAiCapabilityErrorBody(
+                        capability,
+                        "authentication",
+                        "Request must be authenticated via the inference resource",
+                        HttpCode.UNAUTHORIZED
+                    )
+                );
         }
 
         if (attachments.length === 0) {
-            return res.status(HttpCode.FORBIDDEN).json({
-                error: {
-                    message: "No AI providers configured for this resource"
-                }
-            });
+            return res
+                .status(HttpCode.FORBIDDEN)
+                .json(
+                    buildAiCapabilityErrorBody(
+                        capability,
+                        "permission",
+                        "No AI providers configured for this resource",
+                        HttpCode.FORBIDDEN
+                    )
+                );
         }
 
         const capableAttachments = attachments.filter((a) =>
@@ -798,11 +824,16 @@ export async function handleAiGatewayProxy(
         );
 
         if (capableAttachments.length === 0) {
-            return res.status(HttpCode.FORBIDDEN).json({
-                error: {
-                    message: `No AI provider on this resource supports ${capability}`
-                }
-            });
+            return res
+                .status(HttpCode.FORBIDDEN)
+                .json(
+                    buildAiCapabilityErrorBody(
+                        capability,
+                        "permission",
+                        `No AI provider on this resource supports ${capability}`,
+                        HttpCode.FORBIDDEN
+                    )
+                );
         }
 
         const requestedModel = def.extractModel(req);
@@ -824,9 +855,16 @@ export async function handleAiGatewayProxy(
         }
 
         if (!selection.ok) {
-            return res.status(selection.status).json({
-                error: { message: selection.message }
-            });
+            return res
+                .status(selection.status)
+                .json(
+                    buildAiCapabilityErrorBody(
+                        capability,
+                        selection.kind,
+                        selection.message,
+                        selection.status
+                    )
+                );
         }
 
         const { provider } = selection;
@@ -855,11 +893,16 @@ export async function handleAiGatewayProxy(
                     siteResourceId,
                     userId: requestUser?.userId ?? null
                 });
-                return res.status(HttpCode.TOO_MANY_REQUESTS).json({
-                    error: {
-                        message: "AI usage budget exceeded for this request"
-                    }
-                });
+                return res
+                    .status(HttpCode.TOO_MANY_REQUESTS)
+                    .json(
+                        buildAiCapabilityErrorBody(
+                            capability,
+                            "rate_limit",
+                            "AI usage budget exceeded for this request",
+                            HttpCode.TOO_MANY_REQUESTS
+                        )
+                    );
             }
         }
 
@@ -885,21 +928,31 @@ export async function handleAiGatewayProxy(
         const authType = provider.authType as AiProviderAuthType;
 
         if (!upstreamUrl) {
-            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
-                error: {
-                    message: "AI provider has no upstream URL configured"
-                }
-            });
+            return res
+                .status(HttpCode.INTERNAL_SERVER_ERROR)
+                .json(
+                    buildAiCapabilityErrorBody(
+                        capability,
+                        "internal",
+                        "AI provider has no upstream URL configured",
+                        HttpCode.INTERNAL_SERVER_ERROR
+                    )
+                );
         }
 
         let apiKey: string | null = null;
         if (authTypeRequiresApiKey(authType)) {
             if (!provider.apiKey) {
-                return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
-                    error: {
-                        message: "AI provider has no API key configured"
-                    }
-                });
+                return res
+                    .status(HttpCode.INTERNAL_SERVER_ERROR)
+                    .json(
+                        buildAiCapabilityErrorBody(
+                            capability,
+                            "internal",
+                            "AI provider has no API key configured",
+                            HttpCode.INTERNAL_SERVER_ERROR
+                        )
+                    );
             }
             const secret = config.getRawConfig().server.secret!;
             apiKey = decrypt(provider.apiKey, secret);
@@ -1034,8 +1087,15 @@ export async function handleAiGatewayProxy(
         return;
     } catch (error) {
         logger.error(error);
-        return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({
-            error: { message: "Failed to proxy inference request" }
-        });
+        return res
+            .status(HttpCode.INTERNAL_SERVER_ERROR)
+            .json(
+                buildAiCapabilityErrorBody(
+                    capability,
+                    "internal",
+                    "Failed to proxy inference request",
+                    HttpCode.INTERNAL_SERVER_ERROR
+                )
+            );
     }
 }
