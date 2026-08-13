@@ -123,7 +123,12 @@ async function findClientByIp(ip: string): Promise<CachedClient> {
     const [client] = await db
         .select({ clientId: clients.clientId, userId: clients.userId })
         .from(clients)
-        .where(eq(clients.exitNodeSubnet, `${ip}/32`))
+        .where(
+            eq(
+                clients.exitNodeSubnet,
+                `${ip}/${config.getRawConfig().gerbil.site_block_size}`
+            )
+        )
         .limit(1);
 
     const result: CachedClient = client || null;
@@ -322,6 +327,8 @@ async function resolveRequestUser(
     if (!ip) {
         return { user: null, virtualApiKeyId: null };
     }
+
+    logger.debug(`AI gateway request from IP ${ip} (site-resource)`);
 
     const exitNodeRanges = await getExitNodeRanges();
     const inExitNodeRange = exitNodeRanges.some((range) =>
