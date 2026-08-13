@@ -79,6 +79,8 @@ function getActionsCategories(root: boolean) {
             [t("actionGetSiteResource")]: "getSiteResource",
             [t("actionListSiteResources")]: "listSiteResources",
             [t("actionUpdateSiteResource")]: "updateSiteResource",
+            [t("actionListResourceAiModels")]: "listResourceAiModels",
+            [t("actionSetResourceAiModels")]: "setResourceAiModels",
             [t("actionCreateResourceSessionToken")]:
                 "createResourceSessionToken"
         },
@@ -169,6 +171,14 @@ function getActionsCategories(root: boolean) {
             [t("actionGetAiModel")]: "getAiModel",
             [t("actionListAiModels")]: "listAiModels",
             [t("actionUpdateAiModel")]: "updateAiModel"
+        },
+
+        "AI Budget": {
+            [t("actionCreateAiBudget")]: "createAiBudget",
+            [t("actionDeleteAiBudget")]: "deleteAiBudget",
+            [t("actionGetAiBudget")]: "getAiBudget",
+            [t("actionListAiBudgets")]: "listAiBudgets",
+            [t("actionUpdateAiBudget")]: "updateAiBudget"
         },
 
         "Virtual API Key": {

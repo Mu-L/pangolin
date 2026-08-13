@@ -14,6 +14,7 @@ import * as idp from "./idp";
 import * as logs from "./auditLogs";
 import * as siteResource from "./siteResource";
 import * as aiProvider from "./aiProvider";
+import * as aiBudget from "./aiBudget";
 import * as virtualApiKey from "./virtualApiKey";
 import {
     verifyApiKey,
@@ -35,6 +36,7 @@ import {
     verifyApiKeyResourcePolicyAccess,
     verifyApiKeyAiProviderAccess,
     verifyApiKeyAiModelAccess,
+    verifyApiKeyAiBudgetAccess,
     verifyApiKeyVirtualApiKeyAccess,
     verifyUserHasAction
 } from "@server/middlewares";
@@ -1671,6 +1673,20 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/ai-provider/:providerId/catalog-models",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiModels),
+    aiProvider.listCatalogModels
+);
+
+authenticated.get(
+    "/org/:orgId/ai-catalog-models",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiModels),
+    aiProvider.listCatalogModelsByType
+);
+
+authenticated.get(
     "/ai-model/:modelId",
     verifyApiKeyAiModelAccess,
     verifyApiKeyHasAction(ActionsEnum.getAiModel),
@@ -1691,6 +1707,44 @@ authenticated.delete(
     verifyApiKeyHasAction(ActionsEnum.deleteAiModel),
     logActionAudit(ActionsEnum.deleteAiModel),
     aiProvider.deleteAiModel
+);
+
+authenticated.put(
+    "/org/:orgId/ai-budget",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.createAiBudget),
+    logActionAudit(ActionsEnum.createAiBudget),
+    aiBudget.createAiBudget
+);
+
+authenticated.get(
+    "/org/:orgId/ai-budgets",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgets
+);
+
+authenticated.get(
+    "/ai-budget/:budgetId",
+    verifyApiKeyAiBudgetAccess,
+    verifyApiKeyHasAction(ActionsEnum.getAiBudget),
+    aiBudget.getAiBudget
+);
+
+authenticated.post(
+    "/ai-budget/:budgetId",
+    verifyApiKeyAiBudgetAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateAiBudget),
+    logActionAudit(ActionsEnum.updateAiBudget),
+    aiBudget.updateAiBudget
+);
+
+authenticated.delete(
+    "/ai-budget/:budgetId",
+    verifyApiKeyAiBudgetAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteAiBudget),
+    logActionAudit(ActionsEnum.deleteAiBudget),
+    aiBudget.deleteAiBudget
 );
 
 authenticated.put(
@@ -1729,4 +1783,52 @@ authenticated.delete(
     verifyApiKeyHasAction(ActionsEnum.deleteVirtualApiKey),
     logActionAudit(ActionsEnum.deleteVirtualApiKey),
     virtualApiKey.deleteVirtualApiKey
+);
+
+authenticated.get(
+    "/ai-provider/:providerId/ai-budgets",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForProvider
+);
+
+authenticated.get(
+    "/ai-model/:modelId/ai-budgets",
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForModel
+);
+
+authenticated.get(
+    [
+        "/resource/:resourceId/ai-budgets",
+        "/public-resource/:resourceId/ai-budgets"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForResource
+);
+
+authenticated.get(
+    [
+        "/site-resource/:siteResourceId/ai-budgets",
+        "/private-resource/:siteResourceId/ai-budgets"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForSiteResource
+);
+
+authenticated.get(
+    "/role/:roleId/ai-budgets",
+    verifyApiKeyRoleAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForRole
+);
+
+authenticated.get(
+    "/virtual-api-key/:virtualApiKeyId/ai-budgets",
+    verifyApiKeyVirtualApiKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForVirtualApiKey
 );
