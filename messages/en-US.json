@@ -1864,6 +1864,7 @@
     "aiProviderErrorNoUpdate": "AI provider is not available to update",
     "aiProviderModels": "Models",
     "aiProviderModelsDescription": "Define allow and block lists for this provider. Requests must match an allow entry and must not match a block entry.",
+    "aiProviderCreateModelsDescription": "Choose which models this provider can serve. An empty allow list denies all traffic. You can add or change models later.",
     "aiProviderModelsPlaceholder": "Search models or type a custom key",
     "aiProviderModelsAllow": "Allow List",
     "aiProviderModelsAllowDescription": "Models that may be used through this provider. Empty means deny all.",

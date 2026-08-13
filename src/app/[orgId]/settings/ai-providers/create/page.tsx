@@ -22,6 +22,11 @@ import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { AiProviderAuthTypeSelect } from "@app/components/AiProviderAuthTypeSelect";
 import { AiProviderCapabilitiesSelect } from "@app/components/AiProviderCapabilitiesSelect";
 import {
+    type AiProviderModelListItem,
+    type ModelListType
+} from "@app/components/AiProviderModelListEditor";
+import { AiProviderModelsLists } from "@app/components/AiProviderModelsLists";
+import {
     AiProviderTypeSelect,
     aiProviderTypeLabelMap
 } from "@app/components/AiProviderTypeSelect";
@@ -53,7 +58,9 @@ import {
 } from "@app/lib/aiProviderFormSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authTypeRequiresApiKey } from "@app/lib/aiProviderDefaults";
+import { aiProviderQueries } from "@app/lib/queries";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
+import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
@@ -69,6 +76,8 @@ export default function CreateAiProviderPage() {
     const t = useTranslations();
     const [loading, setLoading] = useState(false);
     const [headersValid, setHeadersValid] = useState(true);
+    const [allowItems, setAllowItems] = useState<AiProviderModelListItem[]>([]);
+    const [blockItems, setBlockItems] = useState<AiProviderModelListItem[]>([]);
     const targetsRef = useRef<LocalTarget[]>([]);
 
     const formSchema = useMemo(() => createAiProviderCreateFormSchema(t), [t]);
@@ -97,6 +106,17 @@ export default function CreateAiProviderPage() {
     const showRoutingMode = providerType === "custom";
     const showTargets = providerType === "custom" && routingMode === "target";
     const showApiKey = authTypeRequiresApiKey(authType ?? "bearer");
+
+    const catalogQuery = useQuery(
+        aiProviderQueries.catalogModelsByType({
+            orgId,
+            type: providerType
+        })
+    );
+    const catalogModels = useMemo(
+        () => (catalogQuery.data ?? []).map((entry) => entry.model),
+        [catalogQuery.data]
+    );
 
     async function createTargets(
         providerId: number,
@@ -135,6 +155,19 @@ export default function CreateAiProviderPage() {
         }
     }
 
+    async function createModels(
+        providerId: number,
+        items: { modelKey: string; listType: ModelListType }[]
+    ) {
+        for (const item of items) {
+            await api.put(`/ai-provider/${providerId}/model`, {
+                modelKey: item.modelKey,
+                name: item.modelKey,
+                listType: item.listType
+            });
+        }
+    }
+
     async function onSubmit(values: AiProviderFormValues) {
         const targets = targetsRef.current;
 
@@ -156,6 +189,31 @@ export default function CreateAiProviderPage() {
                 return;
             }
         }
+
+        const nextAllow = new Set(
+            allowItems.map((item) => item.modelKey.trim()).filter(Boolean)
+        );
+        const nextBlock = new Set(
+            blockItems.map((item) => item.modelKey.trim()).filter(Boolean)
+        );
+        const overlap = [...nextAllow].filter((key) => nextBlock.has(key));
+        if (overlap.length > 0) {
+            toast({
+                variant: "destructive",
+                title: t("aiProviderErrorCreate"),
+                description: t("aiProviderModelsOverlapError", {
+                    keys: overlap.join(", ")
+                })
+            });
+            return;
+        }
+
+        const modelItems = [...allowItems, ...blockItems]
+            .map((item) => ({
+                modelKey: item.modelKey.trim(),
+                listType: item.listType
+            }))
+            .filter((item) => item.modelKey);
 
         setLoading(true);
         try {
@@ -179,6 +237,25 @@ export default function CreateAiProviderPage() {
                     });
                     router.push(
                         `/${orgId}/settings/ai-providers/${providerId}/network`
+                    );
+                    return;
+                }
+            }
+
+            if (modelItems.length > 0) {
+                try {
+                    await createModels(providerId, modelItems);
+                } catch (e) {
+                    toast({
+                        variant: "destructive",
+                        title: t("aiProviderErrorCreate"),
+                        description: formatAxiosError(
+                            e,
+                            t("aiProviderErrorCreate")
+                        )
+                    });
+                    router.push(
+                        `/${orgId}/settings/ai-providers/${providerId}/models`
                     );
                     return;
                 }
@@ -252,6 +329,12 @@ export default function CreateAiProviderPage() {
                                                                     field.value;
                                                                 field.onChange(
                                                                     value
+                                                                );
+                                                                setAllowItems(
+                                                                    []
+                                                                );
+                                                                setBlockItems(
+                                                                    []
                                                                 );
                                                                 form.setValue(
                                                                     "upstreamUrl",
@@ -686,6 +769,30 @@ export default function CreateAiProviderPage() {
                                         </SettingsFormCell>
                                     )}
                                 </SettingsFormGrid>
+                            </SettingsSectionForm>
+                        </SettingsSectionBody>
+                    </SettingsSection>
+
+                    <SettingsSection>
+                        <SettingsSectionHeader>
+                            <SettingsSectionTitle>
+                                {t("aiProviderModels")}
+                            </SettingsSectionTitle>
+                            <SettingsSectionDescription>
+                                {t("aiProviderCreateModelsDescription")}
+                            </SettingsSectionDescription>
+                        </SettingsSectionHeader>
+
+                        <SettingsSectionBody>
+                            <SettingsSectionForm>
+                                <AiProviderModelsLists
+                                    orgId={orgId}
+                                    allowItems={allowItems}
+                                    onAllowChange={setAllowItems}
+                                    blockItems={blockItems}
+                                    onBlockChange={setBlockItems}
+                                    catalogModels={catalogModels}
+                                />
                             </SettingsSectionForm>
                         </SettingsSectionBody>
                     </SettingsSection>

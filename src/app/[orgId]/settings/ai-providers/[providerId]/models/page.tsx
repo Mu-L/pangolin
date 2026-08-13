@@ -11,12 +11,11 @@ import {
     SettingsSectionTitle
 } from "@app/components/Settings";
 import {
-    AiProviderModelListEditor,
     type AiProviderModelListItem,
     type ModelListType
 } from "@app/components/AiProviderModelListEditor";
+import { AiProviderModelsLists } from "@app/components/AiProviderModelsLists";
 import { Button } from "@app/components/ui/button";
-import { Label } from "@app/components/ui/label";
 import { useAiProviderContext } from "@app/hooks/useAiProviderContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
@@ -63,15 +62,6 @@ export default function AiProviderModelsPage() {
     const catalogModels = useMemo(
         () => (catalogQuery.data ?? []).map((entry) => entry.model),
         [catalogQuery.data]
-    );
-
-    const allowExcludeKeys = useMemo(
-        () => new Set(blockItems.map((item) => item.modelKey)),
-        [blockItems]
-    );
-    const blockExcludeKeys = useMemo(
-        () => new Set(allowItems.map((item) => item.modelKey)),
-        [allowItems]
     );
 
     useEffect(() => {
@@ -232,45 +222,15 @@ export default function AiProviderModelsPage() {
 
                 <SettingsSectionBody>
                     <SettingsSectionForm>
-                        <div className="space-y-2">
-                            <Label>{t("aiProviderModelsAllow")}</Label>
-                            <AiProviderModelListEditor
-                                orgId={provider.orgId}
-                                listType="allow"
-                                items={allowItems}
-                                onChange={setAllowItems}
-                                catalogModels={catalogModels}
-                                excludeKeys={allowExcludeKeys}
-                                disabled={modelsQuery.isLoading}
-                                emptyMessage={t("aiProviderModelsAllowEmpty")}
-                                addPlaceholder={t(
-                                    "aiProviderModelsAllowPlaceholder"
-                                )}
-                            />
-                            <p className="text-sm text-muted-foreground">
-                                {t("aiProviderModelsAllowDescription")}
-                            </p>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>{t("aiProviderModelsBlock")}</Label>
-                            <AiProviderModelListEditor
-                                orgId={provider.orgId}
-                                listType="block"
-                                items={blockItems}
-                                onChange={setBlockItems}
-                                catalogModels={catalogModels}
-                                excludeKeys={blockExcludeKeys}
-                                disabled={modelsQuery.isLoading}
-                                emptyMessage={t("aiProviderModelsBlockEmpty")}
-                                addPlaceholder={t(
-                                    "aiProviderModelsBlockPlaceholder"
-                                )}
-                            />
-                            <p className="text-sm text-muted-foreground">
-                                {t("aiProviderModelsBlockDescription")}
-                            </p>
-                        </div>
+                        <AiProviderModelsLists
+                            orgId={provider.orgId}
+                            allowItems={allowItems}
+                            onAllowChange={setAllowItems}
+                            blockItems={blockItems}
+                            onBlockChange={setBlockItems}
+                            catalogModels={catalogModels}
+                            disabled={modelsQuery.isLoading}
+                        />
                     </SettingsSectionForm>
                 </SettingsSectionBody>
 

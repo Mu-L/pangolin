@@ -75,6 +75,7 @@ import type {
     ListAiProvidersResponse,
     ListCatalogModelsResponse
 } from "@server/routers/aiProvider/types";
+import type { AiProviderType } from "@app/lib/aiProviderDefaults";
 import type { ListAiBudgetsByScopeResponse } from "@server/routers/aiBudget/types";
 import {
     getAiBudgetScopeListPath,
@@ -1492,6 +1493,25 @@ export const aiProviderQueries = {
                 const res = await meta!.api.get<
                     AxiosResponse<ListCatalogModelsResponse>
                 >(`/ai-provider/${providerId}/catalog-models`, { signal });
+                return res.data.data.models;
+            }
+        }),
+    catalogModelsByType: ({
+        orgId,
+        type
+    }: {
+        orgId: string;
+        type: AiProviderType;
+    }) =>
+        queryOptions({
+            queryKey: ["AI_PROVIDERS", orgId, "CATALOG_MODELS", type] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListCatalogModelsResponse>
+                >(`/org/${orgId}/ai-catalog-models`, {
+                    params: { type },
+                    signal
+                });
                 return res.data.data.models;
             }
         }),

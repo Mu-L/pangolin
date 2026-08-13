@@ -284,6 +284,36 @@ export class AiModelCatalog {
 
 export const aiModelCatalog = new AiModelCatalog();
 
+export function listCatalogModelsForType(
+    type: AiProviderType,
+    query?: string
+): { model: string }[] {
+    const catalogProvider = getCatalogProviderForType(type);
+
+    let models = catalogProvider
+        ? aiModelCatalog.list(catalogProvider).map((entry) => ({
+              model: entry.model
+          }))
+        : [];
+
+    if (query) {
+        const q = query.toLowerCase();
+        models = models.filter((m) => m.model.toLowerCase().includes(q));
+    }
+
+    const seen = new Set<string>();
+    models = models.filter((m) => {
+        if (seen.has(m.model)) {
+            return false;
+        }
+        seen.add(m.model);
+        return true;
+    });
+
+    models.sort((a, b) => a.model.localeCompare(b.model));
+    return models;
+}
+
 /**
  * Loads the AI model pricing catalog into memory and schedules periodic
  * background refreshes. Call once at server startup.

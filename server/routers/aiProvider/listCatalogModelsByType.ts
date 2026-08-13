@@ -1,34 +1,33 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { aiProviders, db } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { eq } from "drizzle-orm";
 import { listCatalogModelsForType } from "@server/lib/aiModelCatalog";
-import type { AiProviderType } from "@server/lib/aiProviderDefaults";
 import type { ListCatalogModelsResponse } from "@server/routers/aiProvider/types";
+import { aiProviderTypeSchema } from "@server/routers/aiProvider/validation";
 
 const paramsSchema = z.strictObject({
-    providerId: z.coerce.number().int().positive()
+    orgId: z.string().nonempty()
 });
 
-const listSchema = z.object({
+const querySchema = z.strictObject({
+    type: aiProviderTypeSchema,
     query: z.string().optional()
 });
 
 registry.registerPath({
     method: "get",
-    path: "/ai-provider/{providerId}/catalog-models",
+    path: "/org/{orgId}/ai-catalog-models",
     description:
-        "List known catalog models for an AI provider's type. Used for model key suggestions.",
+        "List known catalog models for an AI provider type. Used for model key suggestions before a provider exists.",
     tags: [OpenAPITags.AiModel],
     request: {
         params: paramsSchema,
-        query: listSchema
+        query: querySchema
     },
     responses: {
         200: {
@@ -37,22 +36,12 @@ registry.registerPath({
     }
 });
 
-export async function listCatalogModels(
+export async function listCatalogModelsByType(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedQuery = listSchema.safeParse(req.query);
-        if (!parsedQuery.success) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    fromError(parsedQuery.error).toString()
-                )
-            );
-        }
-
         const parsedParams = paramsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
@@ -63,30 +52,18 @@ export async function listCatalogModels(
             );
         }
 
-        const { providerId } = parsedParams.data;
-
-        const [provider] =
-            req.aiProvider && req.aiProvider.providerId === providerId
-                ? [req.aiProvider]
-                : await db
-                      .select()
-                      .from(aiProviders)
-                      .where(eq(aiProviders.providerId, providerId))
-                      .limit(1);
-
-        if (!provider) {
+        const parsedQuery = querySchema.safeParse(req.query);
+        if (!parsedQuery.success) {
             return next(
                 createHttpError(
-                    HttpCode.NOT_FOUND,
-                    `AI provider with ID ${providerId} not found`
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedQuery.error).toString()
                 )
             );
         }
 
-        const models = listCatalogModelsForType(
-            provider.type as AiProviderType,
-            parsedQuery.data.query
-        );
+        const { type, query } = parsedQuery.data;
+        const models = listCatalogModelsForType(type, query);
 
         return response<ListCatalogModelsResponse>(res, {
             data: { models },

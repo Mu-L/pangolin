@@ -6,6 +6,7 @@ export * from "./deleteAiProvider";
 export * from "./createAiModel";
 export * from "./listAiModels";
 export * from "./listCatalogModels";
+export * from "./listCatalogModelsByType";
 export * from "./getAiModel";
 export * from "./updateAiModel";
 export * from "./deleteAiModel";

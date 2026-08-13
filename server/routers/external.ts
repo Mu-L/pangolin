@@ -1646,6 +1646,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/ai-catalog-models",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listAiModels),
+    aiProvider.listCatalogModelsByType
+);
+
+authenticated.get(
     "/ai-model/:modelId",
     verifyAiModelAccess,
     verifyUserHasAction(ActionsEnum.getAiModel),
