@@ -6,6 +6,7 @@ import {
     db,
     exitNodes,
     sites,
+    targetHealthCheck,
     targets
 } from "@server/db";
 import config from "@server/lib/config";
@@ -97,11 +98,16 @@ async function fetchProviderTargets(
             port: targets.port,
             method: targets.method,
             exitNodeSubnet: sites.exitNodeSubnet,
-            reachableAt: exitNodes.reachableAt
+            reachableAt: exitNodes.reachableAt,
+            hcHealth: targetHealthCheck.hcHealth
         })
         .from(targets)
         .innerJoin(sites, eq(targets.siteId, sites.siteId))
         .innerJoin(exitNodes, eq(sites.exitNodeId, exitNodes.exitNodeId))
+        .leftJoin(
+            targetHealthCheck,
+            eq(targetHealthCheck.targetId, targets.targetId)
+        )
         .where(
             and(eq(targets.providerId, providerId), eq(targets.enabled, true))
         );
@@ -111,6 +117,13 @@ async function fetchProviderTargets(
         // Sites not yet connected to an exit node (no subnet assigned) or
         // whose exit node has no known HTTP address can't be routed to.
         if (!row.exitNodeSubnet || !row.reachableAt) {
+            continue;
+        }
+        // A target with an active health check that's currently failing is
+        // taken out of rotation. No health check (null) or "unknown" (check
+        // hasn't run yet / hcEnabled is off) still routes normally, matching
+        // the convention in getTraefikConfig.ts's target selection.
+        if (row.hcHealth === "unhealthy") {
             continue;
         }
         const host = row.exitNodeSubnet.split("/")[0];
