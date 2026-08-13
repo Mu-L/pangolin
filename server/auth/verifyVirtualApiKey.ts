@@ -62,11 +62,6 @@ function parseVkCredential(
     };
 }
 
-/**
- * Extract a virtual API key credential from provider-style auth headers.
- * Checks Authorization Bearer / Splunk, x-api-key, x-goog-api-key, and
- * cf-aig-authorization. First matching vk-{id}.{secret} wins.
- */
 export function extractVirtualApiKeyCredential(
     headers: Record<string, string> | undefined
 ): VirtualApiKeyCredential | null {

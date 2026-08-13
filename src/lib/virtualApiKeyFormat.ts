@@ -1,4 +1,4 @@
-export const VIRTUAL_API_KEY_PREFIX = "vk-";
+export const VIRTUAL_API_KEY_PREFIX = "pangolin-key-";
 
 const VIRTUAL_API_KEY_AUTH_HEADER_NAMES = [
     "authorization",
