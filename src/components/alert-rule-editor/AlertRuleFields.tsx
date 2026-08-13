@@ -45,7 +45,14 @@ import {
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, ChevronsUpDown, Globe, Plus, Trash2 } from "lucide-react";
+import {
+    Bell,
+    ChevronRightIcon,
+    ChevronsUpDown,
+    Globe,
+    Plus,
+    Trash2
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Control, UseFormReturn } from "react-hook-form";
@@ -95,6 +102,7 @@ export function AddActionPanel({
     const EXTERNAL_IDS = EXTERNAL_INTEGRATIONS.map((i) => i.id);
 
     const [selected, setSelected] = useState<string | null>("notify");
+    const [isPopoverOpen, setPopoverOpen] = useState(false);
 
     const isPremiumSelected =
         selected !== null && EXTERNAL_IDS.includes(selected as any);
@@ -131,27 +139,48 @@ export function AddActionPanel({
         if (!isBuiltInSelected) return;
         onAdd(selected as AlertRuleFormAction["type"]);
         setSelected(null);
+        setPopoverOpen(false);
     };
 
     return (
-        <div className="space-y-3">
-            <StrategySelect
-                options={actionTypeOptions}
-                value={selected}
-                cols={2}
-                onChange={(v) => setSelected(v)}
-            />
-            {isPremiumSelected && <ContactSalesBanner />}
-            {!isPremiumSelected && (
-                <Button
-                    type="button"
-                    disabled={!isBuiltInSelected}
-                    onClick={handleAdd}
-                >
-                    <Plus className="h-4 w-4 mr-1" />
-                    {t("alertingAddAction")}
-                </Button>
-            )}
+        <div className="flex flex-col gap-3 items-start">
+            <h3>Add new action</h3>
+            <Popover open={isPopoverOpen} onOpenChange={setPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        // disabled={!isBuiltInSelected}
+                        // onClick={handleAdd}
+                    >
+                        {/* <Plus className="h-4 w-4 mr-1" /> */}
+                        {/* {t("alertingAddAction")} */}
+                        select action
+                        <ChevronRightIcon className="size-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="shadow-md flex flex-col gap-3 w-150">
+                    <StrategySelect
+                        options={actionTypeOptions}
+                        value={selected}
+                        cols={2}
+                        onChange={(v) => setSelected(v)}
+                    />
+
+                    {isPremiumSelected && <ContactSalesBanner />}
+                    {!isPremiumSelected && (
+                        <Button
+                            type="button"
+                            disabled={!isBuiltInSelected}
+                            onClick={handleAdd}
+                        >
+                            <Plus className="h-4 w-4 mr-1" />
+                            {t("alertingAddAction")}
+                        </Button>
+                    )}
+                </PopoverContent>
+            </Popover>
+            {/*  */}
         </div>
     );
 }
