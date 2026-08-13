@@ -22,27 +22,15 @@ import createHttpError from "http-errors";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import type { TriggerSiteAlertResponse } from "../alertEvents";
+import {
+    HC_EVENT_TYPES,
+    SITE_EVENT_TYPES,
+    RESOURCE_EVENT_TYPES
+} from "./createAlertRule";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
 });
-
-export const SITE_EVENT_TYPES = [
-    "site_online",
-    "site_offline",
-    "site_toggle"
-] as const;
-export const HC_EVENT_TYPES = [
-    "health_check_healthy",
-    "health_check_unhealthy",
-    "health_check_toggle"
-] as const;
-export const RESOURCE_EVENT_TYPES = [
-    "resource_healthy",
-    "resource_unhealthy",
-    "resource_degraded",
-    "resource_toggle"
-] as const;
 
 const webhookActionSchema = z.strictObject({
     webhookUrl: z.url(),
