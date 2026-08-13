@@ -62,6 +62,7 @@ import regionalCache from "#private/lib/cache";
 import {
     AI_GATEWAY_TRUST_HEADER,
     AI_GATEWAY_RESOURCE_TYPE_HEADER,
+    AI_GATEWAY_CLIENT_IP_HEADER,
     getAiGatewayTrustToken
 } from "@server/lib/aiGatewayTrust";
 
@@ -1600,6 +1601,28 @@ export async function getTraefikConfig(
             }
         };
 
+        // Opt-in: a Badger instance with forward auth disabled, used only
+        // to stamp the resolved client IP into a dedicated header before
+        // the request reaches whatever sits between Traefik and the AI
+        // gateway. Only the site-resource router below needs this - it's
+        // the only path that resolves request identity from the client IP
+        // (see resolveRequestUser in aiGateway/pipeline.ts) - and it's the
+        // only inference router that doesn't already run Badger.
+        const aiGatewayClientIpMiddlewareName = "ai-gateway-client-ip";
+        const enableAiGatewayClientIpHeader =
+            config.getRawConfig().server.enable_ai_gateway_client_ip_header;
+        if (enableAiGatewayClientIpHeader) {
+            config_output.http.middlewares[aiGatewayClientIpMiddlewareName] =
+                {
+                    plugin: {
+                        badger: {
+                            disableForwardAuth: true,
+                            realIpHeader: AI_GATEWAY_CLIENT_IP_HEADER
+                        }
+                    }
+                };
+        }
+
         // Public inference resources: same TLS/cert-resolver handling as
         // plain http-mode resources, but the service points at the AI
         // gateway instead of any real backend targets.
@@ -1770,6 +1793,9 @@ export async function getTraefikConfig(
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares: string[] = [
+                ...(enableAiGatewayClientIpHeader
+                    ? [aiGatewayClientIpMiddlewareName]
+                    : []),
                 aiGatewayTrustMiddlewareNameSiteResource
             ];
 

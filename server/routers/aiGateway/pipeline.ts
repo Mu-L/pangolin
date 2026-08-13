@@ -42,6 +42,7 @@ import { localCache } from "@server/lib/cache";
 import {
     AI_GATEWAY_TRUST_HEADER,
     AI_GATEWAY_RESOURCE_TYPE_HEADER,
+    AI_GATEWAY_CLIENT_IP_HEADER,
     isAiGatewayTrustHeaderValid,
     getAiGatewayResourceType,
     type AiGatewayResourceType
@@ -303,7 +304,12 @@ async function resolveRequestUser(
         return { user: null, virtualApiKeyId: null };
     }
 
-    const ip = req.ip;
+    // Prefer the dedicated header Badger stamps at the Traefik hop (opt-in
+    // via server.enable_ai_gateway_client_ip_header) over req.ip, since an
+    // intermediary proxy between Traefik and this gateway may overwrite
+    // X-Forwarded-For/X-Real-Ip rather than appending to them, corrupting
+    // what req.ip resolves to.
+    const ip = getRequestHeader(req, AI_GATEWAY_CLIENT_IP_HEADER) || req.ip;
     if (!ip) {
         return { user: null, virtualApiKeyId: null };
     }
@@ -965,7 +971,8 @@ export async function handleAiGatewayProxy(
             "content-length",
             "accept-encoding",
             AI_GATEWAY_TRUST_HEADER.toLowerCase(),
-            AI_GATEWAY_RESOURCE_TYPE_HEADER.toLowerCase()
+            AI_GATEWAY_RESOURCE_TYPE_HEADER.toLowerCase(),
+            AI_GATEWAY_CLIENT_IP_HEADER.toLowerCase()
         ]);
 
         const headers: Record<string, string> = {};
