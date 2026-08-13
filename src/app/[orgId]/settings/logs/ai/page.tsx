@@ -551,27 +551,9 @@ export default function AiSessionLogsPage() {
                         </p>
                     </div>
                     <div>
-                        <strong>{t("virtualApiKey")}</strong>
-                        <p className="text-muted-foreground mt-1 break-all">
-                            {row.virtualApiKeyId ? (
-                                <>
-                                    {row.virtualApiKeyName ??
-                                        t("aiUsageUnnamedVirtualApiKey")}
-                                    {row.virtualApiKeyLastChars && (
-                                        <>
-                                            {" "}
-                                            (
-                                            {formatVirtualApiKeyPreview(
-                                                row.virtualApiKeyId,
-                                                row.virtualApiKeyLastChars
-                                            )}
-                                            )
-                                        </>
-                                    )}
-                                </>
-                            ) : (
-                                t("noVirtualApiKey")
-                            )}
+                        <strong>{t("totalTokens")}</strong>
+                        <p className="text-muted-foreground mt-1">
+                            {row.usage.totalTokens.toLocaleString()}
                         </p>
                     </div>
                 </div>
@@ -606,12 +588,6 @@ export default function AiSessionLogsPage() {
                                 <strong>{t("reasoningTokens")}</strong>
                                 <p className="text-muted-foreground mt-1">
                                     {row.usage.reasoningTokens.toLocaleString()}
-                                </p>
-                            </div>
-                            <div>
-                                <strong>{t("totalTokens")}</strong>
-                                <p className="text-muted-foreground mt-1">
-                                    {row.usage.totalTokens.toLocaleString()}
                                 </p>
                             </div>
                         </div>
