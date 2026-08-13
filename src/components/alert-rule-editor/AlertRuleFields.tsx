@@ -144,18 +144,11 @@ export function AddActionPanel({
 
     return (
         <div className="flex flex-col gap-3 items-start">
-            <h3>Add new action</h3>
+            <h3 className="font-medium">{t("alertingAddActionHeading")}</h3>
             <Popover open={isPopoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        // disabled={!isBuiltInSelected}
-                        // onClick={handleAdd}
-                    >
-                        {/* <Plus className="h-4 w-4 mr-1" /> */}
-                        {/* {t("alertingAddAction")} */}
-                        select action
+                    <Button type="button" variant="outline">
+                        {t("alertingSelectActionType")}
                         <ChevronRightIcon className="size-4" />
                     </Button>
                 </PopoverTrigger>
@@ -180,7 +173,6 @@ export function AddActionPanel({
                     )}
                 </PopoverContent>
             </Popover>
-            {/*  */}
         </div>
     );
 }
