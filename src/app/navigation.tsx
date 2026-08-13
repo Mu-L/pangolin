@@ -207,6 +207,16 @@ export const orgNavSections = (
                 title: "sidebarVirtualApiKeys",
                 href: "/{orgId}/settings/virtual-api-keys",
                 icon: <KeyRound className="size-4 flex-none" />
+            },
+            {
+                title: "sidebarLogsAi",
+                href: "/{orgId}/settings/logs/ai",
+                icon: <Bot className="size-4 flex-none" />
+            },
+            {
+                title: "sidebarLogsAiUsage",
+                href: "/{orgId}/settings/logs/ai-usage",
+                icon: <Coins className="size-4 flex-none" />
             }
         ]
     },
@@ -228,16 +238,6 @@ export const orgNavSections = (
                         icon: (
                             <SquareMousePointer className="size-4 flex-none" />
                         )
-                    },
-                    {
-                        title: "sidebarLogsAi",
-                        href: "/{orgId}/settings/logs/ai",
-                        icon: <Bot className="size-4 flex-none" />
-                    },
-                    {
-                        title: "sidebarLogsAiUsage",
-                        href: "/{orgId}/settings/logs/ai-usage",
-                        icon: <Coins className="size-4 flex-none" />
                     },
                     ...(!env?.flags.disableEnterpriseFeatures
                         ? [

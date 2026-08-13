@@ -49,6 +49,10 @@ export interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
     notificationCounts?: Record<string, number | undefined>;
 }
 
+function isPathActive(pathname: string, href: string): boolean {
+    return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 type CollapsibleNavItemProps = {
     item: SidebarNavItem;
     level: number;
@@ -285,7 +289,7 @@ function CollapsedNavItemWithPopover({
                                     childItem.href
                                 );
                                 const childIsActive = childHydratedHref
-                                    ? pathname.startsWith(childHydratedHref)
+                                    ? isPathActive(pathname, childHydratedHref)
                                     : false;
                                 const childIsEE =
                                     build === "enterprise" &&
@@ -392,7 +396,7 @@ export function SidebarNav({
 
     function isItemOrChildActive(item: SidebarNavItem): boolean {
         const hydratedHref = hydrateHref(item.href);
-        if (hydratedHref && pathname.startsWith(hydratedHref)) {
+        if (hydratedHref && isPathActive(pathname, hydratedHref)) {
             return true;
         }
         if (item.items) {
@@ -408,7 +412,7 @@ export function SidebarNav({
         const hydratedHref = hydrateHref(item.href);
         const hasNestedItems = item.items && item.items.length > 0;
         const isActive = hydratedHref
-            ? pathname.startsWith(hydratedHref)
+            ? isPathActive(pathname, hydratedHref)
             : false;
         const isChildActive = hasNestedItems
             ? isItemOrChildActive(item)
