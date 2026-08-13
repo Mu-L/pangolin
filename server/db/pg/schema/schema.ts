@@ -1826,9 +1826,10 @@ export const aiUsageRecords = pgTable(
         orgId: varchar("orgId")
             .notNull()
             .references(() => orgs.orgId, { onDelete: "cascade" }),
-        providerId: integer("providerId")
-            .notNull()
-            .references(() => aiProviders.providerId, { onDelete: "set null" }),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            { onDelete: "set null" }
+        ),
         resourceId: integer("resourceId").references(
             () => resources.resourceId,
             { onDelete: "set null" }
@@ -1943,9 +1944,10 @@ export const aiSessionLog = pgTable(
         orgId: varchar("orgId").references(() => orgs.orgId, {
             onDelete: "cascade"
         }),
-        providerId: integer("providerId")
-            .notNull()
-            .references(() => aiProviders.providerId, { onDelete: "set null" }),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            { onDelete: "set null" }
+        ),
         capability: varchar("capability").notNull(),
         resourceId: integer("resourceId").references(
             () => resources.resourceId,

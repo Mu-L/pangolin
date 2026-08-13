@@ -1814,9 +1814,10 @@ export const aiUsageRecords = sqliteTable(
         orgId: text("orgId")
             .notNull()
             .references(() => orgs.orgId, { onDelete: "cascade" }),
-        providerId: integer("providerId")
-            .notNull()
-            .references(() => aiProviders.providerId, { onDelete: "set null" }),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            { onDelete: "set null" }
+        ),
         resourceId: integer("resourceId").references(
             () => resources.resourceId,
             { onDelete: "set null" }
@@ -1933,9 +1934,10 @@ export const aiSessionLog = sqliteTable(
         orgId: text("orgId").references(() => orgs.orgId, {
             onDelete: "cascade"
         }),
-        providerId: integer("providerId")
-            .notNull()
-            .references(() => aiProviders.providerId, { onDelete: "set null" }),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            { onDelete: "set null" }
+        ),
         capability: text("capability").notNull(),
         resourceId: integer("resourceId").references(
             () => resources.resourceId,
