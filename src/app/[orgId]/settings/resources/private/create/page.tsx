@@ -12,9 +12,9 @@ import {
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import {
-    OptionSelect,
-    type OptionSelectOption
-} from "@app/components/OptionSelect";
+    DescribedSelect,
+    type DescribedSelectOption
+} from "@app/components/DescribedSelect";
 import DomainPicker from "@app/components/DomainPicker";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { Button } from "@app/components/ui/button";
@@ -147,24 +147,35 @@ export default function CreatePrivateResourcePage() {
     const authDaemonMode = form.watch("authDaemonMode");
     const isNativeSsh = mode === "ssh" && authDaemonMode === "native";
 
-    const modeOptions: OptionSelectOption<PrivateResourceMode>[] = [
-        { value: "host", label: t("createInternalResourceDialogModeHost") },
-        { value: "cidr", label: t("createInternalResourceDialogModeCidr") },
+    const modeOptions: DescribedSelectOption<PrivateResourceMode>[] = [
+        {
+            value: "host",
+            title: t("createInternalResourceDialogModeHost"),
+            description: t("privateResourceTypeHostDescription")
+        },
+        {
+            value: "cidr",
+            title: t("createInternalResourceDialogModeCidr"),
+            description: t("privateResourceTypeCidrDescription")
+        },
         ...(!disableEnterpriseFeatures
             ? [
                   {
                       value: "http" as const,
-                      label: t("createInternalResourceDialogModeHttp")
+                      title: t("createInternalResourceDialogModeHttp"),
+                      description: t("privateResourceTypeHttpDescription")
                   },
                   {
                       value: "ssh" as const,
-                      label: t("createInternalResourceDialogModeSsh")
+                      title: t("createInternalResourceDialogModeSsh"),
+                      description: t("privateResourceTypeSshDescription")
                   }
               ]
             : []),
         {
             value: "inference" as const,
-            label: t("createInternalResourceDialogModeInference")
+            title: t("createInternalResourceDialogModeInference"),
+            description: t("resourceTypeInferenceDescription")
         }
     ];
 
@@ -263,6 +274,110 @@ export default function CreatePrivateResourcePage() {
                                     <SettingsFormCell span="half">
                                         <FormField
                                             control={form.control}
+                                            name="mode"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("type")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <DescribedSelect<PrivateResourceMode>
+                                                            options={
+                                                                modeOptions
+                                                            }
+                                                            value={field.value}
+                                                            onChange={(
+                                                                newMode
+                                                            ) => {
+                                                                field.onChange(
+                                                                    newMode
+                                                                );
+                                                                if (
+                                                                    newMode ===
+                                                                    "ssh"
+                                                                ) {
+                                                                    form.setValue(
+                                                                        "authDaemonMode",
+                                                                        "native"
+                                                                    );
+                                                                    form.setValue(
+                                                                        "standardDaemonLocation",
+                                                                        "site"
+                                                                    );
+                                                                    form.setValue(
+                                                                        "destination",
+                                                                        null
+                                                                    );
+                                                                    form.setValue(
+                                                                        "destinationPort",
+                                                                        null
+                                                                    );
+                                                                } else if (
+                                                                    newMode ===
+                                                                    "http"
+                                                                ) {
+                                                                    form.setValue(
+                                                                        "destinationPort",
+                                                                        443
+                                                                    );
+                                                                } else if (
+                                                                    newMode ===
+                                                                    "inference"
+                                                                ) {
+                                                                    form.setValue(
+                                                                        "siteIds",
+                                                                        []
+                                                                    );
+                                                                    setSelectedSites(
+                                                                        []
+                                                                    );
+                                                                    form.setValue(
+                                                                        "destination",
+                                                                        null
+                                                                    );
+                                                                    form.setValue(
+                                                                        "destinationPort",
+                                                                        null
+                                                                    );
+                                                                    form.setValue(
+                                                                        "providerIds",
+                                                                        []
+                                                                    );
+                                                                    setSelectedProviders(
+                                                                        []
+                                                                    );
+                                                                } else {
+                                                                    form.setValue(
+                                                                        "destinationPort",
+                                                                        null
+                                                                    );
+                                                                }
+                                                            }}
+                                                            searchPlaceholder={t(
+                                                                "resourceTypeSearch"
+                                                            )}
+                                                            emptyMessage={t(
+                                                                "resourceTypeNotFound"
+                                                            )}
+                                                            placeholder={t(
+                                                                "noneSelected"
+                                                            )}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                    <FormDescription>
+                                                        {t(
+                                                            "privateResourceTypeDescription"
+                                                        )}
+                                                    </FormDescription>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
+
+                                    <SettingsFormCell span="half">
+                                        <FormField
+                                            control={form.control}
                                             name="name"
                                             render={({ field }) => (
                                                 <FormItem>
@@ -278,91 +393,6 @@ export default function CreatePrivateResourcePage() {
                                                             "resourceNameDescription"
                                                         )}
                                                     </FormDescription>
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </SettingsFormCell>
-
-                                    <SettingsFormCell span="full">
-                                        <FormField
-                                            control={form.control}
-                                            name="mode"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("type")}
-                                                    </FormLabel>
-                                                    <OptionSelect<PrivateResourceMode>
-                                                        options={modeOptions}
-                                                        value={field.value}
-                                                        onChange={(newMode) => {
-                                                            field.onChange(
-                                                                newMode
-                                                            );
-                                                            if (
-                                                                newMode ===
-                                                                "ssh"
-                                                            ) {
-                                                                form.setValue(
-                                                                    "authDaemonMode",
-                                                                    "native"
-                                                                );
-                                                                form.setValue(
-                                                                    "standardDaemonLocation",
-                                                                    "site"
-                                                                );
-                                                                form.setValue(
-                                                                    "destination",
-                                                                    null
-                                                                );
-                                                                form.setValue(
-                                                                    "destinationPort",
-                                                                    null
-                                                                );
-                                                            } else if (
-                                                                newMode ===
-                                                                "http"
-                                                            ) {
-                                                                form.setValue(
-                                                                    "destinationPort",
-                                                                    443
-                                                                );
-                                                            } else if (
-                                                                newMode ===
-                                                                "inference"
-                                                            ) {
-                                                                form.setValue(
-                                                                    "siteIds",
-                                                                    []
-                                                                );
-                                                                setSelectedSites(
-                                                                    []
-                                                                );
-                                                                form.setValue(
-                                                                    "destination",
-                                                                    null
-                                                                );
-                                                                form.setValue(
-                                                                    "destinationPort",
-                                                                    null
-                                                                );
-                                                                form.setValue(
-                                                                    "providerIds",
-                                                                    []
-                                                                );
-                                                                setSelectedProviders(
-                                                                    []
-                                                                );
-                                                            } else {
-                                                                form.setValue(
-                                                                    "destinationPort",
-                                                                    null
-                                                                );
-                                                            }
-                                                        }}
-                                                        cols={4}
-                                                    />
-                                                    <FormMessage />
                                                 </FormItem>
                                             )}
                                         />

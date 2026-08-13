@@ -18,9 +18,9 @@ import {
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import {
-    OptionSelect,
-    type OptionSelectOption
-} from "@app/components/OptionSelect";
+    DescribedSelect,
+    type DescribedSelectOption
+} from "@app/components/DescribedSelect";
 import {
     StrategySelect,
     type StrategyOption
@@ -775,26 +775,45 @@ export default function Page() {
         }
     ];
 
-    let typeLabels: Partial<Record<NewResourceType, string>> = {
-        http: "HTTP",
-        inference: t("createInternalResourceDialogModeInference"),
-        tcp: "TCP",
-        udp: "UDP"
+    const typeMeta: Record<
+        NewResourceType,
+        { title: string; description: string }
+    > = {
+        http: {
+            title: t("createInternalResourceDialogModeHttp"),
+            description: t("resourceTypeHttpDescription")
+        },
+        inference: {
+            title: t("createInternalResourceDialogModeInference"),
+            description: t("resourceTypeInferenceDescription")
+        },
+        ssh: {
+            title: t("createInternalResourceDialogModeSsh"),
+            description: t("resourceTypeSshDescription")
+        },
+        rdp: {
+            title: t("rdpTitle"),
+            description: t("resourceTypeRdpDescription")
+        },
+        vnc: {
+            title: t("vncTitle"),
+            description: t("resourceTypeVncDescription")
+        },
+        tcp: {
+            title: t("createInternalResourceDialogTcp"),
+            description: t("resourceTypeTcpDescription")
+        },
+        udp: {
+            title: t("createInternalResourceDialogUdp"),
+            description: t("resourceTypeUdpDescription")
+        }
     };
 
-    if (enterpriseModesAllowed) {
-        typeLabels = {
-            ...typeLabels,
-            ssh: "SSH",
-            rdp: "RDP",
-            vnc: "VNC"
-        };
-    }
-
-    const typeOptions: OptionSelectOption<NewResourceType>[] =
+    const typeOptions: DescribedSelectOption<NewResourceType>[] =
         availableTypes.map((type) => ({
             value: type,
-            label: typeLabels[type] ?? type.toUpperCase()
+            title: typeMeta[type].title,
+            description: typeMeta[type].description
         }));
 
     return (
@@ -831,6 +850,35 @@ export default function Page() {
                                 <SettingsSectionBody>
                                     <SettingsSectionForm variant="half">
                                         <SettingsFormGrid>
+                                            <SettingsFormCell span="half">
+                                                <div className="grid gap-2">
+                                                    <Label>
+                                                        {t("type")}
+                                                    </Label>
+                                                    <DescribedSelect<NewResourceType>
+                                                        options={typeOptions}
+                                                        value={resourceType}
+                                                        onChange={
+                                                            setResourceType
+                                                        }
+                                                        searchPlaceholder={t(
+                                                            "resourceTypeSearch"
+                                                        )}
+                                                        emptyMessage={t(
+                                                            "resourceTypeNotFound"
+                                                        )}
+                                                        placeholder={t(
+                                                            "noneSelected"
+                                                        )}
+                                                    />
+                                                    <p className="text-muted-foreground text-sm">
+                                                        {t(
+                                                            "resourceTypeDescription"
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </SettingsFormCell>
+
                                             <SettingsFormCell span="half">
                                                 <Form {...baseForm}>
                                                     <form
@@ -874,27 +922,6 @@ export default function Page() {
                                                         />
                                                     </form>
                                                 </Form>
-                                            </SettingsFormCell>
-
-                                            <SettingsFormCell span="full">
-                                                <div className="space-y-2">
-                                                    <p className="text-sm font-medium">
-                                                        {t("type")}
-                                                    </p>
-                                                    <OptionSelect<NewResourceType>
-                                                        options={typeOptions}
-                                                        value={resourceType}
-                                                        onChange={
-                                                            setResourceType
-                                                        }
-                                                        cols={6}
-                                                    />
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {t(
-                                                            "resourceTypeDescription"
-                                                        )}
-                                                    </p>
-                                                </div>
                                             </SettingsFormCell>
 
                                             {isHttpResource && (

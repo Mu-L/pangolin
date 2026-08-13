@@ -516,7 +516,9 @@ export default function DomainPicker({
         return (
             <Alert>
                 <Globe className="h-4 w-4" />
-                <AlertTitle>{t("domainPickerNoDomainsAvailableTitle")}</AlertTitle>
+                <AlertTitle>
+                    {t("domainPickerNoDomainsAvailableTitle")}
+                </AlertTitle>
                 <AlertDescription className="space-y-3">
                     <p>{t("domainPickerNoDomainsAvailableDescription")}</p>
                     <Button asChild size="sm" variant="outline">
@@ -592,7 +594,6 @@ export default function DomainPicker({
                                     )}
                                 </p>
                                 <PaidFeaturesAlert
-                                    showBookADemo={false}
                                     tiers={
                                         tierMatrix[
                                             TierFeature.WildcardSubdomain
