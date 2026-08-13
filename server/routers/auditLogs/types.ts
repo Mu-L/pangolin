@@ -99,7 +99,7 @@ export type QueryAiSessionLogResponse = {
         id: number;
         sessionId: string;
         orgId: string | null;
-        providerId: number;
+        providerId: number | null;
         providerName: string | null;
         providerType: string | null;
         capability: string;

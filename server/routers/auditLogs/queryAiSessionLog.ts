@@ -208,7 +208,14 @@ async function enrichWithDetails(
                 type: aiProviders.type
             })
             .from(aiProviders)
-            .where(inArray(aiProviders.providerId, providerIds));
+            .where(
+                inArray(
+                    aiProviders.providerId,
+                    providerIds.filter(
+                        (id): id is number => id !== null && id !== undefined
+                    )
+                )
+            );
 
         for (const p of providerDetails) {
             providerMap.set(p.providerId, { name: p.name, type: p.type });
@@ -336,7 +343,9 @@ async function enrichWithDetails(
     }
 
     return logs.map((log) => {
-        const provider = providerMap.get(log.providerId);
+        const provider = log.providerId
+            ? providerMap.get(log.providerId)
+            : null;
 
         let resourceId = log.resourceId;
         let resourceName: string | null = null;

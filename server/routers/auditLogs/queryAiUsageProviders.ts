@@ -93,9 +93,17 @@ async function query(data: Q) {
     const nameMap = new Map<number, string | null>();
     if (providerIds.length > 0) {
         const providerDetails = await db
-            .select({ providerId: aiProviders.providerId, name: aiProviders.name })
+            .select({
+                providerId: aiProviders.providerId,
+                name: aiProviders.name
+            })
             .from(aiProviders)
-            .where(inArray(aiProviders.providerId, providerIds));
+            .where(
+                inArray(
+                    aiProviders.providerId,
+                    providerIds.filter((id): id is number => id !== null)
+                )
+            );
         for (const p of providerDetails) {
             nameMap.set(p.providerId, p.name);
         }
@@ -103,7 +111,7 @@ async function query(data: Q) {
 
     const topProviders = topProvidersRaw.map((r) => ({
         providerId: r.providerId,
-        name: nameMap.get(r.providerId) ?? null,
+        name: r.providerId ? (nameMap.get(r.providerId) ?? null) : null,
         requests: r.requests,
         totalTokens: r.totalTokens,
         costUsd: r.costUsd
@@ -119,7 +127,8 @@ async function query(data: Q) {
 registry.registerPath({
     method: "get",
     path: "/org/{orgId}/logs/ai/usage/providers",
-    description: "Query the AI usage analytics provider breakdown for an organization",
+    description:
+        "Query the AI usage analytics provider breakdown for an organization",
     tags: [OpenAPITags.Logs],
     request: {
         query: aiUsageAnalyticsFiltersQuery,
@@ -154,14 +163,20 @@ export async function queryAiUsageProviders(
         const parsedQuery = aiUsageAnalyticsFiltersQuery.safeParse(req.query);
         if (!parsedQuery.success) {
             return next(
-                createHttpError(HttpCode.BAD_REQUEST, fromError(parsedQuery.error))
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedQuery.error)
+                )
             );
         }
 
         const parsedParams = aiUsageAnalyticsParams.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
-                createHttpError(HttpCode.BAD_REQUEST, fromError(parsedParams.error))
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedParams.error)
+                )
             );
         }
 
