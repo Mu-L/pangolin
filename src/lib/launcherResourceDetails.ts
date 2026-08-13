@@ -38,7 +38,7 @@ export function formatPublicResourceType(
     }
 
     if (resource.mode === "inference") {
-        return "Inference";
+        return "AI Gateway";
     }
 
     const mode = (resource.mode || "").toLowerCase();
