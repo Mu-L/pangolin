@@ -1777,7 +1777,7 @@
     "aiProviderTypeMicrosoftFoundryDescription": "Microsoft Foundry; upstream URL required",
     "aiProviderTypeOpenRouterDescription": "OpenRouter API",
     "aiProviderTypeVercelAiGatewayDescription": "Vercel AI Gateway",
-    "aiProviderTypeCustomDescription": "Bring your own OpenAI-compatible endpoint or route via Pangolin targets",
+    "aiProviderTypeCustomDescription": "Bring your own endpoint or route via site targets",
     "aiProviderUpstreamUrl": "Upstream URL",
     "aiProviderUpstreamUrlDescription": "Base URL for the provider API",
     "aiProviderUpstreamUrlOptionalDescription": "Leave blank to use the default upstream URL for this provider",

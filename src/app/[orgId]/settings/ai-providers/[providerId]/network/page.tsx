@@ -41,7 +41,6 @@ import {
     createAiProviderFormSchema,
     showsUpstreamUrlField,
     toAiProviderNetworkPayload,
-    upstreamUrlRequired,
     type AiProviderFormValues
 } from "@app/lib/aiProviderFormSchema";
 import { aiProviderQueries } from "@app/lib/queries";
@@ -91,7 +90,6 @@ export default function AiProviderNetworkPage() {
     const providerType = form.watch("type");
     const routingMode = form.watch("routingMode");
     const showUpstream = showsUpstreamUrlField(providerType, routingMode);
-    const requireUpstream = upstreamUrlRequired(providerType, routingMode);
     const showRoutingMode = providerType === "custom";
     const isTargetModeSelected = routingMode === "target";
     const isTargetModeSaved =
@@ -218,22 +216,9 @@ export default function AiProviderNetworkPage() {
                                                                     field.value ??
                                                                     "url"
                                                                 }
-                                                                onChange={(
-                                                                    value
-                                                                ) => {
-                                                                    field.onChange(
-                                                                        value
-                                                                    );
-                                                                    if (
-                                                                        value ===
-                                                                        "target"
-                                                                    ) {
-                                                                        form.setValue(
-                                                                            "upstreamUrl",
-                                                                            ""
-                                                                        );
-                                                                    }
-                                                                }}
+                                                                onChange={
+                                                                    field.onChange
+                                                                }
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
@@ -284,14 +269,10 @@ export default function AiProviderNetworkPage() {
                                                             {t(
                                                                 "aiProviderUpstreamUrl"
                                                             )}
-                                                            {requireUpstream
-                                                                ? ""
-                                                                : " (optional)"}
                                                         </FormLabel>
                                                         <FormControl>
                                                             <Input
                                                                 autoComplete="off"
-                                                                placeholder="https://"
                                                                 value={
                                                                     field.value ??
                                                                     ""
@@ -302,13 +283,9 @@ export default function AiProviderNetworkPage() {
                                                             />
                                                         </FormControl>
                                                         <FormDescription>
-                                                            {requireUpstream
-                                                                ? t(
-                                                                      "aiProviderUpstreamUrlDescription"
-                                                                  )
-                                                                : t(
-                                                                      "aiProviderUpstreamUrlOptionalDescription"
-                                                                  )}
+                                                            {t(
+                                                                "aiProviderUpstreamUrlDescription"
+                                                            )}
                                                         </FormDescription>
                                                         <FormMessage />
                                                     </FormItem>

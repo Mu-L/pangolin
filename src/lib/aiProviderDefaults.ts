@@ -85,13 +85,8 @@ export function providerRequiresUpstreamUrl(
     type: AiProviderType,
     routingMode: AiProviderRoutingMode = "url"
 ): boolean {
-    if (routingMode === "target") {
-        return false;
-    }
-    if (type === "custom") {
-        return true;
-    }
-    return AI_PROVIDER_DEFAULTS[type].upstreamUrl === null;
+    const mode = type === "custom" ? routingMode : "url";
+    return mode !== "target";
 }
 
 export function defaultsForProviderType(

@@ -49,7 +49,6 @@ import {
     emptyUpstreamForType,
     showsUpstreamUrlField,
     toAiProviderCreatePayload,
-    upstreamUrlRequired,
     type AiProviderFormValues
 } from "@app/lib/aiProviderFormSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -95,7 +94,6 @@ export default function CreateAiProviderPage() {
     const authType = form.watch("authType");
 
     const showUpstream = showsUpstreamUrlField(providerType, routingMode);
-    const requireUpstream = upstreamUrlRequired(providerType, routingMode);
     const showRoutingMode = providerType === "custom";
     const showTargets = providerType === "custom" && routingMode === "target";
     const showApiKey = authTypeRequiresApiKey(authType ?? "bearer");
@@ -436,14 +434,9 @@ export default function CreateAiProviderPage() {
                                                                         value
                                                                     );
                                                                     if (
-                                                                        value ===
+                                                                        value !==
                                                                         "target"
                                                                     ) {
-                                                                        form.setValue(
-                                                                            "upstreamUrl",
-                                                                            ""
-                                                                        );
-                                                                    } else {
                                                                         targetsRef.current =
                                                                             [];
                                                                     }
@@ -498,14 +491,10 @@ export default function CreateAiProviderPage() {
                                                             {t(
                                                                 "aiProviderUpstreamUrl"
                                                             )}
-                                                            {requireUpstream
-                                                                ? ""
-                                                                : " (optional)"}
                                                         </FormLabel>
                                                         <FormControl>
                                                             <Input
                                                                 autoComplete="off"
-                                                                placeholder="https://"
                                                                 value={
                                                                     field.value ??
                                                                     ""
@@ -516,13 +505,9 @@ export default function CreateAiProviderPage() {
                                                             />
                                                         </FormControl>
                                                         <FormDescription>
-                                                            {requireUpstream
-                                                                ? t(
-                                                                      "aiProviderUpstreamUrlDescription"
-                                                                  )
-                                                                : t(
-                                                                      "aiProviderUpstreamUrlOptionalDescription"
-                                                                  )}
+                                                            {t(
+                                                                "aiProviderUpstreamUrlDescription"
+                                                            )}
                                                         </FormDescription>
                                                         <FormMessage />
                                                     </FormItem>

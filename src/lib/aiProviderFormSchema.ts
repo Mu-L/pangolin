@@ -150,17 +150,6 @@ export function showsUpstreamUrlField(
     routingMode: "url" | "target" | undefined
 ): boolean {
     const mode = type === "custom" ? (routingMode ?? "url") : "url";
-    if (mode === "target") {
-        return false;
-    }
-    return true;
-}
-
-export function upstreamUrlRequired(
-    type: AiProviderType,
-    routingMode: "url" | "target" | undefined
-): boolean {
-    const mode = type === "custom" ? (routingMode ?? "url") : "url";
     return providerRequiresUpstreamUrl(type, mode);
 }
 
