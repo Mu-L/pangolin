@@ -160,8 +160,9 @@ export function AddActionPanel({
                         onChange={(v) => setSelected(v)}
                     />
 
-                    {isPremiumSelected && <ContactSalesBanner />}
-                    {!isPremiumSelected && (
+                    {isPremiumSelected ? (
+                        <ContactSalesBanner />
+                    ) : (
                         <Button
                             type="button"
                             disabled={!isBuiltInSelected}
