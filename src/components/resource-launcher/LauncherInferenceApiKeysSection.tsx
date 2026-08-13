@@ -12,77 +12,18 @@ import {
     SettingsSubsectionTitle
 } from "@app/components/Settings";
 import { Button } from "@app/components/ui/button";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { toast } from "@app/hooks/useToast";
+import { useMyVirtualApiKeySecret } from "@app/hooks/useMyVirtualApiKeySecret";
 import { launcherQueries } from "@app/lib/queries";
-import type {
-    GetMyVirtualApiKeyResponse,
-    VirtualApiKeyWithResources
-} from "@server/routers/virtualApiKey/types";
-import {
-    formatVirtualApiKeyCredential,
-    formatVirtualApiKeyPreview
-} from "@app/lib/virtualApiKeyFormat";
+import type { VirtualApiKeyWithResources } from "@server/routers/virtualApiKey/types";
+import { formatVirtualApiKeyPreview } from "@app/lib/virtualApiKeyFormat";
 import { useQuery } from "@tanstack/react-query";
-import type { AxiosResponse } from "axios";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 
 type LauncherInferenceApiKeysSectionProps = {
     orgId: string;
     resourceGuid: string;
 };
-
-function useRevealSecret(orgId: string, virtualApiKeyId: string) {
-    const t = useTranslations();
-    const api = createApiClient(useEnvContext());
-    const [credential, setCredential] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    const revealSecret = () => {
-        if (credential || loading) {
-            return;
-        }
-
-        setLoading(true);
-        api.get<AxiosResponse<GetMyVirtualApiKeyResponse>>(
-            `/org/${orgId}/my-virtual-api-keys/${virtualApiKeyId}`
-        )
-            .then((res) => {
-                const secret = res.data.data.virtualApiKey.secret;
-                if (secret) {
-                    setCredential(
-                        formatVirtualApiKeyCredential(virtualApiKeyId, secret)
-                    );
-                } else {
-                    toast({
-                        variant: "destructive",
-                        title: t("virtualApiKeysErrorFetchSecret"),
-                        description: t(
-                            "virtualApiKeysErrorFetchSecretDescription"
-                        )
-                    });
-                }
-            })
-            .catch((e) => {
-                toast({
-                    variant: "destructive",
-                    title: t("virtualApiKeysErrorFetchSecret"),
-                    description: formatAxiosError(
-                        e,
-                        t("virtualApiKeysErrorFetchSecretDescription")
-                    )
-                });
-            })
-            .finally(() => {
-                setLoading(false);
-            });
-    };
-
-    return { credential, loading, revealSecret };
-}
 
 function PanelKeySecret({
     orgId,
@@ -95,11 +36,9 @@ function PanelKeySecret({
 }) {
     const t = useTranslations();
     const preview = formatVirtualApiKeyPreview(virtualApiKeyId, lastChars);
-    const { credential, loading, revealSecret } = useRevealSecret(
-        orgId,
-        virtualApiKeyId
-    );
-    const displayValue = credential ?? preview;
+    const { credential, revealed, loading, getCopyText, revealSecret } =
+        useMyVirtualApiKeySecret(orgId, virtualApiKeyId);
+    const displayValue = revealed && credential ? credential : preview;
 
     return (
         <div className="flex items-center gap-3 min-w-0">
@@ -107,9 +46,10 @@ function PanelKeySecret({
                 <CopyToClipboard
                     text={displayValue}
                     displayText={displayValue}
+                    getCopyText={getCopyText}
                 />
             </div>
-            {!credential ? (
+            {!revealed ? (
                 <Button
                     variant="link"
                     size="sm"

@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { AxiosResponse } from "axios";
 import moment from "moment";
 import { Button } from "@app/components/ui/button";
 import CopyTextBox from "@app/components/CopyTextBox";
@@ -17,72 +15,17 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle as SectionTitle
 } from "@app/components/Settings";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { toast } from "@app/hooks/useToast";
+import { useMyVirtualApiKeySecret } from "@app/hooks/useMyVirtualApiKeySecret";
 import type {
-    GetMyVirtualApiKeyResponse,
     ListMyVirtualApiKeysResponse,
     VirtualApiKeyWithResources
 } from "@server/routers/virtualApiKey/types";
-import {
-    formatVirtualApiKeyCredential,
-    formatVirtualApiKeyPreview
-} from "@app/lib/virtualApiKeyFormat";
+import { formatVirtualApiKeyPreview } from "@app/lib/virtualApiKeyFormat";
 
 type UserVirtualApiKeysProps = {
     orgId: string;
     initialData: ListMyVirtualApiKeysResponse;
 };
-
-function useRevealSecret(orgId: string, virtualApiKeyId: string) {
-    const t = useTranslations();
-    const api = createApiClient(useEnvContext());
-    const [credential, setCredential] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    const revealSecret = () => {
-        if (credential || loading) {
-            return;
-        }
-
-        setLoading(true);
-        api.get<AxiosResponse<GetMyVirtualApiKeyResponse>>(
-            `/org/${orgId}/my-virtual-api-keys/${virtualApiKeyId}`
-        )
-            .then((res) => {
-                const secret = res.data.data.virtualApiKey.secret;
-                if (secret) {
-                    setCredential(
-                        formatVirtualApiKeyCredential(virtualApiKeyId, secret)
-                    );
-                } else {
-                    toast({
-                        variant: "destructive",
-                        title: t("virtualApiKeysErrorFetchSecret"),
-                        description: t(
-                            "virtualApiKeysErrorFetchSecretDescription"
-                        )
-                    });
-                }
-            })
-            .catch((e) => {
-                toast({
-                    variant: "destructive",
-                    title: t("virtualApiKeysErrorFetchSecret"),
-                    description: formatAxiosError(
-                        e,
-                        t("virtualApiKeysErrorFetchSecretDescription")
-                    )
-                });
-            })
-            .finally(() => {
-                setLoading(false);
-            });
-    };
-
-    return { credential, loading, revealSecret };
-}
 
 function OwnedKeySecret({
     orgId,
@@ -95,11 +38,9 @@ function OwnedKeySecret({
 }) {
     const t = useTranslations();
     const preview = formatVirtualApiKeyPreview(virtualApiKeyId, lastChars);
-    const { credential, loading, revealSecret } = useRevealSecret(
-        orgId,
-        virtualApiKeyId
-    );
-    const displayValue = credential ?? preview;
+    const { credential, revealed, loading, getCopyText, revealSecret } =
+        useMyVirtualApiKeySecret(orgId, virtualApiKeyId);
+    const displayValue = revealed && credential ? credential : preview;
 
     return (
         <div className="flex items-center gap-3 min-w-0">
@@ -107,9 +48,10 @@ function OwnedKeySecret({
                 <CopyToClipboard
                     text={displayValue}
                     displayText={displayValue}
+                    getCopyText={getCopyText}
                 />
             </div>
-            {!credential ? (
+            {!revealed ? (
                 <Button
                     variant="link"
                     size="sm"
@@ -137,11 +79,9 @@ function IdentityKeyCenterpiece({
 }) {
     const t = useTranslations();
     const preview = formatVirtualApiKeyPreview(virtualApiKeyId, lastChars);
-    const { credential, loading, revealSecret } = useRevealSecret(
-        orgId,
-        virtualApiKeyId
-    );
-    const displayValue = credential ?? preview;
+    const { credential, revealed, loading, getCopyText, revealSecret } =
+        useMyVirtualApiKeySecret(orgId, virtualApiKeyId);
+    const displayValue = revealed && credential ? credential : preview;
     const headline = resourceName
         ? t("myVirtualApiKeysIdentityResourceHeadline", { resourceName })
         : t("myVirtualApiKeysIdentityHeadline");
@@ -159,9 +99,14 @@ function IdentityKeyCenterpiece({
             </p>
             <div className="mt-8 w-full max-w-2xl">
                 <div className="[&_pre]:text-base [&_code]:font-mono [&_code]:tracking-wide">
-                    <CopyTextBox text={displayValue} wrapText={false} />
+                    <CopyTextBox
+                        text={displayValue}
+                        getCopyText={getCopyText}
+                        wrapText={false}
+                        centered
+                    />
                 </div>
-                {!credential ? (
+                {!revealed ? (
                     <div className="mt-3 flex justify-center">
                         <Button
                             variant="link"
