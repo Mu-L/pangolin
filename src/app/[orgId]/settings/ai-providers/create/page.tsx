@@ -21,7 +21,10 @@ import {
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { AiProviderAuthTypeSelect } from "@app/components/AiProviderAuthTypeSelect";
 import { AiProviderCapabilitiesSelect } from "@app/components/AiProviderCapabilitiesSelect";
-import { AiProviderTypeSelect } from "@app/components/AiProviderTypeSelect";
+import {
+    AiProviderTypeSelect,
+    aiProviderTypeLabelMap
+} from "@app/components/AiProviderTypeSelect";
 import { HeadersInput } from "@app/components/HeadersInput";
 import { StrategySelect } from "@app/components/StrategySelect";
 import { SwitchInput } from "@app/components/SwitchInput";
@@ -74,7 +77,7 @@ export default function CreateAiProviderPage() {
     const form = useForm<AiProviderFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: "",
+            name: t(aiProviderTypeLabelMap.openai),
             type: "openai",
             upstreamUrl: emptyUpstreamForType("openai"),
             apiKey: "",
@@ -235,27 +238,6 @@ export default function CreateAiProviderPage() {
                                     <SettingsFormCell span="half">
                                         <FormField
                                             control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("name")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            autoComplete="off"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </SettingsFormCell>
-
-                                    <SettingsFormCell span="half">
-                                        <FormField
-                                            control={form.control}
                                             name="type"
                                             render={({ field }) => (
                                                 <FormItem>
@@ -268,6 +250,8 @@ export default function CreateAiProviderPage() {
                                                             onChange={(
                                                                 value
                                                             ) => {
+                                                                const previousType =
+                                                                    field.value;
                                                                 field.onChange(
                                                                     value
                                                                 );
@@ -293,6 +277,30 @@ export default function CreateAiProviderPage() {
                                                                     value !==
                                                                     "custom"
                                                                 ) {
+                                                                    const currentName =
+                                                                        form.getValues(
+                                                                            "name"
+                                                                        );
+                                                                    const previousLabel =
+                                                                        t(
+                                                                            aiProviderTypeLabelMap[
+                                                                                previousType
+                                                                            ]
+                                                                        );
+                                                                    if (
+                                                                        !currentName.trim() ||
+                                                                        currentName ===
+                                                                            previousLabel
+                                                                    ) {
+                                                                        form.setValue(
+                                                                            "name",
+                                                                            t(
+                                                                                aiProviderTypeLabelMap[
+                                                                                    value
+                                                                                ]
+                                                                            )
+                                                                        );
+                                                                    }
                                                                     form.setValue(
                                                                         "routingMode",
                                                                         "url"
@@ -301,6 +309,27 @@ export default function CreateAiProviderPage() {
                                                                         [];
                                                                 }
                                                             }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
+
+                                    <SettingsFormCell span="half">
+                                        <FormField
+                                            control={form.control}
+                                            name="name"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("name")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            autoComplete="off"
+                                                            {...field}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />

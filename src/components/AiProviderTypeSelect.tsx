@@ -21,7 +21,7 @@ import { CheckIcon, ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
-const typeLabelMap = {
+export const aiProviderTypeLabelMap = {
     openai: "aiProviderTypeOpenai",
     anthropic: "aiProviderTypeAnthropic",
     googleGemini: "aiProviderTypeGoogleGemini",
@@ -65,7 +65,7 @@ export function AiProviderTypeSelect({
         () =>
             aiProviderTypeValues.map((type) => ({
                 type,
-                title: t(typeLabelMap[type]),
+                title: t(aiProviderTypeLabelMap[type]),
                 description: t(typeDescriptionMap[type])
             })),
         [t]
