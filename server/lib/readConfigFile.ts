@@ -153,6 +153,25 @@ export const configSchema = z
                     })
                     .optional(),
                 trust_proxy: z.int().gte(0).optional().default(1),
+                // Opt-in: have Traefik/Badger stamp the resolved client IP
+                // into a dedicated header (X-Pangolin-Client-Ip) on the
+                // site-resource AI gateway route, so it survives an
+                // intermediary proxy between Traefik and the gateway that
+                // overwrites X-Forwarded-For/X-Real-Ip instead of appending
+                // to them. Off by default since it requires a Badger
+                // version that supports realIpHeader.
+                enable_ai_gateway_client_ip_header: z
+                    .boolean()
+                    .optional()
+                    .default(false)
+                    .transform((val) =>
+                        process.env.ENABLE_AI_GATEWAY_CLIENT_IP_HEADER !==
+                        undefined
+                            ? process.env
+                                  .ENABLE_AI_GATEWAY_CLIENT_IP_HEADER ===
+                                  "true"
+                            : val
+                    ),
                 secret: z.string().pipe(z.string().min(8)).optional(),
                 maxmind_db_path: z.string().optional(),
                 maxmind_asn_path: z.string().optional()
@@ -183,7 +202,8 @@ export const configSchema = z
                     "resource_session_request_param",
                 dashboard_session_length_hours: 720,
                 resource_session_length_hours: 720,
-                trust_proxy: 1
+                trust_proxy: 1,
+                enable_ai_gateway_client_ip_header: false
             }),
         postgres: z
             .object({

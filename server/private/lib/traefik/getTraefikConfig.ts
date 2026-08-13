@@ -61,6 +61,8 @@ import { build } from "@server/build";
 import regionalCache from "#private/lib/cache";
 import {
     AI_GATEWAY_TRUST_HEADER,
+    AI_GATEWAY_RESOURCE_TYPE_HEADER,
+    AI_GATEWAY_CLIENT_IP_HEADER,
     getAiGatewayTrustToken
 } from "@server/lib/aiGatewayTrust";
 
@@ -1569,17 +1571,57 @@ export async function getTraefikConfig(
         const aiGatewayOverride =
             config.getRawConfig().server.ai_gateway_override;
 
-        // The trust header is the same for every inference route on this
-        // exit node, so it's defined once here and attached to each router
-        // below instead of being duplicated into a per-resource middleware.
-        const aiGatewayTrustMiddlewareName = "ai-gateway-trust-headers";
-        config_output.http.middlewares[aiGatewayTrustMiddlewareName] = {
+        // The trust token is the same for every inference route on this exit
+        // node, so it's defined once here and attached to each router below
+        // instead of being duplicated into a per-resource middleware. Two
+        // variants exist (public resource vs. siteResource) so the resource
+        // type header lets the gateway know which kind of router the
+        // request came through without re-deriving it from resourceId.
+        const aiGatewayTrustMiddlewareNameResource =
+            "ai-gateway-trust-headers-resource";
+        const aiGatewayTrustMiddlewareNameSiteResource =
+            "ai-gateway-trust-headers-site-resource";
+        config_output.http.middlewares[aiGatewayTrustMiddlewareNameResource] =
+            {
+                headers: {
+                    customRequestHeaders: {
+                        [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken(),
+                        [AI_GATEWAY_RESOURCE_TYPE_HEADER]: "resource"
+                    }
+                }
+            };
+        config_output.http.middlewares[
+            aiGatewayTrustMiddlewareNameSiteResource
+        ] = {
             headers: {
                 customRequestHeaders: {
-                    [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken()
+                    [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken(),
+                    [AI_GATEWAY_RESOURCE_TYPE_HEADER]: "site-resource"
                 }
             }
         };
+
+        // Opt-in: a Badger instance with forward auth disabled, used only
+        // to stamp the resolved client IP into a dedicated header before
+        // the request reaches whatever sits between Traefik and the AI
+        // gateway. Only the site-resource router below needs this - it's
+        // the only path that resolves request identity from the client IP
+        // (see resolveRequestUser in aiGateway/pipeline.ts) - and it's the
+        // only inference router that doesn't already run Badger.
+        const aiGatewayClientIpMiddlewareName = "ai-gateway-client-ip";
+        const enableAiGatewayClientIpHeader =
+            config.getRawConfig().server.enable_ai_gateway_client_ip_header;
+        if (enableAiGatewayClientIpHeader) {
+            config_output.http.middlewares[aiGatewayClientIpMiddlewareName] =
+                {
+                    plugin: {
+                        badger: {
+                            disableForwardAuth: true,
+                            realIpHeader: AI_GATEWAY_CLIENT_IP_HEADER
+                        }
+                    }
+                };
+        }
 
         // Public inference resources: same TLS/cert-resolver handling as
         // plain http-mode resources, but the service points at the AI
@@ -1650,7 +1692,7 @@ export async function getTraefikConfig(
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [
                 badgerMiddlewareName,
-                aiGatewayTrustMiddlewareName
+                aiGatewayTrustMiddlewareNameResource
             ];
 
             if (aiGatewayOverride) {
@@ -1750,7 +1792,12 @@ export async function getTraefikConfig(
 
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
-            const routerMiddlewares: string[] = [aiGatewayTrustMiddlewareName];
+            const routerMiddlewares: string[] = [
+                ...(enableAiGatewayClientIpHeader
+                    ? [aiGatewayClientIpMiddlewareName]
+                    : []),
+                aiGatewayTrustMiddlewareNameSiteResource
+            ];
 
             if (aiGatewayOverride) {
                 const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
@@ -1775,7 +1822,7 @@ export async function getTraefikConfig(
                     middlewares: [redirectHttpsMiddlewareName],
                     service: serviceName,
                     rule,
-                    priority: 100
+                    priority: 200 // we want to match on the site resource first because the clientIP rule is more specific than the public inference resource rule, which is just the exit node IP range. so we give it a higher priority to ensure it matches first.
                 };
             }
 
@@ -1788,7 +1835,7 @@ export async function getTraefikConfig(
                 middlewares: routerMiddlewares,
                 service: serviceName,
                 rule,
-                priority: 100,
+                priority: 200, // we want to match on the site resource first because the clientIP rule is more specific than the public inference resource rule, which is just the exit node IP range. so we give it a higher priority to ensure it matches first.
                 ...(sr.ssl ? { tls } : {})
             };
 

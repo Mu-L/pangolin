@@ -34,7 +34,10 @@ import {
     type RequestUser
 } from "@server/routers/aiGateway/pipeline";
 import { streamAiGatewayResponse } from "@server/routers/aiGateway/streamAiGatewayResponse";
-import { AI_GATEWAY_TRUST_HEADER } from "@server/lib/aiGatewayTrust";
+import {
+    AI_GATEWAY_TRUST_HEADER,
+    AI_GATEWAY_RESOURCE_TYPE_HEADER
+} from "@server/lib/aiGatewayTrust";
 
 // Short TTL: long enough to spare the DB on a burst of requests, short
 // enough that target/site changes (added, removed, exit node moved) show up
@@ -65,7 +68,8 @@ const SKIP_HEADERS = new Set([
     "upgrade",
     "content-length",
     "accept-encoding",
-    AI_GATEWAY_TRUST_HEADER.toLowerCase()
+    AI_GATEWAY_TRUST_HEADER.toLowerCase(),
+    AI_GATEWAY_RESOURCE_TYPE_HEADER.toLowerCase()
 ]);
 
 type ResolvedProviderTarget = {

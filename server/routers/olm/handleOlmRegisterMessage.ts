@@ -502,14 +502,14 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 tunnelIP: client.subnet,
                 utilitySubnet: org.utilitySubnet,
                 exitNode:
-                    exitNode && client.exitNodeSubnet
+                    exitNode && clientSubnet
                         ? {
                               aliases: exitNodeAliases,
                               connect: exitNodeAliases.length > 0, // we do not need to connect to the exit node if we do not have inference resources and right now all site resources on the exit node have an alias
                               endpoint: `${exitNode.endpoint}:${exitNode.listenPort}`,
                               publicKey: exitNode.publicKey,
                               serverIP: exitNode.address.split("/")[0],
-                              tunnelIP: `${client.exitNodeSubnet.split("/")[0]}/${exitNode.address.split("/")[1]}` // we need to use the exit node's subnet mask here because the client will be using the exit node's subnet mask for its routing table so we can address it
+                              tunnelIP: `${clientSubnet.split("/")[0]}/${exitNode.address.split("/")[1]}` // we need to use the exit node's subnet mask here because the client will be using the exit node's subnet mask for its routing table so we can address it
                           }
                         : undefined,
                 chainId: chainId
