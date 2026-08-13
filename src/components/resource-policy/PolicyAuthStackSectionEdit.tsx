@@ -573,7 +573,6 @@ export function PolicyAuthStackSectionEdit({
                                                           className="text-primary hover:underline"
                                                       >
                                                           {inferenceResourceUrl}
-                                                          <ExternalLink className="ml-1 inline size-3.5 shrink-0 align-text-bottom" />
                                                       </a>
                                                   )
                                               }

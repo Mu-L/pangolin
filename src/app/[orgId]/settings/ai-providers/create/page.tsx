@@ -271,14 +271,14 @@ export default function CreateAiProviderPage() {
                                                                         value
                                                                     )
                                                                 );
+                                                                const currentName =
+                                                                    form.getValues(
+                                                                        "name"
+                                                                    );
                                                                 if (
                                                                     value !==
                                                                     "custom"
                                                                 ) {
-                                                                    const currentName =
-                                                                        form.getValues(
-                                                                            "name"
-                                                                        );
                                                                     const previousLabel =
                                                                         t(
                                                                             aiProviderTypeLabelMap[
@@ -305,6 +305,30 @@ export default function CreateAiProviderPage() {
                                                                     );
                                                                     targetsRef.current =
                                                                         [];
+                                                                } else {
+                                                                    const isDefaultName =
+                                                                        Object.entries(
+                                                                            aiProviderTypeLabelMap
+                                                                        ).some(
+                                                                            ([
+                                                                                type,
+                                                                                key
+                                                                            ]) =>
+                                                                                type !==
+                                                                                    "custom" &&
+                                                                                currentName ===
+                                                                                    t(
+                                                                                        key
+                                                                                    )
+                                                                        );
+                                                                    if (
+                                                                        isDefaultName
+                                                                    ) {
+                                                                        form.setValue(
+                                                                            "name",
+                                                                            ""
+                                                                        );
+                                                                    }
                                                                 }
                                                             }}
                                                         />

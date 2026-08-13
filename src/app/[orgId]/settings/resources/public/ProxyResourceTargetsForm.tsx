@@ -86,6 +86,13 @@ export type ProxyResourceTargetsFormHandle = {
     save: (options?: { silent?: boolean }) => Promise<boolean>;
 };
 
+const DEFAULT_ALLOWED_METHODS: ("http" | "https" | "h2c")[] = [
+    "http",
+    "https",
+    "h2c"
+];
+const EMPTY_TARGETS: LocalTarget[] = [];
+
 type ProxyResourceTargetsFormProps = {
     orgId: string;
     isHttp: boolean;
@@ -115,12 +122,12 @@ export const ProxyResourceTargetsForm = forwardRef<
     {
         orgId,
         isHttp,
-        initialTargets = [],
+        initialTargets = EMPTY_TARGETS,
         resource,
         providerId,
         updateResource,
         onChange,
-        allowedMethods = ["http", "https", "h2c"],
+        allowedMethods = DEFAULT_ALLOWED_METHODS,
         emptyMessage,
         embedded = false,
         hideSaveButton = false,
@@ -266,7 +273,7 @@ export const ProxyResourceTargetsForm = forwardRef<
                 );
             });
         },
-        [sites]
+        []
     );
 
     const openHealthCheckDialog = useCallback((target: LocalTarget) => {
@@ -616,7 +623,6 @@ export const ProxyResourceTargetsForm = forwardRef<
     }, [
         isAdvancedMode,
         isHttp,
-        sites,
         updateTarget,
         getDockerStateForSite,
         refreshContainersForSite,

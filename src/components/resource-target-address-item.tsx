@@ -142,6 +142,8 @@ export function ResourceTargetAddressItem({
     isHttp,
     allowedMethods = ["http", "https", "h2c"]
 }: ResourceTargetAddressItemProps) {
+    "use no memo";
+
     return (
         <div className="flex items-center w-full" key={proxyTarget.targetId}>
             <div className="flex items-center w-full justify-start py-0 space-x-2 px-0 cursor-default border border-input rounded-md">

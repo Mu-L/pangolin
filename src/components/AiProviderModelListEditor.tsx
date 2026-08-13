@@ -350,28 +350,24 @@ export function AiProviderModelListEditor({
 
     return (
         <div className="flex flex-col gap-3">
-            <div>
-                <div className="relative">
-                    <div
-                        ref={gridRef}
-                        className={cn(
-                            "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3",
-                            isCollapsed && "overflow-hidden"
-                        )}
-                        style={
-                            isCollapsed && clipHeight != null
-                                ? { maxHeight: clipHeight }
-                                : undefined
-                        }
-                    >
-                        {items.length === 0 ? (
-                            <div className="flex min-w-0 items-center justify-center rounded-md border border-dashed border-input px-2.5 py-2">
-                                <span className="text-xs text-muted-foreground">
-                                    {emptyMessage}
-                                </span>
-                            </div>
-                        ) : (
-                            items.map((item) => (
+            {items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+            ) : (
+                <div>
+                    <div className="relative">
+                        <div
+                            ref={gridRef}
+                            className={cn(
+                                "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3",
+                                isCollapsed && "overflow-hidden"
+                            )}
+                            style={
+                                isCollapsed && clipHeight != null
+                                    ? { maxHeight: clipHeight }
+                                    : undefined
+                            }
+                        >
+                            {items.map((item) => (
                                 <ModelCard
                                     key={item.clientId}
                                     item={item}
@@ -385,42 +381,42 @@ export function AiProviderModelListEditor({
                                     }
                                     onRemove={() => removeModel(item.clientId)}
                                 />
-                            ))
-                        )}
+                            ))}
+                        </div>
+                        {isCollapsed ? (
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-card from-25% via-card/80 to-transparent" />
+                        ) : null}
                     </div>
                     {isCollapsed ? (
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-card from-25% via-card/80 to-transparent" />
+                        <div className="relative z-10 flex justify-center pt-2">
+                            <Button
+                                type="button"
+                                variant="text"
+                                size="sm"
+                                className="bg-card px-2 text-muted-foreground hover:text-foreground"
+                                onClick={() => setListExpanded(true)}
+                            >
+                                {t("aiProviderModelsViewMore", {
+                                    count: items.length - collapsedLimit
+                                })}
+                            </Button>
+                        </div>
+                    ) : null}
+                    {hasOverflow && listExpanded ? (
+                        <div className="flex justify-center pt-1">
+                            <Button
+                                type="button"
+                                variant="text"
+                                size="sm"
+                                className="text-muted-foreground hover:text-foreground"
+                                onClick={() => setListExpanded(false)}
+                            >
+                                {t("aiProviderModelsViewLess")}
+                            </Button>
+                        </div>
                     ) : null}
                 </div>
-                {isCollapsed ? (
-                    <div className="relative z-10 flex justify-center pt-2">
-                        <Button
-                            type="button"
-                            variant="text"
-                            size="sm"
-                            className="bg-card px-2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setListExpanded(true)}
-                        >
-                            {t("aiProviderModelsViewMore", {
-                                count: items.length - collapsedLimit
-                            })}
-                        </Button>
-                    </div>
-                ) : null}
-                {hasOverflow && listExpanded ? (
-                    <div className="flex justify-center pt-1">
-                        <Button
-                            type="button"
-                            variant="text"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground"
-                            onClick={() => setListExpanded(false)}
-                        >
-                            {t("aiProviderModelsViewLess")}
-                        </Button>
-                    </div>
-                ) : null}
-            </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-2">
                 <Popover
@@ -828,9 +824,7 @@ function EditModelCredenza({
         defaultValues: { modelKey: item.modelKey }
     });
 
-    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>(
-        []
-    );
+    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>([]);
     const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
     const [savingBudgets, setSavingBudgets] = useState(false);
 
@@ -929,9 +923,7 @@ function EditModelCredenza({
                                 items={[
                                     { title: t("general"), href: "#" },
                                     {
-                                        title: t(
-                                            "aiProviderModelsBudgetTab"
-                                        ),
+                                        title: t("aiProviderModelsBudgetTab"),
                                         href: "#"
                                     }
                                 ]}
@@ -970,9 +962,7 @@ function EditModelCredenza({
                                             </p>
                                             <BudgetRowsFields
                                                 rows={pendingBudgetRows}
-                                                onChange={
-                                                    setPendingBudgetRows
-                                                }
+                                                onChange={setPendingBudgetRows}
                                                 disabled={
                                                     budgetsQuery.isLoading ||
                                                     savingBudgets
@@ -984,9 +974,7 @@ function EditModelCredenza({
                                         </>
                                     ) : (
                                         <p className="text-sm text-muted-foreground">
-                                            {t(
-                                                "aiProviderModelsBudgetUnsaved"
-                                            )}
+                                            {t("aiProviderModelsBudgetUnsaved")}
                                         </p>
                                     )}
                                 </div>
