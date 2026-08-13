@@ -56,7 +56,7 @@ export const AI_PROVIDER_DEFAULTS: Record<
         capabilities: ["google_generate_content", "google_raw_predict"]
     },
     bedrock: {
-        upstreamUrl: "https://bedrock-runtime.us-east-1.amazonaws.com",
+        upstreamUrl: null,
         authType: "bearer",
         capabilities: ["bedrock_converse"]
     },
