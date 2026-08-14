@@ -41,10 +41,7 @@ import {
     siteNetworks,
     siteResources,
     Target,
-    targets,
-    aiProviders,
-    resourceAiProviders,
-    siteResourceAiProviders
+    targets
 } from "@server/db";
 import {
     sanitize,
@@ -438,21 +435,9 @@ export async function getTraefikConfig(
             preferWildcardCert: domains.preferWildcardCert
         })
         .from(resources)
-        .innerJoin(
-            resourceAiProviders,
-            eq(resources.resourceId, resourceAiProviders.resourceId)
-        )
-        .innerJoin(
-            aiProviders,
-            eq(resourceAiProviders.providerId, aiProviders.providerId)
-        )
         .leftJoin(domains, eq(domains.domainId, resources.domainId))
         .where(
-            and(
-                eq(resources.mode, "inference"),
-                eq(resources.enabled, true),
-                eq(aiProviders.enabled, true)
-            )
+            and(eq(resources.mode, "inference"), eq(resources.enabled, true))
         );
 
     const siteResourcesInference = await db
