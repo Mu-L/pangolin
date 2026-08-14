@@ -14,13 +14,11 @@ import {
     SheetTitle,
     SheetTrigger
 } from "@app/components/ui/sheet";
-import { useUserContext } from "@app/hooks/useUserContext";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import { Menu, Server, Settings, LayoutGrid } from "lucide-react";
+import { Menu, Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 interface LayoutMobileMenuProps {
@@ -45,18 +43,8 @@ export function LayoutMobileMenu({
     showViewAsAdmin = false
 }: LayoutMobileMenuProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const pathname = usePathname();
-    const isAdminPage = pathname?.startsWith("/admin");
-    const { user } = useUserContext();
     const t = useTranslations();
     const showMobileNav = showSidebar || launcherMode;
-    const currentOrg = orgs?.find((org) => org.orgId === orgId);
-    const isSettingsPage = Boolean(
-        orgId && pathname?.includes(`/${orgId}/settings`)
-    );
-    const canViewResourceLauncher = Boolean(
-        currentOrg?.isAdmin || currentOrg?.isOwner
-    );
 
     const mobileNavLinkClassName = cn(
         "flex items-center rounded transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-secondary/50 dark:hover:bg-secondary/20 rounded-md px-3 py-1.5"
@@ -183,58 +171,6 @@ export function LayoutMobileMenu({
                                             </div>
                                             <div className="flex-1 overflow-y-auto relative">
                                                 <div className="px-3">
-                                                    {!isAdminPage &&
-                                                        isSettingsPage &&
-                                                        canViewResourceLauncher &&
-                                                        orgId && (
-                                                            <div className="mb-1">
-                                                                <Link
-                                                                    href={`/${orgId}`}
-                                                                    className={
-                                                                        mobileNavLinkClassName
-                                                                    }
-                                                                    onClick={() =>
-                                                                        setIsMobileMenuOpen(
-                                                                            false
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground mr-3">
-                                                                        <LayoutGrid className="h-4 w-4" />
-                                                                    </span>
-                                                                    <span className="flex-1">
-                                                                        {t(
-                                                                            "resourceSidebarLauncherTitle"
-                                                                        )}
-                                                                    </span>
-                                                                </Link>
-                                                            </div>
-                                                        )}
-                                                    {!isAdminPage &&
-                                                        user.serverAdmin && (
-                                                            <div className="mb-1">
-                                                                <Link
-                                                                    href="/admin"
-                                                                    className={
-                                                                        mobileNavLinkClassName
-                                                                    }
-                                                                    onClick={() =>
-                                                                        setIsMobileMenuOpen(
-                                                                            false
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground mr-3">
-                                                                        <Server className="h-4 w-4" />
-                                                                    </span>
-                                                                    <span className="flex-1">
-                                                                        {t(
-                                                                            "serverAdmin"
-                                                                        )}
-                                                                    </span>
-                                                                </Link>
-                                                            </div>
-                                                        )}
                                                     <SidebarNav
                                                         sections={navItems}
                                                         onItemClick={() =>

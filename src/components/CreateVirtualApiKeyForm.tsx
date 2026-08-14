@@ -476,11 +476,6 @@ export default function CreateVirtualApiKeyForm({
                                         </div>
 
                                         <div className="space-y-4 mt-4">
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "virtualApiKeysInferenceBudgetDescription"
-                                                )}
-                                            </p>
                                             <BudgetRowsFields
                                                 rows={pendingBudgetRows}
                                                 onChange={setPendingBudgetRows}

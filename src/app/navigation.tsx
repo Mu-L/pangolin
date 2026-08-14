@@ -47,6 +47,7 @@ export type SidebarNavSection = {
 
 export type OrgNavSectionsOptions = {
     isPrimaryOrg?: boolean;
+    isServerAdmin?: boolean;
 };
 
 // Merged from 'user-management-and-resources' branch
@@ -67,6 +68,27 @@ export const orgNavSections = (
     env?: Env,
     options?: OrgNavSectionsOptions
 ): SidebarNavSection[] => [
+    {
+        heading: "sidebarOverview",
+        items: [
+            {
+                title: "resourceSidebarLauncherTitle",
+                href: "/{orgId}",
+                icon: <LayoutGrid className="size-4 flex-none" />,
+                exact: true
+            },
+            ...(options?.isServerAdmin
+                ? [
+                      {
+                          title: "serverAdmin",
+                          href: "/admin",
+                          icon: <Server className="size-4 flex-none" />,
+                          exact: true
+                      }
+                  ]
+                : [])
+        ]
+    },
     {
         heading: "network",
         items: [
