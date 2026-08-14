@@ -18,7 +18,7 @@ import {
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { subdomainSchema, wildcardSubdomainSchema } from "@server/lib/schemas";
@@ -484,11 +484,22 @@ async function createHttpResource(
 
     logger.debug(`Full domain: ${fullDomain}`);
 
-    // make sure the full domain is unique
+    // make sure the full domain is unique. Inference resources are routed
+    // through the central AI gateway rather than normal target-based
+    // proxying, so they're allowed to share a full-domain with a
+    // non-inference resource (and vice versa) - only conflicts within the
+    // same routing category are rejected.
     const existingResource = await db
         .select()
         .from(resources)
-        .where(eq(resources.fullDomain, fullDomain));
+        .where(
+            and(
+                eq(resources.fullDomain, fullDomain),
+                effectiveMode === "inference"
+                    ? eq(resources.mode, "inference")
+                    : ne(resources.mode, "inference")
+            )
+        );
 
     if (existingResource.length > 0) {
         return next(

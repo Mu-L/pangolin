@@ -596,10 +596,23 @@ async function updateHttpResource(
         logger.debug(`Full domain: ${fullDomain}`);
 
         if (fullDomain) {
+            // Inference resources route through the central AI gateway
+            // rather than normal target-based proxying, so they're allowed
+            // to share a full-domain with a non-inference resource (and
+            // vice versa) - only conflicts within the same routing category
+            // are rejected. mode isn't updatable here, so `resource.mode`
+            // reflects the resource's actual (unchanging) routing category.
             const [existingDomain] = await db
                 .select()
                 .from(resources)
-                .where(eq(resources.fullDomain, fullDomain));
+                .where(
+                    and(
+                        eq(resources.fullDomain, fullDomain),
+                        resource.mode === "inference"
+                            ? eq(resources.mode, "inference")
+                            : ne(resources.mode, "inference")
+                    )
+                );
 
             if (
                 existingDomain &&

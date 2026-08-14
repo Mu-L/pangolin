@@ -306,6 +306,7 @@ export async function updatePublicResources(
                     existingResource.resourceId,
                     resourceData["full-domain"]!,
                     orgId,
+                    resourceData.mode === "inference",
                     trx
                 );
 
@@ -1098,6 +1099,7 @@ export async function updatePublicResources(
                     undefined,
                     resourceData["full-domain"]!,
                     orgId,
+                    resourceData.mode === "inference",
                     trx
                 );
 
@@ -2113,6 +2115,7 @@ export async function getDomain(
     resourceId: number | undefined,
     fullDomain: string,
     orgId: string,
+    isInference: boolean,
     trx: Transaction
 ) {
     const [fullDomainExists] = await trx
@@ -2122,6 +2125,14 @@ export async function getDomain(
             and(
                 eq(resources.fullDomain, fullDomain),
                 eq(resources.orgId, orgId),
+                // Inference resources route through the central AI gateway
+                // rather than normal target-based proxying, so they're
+                // allowed to share a full-domain with a non-inference
+                // resource (and vice versa) - only conflicts within the
+                // same routing category are rejected.
+                isInference
+                    ? eq(resources.mode, "inference")
+                    : ne(resources.mode, "inference"),
                 resourceId
                     ? ne(resources.resourceId, resourceId)
                     : isNotNull(resources.resourceId)
