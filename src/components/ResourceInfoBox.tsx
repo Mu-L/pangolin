@@ -40,8 +40,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
     const showCertificate = !!(
         isDomainResource &&
         resource.domainId &&
-        resource.fullDomain &&
-        build != "oss"
+        resource.fullDomain
     );
     const showType = !!(isDomainResource && resource.mode);
     const showAuth = resource.mode !== "inference";

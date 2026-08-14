@@ -429,7 +429,6 @@ export default function PrivateResourcesTable({
                         const fullDomain = resourceRow.fullDomain;
                         const url = `${resourceRow.ssl ? "https" : "http"}://${fullDomain}`;
                         const did =
-                            build !== "oss" &&
                             resourceRow.ssl &&
                             domainId != null &&
                             domainId !== "" &&
