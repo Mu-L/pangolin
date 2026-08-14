@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { GetOrgResponse } from "@server/routers/org";
 import OrgProvider from "@app/providers/OrgProvider";
+import VirtualApiKeysBanner from "@app/components/VirtualApiKeysBanner";
 import VirtualApiKeysTable, {
     type VirtualApiKeyRow
 } from "@app/components/VirtualApiKeysTable";
@@ -141,6 +142,8 @@ export default async function VirtualApiKeysPage(
                 title={t("virtualApiKeysTitle")}
                 description={t("virtualApiKeysDescription")}
             />
+
+            <VirtualApiKeysBanner orgId={params.orgId} />
 
             <OrgProvider org={org}>
                 <VirtualApiKeysTable

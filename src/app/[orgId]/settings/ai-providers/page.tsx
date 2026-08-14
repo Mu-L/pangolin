@@ -1,3 +1,4 @@
+import AiProvidersBanner from "@app/components/AiProvidersBanner";
 import AiProvidersTable from "@app/components/AiProvidersTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { internal } from "@app/lib/api";
@@ -48,6 +49,8 @@ export default async function AiProvidersPage({ params, searchParams }: Props) {
                 title={t("aiProvidersTitle")}
                 description={t("aiProvidersDescription")}
             />
+
+            <AiProvidersBanner />
 
             <AiProvidersTable
                 orgId={orgId}
