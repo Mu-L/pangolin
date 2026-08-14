@@ -235,6 +235,13 @@ export async function updatePrivateResources(
                   ? false
                   : resourceData.enabled;
 
+        const resourceSsl =
+            resourceData.mode === "inference" || resourceData.mode === "http"
+                ? resourceData.ssl == undefined || resourceData.ssl == null
+                    ? true
+                    : resourceData.ssl
+                : resourceData.ssl;
+
         if (existingResource) {
             let domainInfo:
                 | { subdomain: string | null; domainId: string }
@@ -286,7 +293,7 @@ export async function updatePrivateResources(
                 .set({
                     name: resourceData.name || resourceNiceId,
                     mode: resourceData.mode,
-                    ssl: resourceData.ssl,
+                    ssl: resourceSsl,
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
@@ -614,7 +621,7 @@ export async function updatePrivateResources(
                     defaultNetworkId: network ? network.networkId : null,
                     name: resourceData.name || resourceNiceId,
                     mode: resourceData.mode,
-                    ssl: resourceData.ssl,
+                    ssl: resourceSsl,
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
