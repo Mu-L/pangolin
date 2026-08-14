@@ -1668,52 +1668,59 @@ export const statusHistory = sqliteTable(
     ]
 );
 
-export const aiProviders = sqliteTable("aiProviders", {
-    providerId: integer("providerId").primaryKey({ autoIncrement: true }),
-    orgId: text("orgId")
-        .notNull()
-        .references(() => orgs.orgId, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    type: text("type")
-        .$type<
-            | "openai"
-            | "anthropic"
-            | "googleGemini"
-            | "vertexAi"
-            | "bedrock"
-            | "microsoftFoundry"
-            | "openRouter"
-            | "vercelAiGateway"
-            | "custom"
-        >()
-        .notNull(),
-    upstreamUrl: text("upstreamUrl"),
-    apiKey: text("apiKey"),
-    apiKeyLastChars: text("apiKeyLastChars"),
-    authType: text("authType")
-        .$type<
-            | "bearer"
-            | "x-api-key"
-            | "x-goog-api-key"
-            | "hec"
-            | "cf-aig-authorization"
-            | "none"
-            | "passthrough"
-        >()
-        .notNull(),
-    routingMode: text("routingMode")
-        .$type<"url" | "target">()
-        .notNull()
-        .default("url"),
-    capabilities: text("capabilities").notNull().default("[]"),
-    headers: text("headers"), // JSON array of { name, value }
-    skipTlsVerification: integer("skipTlsVerification", { mode: "boolean" })
-        .notNull()
-        .default(false),
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
-    createdAt: integer("createdAt").notNull(),
-    updatedAt: integer("updatedAt").notNull()
-});
+export const aiProviders = sqliteTable(
+    "aiProviders",
+    {
+        providerId: integer("providerId").primaryKey({ autoIncrement: true }),
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        name: text("name").notNull(),
+        niceId: text("niceId").notNull(),
+        type: text("type")
+            .$type<
+                | "openai"
+                | "anthropic"
+                | "googleGemini"
+                | "vertexAi"
+                | "bedrock"
+                | "microsoftFoundry"
+                | "openRouter"
+                | "vercelAiGateway"
+                | "custom"
+            >()
+            .notNull(),
+        upstreamUrl: text("upstreamUrl"),
+        apiKey: text("apiKey"),
+        apiKeyLastChars: text("apiKeyLastChars"),
+        authType: text("authType")
+            .$type<
+                | "bearer"
+                | "x-api-key"
+                | "x-goog-api-key"
+                | "hec"
+                | "cf-aig-authorization"
+                | "none"
+                | "passthrough"
+            >()
+            .notNull(),
+        routingMode: text("routingMode")
+            .$type<"url" | "target">()
+            .notNull()
+            .default("url"),
+        capabilities: text("capabilities").notNull().default("[]"),
+        headers: text("headers"), // JSON array of { name, value }
+        skipTlsVerification: integer("skipTlsVerification", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        enabled: integer("enabled", { mode: "boolean" })
+            .notNull()
+            .default(true),
+        createdAt: integer("createdAt").notNull(),
+        updatedAt: integer("updatedAt").notNull()
+    },
+    (t) => [index("idx_aiProviders_orgId_niceId").on(t.orgId, t.niceId)]
+);
 
 export const aiModels = sqliteTable(
     "aiModels",

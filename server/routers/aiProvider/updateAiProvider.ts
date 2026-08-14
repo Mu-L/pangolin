@@ -7,7 +7,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { eq } from "drizzle-orm";
+import { eq, ne, and } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
@@ -37,6 +37,15 @@ const paramsSchema = z.strictObject({
 
 const bodySchema = z.strictObject({
     name: z.string().nonempty().optional(),
+    niceId: z
+        .string()
+        .min(1)
+        .max(255)
+        .regex(
+            /^[a-zA-Z0-9-]+$/,
+            "niceId can only contain letters, numbers, and dashes"
+        )
+        .optional(),
     upstreamUrl: z.url().optional().nullable(),
     apiKey: z.string().optional(),
     authType: aiAuthTypeSchema.optional(),
@@ -170,6 +179,9 @@ export async function updateAiProvider(
         if (body.name !== undefined) {
             updateData.name = body.name;
         }
+        if (body.niceId !== undefined) {
+            updateData.niceId = body.niceId;
+        }
         if (body.skipTlsVerification !== undefined) {
             updateData.skipTlsVerification = body.skipTlsVerification;
         }
@@ -197,6 +209,29 @@ export async function updateAiProvider(
         if (body.headers !== undefined) {
             const key = config.getRawConfig().server.secret!;
             updateData.headers = serializeAiProviderHeaders(body.headers, key);
+        }
+
+        if (updateData.niceId) {
+            const [existingAiProvider] = await db
+                .select()
+                .from(aiProviders)
+                .where(
+                    and(
+                        eq(aiProviders.niceId, updateData.niceId),
+                        eq(aiProviders.orgId, existing.orgId),
+                        ne(aiProviders.providerId, existing.providerId) // exclude the current provider from the search
+                    )
+                )
+                .limit(1);
+
+            if (existingAiProvider) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        `A resource with niceId "${updateData.niceId}" already exists`
+                    )
+                );
+            }
         }
 
         const [provider] = await db

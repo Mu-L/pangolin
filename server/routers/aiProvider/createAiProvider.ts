@@ -25,6 +25,7 @@ import {
     refineProviderUpstreamFields
 } from "@server/routers/aiProvider/validation";
 import { serializeCapabilities } from "@server/lib/aiCapabilities";
+import { getUniqueProviderName, getUniqueResourceName } from "@server/db/names";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -133,11 +134,14 @@ export async function createAiProvider(
             );
         }
 
+        const niceId = await getUniqueProviderName(orgId);
+
         const [provider] = await db
             .insert(aiProviders)
             .values({
                 orgId,
                 name,
+                niceId,
                 type,
                 upstreamUrl: resolved.upstreamUrl,
                 apiKey: encryptedApiKey,

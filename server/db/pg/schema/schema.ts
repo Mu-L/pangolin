@@ -1684,52 +1684,57 @@ export const statusHistory = pgTable(
     ]
 );
 
-export const aiProviders = pgTable("aiProviders", {
-    providerId: serial("providerId").primaryKey(),
-    orgId: varchar("orgId")
-        .notNull()
-        .references(() => orgs.orgId, { onDelete: "cascade" }),
-    name: varchar("name").notNull(),
-    type: varchar("type")
-        .$type<
-            | "openai"
-            | "anthropic"
-            | "googleGemini"
-            | "vertexAi"
-            | "bedrock"
-            | "microsoftFoundry"
-            | "openRouter"
-            | "vercelAiGateway"
-            | "custom"
-        >()
-        .notNull(),
-    upstreamUrl: text("upstreamUrl"),
-    apiKey: text("apiKey"),
-    apiKeyLastChars: varchar("apiKeyLastChars"),
-    authType: varchar("authType")
-        .$type<
-            | "bearer"
-            | "x-api-key"
-            | "x-goog-api-key"
-            | "hec"
-            | "cf-aig-authorization"
-            | "none"
-            | "passthrough"
-        >()
-        .notNull(),
-    routingMode: varchar("routingMode")
-        .$type<"url" | "target">()
-        .notNull()
-        .default("url"),
-    capabilities: text("capabilities").notNull().default("[]"),
-    headers: text("headers"), // JSON array of { name, value }
-    skipTlsVerification: boolean("skipTlsVerification")
-        .notNull()
-        .default(false),
-    enabled: boolean("enabled").notNull().default(true),
-    createdAt: bigint("createdAt", { mode: "number" }).notNull(),
-    updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
-});
+export const aiProviders = pgTable(
+    "aiProviders",
+    {
+        providerId: serial("providerId").primaryKey(),
+        orgId: varchar("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        name: varchar("name").notNull(),
+        niceId: varchar("niceId").notNull(),
+        type: varchar("type")
+            .$type<
+                | "openai"
+                | "anthropic"
+                | "googleGemini"
+                | "vertexAi"
+                | "bedrock"
+                | "microsoftFoundry"
+                | "openRouter"
+                | "vercelAiGateway"
+                | "custom"
+            >()
+            .notNull(),
+        upstreamUrl: text("upstreamUrl"),
+        apiKey: text("apiKey"),
+        apiKeyLastChars: varchar("apiKeyLastChars"),
+        authType: varchar("authType")
+            .$type<
+                | "bearer"
+                | "x-api-key"
+                | "x-goog-api-key"
+                | "hec"
+                | "cf-aig-authorization"
+                | "none"
+                | "passthrough"
+            >()
+            .notNull(),
+        routingMode: varchar("routingMode")
+            .$type<"url" | "target">()
+            .notNull()
+            .default("url"),
+        capabilities: text("capabilities").notNull().default("[]"),
+        headers: text("headers"), // JSON array of { name, value }
+        skipTlsVerification: boolean("skipTlsVerification")
+            .notNull()
+            .default(false),
+        enabled: boolean("enabled").notNull().default(true),
+        createdAt: bigint("createdAt", { mode: "number" }).notNull(),
+        updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
+    },
+    (t) => [index("idx_aiProviders_orgId_niceId").on(t.orgId, t.niceId)]
+);
 
 export const aiModels = pgTable(
     "aiModels",
