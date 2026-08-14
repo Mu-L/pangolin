@@ -20,6 +20,8 @@ import {
     LayoutGrid,
     Link as LinkIcon,
     Logs,
+    MessageSquare,
+    MessagesSquare,
     MonitorUp,
     Plug,
     ReceiptText,
@@ -233,7 +235,7 @@ export const orgNavSections = (
             {
                 title: "sidebarLogsAi",
                 href: "/{orgId}/settings/logs/ai",
-                icon: <Bot className="size-4 flex-none" />
+                icon: <MessagesSquare className="size-4 flex-none" />
             },
             {
                 title: "sidebarLogsAiUsage",

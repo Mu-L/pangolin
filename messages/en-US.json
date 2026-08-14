@@ -1690,7 +1690,7 @@
     "virtualApiKeysName": "Name",
     "virtualApiKeysDescriptionOptional": "Description (optional)",
     "virtualApiKeysAssociateUserOptional": "Associate User (optional)",
-    "virtualApiKeysAssociateUserDescription": "Associate this key with a user to track usage.",
+    "virtualApiKeysAssociateUserDescription": "Associate this key with a user to track usage. Once created, this key immediately grants access to the selected public AI gateways. You do not need to associate a user to manually to the resource. The key will also show up in the user's profile.",
     "virtualApiKeysAllResources": "All public AI gateways",
     "virtualApiKeysAllResourcesDescription": "Allow this key to access every public AI gateway in the organization",
     "virtualApiKeysSelectResources": "Public AI Gateways",
