@@ -1926,8 +1926,6 @@
     "aiProviderModelsEditTitle": "Edit Model",
     "aiProviderModelsEditDescription": "Update the model key or configure its budget.",
     "aiProviderModelsBudgetTab": "Budget",
-    "aiProviderModelsBudgetDescription": "Configure how this model restricts usage based on spending or token limits",
-    "aiProviderModelsBudgetUnsaved": "Save this model first to configure its budget.",
     "aiProviderModelsKeyLabel": "Model Key",
     "aiProviderModelsKeyRequired": "Enter a model key",
     "aiProviderModelsKeyDuplicate": "This model key is already on a list",

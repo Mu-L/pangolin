@@ -22,8 +22,8 @@ import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { AiProviderAuthTypeSelect } from "@app/components/AiProviderAuthTypeSelect";
 import { AiProviderCapabilitiesSelect } from "@app/components/AiProviderCapabilitiesSelect";
 import {
-    type AiProviderModelListItem,
-    type ModelListType
+    persistPendingModelBudgets,
+    type AiProviderModelListItem
 } from "@app/components/AiProviderModelListEditor";
 import { AiProviderModelsLists } from "@app/components/AiProviderModelsLists";
 import {
@@ -59,7 +59,10 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authTypeRequiresApiKey } from "@app/lib/aiProviderDefaults";
 import { aiProviderQueries } from "@app/lib/queries";
-import type { CreateOrEditAiProviderResponse } from "@server/routers/aiProvider/types";
+import type {
+    CreateOrEditAiModelResponse,
+    CreateOrEditAiProviderResponse
+} from "@server/routers/aiProvider/types";
 import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
@@ -157,13 +160,21 @@ export default function CreateAiProviderPage() {
 
     async function createModels(
         providerId: number,
-        items: { modelKey: string; listType: ModelListType }[]
+        items: AiProviderModelListItem[]
     ) {
         for (const item of items) {
-            await api.put(`/ai-provider/${providerId}/model`, {
+            const res = await api.put<
+                AxiosResponse<CreateOrEditAiModelResponse>
+            >(`/ai-provider/${providerId}/model`, {
                 modelKey: item.modelKey,
                 name: item.modelKey,
                 listType: item.listType
+            });
+            await persistPendingModelBudgets({
+                api,
+                orgId,
+                modelId: res.data.data.model.modelId,
+                pendingBudgets: item.pendingBudgets
             });
         }
     }
@@ -210,8 +221,8 @@ export default function CreateAiProviderPage() {
 
         const modelItems = [...allowItems, ...blockItems]
             .map((item) => ({
-                modelKey: item.modelKey.trim(),
-                listType: item.listType
+                ...item,
+                modelKey: item.modelKey.trim()
             }))
             .filter((item) => item.modelKey);
 

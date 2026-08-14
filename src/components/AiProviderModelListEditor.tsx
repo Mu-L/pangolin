@@ -34,12 +34,6 @@ import {
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
 import { cn } from "@app/lib/cn";
 import { isModelKeyPattern } from "@server/lib/aiModelKeyMatch";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
@@ -56,16 +50,8 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { aiBudgetQueries } from "@app/lib/queries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-    Asterisk,
-    BookMarked,
-    Check,
-    Globe,
-    Pencil,
-    Plus,
-    Wallet,
-    XIcon
-} from "lucide-react";
+import type { AxiosInstance } from "axios";
+import { Globe, Plus, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -78,6 +64,7 @@ export type ModelSource = "catalog" | "custom" | "pattern" | "all";
 export const ALL_MODELS_KEY = "*";
 
 const COLLAPSED_ROWS = 5;
+const GRID_COLUMNS = 2;
 
 export type AiProviderModelListItem = {
     clientId: string;
@@ -85,7 +72,31 @@ export type AiProviderModelListItem = {
     modelKey: string;
     listType: ModelListType;
     hasBudget?: boolean;
+    pendingBudgets?: BudgetRow[];
 };
+
+export async function persistPendingModelBudgets({
+    api,
+    orgId,
+    modelId,
+    pendingBudgets
+}: {
+    api: AxiosInstance;
+    orgId: string;
+    modelId: number;
+    pendingBudgets?: BudgetRow[];
+}): Promise<void> {
+    if (!pendingBudgets || pendingBudgets.length === 0) {
+        return;
+    }
+    await saveBudgetRows({
+        api,
+        orgId,
+        scope: { type: "model", id: modelId },
+        existingBudgets: [],
+        rows: pendingBudgets
+    });
+}
 
 export type AiProviderModelListEditorProps = {
     orgId: string;
@@ -138,27 +149,6 @@ function parseBulkKeys(raw: string): string[] {
     return keys;
 }
 
-function useModelGridColumns(): number {
-    const [columns, setColumns] = useState(1);
-
-    useEffect(() => {
-        const sm = window.matchMedia("(min-width: 640px)");
-        const xl = window.matchMedia("(min-width: 1280px)");
-        const update = () => {
-            setColumns(xl.matches ? 3 : sm.matches ? 2 : 1);
-        };
-        update();
-        sm.addEventListener("change", update);
-        xl.addEventListener("change", update);
-        return () => {
-            sm.removeEventListener("change", update);
-            xl.removeEventListener("change", update);
-        };
-    }, []);
-
-    return columns;
-}
-
 export function AiProviderModelListEditor({
     orgId,
     listType,
@@ -178,8 +168,7 @@ export function AiProviderModelListEditor({
     const [listExpanded, setListExpanded] = useState(false);
     const [clipHeight, setClipHeight] = useState<number | null>(null);
     const gridRef = useRef<HTMLDivElement>(null);
-    const columns = useModelGridColumns();
-    const collapsedLimit = columns * COLLAPSED_ROWS;
+    const collapsedLimit = GRID_COLUMNS * COLLAPSED_ROWS;
     const hasOverflow = items.length > collapsedLimit;
     const isCollapsed = hasOverflow && !listExpanded;
 
@@ -358,7 +347,7 @@ export function AiProviderModelListEditor({
                         <div
                             ref={gridRef}
                             className={cn(
-                                "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3",
+                                "grid grid-cols-2 gap-2",
                                 isCollapsed && "overflow-hidden"
                             )}
                             style={
@@ -672,24 +661,6 @@ function ModelCard({
 }) {
     const t = useTranslations();
 
-    const sourceLabel =
-        source === "all"
-            ? t("aiProviderModelsSourceAll")
-            : source === "catalog"
-              ? t("aiProviderModelsSourceCatalog")
-              : source === "pattern"
-                ? t("aiProviderModelsSourcePattern")
-                : t("aiProviderModelsSourceCustom");
-
-    const SourceIcon =
-        source === "all"
-            ? Globe
-            : source === "catalog"
-              ? BookMarked
-              : source === "pattern"
-                ? Asterisk
-                : Pencil;
-
     return (
         <div
             className={cn(
@@ -714,55 +685,15 @@ function ModelCard({
         >
             <div className="min-w-0 flex-1">
                 {source === "all" ? (
-                    <>
-                        <span className="block truncate text-xs font-medium">
-                            {t("aiProviderModelsAllLabel")}
-                        </span>
-                    </>
+                    <span className="block truncate text-xs font-medium">
+                        {t("aiProviderModelsAllLabel")}
+                    </span>
                 ) : (
                     <span className="block truncate font-mono text-xs font-medium">
                         {item.modelKey}
                     </span>
                 )}
             </div>
-            <TooltipProvider>
-                <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <span
-                                className="inline-flex"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <SourceIcon
-                                    className="size-3.5"
-                                    aria-label={sourceLabel}
-                                />
-                            </span>
-                        </TooltipTrigger>
-                        <TooltipContent>{sourceLabel}</TooltipContent>
-                    </Tooltip>
-                    {item.hasBudget ? (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span
-                                    className="inline-flex"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <Wallet
-                                        className="size-3.5"
-                                        aria-label={t(
-                                            "aiProviderModelsBudgetConfigured"
-                                        )}
-                                    />
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                {t("aiProviderModelsBudgetConfigured")}
-                            </TooltipContent>
-                        </Tooltip>
-                    ) : null}
-                </div>
-            </TooltipProvider>
             <button
                 type="button"
                 className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-50"
@@ -844,7 +775,19 @@ function EditModelCredenza({
         if (!open) return;
         form.reset({ modelKey: item.modelKey });
         setAttemptedBudgetsSave(false);
-    }, [form, item.clientId, item.modelKey, open]);
+        if (item.modelId === undefined) {
+            setPendingBudgetRows(item.pendingBudgets ?? []);
+        } else {
+            setPendingBudgetRows([]);
+        }
+    }, [
+        form,
+        item.clientId,
+        item.modelId,
+        item.modelKey,
+        item.pendingBudgets,
+        open
+    ]);
 
     useEffect(() => {
         if (!open || !budgetsQuery.data) return;
@@ -896,7 +839,9 @@ function EditModelCredenza({
 
         onSave({
             ...item,
-            modelKey: values.modelKey.trim()
+            modelKey: values.modelKey.trim(),
+            pendingBudgets: pendingBudgetRows,
+            hasBudget: pendingBudgetRows.length > 0
         });
     }
 
@@ -953,29 +898,15 @@ function EditModelCredenza({
                                     />
                                 </div>
                                 <div className="space-y-4 mt-4">
-                                    {budgetScope ? (
-                                        <>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "aiProviderModelsBudgetDescription"
-                                                )}
-                                            </p>
-                                            <BudgetRowsFields
-                                                rows={pendingBudgetRows}
-                                                onChange={setPendingBudgetRows}
-                                                disabled={
-                                                    budgetsQuery.isLoading
-                                                }
-                                                attemptedSave={
-                                                    attemptedBudgetsSave
-                                                }
-                                            />
-                                        </>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground">
-                                            {t("aiProviderModelsBudgetUnsaved")}
-                                        </p>
-                                    )}
+                                    <BudgetRowsFields
+                                        rows={pendingBudgetRows}
+                                        onChange={setPendingBudgetRows}
+                                        disabled={
+                                            budgetScope !== null &&
+                                            budgetsQuery.isLoading
+                                        }
+                                        attemptedSave={attemptedBudgetsSave}
+                                    />
                                 </div>
                             </HorizontalTabs>
                         </CredenzaBody>

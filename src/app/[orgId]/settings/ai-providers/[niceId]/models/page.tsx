@@ -11,6 +11,7 @@ import {
     SettingsSectionTitle
 } from "@app/components/Settings";
 import {
+    persistPendingModelBudgets,
     type AiProviderModelListItem,
     type ModelListType
 } from "@app/components/AiProviderModelListEditor";
@@ -21,7 +22,9 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { aiProviderQueries } from "@app/lib/queries";
+import type { CreateOrEditAiModelResponse } from "@server/routers/aiProvider/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
@@ -113,8 +116,7 @@ export default function AiProviderModelsPage() {
                 return;
             }
 
-            const toCreate: { modelKey: string; listType: ModelListType }[] =
-                [];
+            const toCreate: AiProviderModelListItem[] = [];
             const toUpdate: {
                 modelId: number;
                 modelKey: string;
@@ -159,7 +161,7 @@ export default function AiProviderModelsPage() {
                     continue;
                 }
 
-                toCreate.push({ modelKey, listType });
+                toCreate.push(item);
             }
 
             const toDelete = existing
@@ -167,13 +169,21 @@ export default function AiProviderModelsPage() {
                 .map((model) => model.modelId);
 
             await Promise.all([
-                ...toCreate.map(({ modelKey, listType }) =>
-                    api.put(`/ai-provider/${provider.providerId}/model`, {
-                        modelKey,
-                        name: modelKey,
-                        listType
-                    })
-                ),
+                ...toCreate.map(async (item) => {
+                    const res = await api.put<
+                        AxiosResponse<CreateOrEditAiModelResponse>
+                    >(`/ai-provider/${provider.providerId}/model`, {
+                        modelKey: item.modelKey,
+                        name: item.modelKey,
+                        listType: item.listType
+                    });
+                    await persistPendingModelBudgets({
+                        api,
+                        orgId: provider.orgId,
+                        modelId: res.data.data.model.modelId,
+                        pendingBudgets: item.pendingBudgets
+                    });
+                }),
                 ...toUpdate.map(({ modelId, modelKey, listType }) =>
                     api.post(`/ai-model/${modelId}`, {
                         modelKey,
