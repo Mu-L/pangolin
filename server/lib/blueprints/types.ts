@@ -5,6 +5,11 @@ import { MaintenanceSchema } from "#dynamic/lib/blueprints/MaintenanceSchema";
 import { isValidRegionId } from "@server/db/regions";
 import { wildcardSubdomainSchema } from "@server/lib/schemas";
 import config from "@server/lib/config";
+import {
+    aiBudgetEnforcementSchema,
+    aiBudgetPeriodSchema,
+    aiBudgetUnitSchema
+} from "@server/routers/aiBudget/validation";
 
 const maxmindDbPath = config.getRawConfig().server.maxmind_db_path;
 const maxmindAsnPath = config.getRawConfig().server.maxmind_asn_path;
@@ -211,6 +216,33 @@ export const AiProviderAttachmentSchema = z
         }
     );
 
+export const AiBudgetSchema = z.object({
+    amount: z.number().positive(),
+    unit: aiBudgetUnitSchema,
+    period: aiBudgetPeriodSchema.optional().default("monthly"),
+    enforcement: aiBudgetEnforcementSchema.optional().default("hard"),
+    enabled: z.boolean().optional().default(true)
+});
+
+const aiBudgetArraySchema = z.array(AiBudgetSchema).refine(
+    (budgets) => {
+        const keys = budgets.map((b) => `${b.unit}::${b.period}`);
+        return keys.length === new Set(keys).size;
+    },
+    {
+        message:
+            "'ai-budget' entries must not overlap: only one budget per unit/period combination is allowed"
+    }
+);
+
+// No default here: an object with only 'targets' set must remain
+// recognized as a targets-only resource by isTargetsOnlyResource().
+export const AiBudgetListSchema = aiBudgetArraySchema.optional();
+
+export const AiBudgetListSchemaWithDefault = aiBudgetArraySchema
+    .optional()
+    .default([]);
+
 export const AuthDaemonSchema = z
     .object({
         pam: z.enum(["passthrough", "push"]).optional().default("passthrough"),
@@ -257,7 +289,8 @@ export const PublicResourceSchema = z
         "proxy-protocol": z.boolean().optional(),
         "proxy-protocol-version": z.int().min(1).optional(),
         labels: z.array(z.string().min(1)).optional(),
-        "ai-providers": z.array(AiProviderAttachmentSchema).optional()
+        "ai-providers": z.array(AiProviderAttachmentSchema).optional(),
+        "ai-budget": AiBudgetListSchema
     })
     .refine(
         (resource) => {
@@ -565,7 +598,8 @@ export const PrivateResourceSchema = z
         machines: z.array(z.string()).optional().default([]),
         labels: z.array(z.string().min(1)).optional().default([]),
         "auth-daemon": AuthDaemonSchema.optional(),
-        "ai-providers": z.array(AiProviderAttachmentSchema).optional().default([])
+        "ai-providers": z.array(AiProviderAttachmentSchema).optional().default([]),
+        "ai-budget": AiBudgetListSchemaWithDefault
     })
     .refine(
         (data) => {
@@ -921,3 +955,4 @@ export type Target = z.infer<typeof TargetSchema>;
 export type Resource = z.infer<typeof PublicResourceSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
 export type BlueprintResourcePolicy = z.infer<typeof ResourcePolicySchema>;
+export type BlueprintAiBudget = z.infer<typeof AiBudgetSchema>;

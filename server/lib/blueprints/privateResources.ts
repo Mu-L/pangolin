@@ -30,6 +30,7 @@ import { build } from "@server/build";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
 import { syncInferenceAiConfig } from "./aiProviders";
+import { syncAiBudgets } from "./aiBudgets";
 
 async function getDomainForSiteResource(
     siteResourceId: number | undefined,
@@ -367,6 +368,14 @@ export async function updatePrivateResources(
                 }))
             });
 
+            await syncAiBudgets({
+                orgId,
+                trx,
+                scope: "site",
+                siteResourceId,
+                budgets: resourceData["ai-budget"]
+            });
+
             await trx
                 .delete(clientSiteResources)
                 .where(eq(clientSiteResources.siteResourceId, siteResourceId));
@@ -666,6 +675,14 @@ export async function updatePrivateResources(
                         listType: m["list-type"]
                     }))
                 }))
+            });
+
+            await syncAiBudgets({
+                orgId,
+                trx,
+                scope: "site",
+                siteResourceId,
+                budgets: resourceData["ai-budget"]
             });
 
             const [adminRole] = await trx

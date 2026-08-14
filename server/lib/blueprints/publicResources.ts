@@ -57,6 +57,7 @@ import next from "next";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
 import { syncInferenceAiConfig } from "./aiProviders";
+import { syncAiBudgets } from "./aiBudgets";
 
 export type PublicResourcesResults = {
     proxyResource: Resource;
@@ -696,6 +697,14 @@ export async function updatePublicResources(
                         })
                     )
                 });
+
+                await syncAiBudgets({
+                    orgId,
+                    trx,
+                    scope: "public",
+                    resourceId: existingResource.resourceId,
+                    budgets: resourceData["ai-budget"] || []
+                });
             }
 
             const existingResourceTargets = await trx
@@ -1256,6 +1265,14 @@ export async function updatePublicResources(
                         listType: m["list-type"]
                     }))
                 }))
+            });
+
+            await syncAiBudgets({
+                orgId,
+                trx,
+                scope: "public",
+                resourceId: newResource.resourceId,
+                budgets: resourceData["ai-budget"] || []
             });
 
             await trx.insert(roleResources).values({
