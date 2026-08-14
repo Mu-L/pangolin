@@ -1,5 +1,5 @@
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import { hashPassword } from "@server/auth/password";
 import { generateId } from "@server/auth/sessions/app";
 import { build } from "@server/build";

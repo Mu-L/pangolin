@@ -38,7 +38,7 @@ import {
 } from "@server/lib/schemas";
 import { registry } from "@server/openApi";
 import { OpenAPITags } from "@server/openApi";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import {
     validateAndConstructDomain,
     checkWildcardDomainConflict

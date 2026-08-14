@@ -53,7 +53,7 @@ import createPathRewriteMiddleware from "@server/lib/traefik/middleware";
 import {
     CertificateResult,
     getValidCertificatesForDomains
-} from "#private/lib/certificates";
+} from "@server/lib/certificates";
 import { build } from "@server/build";
 import regionalCache from "#private/lib/cache";
 import {

@@ -8,7 +8,7 @@ import { db, exitNodes } from "@server/db";
 import { eq } from "drizzle-orm";
 import { getCurrentExitNodeId } from "@server/lib/exitNodes";
 import { getTraefikConfig } from "#dynamic/lib/traefik";
-import { getValidCertificatesForDomains } from "#dynamic/lib/certificates";
+import { getValidCertificatesForDomains } from "@server/lib/certificates";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
 import { build } from "@server/build";
 
@@ -628,8 +628,7 @@ export class TraefikConfigManager {
                                     .name,
 
                             remoteRoleHeader:
-                                config.getRawConfig().server.remote_headers
-                                    .role
+                                config.getRawConfig().server.remote_headers.role
                         }
                     }
                 };

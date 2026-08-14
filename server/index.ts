@@ -27,7 +27,7 @@ import { TraefikConfigManager } from "@server/lib/traefik/TraefikConfigManager";
 import { initCleanup } from "#dynamic/cleanup";
 import license from "#dynamic/license/license";
 import { initLogCleanupInterval } from "@server/lib/cleanupLogs";
-import { initAcmeCertSync } from "#dynamic/lib/acmeCertSync";
+import { initAcmeCertSync } from "@server/lib/acmeCertSync";
 import { fetchServerIp } from "@server/lib/serverIpService";
 import { startRebuildQueueProcessor } from "@server/lib/rebuildClientAssociations";
 import { initAiModelCatalog } from "@server/lib/aiModelCatalog";

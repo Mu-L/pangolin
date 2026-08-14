@@ -11,7 +11,6 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import * as certificates from "#private/routers/certificates";
 import { createStore } from "#private/lib/rateLimitStore";
 import * as billing from "#private/routers/billing";
 import * as remoteExitNode from "#private/routers/remoteExitNode";
@@ -50,7 +49,6 @@ import {
 import { ActionsEnum } from "@server/auth/actions";
 import {
     logActionAudit,
-    verifyCertificateAccess,
     verifyIdpAccess,
     verifyLoginPageAccess,
     verifyRemoteExitNodeAccess,
@@ -162,32 +160,6 @@ authenticated.get(
     "/user/:userId/admin-org-idps",
     verifyIsLoggedInUser,
     orgIdp.listUserAdminOrgIdps
-);
-
-authenticated.get(
-    "/org/:orgId/certificate/:domainId/:domain",
-    verifyOrgAccess,
-    verifyCertificateAccess,
-    verifyUserHasAction(ActionsEnum.getCertificate),
-    certificates.getCertificate
-);
-
-authenticated.get(
-    "/org/:orgId/batched-certificates",
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.getCertificate),
-    certificates.getBatchedCertificates
-);
-
-authenticated.post(
-    "/org/:orgId/certificate/:certId/restart",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyCertificateAccess,
-    verifyLimits,
-    verifyUserHasAction(ActionsEnum.restartCertificate),
-    logActionAudit(ActionsEnum.restartCertificate),
-    certificates.restartCertificate
 );
 
 if (build === "saas") {

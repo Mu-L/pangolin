@@ -24,7 +24,7 @@ import logger from "@server/logger";
 import { subdomainSchema, wildcardSubdomainSchema } from "@server/lib/schemas";
 import config from "@server/lib/config";
 import { OpenAPITags, registry } from "@server/openApi";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates";
 import {
     validateAndConstructDomain,
     checkWildcardDomainConflict

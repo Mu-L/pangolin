@@ -23,25 +23,6 @@ import {
     users
 } from "./schema";
 
-export const certificates = sqliteTable("certificates", {
-    certId: integer("certId").primaryKey({ autoIncrement: true }),
-    domain: text("domain").notNull().unique(),
-    domainId: text("domainId").references(() => domains.domainId, {
-        onDelete: "cascade"
-    }),
-    wildcard: integer("wildcard", { mode: "boolean" }).default(false),
-    status: text("status").notNull().default("pending"), // pending, requested, valid, expired, failed
-    expiresAt: integer("expiresAt"),
-    lastRenewalAttempt: integer("lastRenewalAttempt"),
-    createdAt: integer("createdAt").notNull(),
-    updatedAt: integer("updatedAt").notNull(),
-    orderId: text("orderId"),
-    errorMessage: text("errorMessage"),
-    renewalCount: integer("renewalCount").default(0),
-    certFile: text("certFile"),
-    keyFile: text("keyFile")
-});
-
 export const dnsChallenge = sqliteTable("dnsChallenges", {
     dnsChallengeId: integer("dnsChallengeId").primaryKey({
         autoIncrement: true
@@ -628,7 +609,6 @@ export const trialNotifications = sqliteTable("trialNotifications", {
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
-export type Certificate = InferSelectModel<typeof certificates>;
 export type DnsChallenge = InferSelectModel<typeof dnsChallenge>;
 export type Customer = InferSelectModel<typeof customers>;
 export type Subscription = InferSelectModel<typeof subscriptions>;

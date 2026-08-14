@@ -50,20 +50,21 @@ import {
     verifyAiProviderAccess,
     verifyAiModelAccess,
     verifyAiBudgetAccess,
-    verifyVirtualApiKeyAccess
+    verifyVirtualApiKeyAccess,
+    logActionAudit,
+    verifyCertificateAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import createHttpError from "http-errors";
 import { build } from "@server/build";
 import { createStore } from "#dynamic/lib/rateLimitStore";
-import { logActionAudit, verifyValidLicense } from "#dynamic/middlewares";
 import { checkRoundTripMessage } from "./ws";
 import * as labels from "@server/routers/labels";
 import * as aiProvider from "@server/routers/aiProvider";
 import * as aiBudget from "@server/routers/aiBudget";
 import * as virtualApiKey from "@server/routers/virtualApiKey";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import * as certificates from "@server/routers/certificates";
 
 // Root routes
 export const unauthenticated = Router();
@@ -1867,7 +1868,6 @@ authenticated.put(
 
 authenticated.post(
     "/org/:orgId/ssh/sign-key",
-    verifyValidLicense,
     verifyOrgAccess,
     verifyLimits,
     // verifyUserHasAction(ActionsEnum.signSshKey), // this check happens inside of the function now
@@ -1885,6 +1885,31 @@ authenticated.post(
     "/client/:clientId/rebuild-associations-cache",
     verifyClientAccess,
     client.rebuildClientAssociationsCacheRoute
+);
+
+authenticated.get(
+    "/org/:orgId/certificate/:domainId/:domain",
+    verifyOrgAccess,
+    verifyCertificateAccess,
+    verifyUserHasAction(ActionsEnum.getCertificate),
+    certificates.getCertificate
+);
+
+authenticated.get(
+    "/org/:orgId/batched-certificates",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getCertificate),
+    certificates.getBatchedCertificates
+);
+
+authenticated.post(
+    "/org/:orgId/certificate/:certId/restart",
+    verifyOrgAccess,
+    verifyCertificateAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.restartCertificate),
+    logActionAudit(ActionsEnum.restartCertificate),
+    certificates.restartCertificate
 );
 
 // Auth routes
