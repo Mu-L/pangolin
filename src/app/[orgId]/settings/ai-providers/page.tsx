@@ -53,6 +53,7 @@ export default async function AiProvidersPage({ params, searchParams }: Props) {
                 orgId={orgId}
                 providers={providers.map((provider) => ({
                     providerId: provider.providerId,
+                    niceId: provider.niceId,
                     name: provider.name,
                     type: provider.type,
                     routingMode: provider.routingMode,

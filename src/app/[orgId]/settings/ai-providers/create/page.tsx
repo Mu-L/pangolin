@@ -222,6 +222,7 @@ export default function CreateAiProviderPage() {
             >(`/org/${orgId}/ai-provider`, toAiProviderCreatePayload(values));
 
             const providerId = res.data.data.provider.providerId;
+            const niceId = res.data.data.provider.niceId;
 
             if (showTargets && targets.length > 0) {
                 try {
@@ -236,7 +237,7 @@ export default function CreateAiProviderPage() {
                         )
                     });
                     router.push(
-                        `/${orgId}/settings/ai-providers/${providerId}/network`
+                        `/${orgId}/settings/ai-providers/${niceId}/network`
                     );
                     return;
                 }
@@ -255,7 +256,7 @@ export default function CreateAiProviderPage() {
                         )
                     });
                     router.push(
-                        `/${orgId}/settings/ai-providers/${providerId}/models`
+                        `/${orgId}/settings/ai-providers/${niceId}/models`
                     );
                     return;
                 }
@@ -266,7 +267,7 @@ export default function CreateAiProviderPage() {
                 description: t("aiProviderCreated")
             });
 
-            router.push(`/${orgId}/settings/ai-providers/${providerId}`);
+            router.push(`/${orgId}/settings/ai-providers/${niceId}`);
         } catch (e) {
             toast({
                 variant: "destructive",

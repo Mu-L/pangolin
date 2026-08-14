@@ -55,6 +55,7 @@ export default function AiProviderGeneralPage() {
                         .string()
                         .trim()
                         .min(1, { message: t("nameRequired") }),
+                    niceId: z.string().min(1).max(255).optional(),
                     enabled: z.boolean(),
                     capabilities: z.array(z.enum(AI_CAPABILITIES)).optional()
                 })
@@ -76,6 +77,7 @@ export default function AiProviderGeneralPage() {
         resolver: zodResolver(generalSchema),
         defaultValues: {
             name: provider.name,
+            niceId: provider.niceId,
             enabled: provider.enabled,
             capabilities: provider.capabilities ?? []
         }
@@ -86,10 +88,12 @@ export default function AiProviderGeneralPage() {
         try {
             const body: {
                 name: string;
+                niceId?: string;
                 enabled: boolean;
                 capabilities?: AiCapability[];
             } = {
                 name: values.name.trim(),
+                niceId: values.niceId,
                 enabled: values.enabled,
                 capabilities: values.capabilities ?? []
             };
@@ -101,6 +105,7 @@ export default function AiProviderGeneralPage() {
             updateProvider(updated);
             form.reset({
                 name: updated.name,
+                niceId: updated.niceId,
                 enabled: updated.enabled,
                 capabilities: updated.capabilities ?? []
             });
@@ -108,6 +113,13 @@ export default function AiProviderGeneralPage() {
                 title: t("success"),
                 description: t("aiProviderUpdated")
             });
+
+            if (values.niceId && values.niceId !== provider.niceId) {
+                router.replace(
+                    `/${provider.orgId}/settings/ai-providers/${values.niceId}/general`
+                );
+            }
+
             router.refresh();
         } catch (e) {
             toast({
@@ -182,6 +194,29 @@ export default function AiProviderGeneralPage() {
                                                         <Input
                                                             autoComplete="off"
                                                             {...field}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
+
+                                    <SettingsFormCell span="half">
+                                        <FormField
+                                            control={form.control}
+                                            name="niceId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("identifier")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            {...field}
+                                                            placeholder={t(
+                                                                "enterIdentifier"
+                                                            )}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />

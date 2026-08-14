@@ -27,6 +27,7 @@ import { useDebouncedCallback } from "use-debounce";
 
 export type AiProviderRow = {
     providerId: number;
+    niceId: string;
     name: string;
     type: string;
     routingMode: string;
@@ -176,7 +177,7 @@ export default function AiProvidersTable({
                 header: () => <span className="p-3">{t("name")}</span>,
                 cell: ({ row }) => (
                     <Link
-                        href={`/${orgId}/settings/ai-providers/${row.original.providerId}`}
+                        href={`/${orgId}/settings/ai-providers/${row.original.niceId}`}
                         className="hover:underline"
                     >
                         {row.original.name}
@@ -238,7 +239,7 @@ export default function AiProvidersTable({
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild>
                                     <Link
-                                        href={`/${orgId}/settings/ai-providers/${row.original.providerId}`}
+                                        href={`/${orgId}/settings/ai-providers/${row.original.niceId}`}
                                     >
                                         {t("edit")}
                                     </Link>
@@ -256,7 +257,7 @@ export default function AiProvidersTable({
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Link
-                            href={`/${orgId}/settings/ai-providers/${row.original.providerId}`}
+                            href={`/${orgId}/settings/ai-providers/${row.original.niceId}`}
                         >
                             <Button variant="outline">
                                 {t("edit")}

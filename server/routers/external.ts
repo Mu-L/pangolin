@@ -1589,6 +1589,13 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.getAiProvider),
     aiProvider.getAiProvider
 );
+authenticated.get(
+    "/org/:orgId/ai-provider/:niceId",
+    verifyOrgAccess,
+    verifyAiProviderAccess,
+    verifyUserHasAction(ActionsEnum.getAiProvider),
+    aiProvider.getAiProvider
+);
 
 authenticated.put(
     "/ai-provider/:providerId/target",

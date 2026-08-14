@@ -20,17 +20,17 @@ export const dynamic = "force-dynamic";
 
 type Props = {
     children: React.ReactNode;
-    params: Promise<{ orgId: string; providerId: string }>;
+    params: Promise<{ orgId: string; niceId: string }>;
 };
 
 export default async function AiProviderLayout({ children, params }: Props) {
-    const { orgId, providerId } = await params;
+    const { orgId, niceId } = await params;
     const t = await getTranslations();
 
     let provider = null;
     try {
         const res = await internal.get<AxiosResponse<GetAiProviderResponse>>(
-            `/ai-provider/${providerId}`,
+            `/org/${orgId}/ai-provider/${niceId}`,
             await authCookieHeader()
         );
         provider = res.data.data.provider;
@@ -63,23 +63,23 @@ export default async function AiProviderLayout({ children, params }: Props) {
     const navItems = [
         {
             title: t("general"),
-            href: "/{orgId}/settings/ai-providers/{providerId}/general"
+            href: "/{orgId}/settings/ai-providers/{niceId}/general"
         },
         {
             title: t("aiProviderNetworkSettings"),
-            href: "/{orgId}/settings/ai-providers/{providerId}/network"
+            href: "/{orgId}/settings/ai-providers/{niceId}/network"
         },
         {
             title: t("aiProviderModels"),
-            href: "/{orgId}/settings/ai-providers/{providerId}/models"
+            href: "/{orgId}/settings/ai-providers/{niceId}/models"
         },
         {
             title: t("aiProviderAuthSettings"),
-            href: "/{orgId}/settings/ai-providers/{providerId}/authentication"
+            href: "/{orgId}/settings/ai-providers/{niceId}/authentication"
         },
         {
             title: t("aiProviderBudgetSettings"),
-            href: "/{orgId}/settings/ai-providers/{providerId}/budget"
+            href: "/{orgId}/settings/ai-providers/{niceId}/budget"
         }
     ];
 
