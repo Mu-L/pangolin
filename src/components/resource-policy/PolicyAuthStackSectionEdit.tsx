@@ -15,7 +15,6 @@ import {
 } from "@app/components/roles-selector";
 import { UsersSelector } from "@app/components/users-selector";
 import { Button } from "@app/components/ui/button";
-import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { Form, FormField } from "@app/components/ui/form";
 import { toast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
@@ -29,7 +28,6 @@ import type { GetResourcePolicyResponse } from "@server/routers/policy";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
-import { ExternalLink, InfoIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toUnicode } from "punycode";
@@ -555,34 +553,6 @@ export function PolicyAuthStackSectionEdit({
                         {isResourceOverlay && (
                             <SharedPolicyResourceNotice section="authentication" />
                         )}
-                        {isInferenceResource && (
-                            <Alert variant="neutral">
-                                <InfoIcon className="h-4 w-4" />
-                                <AlertDescription>
-                                    {inferenceResourceUrl
-                                        ? t.rich(
-                                              "policyAuthInferenceIdentityKeyHelp",
-                                              {
-                                                  resourceLink: () => (
-                                                      <a
-                                                          href={
-                                                              inferenceResourceUrl
-                                                          }
-                                                          target="_blank"
-                                                          rel="noopener noreferrer"
-                                                          className="text-primary hover:underline"
-                                                      >
-                                                          {inferenceResourceUrl}
-                                                      </a>
-                                                  )
-                                              }
-                                          )
-                                        : t(
-                                              "policyAuthInferenceIdentityKeyHelpNoUrl"
-                                          )}
-                                </AlertDescription>
-                            </Alert>
-                        )}
                         <SettingsSectionForm variant="half">
                             <PolicyAuthSsoSection
                                 sso={Boolean(sso) || isInferenceResource}
@@ -600,9 +570,9 @@ export function PolicyAuthStackSectionEdit({
                                 disabled={authReadonly}
                                 idpDisabled={authReadonly}
                                 ssoLocked={isInferenceResource}
-                                description={
+                                identityKeyUrl={
                                     isInferenceResource
-                                        ? t("policyAuthInferenceSsoDescription")
+                                        ? inferenceResourceUrl
                                         : undefined
                                 }
                                 rolesEditor={

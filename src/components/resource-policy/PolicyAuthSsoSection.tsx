@@ -1,5 +1,6 @@
 "use client";
 
+import CopyToClipboard from "@app/components/CopyToClipboard";
 import { SettingsFormCell, SettingsFormGrid } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
@@ -32,6 +33,7 @@ export type PolicyAuthSsoSectionProps = {
     ssoLocked?: boolean;
     title?: string;
     description?: string;
+    identityKeyUrl?: string | null;
 };
 
 export function PolicyAuthSsoSection({
@@ -46,7 +48,8 @@ export function PolicyAuthSsoSection({
     idpDisabled,
     ssoLocked,
     title,
-    description
+    description,
+    identityKeyUrl
 }: PolicyAuthSsoSectionProps) {
     const t = useTranslations();
     const [showIdpSelect, setShowIdpSelect] = useState(skipToIdpId != null);
@@ -79,11 +82,32 @@ export function PolicyAuthSsoSection({
 
             {ssoActive && (
                 <>
-                    {ssoLocked && ssoDescription && (
+                    {ssoLocked && identityKeyUrl !== undefined && (
                         <SettingsFormCell span="full">
-                            <p className="text-sm text-muted-foreground">
-                                {ssoDescription}
-                            </p>
+                            {identityKeyUrl ? (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t(
+                                            "policyAuthInferenceIdentityKeySignInUrl"
+                                        )}
+                                    </FormLabel>
+                                    <CopyToClipboard
+                                        text={identityKeyUrl}
+                                        isLink
+                                    />
+                                    <FormDescription>
+                                        {t(
+                                            "policyAuthInferenceIdentityKeyHelp"
+                                        )}
+                                    </FormDescription>
+                                </FormItem>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    {t(
+                                        "policyAuthInferenceIdentityKeyHelpNoUrl"
+                                    )}
+                                </p>
+                            )}
                         </SettingsFormCell>
                     )}
                     <SettingsFormCell span="full">
