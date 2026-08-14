@@ -42,8 +42,9 @@ export const VirtualApiKeyGenerated = ({
 
                         <EmailText>
                             A virtual API key for <strong>{orgName}</strong> has
-                            been shared with you. Treat this key like a password
-                            and do not share it.
+                            been shared with you. This key grants access to the
+                            public AI gateways it was created for. Treat this
+                            key like a password and do not share it.
                         </EmailText>
 
                         <EmailSection>

@@ -1769,6 +1769,15 @@ authenticated.get(
     virtualApiKey.listVirtualApiKeys
 );
 
+authenticated.post(
+    "/org/:orgId/virtual-api-keys/email-identity-keys",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.getVirtualApiKey),
+    virtualApiKey.emailIdentityKeysRateLimit,
+    logActionAudit(ActionsEnum.getVirtualApiKey),
+    virtualApiKey.emailIdentityKeys
+);
+
 authenticated.get(
     "/virtual-api-key/:virtualApiKeyId",
     verifyApiKeyVirtualApiKeyAccess,

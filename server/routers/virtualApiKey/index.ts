@@ -5,4 +5,5 @@ export * from "./getVirtualApiKey";
 export * from "./getMyVirtualApiKey";
 export * from "./updateVirtualApiKey";
 export * from "./deleteVirtualApiKey";
+export * from "./emailIdentityKeys";
 export * from "./types";

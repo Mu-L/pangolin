@@ -28,3 +28,8 @@ export type ListMyVirtualApiKeysResponse = {
 export type GetMyVirtualApiKeyResponse = {
     virtualApiKey: VirtualApiKeyWithResources;
 };
+
+export type EmailIdentityKeysResponse = {
+    sent: number;
+    skipped: number;
+};

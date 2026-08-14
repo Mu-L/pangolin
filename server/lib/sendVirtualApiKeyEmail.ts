@@ -2,6 +2,7 @@ import { db, resources, users, virtualApiKeyResources } from "@server/db";
 import { and, asc, eq } from "drizzle-orm";
 import config from "@server/lib/config";
 import { sendEmail } from "@server/emails";
+import IdentityApiKeyGenerated from "@server/emails/templates/IdentityApiKeyGenerated";
 import VirtualApiKeyGenerated from "@server/emails/templates/VirtualApiKeyGenerated";
 import { formatVirtualApiKeyCredential } from "@server/lib/virtualApiKey";
 
@@ -58,6 +59,17 @@ async function listVirtualApiKeyGatewayUrls(params: {
         urls: urls.slice(0, EMAIL_GATEWAY_URL_LIMIT),
         hasMore: rows.length > EMAIL_GATEWAY_URL_LIMIT
     };
+}
+
+export async function listOrgInferenceGatewayUrls(orgId: string): Promise<{
+    urls: string[];
+    hasMore: boolean;
+}> {
+    return listVirtualApiKeyGatewayUrls({
+        orgId,
+        allResources: true,
+        virtualApiKeyId: ""
+    });
 }
 
 export async function resolveVirtualApiKeyEmailRecipients(params: {
@@ -125,6 +137,9 @@ export async function sendVirtualApiKeyEmails(params: {
     virtualApiKeyId: string;
     secret: string;
     allResources: boolean;
+    isIdentityKey?: boolean;
+    accountLabel?: string | null;
+    gatewayUrls?: { urls: string[]; hasMore: boolean };
 }): Promise<void> {
     if (params.recipients.length === 0) {
         return;
@@ -134,23 +149,35 @@ export async function sendVirtualApiKeyEmails(params: {
         params.virtualApiKeyId,
         params.secret
     );
-    const { urls, hasMore } = await listVirtualApiKeyGatewayUrls({
-        orgId: params.orgId,
-        allResources: params.allResources,
-        virtualApiKeyId: params.virtualApiKeyId
-    });
+    const { urls, hasMore } =
+        params.gatewayUrls ??
+        (await listVirtualApiKeyGatewayUrls({
+            orgId: params.orgId,
+            allResources: params.allResources,
+            virtualApiKeyId: params.virtualApiKeyId
+        }));
     const from = config.getNoReplyEmail();
-    const subject = `Virtual API key for ${params.orgName}`;
+    const subject = params.isIdentityKey
+        ? `Your identity key for ${params.orgName}`
+        : `Virtual API key for ${params.orgName}`;
 
     for (const to of params.recipients) {
         await sendEmail(
-            VirtualApiKeyGenerated({
-                orgName: params.orgName,
-                keyName: params.keyName,
-                credential,
-                resourceUrls: urls,
-                hasMoreResources: hasMore
-            }),
+            params.isIdentityKey
+                ? IdentityApiKeyGenerated({
+                      orgName: params.orgName,
+                      accountLabel: params.accountLabel,
+                      credential,
+                      resourceUrls: urls,
+                      hasMoreResources: hasMore
+                  })
+                : VirtualApiKeyGenerated({
+                      orgName: params.orgName,
+                      keyName: params.keyName,
+                      credential,
+                      resourceUrls: urls,
+                      hasMoreResources: hasMore
+                  }),
             {
                 to,
                 from,
