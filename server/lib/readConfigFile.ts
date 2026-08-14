@@ -167,9 +167,8 @@ export const configSchema = z
                     .transform((val) =>
                         process.env.ENABLE_AI_GATEWAY_CLIENT_IP_HEADER !==
                         undefined
-                            ? process.env
-                                  .ENABLE_AI_GATEWAY_CLIENT_IP_HEADER ===
-                                  "true"
+                            ? process.env.ENABLE_AI_GATEWAY_CLIENT_IP_HEADER ===
+                              "true"
                             : val
                     ),
                 secret: z.string().pipe(z.string().min(8)).optional(),
@@ -443,7 +442,18 @@ export const configSchema = z
                 disable_basic_wireguard_sites: z.boolean().optional(),
                 disable_config_managed_domains: z.boolean().optional(),
                 disable_product_help_banners: z.boolean().optional(),
-                disable_enterprise_features: z.boolean().optional()
+                disable_enterprise_features: z.boolean().optional(),
+                enable_acme_cert_sync: z.boolean().optional().default(true)
+            })
+            .optional(),
+        acme: z
+            .object({
+                acme_json_path: z
+                    .string()
+                    .optional()
+                    .default("config/letsencrypt/acme.json"),
+                acme_http_endpoint: z.string().optional(),
+                sync_interval_ms: z.number().optional().default(5000)
             })
             .optional(),
         ai: z
