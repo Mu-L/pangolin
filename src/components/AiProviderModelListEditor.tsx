@@ -964,8 +964,7 @@ function EditModelCredenza({
                                                 rows={pendingBudgetRows}
                                                 onChange={setPendingBudgetRows}
                                                 disabled={
-                                                    budgetsQuery.isLoading ||
-                                                    savingBudgets
+                                                    budgetsQuery.isLoading
                                                 }
                                                 attemptedSave={
                                                     attemptedBudgetsSave

@@ -219,9 +219,7 @@ export function RoleForm({
         useState<PendingTextImport | null>(null);
     const [dragOverField, setDragOverField] =
         useState<RoleTextImportField | null>(null);
-    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>(
-        []
-    );
+    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>([]);
     const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
 
     const budgetsQuery = useQuery({
@@ -702,7 +700,6 @@ export function RoleForm({
                             </div>
                         )}
 
-                        {/* Inference Budget tab */}
                         <div className="space-y-4 mt-4">
                             <p className="text-sm text-muted-foreground">
                                 {t("accessRoleInferenceBudgetDescription")}
@@ -711,8 +708,7 @@ export function RoleForm({
                                 rows={pendingBudgetRows}
                                 onChange={setPendingBudgetRows}
                                 disabled={
-                                    variant === "edit" &&
-                                    budgetsQuery.isLoading
+                                    variant === "edit" && budgetsQuery.isLoading
                                 }
                                 attemptedSave={attemptedBudgetsSave}
                             />

@@ -112,9 +112,7 @@ export default function EditVirtualApiKeyForm({
     >([]);
     const [credential, setCredential] = useState<string | null>(null);
     const [credentialLoading, setCredentialLoading] = useState(false);
-    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>(
-        []
-    );
+    const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>([]);
     const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
 
     const budgetScope = {
@@ -350,9 +348,7 @@ export default function EditVirtualApiKeyForm({
                     <div className="flex flex-col gap-y-4 px-1">
                         <Form {...form}>
                             <form
-                                onSubmit={form.handleSubmit(
-                                    handleFormSubmit
-                                )}
+                                onSubmit={form.handleSubmit(handleFormSubmit)}
                                 className="space-y-4"
                                 id="edit-virtual-api-key-form"
                             >
@@ -369,99 +365,11 @@ export default function EditVirtualApiKeyForm({
                                         }
                                     ]}
                                 >
-                                <div className="space-y-4 mt-4">
-                                <div className="space-y-2">
-                                    <Label>
-                                        {t(
-                                            "virtualApiKeysAssociateUserOptional"
-                                        )}
-                                    </Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn(
-                                                    "w-full justify-between",
-                                                    !selectedUser &&
-                                                        "text-muted-foreground"
-                                                )}
-                                            >
-                                                {selectedUser?.text
-                                                    ? selectedUser.text
-                                                    : t("userSelect")}
-                                                <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
-                                            <UserSelector
-                                                orgId={org.org.orgId}
-                                                selectedUser={selectedUser}
-                                                onSelectUser={setSelectedUser}
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t(
-                                            "virtualApiKeysAssociateUserDescription"
-                                        )}
-                                    </p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <FormField
-                                        control={form.control}
-                                        name="allResources"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <div className="flex items-start space-x-2">
-                                                    <FormControl>
-                                                        <Checkbox
-                                                            id="edit-all-resources"
-                                                            checked={
-                                                                field.value
-                                                            }
-                                                            onCheckedChange={(
-                                                                val
-                                                            ) => {
-                                                                field.onChange(
-                                                                    val as boolean
-                                                                );
-                                                                if (val) {
-                                                                    setSelectedResources(
-                                                                        []
-                                                                    );
-                                                                }
-                                                            }}
-                                                            className="mt-0.5"
-                                                        />
-                                                    </FormControl>
-                                                    <div className="space-y-1">
-                                                        <label
-                                                            htmlFor="edit-all-resources"
-                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                        >
-                                                            {t(
-                                                                "virtualApiKeysAllResources"
-                                                            )}
-                                                        </label>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {t(
-                                                                "virtualApiKeysAllResourcesDescription"
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {!allResources && (
+                                    <div className="space-y-4 mt-4">
                                         <div className="space-y-2">
                                             <Label>
                                                 {t(
-                                                    "virtualApiKeysSelectResources"
+                                                    "virtualApiKeysAssociateUserOptional"
                                                 )}
                                             </Label>
                                             <Popover>
@@ -471,66 +379,163 @@ export default function EditVirtualApiKeyForm({
                                                         role="combobox"
                                                         className={cn(
                                                             "w-full justify-between",
-                                                            selectedResources.length ===
-                                                                0 &&
+                                                            !selectedUser &&
                                                                 "text-muted-foreground"
                                                         )}
                                                     >
-                                                        <span className="truncate text-left">
-                                                            {formatMultiResourcesSelectorLabel(
-                                                                selectedResources,
-                                                                t,
-                                                                "virtualApiKeysSelectResourcesPlaceholder"
-                                                            )}
-                                                        </span>
+                                                        {selectedUser?.text
+                                                            ? selectedUser.text
+                                                            : t("userSelect")}
                                                         <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                                    <MultiResourcesSelector
+                                                <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
+                                                    <UserSelector
                                                         orgId={org.org.orgId}
-                                                        selectedResources={
-                                                            selectedResources
+                                                        selectedUser={
+                                                            selectedUser
                                                         }
-                                                        onSelectionChange={
-                                                            setSelectedResources
-                                                        }
-                                                        protocol="inference"
-                                                        showClear={
-                                                            selectedResources.length >
-                                                            0
-                                                        }
-                                                        onClear={() =>
-                                                            setSelectedResources(
-                                                                []
-                                                            )
+                                                        onSelectUser={
+                                                            setSelectedUser
                                                         }
                                                     />
                                                 </PopoverContent>
                                             </Popover>
-                                            <FormDescription>
+                                            <p className="text-sm text-muted-foreground">
                                                 {t(
-                                                    "virtualApiKeysSelectResourcesRequired"
+                                                    "virtualApiKeysAssociateUserDescription"
                                                 )}
-                                            </FormDescription>
+                                            </p>
                                         </div>
-                                    )}
-                                </div>
-                                </div>
 
-                                <div className="space-y-4 mt-4">
-                                    <p className="text-sm text-muted-foreground">
-                                        {t(
-                                            "virtualApiKeysInferenceBudgetDescription"
-                                        )}
-                                    </p>
-                                    <BudgetRowsFields
-                                        rows={pendingBudgetRows}
-                                        onChange={setPendingBudgetRows}
-                                        disabled={budgetsQuery.isLoading}
-                                        attemptedSave={attemptedBudgetsSave}
-                                    />
-                                </div>
+                                        <div className="space-y-3">
+                                            <FormField
+                                                control={form.control}
+                                                name="allResources"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <div className="flex items-start space-x-2">
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    id="edit-all-resources"
+                                                                    checked={
+                                                                        field.value
+                                                                    }
+                                                                    onCheckedChange={(
+                                                                        val
+                                                                    ) => {
+                                                                        field.onChange(
+                                                                            val as boolean
+                                                                        );
+                                                                        if (
+                                                                            val
+                                                                        ) {
+                                                                            setSelectedResources(
+                                                                                []
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                    className="mt-0.5"
+                                                                />
+                                                            </FormControl>
+                                                            <div className="space-y-1">
+                                                                <label
+                                                                    htmlFor="edit-all-resources"
+                                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                                >
+                                                                    {t(
+                                                                        "virtualApiKeysAllResources"
+                                                                    )}
+                                                                </label>
+                                                                <p className="text-sm text-muted-foreground">
+                                                                    {t(
+                                                                        "virtualApiKeysAllResourcesDescription"
+                                                                    )}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            {!allResources && (
+                                                <div className="space-y-2">
+                                                    <Label>
+                                                        {t(
+                                                            "virtualApiKeysSelectResources"
+                                                        )}
+                                                    </Label>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                role="combobox"
+                                                                className={cn(
+                                                                    "w-full justify-between",
+                                                                    selectedResources.length ===
+                                                                        0 &&
+                                                                        "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                <span className="truncate text-left">
+                                                                    {formatMultiResourcesSelectorLabel(
+                                                                        selectedResources,
+                                                                        t,
+                                                                        "virtualApiKeysSelectResourcesPlaceholder"
+                                                                    )}
+                                                                </span>
+                                                                <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                                            <MultiResourcesSelector
+                                                                orgId={
+                                                                    org.org
+                                                                        .orgId
+                                                                }
+                                                                selectedResources={
+                                                                    selectedResources
+                                                                }
+                                                                onSelectionChange={
+                                                                    setSelectedResources
+                                                                }
+                                                                protocol="inference"
+                                                                showClear={
+                                                                    selectedResources.length >
+                                                                    0
+                                                                }
+                                                                onClear={() =>
+                                                                    setSelectedResources(
+                                                                        []
+                                                                    )
+                                                                }
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "virtualApiKeysSelectResourcesRequired"
+                                                        )}
+                                                    </FormDescription>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 mt-4">
+                                        <p className="text-sm text-muted-foreground">
+                                            {t(
+                                                "virtualApiKeysInferenceBudgetDescription"
+                                            )}
+                                        </p>
+                                        <BudgetRowsFields
+                                            rows={pendingBudgetRows}
+                                            onChange={setPendingBudgetRows}
+                                            disabled={budgetsQuery.isLoading}
+                                            attemptedSave={attemptedBudgetsSave}
+                                        />
+                                    </div>
                                 </HorizontalTabs>
                             </form>
                         </Form>
