@@ -15,7 +15,8 @@ import {
     getRoleResourceAccess,
     getUserResourceAccess,
     getOrgLoginPage,
-    getUserSessionWithUser
+    getUserSessionWithUser,
+    getWhitelistEmail
 } from "@server/db/queries/verifySessionQueries";
 import { getUserOrgRoles } from "@server/lib/userOrgRoles";
 import {
@@ -92,6 +93,13 @@ type BasicUserData = {
     email: string | null;
     name: string | null;
     role: string | null;
+};
+
+// Some auth methods (e.g. email whitelist) only know the remote email and
+// have no associated user record to attach userId/username/name/role to.
+type EmailOnlyUserData = {
+    dontStripSession?: boolean;
+    email: string;
 };
 
 export type { ClientErrorResponse };
@@ -782,6 +790,18 @@ export async function verifyResourceSession(
                         "Resource allowed because whitelist session is valid"
                     );
 
+                    const whitelistCacheKey = `whitelistEmail:${resourceSession.whitelistId}:${resourceSession.policyWhitelistId}`;
+                    let whitelistEmail: string | null | undefined =
+                        localCache.get(whitelistCacheKey);
+
+                    if (whitelistEmail === undefined) {
+                        whitelistEmail = await getWhitelistEmail(
+                            resourceSession.whitelistId,
+                            resourceSession.policyWhitelistId
+                        );
+                        localCache.set(whitelistCacheKey, whitelistEmail, 12);
+                    }
+
                     logRequestAudit(
                         {
                             action: true,
@@ -793,7 +813,11 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res, undefined, dontStripSession);
+                    return allowed(
+                        res,
+                        whitelistEmail ? { email: whitelistEmail } : undefined,
+                        dontStripSession
+                    );
                 }
 
                 if (resourceSession.accessTokenId) {
@@ -1022,7 +1046,7 @@ async function notAllowed(
 
 function allowed(
     res: Response,
-    userData?: BasicUserData,
+    userData?: BasicUserData | EmailOnlyUserData,
     dontStripSession?: boolean,
     virtualApiKeyId?: string
 ) {
