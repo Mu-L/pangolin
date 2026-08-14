@@ -79,12 +79,16 @@ import {
     buildAiGatewayHostHeaderMiddleware,
     buildAiGatewayRouterAndService
 } from "@server/lib/traefik/aiGatewayMiddlewares";
+import {
+    buildBrowserGatewayResourcesMap,
+    buildBrowserGatewayConfig
+} from "@server/lib/traefik/browserGateway";
+import { buildSiteResourceAliasCertPlaceholders } from "@server/lib/traefik/siteResourceAlias";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const redirectToRootMiddlewareName = "redirect-to-root";
 const badgerMiddlewareName = "badger";
 const landingRateLimitMiddlewareName = "landing-ratelimit";
-const bgRateLimitMiddlewareName = "bg-ratelimit";
 
 export async function getTraefikConfig(
     exitNodeId: number,
@@ -311,74 +315,12 @@ export async function getTraefikConfig(
     }
 
     // Group browser gateway targets by resource
-    type BrowserGatewayResourceEntry = {
-        resourceId: number;
-        name: string;
-        fullDomain: string | null;
-        ssl: boolean | null;
-        subdomain: string | null;
-        domainId: string | null;
-        enabled: boolean | null;
-        wildcard: boolean | null;
-        domainCertResolver: string | null;
-        preferWildcardCert: boolean | null;
-        maintenanceModeEnabled: boolean | null;
-        maintenanceModeType: string | null;
-        maintenanceTitle: string | null;
-        maintenanceMessage: string | null;
-        maintenanceEstimatedTime: string | null;
-        targets: {
-            targetId: number;
-            bgType: string;
-            siteId: number;
-            siteType: string;
-            siteOnline: boolean | null;
-            subnet: string | null;
-        }[];
-    };
-    const browserGatewayResourcesMap = new Map<
-        number,
-        BrowserGatewayResourceEntry
-    >();
-
-    if (browserGatewayUiUrl) {
-        for (const row of resourcesWithTargetsAndSites) {
-            if (!["ssh", "vnc", "rdp"].includes(row.mode)) {
-                continue;
-            }
-            if (filterOutNamespaceDomains && row.domainNamespaceId) {
-                continue;
-            }
-            if (!browserGatewayResourcesMap.has(row.resourceId)) {
-                browserGatewayResourcesMap.set(row.resourceId, {
-                    resourceId: row.resourceId,
-                    name: sanitize(row.resourceName) || "",
-                    fullDomain: row.fullDomain,
-                    ssl: row.ssl,
-                    subdomain: row.subdomain,
-                    domainId: row.domainId,
-                    enabled: row.enabled,
-                    wildcard: row.wildcard,
-                    domainCertResolver: row.domainCertResolver,
-                    preferWildcardCert: row.preferWildcardCert,
-                    maintenanceModeEnabled: row.maintenanceModeEnabled,
-                    maintenanceModeType: row.maintenanceModeType,
-                    maintenanceTitle: row.maintenanceTitle,
-                    maintenanceMessage: row.maintenanceMessage,
-                    maintenanceEstimatedTime: row.maintenanceEstimatedTime,
-                    targets: []
-                });
-            }
-            browserGatewayResourcesMap.get(row.resourceId)!.targets.push({
-                targetId: row.targetId,
-                bgType: row.mode,
-                siteId: row.siteId,
-                siteType: row.siteType,
-                siteOnline: row.siteOnline,
-                subnet: row.subnet
-            });
-        }
-    }
+    const browserGatewayResourcesMap = browserGatewayUiUrl
+        ? buildBrowserGatewayResourcesMap(
+              resourcesWithTargetsAndSites,
+              filterOutNamespaceDomains
+          )
+        : new Map();
 
     let siteResourcesWithFullDomain: {
         siteResourceId: number;
@@ -509,12 +451,6 @@ export async function getTraefikConfig(
                     }
                 },
                 [landingRateLimitMiddlewareName]: {
-                    rateLimit: {
-                        average: traefikRateLimit.average,
-                        burst: traefikRateLimit.burst
-                    }
-                },
-                [bgRateLimitMiddlewareName]: {
                     rateLimit: {
                         average: traefikRateLimit.average,
                         burst: traefikRateLimit.burst
@@ -840,37 +776,29 @@ export async function getTraefikConfig(
     }
 
     if (browserGatewayUiUrl) {
-        // Generate Traefik config for browser gateway resources
-        const browserGatewayPort = 39999;
-        for (const [, bgResource] of browserGatewayResourcesMap.entries()) {
-            if (!bgResource.enabled) continue;
-            if (!bgResource.domainId) continue;
-            if (!bgResource.fullDomain) continue;
-
-            if (!config_output.http.routers) config_output.http.routers = {};
-            if (!config_output.http.services) config_output.http.services = {};
-
-            const fullDomain = bgResource.fullDomain;
-            const additionalMiddlewares =
-                config.getRawConfig().traefik.additional_middlewares || [];
-            const routerMiddlewares = [
-                badgerMiddlewareName,
-                bgRateLimitMiddlewareName,
-                ...additionalMiddlewares
-            ];
-
-            const hostRule = `Host(\`${fullDomain}\`)`;
-
-            // Build TLS config
-            let tls = {};
-            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
-                tls = buildWildcardTls({
-                    fullDomain,
-                    hasSubdomain: !!bgResource.subdomain,
-                    domainCertResolver: bgResource.domainCertResolver,
-                    preferWildcardCert: bgResource.preferWildcardCert
-                });
-            } else {
+        buildBrowserGatewayConfig({
+            config_output,
+            browserGatewayResourcesMap,
+            browserGatewayUiUrl,
+            maintenancePageUiUrl,
+            badgerMiddlewareName,
+            redirectHttpsMiddlewareName,
+            resolveTls: ({
+                fullDomain,
+                hasSubdomain,
+                domainCertResolver,
+                preferWildcardCert
+            }) => {
+                if (
+                    !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
+                ) {
+                    return buildWildcardTls({
+                        fullDomain,
+                        hasSubdomain,
+                        domainCertResolver,
+                        preferWildcardCert
+                    });
+                }
                 const matchingCert = validCerts.find(
                     (cert) => cert.queriedDomain === fullDomain
                 );
@@ -878,231 +806,11 @@ export async function getTraefikConfig(
                     logger.debug(
                         `No matching certificate found for browser gateway domain: ${fullDomain}`
                     );
-                    continue;
+                    return null;
                 }
+                return {};
             }
-
-            const bgUiServiceName = `bg-r${bgResource.resourceId}-ui-service`;
-
-            if (bgResource.ssl) {
-                const redirectRouterName = `bg-r${bgResource.resourceId}-redirect`;
-                config_output.http.routers![redirectRouterName] = {
-                    entryPoints: [
-                        config.getRawConfig().traefik.http_entrypoint
-                    ],
-                    middlewares: [redirectHttpsMiddlewareName],
-                    service: bgUiServiceName,
-                    rule: hostRule,
-                    priority: 100
-                };
-            }
-
-            // Collect online sites for this resource (for any type)
-            const anySiteOnline = bgResource.targets.some((t) => t.siteOnline);
-
-            // Maintenance page logic for browser gateway resources
-            let showBgMaintenancePage = false;
-            if (bgResource.maintenanceModeEnabled) {
-                if (bgResource.maintenanceModeType === "forced") {
-                    showBgMaintenancePage = true;
-                } else if (bgResource.maintenanceModeType === "automatic") {
-                    showBgMaintenancePage = !anySiteOnline;
-                }
-            }
-
-            if (showBgMaintenancePage && maintenancePageUiUrl) {
-                const bgMaintenanceServiceName = `bg-r${bgResource.resourceId}-maintenance-service`;
-                const bgMaintenanceRouterName = `bg-r${bgResource.resourceId}-maintenance-router`;
-                const bgRewriteMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-rewrite`;
-                const bgMaintenanceHeadersMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-headers`;
-
-                const entrypointHttp =
-                    config.getRawConfig().traefik.http_entrypoint;
-                const entrypointHttps =
-                    config.getRawConfig().traefik.https_entrypoint;
-
-                if (!config_output.http.services)
-                    config_output.http.services = {};
-                if (!config_output.http.middlewares)
-                    config_output.http.middlewares = {};
-                if (!config_output.http.routers)
-                    config_output.http.routers = {};
-
-                config_output.http.services![bgMaintenanceServiceName] = {
-                    loadBalancer: {
-                        servers: [
-                            {
-                                url: maintenancePageUiUrl
-                            }
-                        ],
-                        passHostHeader: true
-                    }
-                };
-
-                config_output.http.middlewares![bgRewriteMiddlewareName] = {
-                    replacePathRegex: {
-                        regex: "^/(.*)",
-                        replacement: "/maintenance-screen"
-                    }
-                };
-
-                config_output.http.middlewares![
-                    bgMaintenanceHeadersMiddlewareName
-                ] = {
-                    headers: {
-                        customRequestHeaders: {
-                            Host: "app.pangolin.net", // if we are sending to the cloud the host needs to be this but we will pull the p-host to find the resource
-                            "p-host": fullDomain
-                        }
-                    }
-                };
-
-                config_output.http.routers![bgMaintenanceRouterName] = {
-                    entryPoints: [
-                        bgResource.ssl ? entrypointHttps : entrypointHttp
-                    ],
-                    service: bgMaintenanceServiceName,
-                    middlewares: [
-                        bgRewriteMiddlewareName,
-                        bgMaintenanceHeadersMiddlewareName
-                    ],
-                    rule: hostRule,
-                    priority: 2000,
-                    ...(bgResource.ssl ? { tls } : {})
-                };
-
-                config_output.http.routers![
-                    `${bgMaintenanceRouterName}-assets`
-                ] = {
-                    entryPoints: [
-                        bgResource.ssl ? entrypointHttps : entrypointHttp
-                    ],
-                    service: bgMaintenanceServiceName,
-                    middlewares: [bgMaintenanceHeadersMiddlewareName],
-                    rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
-                    priority: 2001,
-                    ...(bgResource.ssl ? { tls } : {})
-                };
-
-                continue;
-            }
-
-            // Group targets by type and generate per-type websocket routers and services
-            const typeMap = new Map<string, typeof bgResource.targets>();
-            for (const t of bgResource.targets) {
-                if (!typeMap.has(t.bgType)) typeMap.set(t.bgType, []);
-                typeMap.get(t.bgType)!.push(t);
-            }
-
-            for (const [bgType, typedTargets] of typeMap.entries()) {
-                const bgKey = `bg-r${bgResource.resourceId}-${bgType}`;
-                const bgRouterName = `${bgKey}-router`;
-                const bgServiceName = `${bgKey}-service`;
-                const bgRule = `${hostRule} && PathPrefix(\`/gateway/${bgType}\`)`;
-
-                const servers = typedTargets
-                    .filter((t) => {
-                        if (!t.siteOnline && anySiteOnline) return false;
-                        if (t.siteType === "newt") return !!t.subnet;
-                        return false; // browser gateway only supported on newt sites
-                    })
-                    .map((t) => ({
-                        url: `http://${t.subnet!.split("/")[0]}:${browserGatewayPort}`
-                    }))
-                    .filter(
-                        (v, i, a) => a.findIndex((u) => u.url === v.url) === i
-                    );
-
-                config_output.http.routers![bgRouterName] = {
-                    entryPoints: [
-                        bgResource.ssl
-                            ? config.getRawConfig().traefik.https_entrypoint
-                            : config.getRawConfig().traefik.http_entrypoint
-                    ],
-                    middlewares: routerMiddlewares,
-                    service: bgServiceName,
-                    rule: bgRule,
-                    priority: 110, // highest - websocket path takes precedence
-                    ...(bgResource.ssl ? { tls } : {})
-                };
-
-                config_output.http.services![bgServiceName] = {
-                    loadBalancer: {
-                        servers
-                    }
-                };
-            }
-
-            // UI: serve the browser gateway page from the internal pangolin instance.
-            // The primary type is used for the path rewrite (e.g. /rdp), mirroring
-            // how the maintenance page rewrites everything to /maintenance-screen.
-            const primaryType = typeMap.keys().next().value as string;
-            const uiRewriteMiddlewareName = `bg-r${bgResource.resourceId}-ui-rewrite`;
-            const uiHeadersMiddlewareName = `bg-r${bgResource.resourceId}-ui-headers`;
-            const entrypoint = bgResource.ssl
-                ? config.getRawConfig().traefik.https_entrypoint
-                : config.getRawConfig().traefik.http_entrypoint;
-
-            if (!config_output.http.middlewares) {
-                config_output.http.middlewares = {};
-            }
-
-            config_output.http.middlewares![uiRewriteMiddlewareName] = {
-                replacePathRegex: {
-                    regex: "^/(.*)",
-                    replacement: `/${primaryType}`
-                }
-            };
-
-            config_output.http.middlewares![uiHeadersMiddlewareName] = {
-                headers: {
-                    customRequestHeaders: {
-                        Host: "app.pangolin.net", // if we are sending to the cloud the host needs to be this but we will pull the p-host to find the resource
-                        "p-host": fullDomain
-                    }
-                }
-            };
-
-            config_output.http.services![bgUiServiceName] = {
-                loadBalancer: {
-                    servers: [
-                        {
-                            url: browserGatewayUiUrl
-                        }
-                    ]
-                }
-            };
-
-            // Assets router at higher priority so /_next files load without rewrite.
-            // Do NOT apply the path-rewrite middleware here — static assets must
-            // keep their original path; only the host headers are needed.
-            config_output.http.routers![
-                `bg-r${bgResource.resourceId}-assets-router`
-            ] = {
-                entryPoints: [entrypoint],
-                middlewares: [...routerMiddlewares, uiHeadersMiddlewareName],
-                service: bgUiServiceName,
-                rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
-                priority: 101,
-                ...(bgResource.ssl ? { tls } : {})
-            };
-
-            // Catch-all router rewrites everything on the domain to /{primaryType}
-            config_output.http.routers![
-                `bg-r${bgResource.resourceId}-ui-router`
-            ] = {
-                entryPoints: [entrypoint],
-                middlewares: [
-                    ...routerMiddlewares,
-                    uiRewriteMiddlewareName,
-                    uiHeadersMiddlewareName
-                ],
-                service: bgUiServiceName,
-                rule: hostRule,
-                priority: 100,
-                ...(bgResource.ssl ? { tls } : {})
-            };
-        }
+        });
     }
 
     // Add Traefik routes for siteResource aliases (HTTP mode + SSL) so that
@@ -1117,68 +825,24 @@ export async function getTraefikConfig(
             }
         }
 
-        for (const sr of siteResourcesWithFullDomain) {
-            if (!sr.fullDomain) continue;
-
-            // Skip if this alias is already handled by a resource router
-            if (existingFullDomains.has(sr.fullDomain)) continue;
-
-            const fullDomain = sr.fullDomain;
-            const srKey = `site-resource-cert-${sr.siteResourceId}`;
-            const siteResourceServiceName = `${srKey}-service`;
-            const siteResourceRouterName = `${srKey}-router`;
-            const siteResourceRewriteMiddlewareName = `${srKey}-rewrite`;
-
-            if (!config_output.http.routers) {
-                config_output.http.routers = {};
-            }
-            if (!config_output.http.services) {
-                config_output.http.services = {};
-            }
-            if (!config_output.http.middlewares) {
-                config_output.http.middlewares = {};
-            }
-
-            // Service pointing at the internal maintenance/Next.js page
-            config_output.http.services[siteResourceServiceName] = {
-                loadBalancer: {
-                    servers: [
-                        {
-                            url: maintenancePageUiUrl
-                        }
-                    ],
-                    passHostHeader: true
+        buildSiteResourceAliasCertPlaceholders({
+            config_output,
+            siteResourcesWithFullDomain,
+            existingFullDomains,
+            maintenancePageUiUrl,
+            redirectHttpsMiddlewareName,
+            resolveTls: (fullDomain) => {
+                if (
+                    !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
+                ) {
+                    // siteResource aliases don't have a per-domain cert
+                    // resolver stored, so always fall back to the global
+                    // defaults.
+                    return buildWildcardTls({
+                        fullDomain,
+                        hasSubdomain: true
+                    });
                 }
-            };
-
-            // Middleware that rewrites any path to /maintenance-screen
-            config_output.http.middlewares[siteResourceRewriteMiddlewareName] =
-                {
-                    replacePathRegex: {
-                        regex: "^/(.*)",
-                        replacement: "/private-maintenance-screen"
-                    }
-                };
-
-            // HTTP -> HTTPS redirect so the ACME challenge can be served
-            config_output.http.routers[`${siteResourceRouterName}-redirect`] = {
-                entryPoints: [config.getRawConfig().traefik.http_entrypoint],
-                middlewares: [redirectHttpsMiddlewareName],
-                service: siteResourceServiceName,
-                rule: `Host(\`${fullDomain}\`)`,
-                priority: 100
-            };
-
-            // Determine TLS / cert-resolver configuration
-            let tls: any = {};
-            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
-                // siteResource aliases don't have a per-domain cert resolver
-                // stored, so always fall back to the global defaults.
-                tls = buildWildcardTls({
-                    fullDomain,
-                    hasSubdomain: true
-                });
-            } else {
                 // pangolin-dns: only add route if we already have a valid cert
                 const matchingCert = validCerts.find(
                     (cert) => cert.queriedDomain === fullDomain
@@ -1187,29 +851,11 @@ export async function getTraefikConfig(
                     logger.debug(
                         `No matching certificate found for siteResource alias: ${fullDomain}`
                     );
-                    continue;
+                    return null;
                 }
+                return {};
             }
-
-            // HTTPS router - presence of this entry triggers cert generation
-            config_output.http.routers[siteResourceRouterName] = {
-                entryPoints: [config.getRawConfig().traefik.https_entrypoint],
-                service: siteResourceServiceName,
-                middlewares: [siteResourceRewriteMiddlewareName],
-                rule: `Host(\`${fullDomain}\`)`,
-                priority: 100,
-                tls
-            };
-
-            // Assets bypass router - lets Next.js static files load without rewrite
-            config_output.http.routers[`${siteResourceRouterName}-assets`] = {
-                entryPoints: [config.getRawConfig().traefik.https_entrypoint],
-                service: siteResourceServiceName,
-                rule: `Host(\`${fullDomain}\`) && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
-                priority: 101,
-                tls
-            };
-        }
+        });
     }
 
     if (aiGatewayUrl) {

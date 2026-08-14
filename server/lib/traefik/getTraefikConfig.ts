@@ -5,6 +5,7 @@ import {
     aiProviders,
     resourceAiProviders,
     siteResources,
+    siteNetworks,
     exitNodes
 } from "@server/db";
 import {
@@ -20,7 +21,7 @@ import {
 } from "drizzle-orm";
 import logger from "@server/logger";
 import config from "@server/lib/config";
-import { resources, sites, Target, targets } from "@server/db";
+import { resources, sites, targets } from "@server/db";
 import { applyPathRewriteMiddleware } from "./middleware";
 import { sanitize, encodePath, validatePathRewriteConfig } from "./utils";
 import regionalCache from "@server/lib/cache";
@@ -44,6 +45,11 @@ import {
     buildAiGatewayHostHeaderMiddleware,
     buildAiGatewayRouterAndService
 } from "./aiGatewayMiddlewares";
+import {
+    buildBrowserGatewayResourcesMap,
+    buildBrowserGatewayConfig
+} from "./browserGateway";
+import { buildSiteResourceAliasCertPlaceholders } from "./siteResourceAlias";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const badgerMiddlewareName = "badger";
@@ -54,8 +60,8 @@ export async function getTraefikConfig(
     filterOutNamespaceDomains = false, // UNUSED BUT USED IN PRIVATE
     generateLoginPageRouters = false, // UNUSED BUT USED IN PRIVATE
     allowRawResources = true,
-    maintenancePageUiUrl: string | null = null, // UNUSED BUT USED IN PRIVATE
-    browserGatewayUiUrl: string | null = null, // UNUSED BUT USED IN PRIVATE
+    maintenancePageUiUrl: string | null = null,
+    browserGatewayUiUrl: string | null = null,
     aiGatewayUrl: string | null = null
 ): Promise<any> {
     // Get the exit node but cache it for 5 minutes to avoid hitting the DB too often
@@ -93,7 +99,14 @@ export async function getTraefikConfig(
             headers: resources.headers,
             proxyProtocol: resources.proxyProtocol,
             proxyProtocolVersion: resources.proxyProtocolVersion,
+            wildcard: resources.wildcard,
             mode: resources.mode,
+
+            maintenanceModeEnabled: resources.maintenanceModeEnabled,
+            maintenanceModeType: resources.maintenanceModeType,
+            maintenanceTitle: resources.maintenanceTitle,
+            maintenanceMessage: resources.maintenanceMessage,
+            maintenanceEstimatedTime: resources.maintenanceEstimatedTime,
 
             // Target fields
             targetId: targets.targetId,
@@ -141,8 +154,15 @@ export async function getTraefikConfig(
                 ),
                 inArray(sites.type, siteTypes),
                 allowRawResources
-                    ? inArray(resources.mode, ["http", "udp", "tcp"]) // allow all three
-                    : eq(resources.mode, "http")
+                    ? inArray(resources.mode, [
+                          "http",
+                          "udp",
+                          "tcp",
+                          "vnc",
+                          "ssh",
+                          "rdp"
+                      ]) // allow all three, plus browser-gateway modes
+                    : inArray(resources.mode, ["http", "vnc", "ssh", "rdp"])
             )
         )
         .orderBy(desc(targets.priority), targets.targetId); // stable ordering
@@ -151,6 +171,9 @@ export async function getTraefikConfig(
     const resourcesMap = new Map();
 
     resourcesWithTargetsAndSites.forEach((row) => {
+        if (!["http", "tcp", "udp"].includes(row.mode)) {
+            return;
+        }
         const resourceId = row.resourceId;
         const resourceName = sanitize(row.resourceName) || "";
         const targetPath = encodePath(row.path); // Use encodePath to avoid collisions (e.g. "/a/b" vs "/a-b")
@@ -235,6 +258,40 @@ export async function getTraefikConfig(
         });
     });
 
+    // Group browser gateway targets by resource (SSH/VNC/RDP-mode resources
+    // served through the browser gateway web UI instead of a real target).
+    const browserGatewayResourcesMap = browserGatewayUiUrl
+        ? buildBrowserGatewayResourcesMap(
+              resourcesWithTargetsAndSites,
+              filterOutNamespaceDomains
+          )
+        : new Map();
+
+    // Query siteResources in HTTP mode with SSL enabled and aliases, so
+    // Traefik generates TLS certificates for those domains even before a
+    // matching resource exists.
+    const siteResourcesWithFullDomain = await db
+        .select({
+            siteResourceId: siteResources.siteResourceId,
+            fullDomain: siteResources.fullDomain
+        })
+        .from(siteResources)
+        .innerJoin(
+            siteNetworks,
+            eq(siteResources.networkId, siteNetworks.networkId)
+        )
+        .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+        .where(
+            and(
+                eq(siteResources.enabled, true),
+                isNotNull(siteResources.fullDomain),
+                eq(siteResources.mode, "http"), // important so we dont double get the inference siteResources below
+                eq(siteResources.ssl, true),
+                eq(sites.exitNodeId, exitNodeId),
+                inArray(sites.type, siteTypes)
+            )
+        );
+
     // Inference-mode resources have no targets/sites (their "backend" is the
     // central AI gateway), so they can't be reached via the targets->sites
     // join above - query them separately and include them on every exit node.
@@ -270,7 +327,12 @@ export async function getTraefikConfig(
         );
 
     // make sure we have at least one resource
-    if (resourcesMap.size === 0 && inferenceResources.length === 0) {
+    if (
+        resourcesMap.size === 0 &&
+        inferenceResources.length === 0 &&
+        browserGatewayResourcesMap.size === 0 &&
+        siteResourcesWithFullDomain.length === 0
+    ) {
         return {};
     }
 
@@ -454,6 +516,55 @@ export async function getTraefikConfig(
                 }
             };
         }
+    }
+
+    if (browserGatewayUiUrl) {
+        buildBrowserGatewayConfig({
+            config_output,
+            browserGatewayResourcesMap,
+            browserGatewayUiUrl,
+            maintenancePageUiUrl,
+            badgerMiddlewareName,
+            redirectHttpsMiddlewareName,
+            resolveTls: ({
+                fullDomain,
+                hasSubdomain,
+                domainCertResolver,
+                preferWildcardCert
+            }) =>
+                buildWildcardTls({
+                    fullDomain,
+                    hasSubdomain,
+                    domainCertResolver,
+                    preferWildcardCert
+                })
+        });
+    }
+
+    // Add Traefik routes for siteResource aliases (HTTP mode + SSL) so that
+    // Traefik generates TLS certificates for those domains even when no
+    // matching resource exists yet.
+    if (siteResourcesWithFullDomain.length > 0) {
+        // Build a set of domains already covered by normal resources
+        const existingFullDomains = new Set<string>();
+        for (const resource of resourcesMap.values()) {
+            if (resource.fullDomain) {
+                existingFullDomains.add(resource.fullDomain);
+            }
+        }
+
+        buildSiteResourceAliasCertPlaceholders({
+            config_output,
+            siteResourcesWithFullDomain,
+            existingFullDomains,
+            maintenancePageUiUrl,
+            redirectHttpsMiddlewareName,
+            resolveTls: (fullDomain) =>
+                buildWildcardTls({
+                    fullDomain,
+                    hasSubdomain: true
+                })
+        });
     }
 
     if (aiGatewayUrl) {
