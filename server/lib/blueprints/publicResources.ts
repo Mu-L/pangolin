@@ -289,7 +289,9 @@ export async function updatePublicResources(
         if (existingResource) {
             let domain;
             if (
-                ["http", "ssh", "rdp", "vnc", "inference"].includes(resourceData.mode || "")
+                ["http", "ssh", "rdp", "vnc", "inference"].includes(
+                    resourceData.mode || ""
+                )
             ) {
                 if (resourceData["full-domain"]?.startsWith("*.")) {
                     const isLicensed = await isLicensedOrSubscribed(
@@ -374,14 +376,22 @@ export async function updatePublicResources(
                             name: resourceData.name || "Unnamed Resource",
 
                             mode: resourceData.mode,
-                            proxyPort: ["http", "ssh", "rdp", "vnc", "inference"].includes(
-                                resourceData.mode || ""
-                            )
+                            proxyPort: [
+                                "http",
+                                "ssh",
+                                "rdp",
+                                "vnc",
+                                "inference"
+                            ].includes(resourceData.mode || "")
                                 ? null
                                 : resourceData["proxy-port"],
-                            fullDomain: ["http", "ssh", "rdp", "vnc", "inference"].includes(
-                                resourceData.mode || ""
-                            )
+                            fullDomain: [
+                                "http",
+                                "ssh",
+                                "rdp",
+                                "vnc",
+                                "inference"
+                            ].includes(resourceData.mode || "")
                                 ? resourceData["full-domain"]
                                 : null,
                             subdomain: domain ? domain.subdomain : null,
@@ -571,14 +581,22 @@ export async function updatePublicResources(
                         .set({
                             name: resourceData.name || "Unnamed Resource",
                             mode: resourceData.mode,
-                            proxyPort: ["http", "ssh", "rdp", "vnc", "inference"].includes(
-                                resourceData.mode || ""
-                            )
+                            proxyPort: [
+                                "http",
+                                "ssh",
+                                "rdp",
+                                "vnc",
+                                "inference"
+                            ].includes(resourceData.mode || "")
                                 ? null
                                 : resourceData["proxy-port"],
-                            fullDomain: ["http", "ssh", "rdp", "vnc", "inference"].includes(
-                                resourceData.mode || ""
-                            )
+                            fullDomain: [
+                                "http",
+                                "ssh",
+                                "rdp",
+                                "vnc",
+                                "inference"
+                            ].includes(resourceData.mode || "")
                                 ? resourceData["full-domain"]
                                 : null,
                             subdomain: domain ? domain.subdomain : null,
@@ -1090,7 +1108,9 @@ export async function updatePublicResources(
 
             let domain;
             if (
-                ["http", "ssh", "rdp", "vnc", "inference"].includes(resourceData.mode || "")
+                ["http", "ssh", "rdp", "vnc", "inference"].includes(
+                    resourceData.mode || ""
+                )
             ) {
                 if (resourceData["full-domain"]?.startsWith("*.")) {
                     const isLicensed = await isLicensedOrSubscribed(
@@ -1188,14 +1208,22 @@ export async function updatePublicResources(
                     status: resourceStatusFromSite,
                     name: resourceData.name || "Unnamed Resource",
                     mode: resourceData.mode,
-                    proxyPort: ["http", "ssh", "rdp", "vnc", "inference"].includes(
-                        resourceData.mode || ""
-                    )
+                    proxyPort: [
+                        "http",
+                        "ssh",
+                        "rdp",
+                        "vnc",
+                        "inference"
+                    ].includes(resourceData.mode || "")
                         ? null
                         : resourceData["proxy-port"],
-                    fullDomain: ["http", "ssh", "rdp", "vnc", "inference"].includes(
-                        resourceData.mode || ""
-                    )
+                    fullDomain: [
+                        "http",
+                        "ssh",
+                        "rdp",
+                        "vnc",
+                        "inference"
+                    ].includes(resourceData.mode || "")
                         ? resourceData["full-domain"]
                         : null,
                     subdomain: domain ? domain.subdomain : null,
@@ -2148,8 +2176,8 @@ export async function getDomain(
                 // resource (and vice versa) - only conflicts within the
                 // same routing category are rejected.
                 isInference
-                    ? eq(resources.mode, "inference")
-                    : ne(resources.mode, "inference"),
+                    ? ne(resources.mode, "inference")
+                    : eq(resources.mode, "inference"),
                 resourceId
                     ? ne(resources.resourceId, resourceId)
                     : isNotNull(resources.resourceId)

@@ -484,10 +484,9 @@ export async function updateSiteResource(
                 .where(
                     and(
                         eq(siteResources.fullDomain, fullDomain),
-                        ne(
-                            siteResources.requiresExitNodeConnection,
-                            mode == "inference"
-                        )
+                        mode == "inference"
+                            ? ne(siteResources.mode, "inference")
+                            : eq(siteResources.mode, "inference")
                     )
                 ); // exclude looking at the ones on exit nodes if this is an inference resource
 

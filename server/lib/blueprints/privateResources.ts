@@ -48,7 +48,9 @@ async function getDomainForSiteResource(
                 eq(siteResources.orgId, orgId),
                 // exclude looking at the ones on exit nodes if this is an inference resource,
                 // and vice versa, so inference and non-inference resources can share a full-domain
-                ne(siteResources.requiresExitNodeConnection, !isInference),
+                isInference
+                    ? ne(siteResources.mode, "inference")
+                    : eq(siteResources.mode, "inference"),
                 siteResourceId
                     ? ne(siteResources.siteResourceId, siteResourceId)
                     : isNotNull(siteResources.siteResourceId)
