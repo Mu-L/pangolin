@@ -50,6 +50,7 @@ import { and, asc, eq, isNotNull, ne, or } from "drizzle-orm";
 import { tierMatrix } from "../billing/tierMatrix";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { Config, isTargetsOnlyResource, TargetData } from "./types";
+import { getOrCreateLabelIds, syncResourceLabels } from "./labels";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import next from "next";
@@ -1349,6 +1350,15 @@ export async function updatePublicResources(
             await usageService.add(orgId, LimitId.PUBLIC_RESOURCES, 1, trx);
 
             logger.debug(`Created resource ${newResource.resourceId}`);
+        }
+
+        if (!isTargetsOnlyResource(resourceData)) {
+            const labelIds = await getOrCreateLabelIds(
+                orgId,
+                resourceData.labels || [],
+                trx
+            );
+            await syncResourceLabels(resource.resourceId, labelIds, trx);
         }
 
         results.push({

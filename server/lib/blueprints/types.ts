@@ -225,7 +225,8 @@ export const PublicResourceSchema = z
         maintenance: MaintenanceSchema.optional(),
         "auth-daemon": AuthDaemonSchema.optional(),
         "proxy-protocol": z.boolean().optional(),
-        "proxy-protocol-version": z.int().min(1).optional()
+        "proxy-protocol-version": z.int().min(1).optional(),
+        labels: z.array(z.string().min(1)).optional()
     })
     .refine(
         (resource) => {
@@ -493,6 +494,7 @@ export const PrivateResourceSchema = z
             }),
         users: z.array(z.string()).optional().default([]),
         machines: z.array(z.string()).optional().default([]),
+        labels: z.array(z.string().min(1)).optional().default([]),
         "auth-daemon": AuthDaemonSchema.optional()
     })
     .refine(

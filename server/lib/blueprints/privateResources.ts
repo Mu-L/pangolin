@@ -19,6 +19,7 @@ import {
 import { sites } from "@server/db";
 import { eq, and, ne, inArray, or, isNotNull } from "drizzle-orm";
 import { Config } from "./types";
+import { getOrCreateLabelIds, syncSiteResourceLabels } from "./labels";
 import logger from "@server/logger";
 import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 import { getNextAvailableAliasAddress } from "../ip";
@@ -443,6 +444,13 @@ export async function updatePrivateResources(
                     );
             }
 
+            const labelIds = await getOrCreateLabelIds(
+                orgId,
+                resourceData.labels,
+                trx
+            );
+            await syncSiteResourceLabels(siteResourceId, labelIds, trx);
+
             results.push({
                 newSiteResource: updatedResource,
                 oldSiteResource: existingResource,
@@ -696,6 +704,13 @@ export async function updatePrivateResources(
             );
 
             await usageService.add(orgId, LimitId.PRIVATE_RESOURCES, 1, trx);
+
+            const labelIds = await getOrCreateLabelIds(
+                orgId,
+                resourceData.labels,
+                trx
+            );
+            await syncSiteResourceLabels(siteResourceId, labelIds, trx);
 
             results.push({
                 newSiteResource: newResource,
