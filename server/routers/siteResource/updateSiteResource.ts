@@ -30,6 +30,8 @@ import createHttpError from "http-errors";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { clearSiteResourceAiConfig } from "@server/lib/aiInferenceResource";
+import { build } from "@server/build";
+import { createCertificate } from "../certificates/createCertificate";
 
 const updateSiteResourceParamsSchema = z.strictObject({
     siteResourceId: z.coerce.number().int().positive()
@@ -734,6 +736,16 @@ export async function updateSiteResource(
         }
 
         const finalUpdatedSiteResource = updatedSiteResource;
+
+        if (
+            ssl &&
+            (mode === "http" || mode == "inference") &&
+            domainId &&
+            fullDomain &&
+            build != "oss"
+        ) {
+            await createCertificate(domainId, fullDomain, db);
+        }
 
         rebuildClientAssociationsFromSiteResource(finalUpdatedSiteResource)
             .then(() =>

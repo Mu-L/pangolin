@@ -769,7 +769,7 @@ export async function createSiteResource(
 
         if (
             ssl &&
-            mode === "http" &&
+            (mode === "http" || mode == "inference") &&
             domainId &&
             fullDomain &&
             build != "oss"
