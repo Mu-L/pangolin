@@ -7,20 +7,23 @@ import {
     type AiUsageAnalyticsFilters
 } from "@app/lib/queries";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, XIcon } from "lucide-react";
+import { CheckIcon, ChevronsUpDown, RefreshCw, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { DateRangePicker, type DateTimeValue } from "./DateTimePicker";
 import { Button } from "./ui/button";
 import { Card, CardHeader } from "./ui/card";
-import { Label } from "./ui/label";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "./ui/select";
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList
+} from "./ui/command";
+import { Label } from "./ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Separator } from "./ui/separator";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
 import { HorizontalTabs, type TabItem } from "./HorizontalTabs";
@@ -161,7 +164,7 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
     return (
         <div className="flex flex-col gap-5">
             <Card>
-                <CardHeader className="flex flex-row flex-wrap items-end gap-x-3 gap-y-3">
+                <CardHeader className="flex flex-row flex-wrap items-end gap-x-3 gap-y-3 space-y-0">
                     <DateRangePicker
                         startValue={{
                             date: dateRange.startDate,
@@ -230,38 +233,40 @@ export function AiUsageAnalyticsData(props: AiUsageAnalyticsDataProps) {
                         onValueChange={(v) => setFilter("virtualApiKeyId", v)}
                     />
 
-                    {!isEmptySearchParams && (
+                    <div className="flex items-center gap-2 ml-auto">
+                        {!isEmptySearchParams && (
+                            <Button
+                                variant="ghost"
+                                onClick={() => router.replace(path)}
+                                className="gap-2"
+                            >
+                                <XIcon className="size-4" />
+                                {t("aiUsageResetFilters")}
+                            </Button>
+                        )}
+
                         <Button
-                            variant="ghost"
-                            onClick={() => router.replace(path)}
+                            variant="outline"
+                            onClick={() =>
+                                queryClient.invalidateQueries({
+                                    queryKey: [
+                                        ...AI_USAGE_ANALYTICS_QUERY_PREFIX,
+                                        props.orgId
+                                    ]
+                                })
+                            }
+                            disabled={isFetching}
                             className="gap-2"
                         >
-                            <XIcon className="size-4" />
-                            {t("aiUsageResetFilters")}
+                            <RefreshCw
+                                className={cn(
+                                    "size-4",
+                                    isFetching && "animate-spin"
+                                )}
+                            />
+                            {t("aiUsageRefresh")}
                         </Button>
-                    )}
-
-                    <Button
-                        variant="outline"
-                        onClick={() =>
-                            queryClient.invalidateQueries({
-                                queryKey: [
-                                    ...AI_USAGE_ANALYTICS_QUERY_PREFIX,
-                                    props.orgId
-                                ]
-                            })
-                        }
-                        disabled={isFetching}
-                        className="gap-2 ml-auto"
-                    >
-                        <RefreshCw
-                            className={cn(
-                                "size-4",
-                                isFetching && "animate-spin"
-                            )}
-                        />
-                        {t("aiUsageRefresh")}
-                    </Button>
+                    </div>
                 </CardHeader>
             </Card>
 
@@ -287,29 +292,93 @@ type FilterSelectProps = {
 };
 
 function FilterSelect(props: FilterSelectProps) {
+    const t = useTranslations();
+    const [open, setOpen] = useState(false);
+    const selected = props.options.find(
+        (option) => option.value === props.value
+    );
+
     return (
-        <div className="flex flex-col items-start gap-2 w-36">
+        <div className="flex flex-col items-start gap-2 w-44">
             <Label htmlFor={props.id}>{props.label}</Label>
-            <Select
-                onValueChange={(newValue) =>
-                    props.onValueChange(
-                        newValue === "all" ? undefined : newValue
-                    )
-                }
-                value={props.value ?? "all"}
-            >
-                <SelectTrigger id={props.id} className="w-full">
-                    <SelectValue placeholder={props.placeholder} />
-                </SelectTrigger>
-                <SelectContent className="w-full">
-                    <SelectItem value="all">{props.placeholder}</SelectItem>
-                    {props.options.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        id={props.id}
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn(
+                            "w-full justify-between font-normal",
+                            !selected && "text-muted-foreground"
+                        )}
+                    >
+                        <span className="truncate text-left">
+                            {selected?.label ?? props.placeholder}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                    className="w-[var(--radix-popover-trigger-width)] min-w-56 p-0"
+                    align="start"
+                >
+                    <Command>
+                        <CommandInput placeholder={t("aiUsageFilterSearch")} />
+                        <CommandList>
+                            <CommandEmpty>
+                                {t("aiUsageFilterNotFound")}
+                            </CommandEmpty>
+                            <CommandGroup>
+                                <CommandItem
+                                    value={props.placeholder}
+                                    onSelect={() => {
+                                        props.onValueChange(undefined);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <CheckIcon
+                                        className={cn(
+                                            "mr-2 h-4 w-4 shrink-0",
+                                            !props.value
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                        )}
+                                    />
+                                    {props.placeholder}
+                                </CommandItem>
+                                {props.options.map((option) => (
+                                    <CommandItem
+                                        key={option.value}
+                                        value={`${option.value} ${option.label}`}
+                                        onSelect={() => {
+                                            props.onValueChange(
+                                                option.value === props.value
+                                                    ? undefined
+                                                    : option.value
+                                            );
+                                            setOpen(false);
+                                        }}
+                                    >
+                                        <CheckIcon
+                                            className={cn(
+                                                "mr-2 h-4 w-4 shrink-0",
+                                                option.value === props.value
+                                                    ? "opacity-100"
+                                                    : "opacity-0"
+                                            )}
+                                        />
+                                        <span className="truncate">
+                                            {option.label}
+                                        </span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
         </div>
     );
 }
