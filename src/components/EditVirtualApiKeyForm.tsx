@@ -60,6 +60,8 @@ import {
 } from "@app/components/BudgetsEditor";
 import { aiBudgetQueries } from "@app/lib/queries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import VirtualApiKeyEmailSection from "@app/components/VirtualApiKeyEmailSection";
+import type { Tag } from "@app/components/tags/tag-input";
 
 type FormProps = {
     open: boolean;
@@ -114,6 +116,9 @@ export default function EditVirtualApiKeyForm({
     const [credentialLoading, setCredentialLoading] = useState(false);
     const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>([]);
     const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
+    const [sendEmail, setSendEmail] = useState(false);
+    const [sendToAttributedUser, setSendToAttributedUser] = useState(false);
+    const [emailTags, setEmailTags] = useState<Tag[]>([]);
 
     const budgetScope = {
         type: "virtualApiKey" as const,
@@ -156,6 +161,9 @@ export default function EditVirtualApiKeyForm({
         setSelectedResources(
             virtualApiKey.allResources ? [] : resourcesFromRow(virtualApiKey)
         );
+        setSendEmail(false);
+        setSendToAttributedUser(false);
+        setEmailTags([]);
         form.reset({
             allResources: virtualApiKey.allResources
         });
@@ -236,6 +244,20 @@ export default function EditVirtualApiKeyForm({
             return;
         }
 
+        if (
+            env.email.emailEnabled &&
+            sendEmail &&
+            !sendToAttributedUser &&
+            emailTags.length === 0
+        ) {
+            toast({
+                variant: "destructive",
+                title: t("virtualApiKeysEmailRecipientsRequired"),
+                description: t("virtualApiKeysEmailRecipientsRequired")
+            });
+            return;
+        }
+
         return onSubmit(values);
     }
 
@@ -254,7 +276,16 @@ export default function EditVirtualApiKeyForm({
                     allResources: values.allResources,
                     resourceIds: values.allResources
                         ? []
-                        : selectedResources.map((r) => r.resourceId)
+                        : selectedResources.map((r) => r.resourceId),
+                    sendEmail: env.email.emailEnabled && sendEmail,
+                    sendToAttributedUser:
+                        env.email.emailEnabled &&
+                        sendEmail &&
+                        sendToAttributedUser,
+                    emails:
+                        env.email.emailEnabled && sendEmail
+                            ? emailTags.map((tag) => tag.text)
+                            : []
                 }
             )
             .catch((e) => {
@@ -521,6 +552,24 @@ export default function EditVirtualApiKeyForm({
                                                 </div>
                                             )}
                                         </div>
+
+                                        <VirtualApiKeyEmailSection
+                                            emailEnabled={
+                                                env.email.emailEnabled
+                                            }
+                                            mode="edit"
+                                            sendEmail={sendEmail}
+                                            onSendEmailChange={setSendEmail}
+                                            sendToAttributedUser={
+                                                sendToAttributedUser
+                                            }
+                                            onSendToAttributedUserChange={
+                                                setSendToAttributedUser
+                                            }
+                                            hasAssociatedUser={!!selectedUser}
+                                            emailTags={emailTags}
+                                            onEmailTagsChange={setEmailTags}
+                                        />
                                     </div>
 
                                     <div className="space-y-4 mt-4">

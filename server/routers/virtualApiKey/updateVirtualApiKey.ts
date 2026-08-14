@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import {
     db,
+    orgs,
     userOrgs,
     virtualApiKeyResources,
     virtualApiKeys
@@ -16,11 +17,16 @@ import { and, eq } from "drizzle-orm";
 import { createDate, TimeSpan } from "oslo";
 import {
     assertManualKeyResourcesInOrg,
+    decryptVirtualApiKeyToken,
     replaceVirtualApiKeyResources,
     toPublicVirtualApiKey
 } from "@server/lib/virtualApiKey";
 import type { CreateOrEditVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
 import { updateVirtualApiKeyBodySchema } from "@server/routers/virtualApiKey/validation";
+import {
+    resolveVirtualApiKeyEmailRecipients,
+    sendVirtualApiKeyEmails
+} from "@server/lib/sendVirtualApiKeyEmail";
 
 const paramsSchema = z.strictObject({
     virtualApiKeyId: z.string().nonempty()
@@ -146,6 +152,20 @@ export async function updateVirtualApiKey(
             }
         }
 
+        const nextUserId =
+            body.userId !== undefined ? body.userId : existing.userId;
+        const emailRecipients = await resolveVirtualApiKeyEmailRecipients({
+            sendEmail: body.sendEmail,
+            sendToAttributedUser: body.sendToAttributedUser,
+            userId: nextUserId,
+            emails: body.emails
+        });
+        if (!emailRecipients.ok) {
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, emailRecipients.message)
+            );
+        }
+
         const updates: Partial<typeof virtualApiKeys.$inferInsert> = {};
 
         if (body.name !== undefined) {
@@ -191,6 +211,24 @@ export async function updateVirtualApiKey(
 
             return row;
         });
+
+        if (emailRecipients.recipients.length > 0) {
+            const [org] = await db
+                .select()
+                .from(orgs)
+                .where(eq(orgs.orgId, existing.orgId))
+                .limit(1);
+
+            await sendVirtualApiKeyEmails({
+                recipients: emailRecipients.recipients,
+                orgName: org?.name || existing.orgId,
+                orgId: existing.orgId,
+                keyName: updated.name,
+                virtualApiKeyId: updated.virtualApiKeyId,
+                secret: decryptVirtualApiKeyToken(updated.token),
+                allResources: updated.allResources
+            });
+        }
 
         const resourceRows = await db
             .select({ resourceId: virtualApiKeyResources.resourceId })

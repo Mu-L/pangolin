@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, userOrgs, virtualApiKeys } from "@server/db";
+import { db, orgs, userOrgs, virtualApiKeys } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -18,6 +18,10 @@ import {
 } from "@server/lib/virtualApiKey";
 import type { CreateOrEditVirtualApiKeyResponse } from "@server/routers/virtualApiKey/types";
 import { createVirtualApiKeyBodySchema } from "@server/routers/virtualApiKey/validation";
+import {
+    resolveVirtualApiKeyEmailRecipients,
+    sendVirtualApiKeyEmails
+} from "@server/lib/sendVirtualApiKeyEmail";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -78,7 +82,10 @@ export async function createVirtualApiKey(
             userId,
             allResources,
             resourceIds,
-            validForSeconds
+            validForSeconds,
+            sendEmail: doEmail,
+            sendToAttributedUser,
+            emails
         } = parsedBody.data;
 
         if (req.user && orgId && orgId !== req.userOrgId) {
@@ -121,6 +128,18 @@ export async function createVirtualApiKey(
             );
         }
 
+        const emailRecipients = await resolveVirtualApiKeyEmailRecipients({
+            sendEmail: doEmail,
+            sendToAttributedUser,
+            userId,
+            emails
+        });
+        if (!emailRecipients.ok) {
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, emailRecipients.message)
+            );
+        }
+
         const minted = mintVirtualApiKeySecret();
         const expiresAt = validForSeconds
             ? createDate(new TimeSpan(validForSeconds, "s")).getTime()
@@ -155,6 +174,24 @@ export async function createVirtualApiKey(
 
             return row;
         });
+
+        if (emailRecipients.recipients.length > 0) {
+            const [org] = await db
+                .select()
+                .from(orgs)
+                .where(eq(orgs.orgId, orgId))
+                .limit(1);
+
+            await sendVirtualApiKeyEmails({
+                recipients: emailRecipients.recipients,
+                orgName: org?.name || orgId,
+                orgId,
+                keyName: created.name,
+                virtualApiKeyId: created.virtualApiKeyId,
+                secret: minted.secret,
+                allResources: created.allResources
+            });
+        }
 
         return response<CreateOrEditVirtualApiKeyResponse>(res, {
             data: {

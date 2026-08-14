@@ -54,6 +54,8 @@ import {
     getBudgetRowsErrors,
     type BudgetRow
 } from "@app/components/BudgetsEditor";
+import VirtualApiKeyEmailSection from "@app/components/VirtualApiKeyEmailSection";
+import type { Tag } from "@app/components/tags/tag-input";
 
 export type CreatedVirtualApiKey = {
     virtualApiKeyId: string;
@@ -101,6 +103,9 @@ export default function CreateVirtualApiKeyForm({
     >([]);
     const [pendingBudgetRows, setPendingBudgetRows] = useState<BudgetRow[]>([]);
     const [attemptedBudgetsSave, setAttemptedBudgetsSave] = useState(false);
+    const [sendEmail, setSendEmail] = useState(false);
+    const [sendToAttributedUser, setSendToAttributedUser] = useState(false);
+    const [emailTags, setEmailTags] = useState<Tag[]>([]);
 
     const formSchema = z.object({
         name: z.string().min(1),
@@ -123,6 +128,9 @@ export default function CreateVirtualApiKeyForm({
         setSelectedResources([]);
         setPendingBudgetRows([]);
         setAttemptedBudgetsSave(false);
+        setSendEmail(false);
+        setSendToAttributedUser(false);
+        setEmailTags([]);
         form.reset();
     }
 
@@ -137,6 +145,20 @@ export default function CreateVirtualApiKeyForm({
                 description: conflictingKeys.size
                     ? t("aiBudgetConflictError")
                     : t("aiBudgetInvalidAmountError")
+            });
+            return;
+        }
+
+        if (
+            env.email.emailEnabled &&
+            sendEmail &&
+            !sendToAttributedUser &&
+            emailTags.length === 0
+        ) {
+            toast({
+                variant: "destructive",
+                title: t("virtualApiKeysEmailRecipientsRequired"),
+                description: t("virtualApiKeysEmailRecipientsRequired")
             });
             return;
         }
@@ -157,7 +179,16 @@ export default function CreateVirtualApiKeyForm({
                     allResources,
                     resourceIds: allResources
                         ? []
-                        : selectedResources.map((r) => r.resourceId)
+                        : selectedResources.map((r) => r.resourceId),
+                    sendEmail: env.email.emailEnabled && sendEmail,
+                    sendToAttributedUser:
+                        env.email.emailEnabled &&
+                        sendEmail &&
+                        sendToAttributedUser,
+                    emails:
+                        env.email.emailEnabled && sendEmail
+                            ? emailTags.map((tag) => tag.text)
+                            : []
                 }
             )
             .catch((e) => {
@@ -473,6 +504,26 @@ export default function CreateVirtualApiKeyForm({
                                                     </div>
                                                 )}
                                             </div>
+
+                                            <VirtualApiKeyEmailSection
+                                                emailEnabled={
+                                                    env.email.emailEnabled
+                                                }
+                                                mode="create"
+                                                sendEmail={sendEmail}
+                                                onSendEmailChange={setSendEmail}
+                                                sendToAttributedUser={
+                                                    sendToAttributedUser
+                                                }
+                                                onSendToAttributedUserChange={
+                                                    setSendToAttributedUser
+                                                }
+                                                hasAssociatedUser={
+                                                    !!selectedUser
+                                                }
+                                                emailTags={emailTags}
+                                                onEmailTagsChange={setEmailTags}
+                                            />
                                         </div>
 
                                         <div className="space-y-4 mt-4">
@@ -505,7 +556,7 @@ export default function CreateVirtualApiKeyForm({
                     </CredenzaClose>
                     <Button
                         type="button"
-                        onClick={form.handleSubmit(onSubmit)}
+                        onClick={form.handleSubmit(handleFormSubmit)}
                         loading={loading}
                         disabled={credential !== null || loading}
                     >
