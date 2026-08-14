@@ -60,6 +60,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { useDebounce } from "use-debounce";
 import { RolesSelector } from "../roles-selector";
 import { UsersSelector } from "../users-selector";
+import { cn } from "@app/lib/cn";
 
 export function AddActionPanel({
     onAdd
@@ -149,7 +150,12 @@ export function AddActionPanel({
                 <PopoverTrigger asChild>
                     <Button type="button" variant="outline">
                         {t("alertingSelectActionType")}
-                        <ChevronRightIcon className="size-4" />
+                        <ChevronRightIcon
+                            className={cn(
+                                "size-4 transition-transform duration-150",
+                                isPopoverOpen && "rotate-90"
+                            )}
+                        />
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="shadow-md flex flex-col gap-3 w-150">
