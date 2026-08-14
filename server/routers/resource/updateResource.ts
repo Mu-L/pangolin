@@ -609,8 +609,8 @@ async function updateHttpResource(
                     and(
                         eq(resources.fullDomain, fullDomain),
                         resource.mode === "inference"
-                            ? eq(resources.mode, "inference")
-                            : ne(resources.mode, "inference")
+                            ? ne(resources.mode, "inference")
+                            : eq(resources.mode, "inference")
                     )
                 );
 

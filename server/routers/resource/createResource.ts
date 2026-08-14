@@ -496,8 +496,8 @@ async function createHttpResource(
             and(
                 eq(resources.fullDomain, fullDomain),
                 effectiveMode === "inference"
-                    ? eq(resources.mode, "inference")
-                    : ne(resources.mode, "inference")
+                    ? ne(resources.mode, "inference")
+                    : eq(resources.mode, "inference")
             )
         );
 
