@@ -59,7 +59,7 @@ export default function EditRoleForm({
             payload.name = values.name;
             payload.description = values.description || undefined;
         }
-        if (isPaidUser(tierMatrix.advancedPrivateResources)) {
+        if (isPaidUser(tierMatrix.roleBasedSSHControls)) {
             payload.sshSudoMode = values.sshSudoMode;
             payload.sshCreateHomeDir = values.sshCreateHomeDir;
             payload.sshSudoCommands =
@@ -107,10 +107,7 @@ export default function EditRoleForm({
                     toast({
                         variant: "destructive",
                         title: t("aiBudgetErrorSave"),
-                        description: formatAxiosError(
-                            e,
-                            t("aiBudgetErrorSave")
-                        )
+                        description: formatAxiosError(e, t("aiBudgetErrorSave"))
                     });
                 }
             }

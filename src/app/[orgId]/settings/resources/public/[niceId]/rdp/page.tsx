@@ -55,11 +55,7 @@ export default function RdpSettingsPage(props: {
 }) {
     const params = use(props.params);
     const { resource, updateResource } = useResourceContext();
-    const { isPaidUser } = usePaidStatus();
     const api = createApiClient(useEnvContext());
-    const disabled = !isPaidUser(
-        tierMatrix[TierFeature.AdvancedPublicResources]
-    );
 
     const { data: targetsResponse, isLoading: isLoadingTargets } = useQuery({
         queryKey: ["resourceTargets", resource.resourceId, params.orgId, "rdp"],
@@ -75,14 +71,11 @@ export default function RdpSettingsPage(props: {
 
     return (
         <SettingsContainer>
-            <PaidFeaturesAlert
-                tiers={tierMatrix[TierFeature.AdvancedPublicResources]}
-            />
             <RdpServerForm
                 orgId={params.orgId}
                 resource={resource}
                 updateResource={updateResource}
-                disabled={disabled}
+                disabled={false}
                 targetsResponse={targetsResponse ?? { targets: [] }}
             />
         </SettingsContainer>

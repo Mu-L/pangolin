@@ -55,11 +55,7 @@ export default function VncSettingsPage(props: {
 }) {
     const params = use(props.params);
     const { resource, updateResource } = useResourceContext();
-    const { isPaidUser } = usePaidStatus();
     const api = createApiClient(useEnvContext());
-    const disabled = !isPaidUser(
-        tierMatrix[TierFeature.AdvancedPublicResources]
-    );
 
     const { data: targetsResponse, isLoading: isLoadingTargets } = useQuery({
         queryKey: ["resourceTargets", resource.resourceId, params.orgId, "vnc"],
@@ -75,14 +71,11 @@ export default function VncSettingsPage(props: {
 
     return (
         <SettingsContainer>
-            <PaidFeaturesAlert
-                tiers={tierMatrix[TierFeature.AdvancedPublicResources]}
-            />
             <VncServerForm
                 orgId={params.orgId}
                 resource={resource}
                 updateResource={updateResource}
-                disabled={disabled}
+                disabled={true}
                 targetsResponse={targetsResponse ?? { targets: [] }}
             />
         </SettingsContainer>

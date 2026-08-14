@@ -239,14 +239,6 @@ export default function Page() {
     // Resource type state
     const [resourceType, setResourceType] = useState<NewResourceType>("http");
 
-    const isBrowserGatewayType =
-        resourceType === "ssh" ||
-        resourceType === "rdp" ||
-        resourceType === "vnc";
-    const browserGatewayDisabled =
-        isBrowserGatewayType &&
-        !isPaidUser(tierMatrix[TierFeature.AdvancedPublicResources]);
-
     // Target management state (managed by ProxyResourceTargetsForm; mirrored here for onSubmit)
     const [targets, setTargets] = useState<LocalTarget[]>([]);
     const [selectedProviders, setSelectedProviders] = useState<
@@ -1056,14 +1048,6 @@ export default function Page() {
                             {/* SSH Server Section */}
                             {resourceType === "ssh" && (
                                 <SettingsSection>
-                                    <PaidFeaturesAlert
-                                        tiers={
-                                            tierMatrix[
-                                                TierFeature
-                                                    .AdvancedPublicResources
-                                            ]
-                                        }
-                                    />
                                     <SettingsSectionHeader>
                                         <SettingsSectionTitle>
                                             {t("sshServer")}
@@ -1072,14 +1056,7 @@ export default function Page() {
                                             {t("sshServerDescription")}
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
-                                    <fieldset
-                                        disabled={browserGatewayDisabled}
-                                        className={
-                                            browserGatewayDisabled
-                                                ? "opacity-50 pointer-events-none"
-                                                : ""
-                                        }
-                                    >
+           
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
                                             <SettingsFormGrid>
@@ -1318,21 +1295,12 @@ export default function Page() {
                                             </SettingsFormGrid>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
-                                    </fieldset>
                                 </SettingsSection>
                             )}
 
                             {/* RDP Server Section */}
                             {resourceType === "rdp" && (
                                 <SettingsSection>
-                                    <PaidFeaturesAlert
-                                        tiers={
-                                            tierMatrix[
-                                                TierFeature
-                                                    .AdvancedPublicResources
-                                            ]
-                                        }
-                                    />
                                     <SettingsSectionHeader>
                                         <SettingsSectionTitle>
                                             {t("rdpServer")}
@@ -1341,14 +1309,6 @@ export default function Page() {
                                             {t("rdpServerDescription")}
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
-                                    <fieldset
-                                        disabled={browserGatewayDisabled}
-                                        className={
-                                            browserGatewayDisabled
-                                                ? "opacity-50 pointer-events-none"
-                                                : ""
-                                        }
-                                    >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
                                             <Form {...bgTargetForm}>
@@ -1365,21 +1325,12 @@ export default function Page() {
                                             </Form>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
-                                    </fieldset>
                                 </SettingsSection>
                             )}
 
                             {/* VNC Server Section */}
                             {resourceType === "vnc" && (
                                 <SettingsSection>
-                                    <PaidFeaturesAlert
-                                        tiers={
-                                            tierMatrix[
-                                                TierFeature
-                                                    .AdvancedPublicResources
-                                            ]
-                                        }
-                                    />
                                     <SettingsSectionHeader>
                                         <SettingsSectionTitle>
                                             {t("vncServer")}
@@ -1388,14 +1339,7 @@ export default function Page() {
                                             {t("vncServerDescription")}
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
-                                    <fieldset
-                                        disabled={browserGatewayDisabled}
-                                        className={
-                                            browserGatewayDisabled
-                                                ? "opacity-50 pointer-events-none"
-                                                : ""
-                                        }
-                                    >
+                                    
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
                                             <Form {...bgTargetForm}>
@@ -1412,7 +1356,6 @@ export default function Page() {
                                             </Form>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
-                                    </fieldset>
                                 </SettingsSection>
                             )}
 
@@ -1527,7 +1470,6 @@ export default function Page() {
                                     loading={createLoading}
                                     disabled={
                                         !areAllTargetsValid() ||
-                                        browserGatewayDisabled ||
                                         createLoading
                                     }
                                 >

@@ -20,6 +20,7 @@ import * as logs from "./auditLogs";
 import * as launcher from "./launcher";
 import * as newt from "./newt";
 import * as olm from "./olm";
+import * as ssh from "./ssh";
 import * as serverInfo from "./serverInfo";
 import HttpCode from "@server/types/HttpCode";
 import {
@@ -56,12 +57,13 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import createHttpError from "http-errors";
 import { build } from "@server/build";
 import { createStore } from "#dynamic/lib/rateLimitStore";
-import { logActionAudit } from "#dynamic/middlewares";
+import { logActionAudit, verifyValidLicense } from "#dynamic/middlewares";
 import { checkRoundTripMessage } from "./ws";
 import * as labels from "@server/routers/labels";
 import * as aiProvider from "@server/routers/aiProvider";
 import * as aiBudget from "@server/routers/aiBudget";
 import * as virtualApiKey from "@server/routers/virtualApiKey";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 // Root routes
 export const unauthenticated = Router();
@@ -1861,6 +1863,28 @@ authenticated.put(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.detachLabelFromItem),
     labels.detachLabelFromItem
+);
+
+authenticated.post(
+    "/org/:orgId/ssh/sign-key",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    // verifyUserHasAction(ActionsEnum.signSshKey), // this check happens inside of the function now
+    // logActionAudit(ActionsEnum.signSshKey), // it is handled inside of the function below so we can include more metadata
+    ssh.signSshKey
+);
+
+authenticated.get(
+    "/client/:clientId/verify-associations-cache",
+    verifyClientAccess,
+    client.verifyClientAssociationsCache
+);
+
+authenticated.post(
+    "/client/:clientId/rebuild-associations-cache",
+    verifyClientAccess,
+    client.rebuildClientAssociationsCacheRoute
 );
 
 // Auth routes

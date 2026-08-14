@@ -262,18 +262,6 @@ export async function updatePublicResources(
             headers = JSON.stringify(resourceData.headers);
         }
 
-        if (["ssh", "rdp", "vnc"].includes(resourceData.mode || "")) {
-            const isLicensed = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPublicResources
-            );
-            if (!isLicensed) {
-                throw new Error(
-                    "Your current subscription does not support browser gateway resources. Please upgrade to access this feature."
-                );
-            }
-        }
-
         if (resourceData.policy) {
             const isLicensed = await isLicensedOrSubscribed(
                 orgId,
@@ -331,7 +319,7 @@ export async function updatePublicResources(
 
                 const isLicensed = await isLicensedOrSubscribed(
                     orgId,
-                    tierMatrix.maintencePage
+                    tierMatrix.maintenancePage
                 );
                 if (!isLicensed) {
                     resourceData.maintenance = undefined;
@@ -1138,7 +1126,7 @@ export async function updatePublicResources(
 
             const isLicensed = await isLicensedOrSubscribed(
                 orgId,
-                tierMatrix.maintencePage
+                tierMatrix.maintenancePage
             );
             if (!isLicensed) {
                 resourceData.maintenance = undefined;

@@ -20,19 +20,16 @@ import * as orgIdp from "#private/routers/orgIdp";
 import * as domain from "#private/routers/domain";
 import * as auth from "#private/routers/auth";
 import * as license from "#private/routers/license";
-import * as generateLicense from "./generatedLicense";
+import * as generateLicense from "#private/routers/generatedLicense";
 import * as logs from "#private/routers/auditLogs";
 import * as misc from "#private/routers/misc";
 import * as reKey from "#private/routers/re-key";
 import * as approval from "#private/routers/approvals";
-import * as ssh from "#private/routers/ssh";
 import * as user from "#private/routers/user";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 import * as alertRule from "#private/routers/alertRule";
 import * as healthChecks from "#private/routers/healthChecks";
-import * as client from "@server/routers/client";
-import * as resource from "#private/routers/resource";
 import * as policy from "#private/routers/policy";
 
 import {
@@ -653,17 +650,6 @@ authenticated.put(
 );
 
 authenticated.post(
-    "/org/:orgId/ssh/sign-key",
-    verifyValidLicense,
-    verifyValidSubscription(tierMatrix.advancedPrivateResources),
-    verifyOrgAccess,
-    verifyLimits,
-    // verifyUserHasAction(ActionsEnum.signSshKey), // this check happens inside of the function now
-    // logActionAudit(ActionsEnum.signSshKey), // it is handled inside of the function below so we can include more metadata
-    ssh.signSshKey
-);
-
-authenticated.post(
     "/user/:userId/add-role/:roleId",
     verifyRoleAccess,
     verifyUserAccess,
@@ -866,18 +852,6 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getTarget),
     healthChecks.getBatchedHealthCheckStatusHistory
-);
-
-authenticated.get(
-    "/client/:clientId/verify-associations-cache",
-    verifyClientAccess,
-    client.verifyClientAssociationsCache
-);
-
-authenticated.post(
-    "/client/:clientId/rebuild-associations-cache",
-    verifyClientAccess,
-    client.rebuildClientAssociationsCacheRoute
 );
 
 authenticated.post(

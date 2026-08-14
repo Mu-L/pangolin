@@ -128,30 +128,6 @@ export async function updatePrivateResources(
     for (const [resourceNiceId, resourceData] of Object.entries(
         config["client-resources"]
     )) {
-        if (resourceData.mode === "http") {
-            const hasHttpFeature = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPrivateResources
-            );
-            if (!hasHttpFeature) {
-                throw new Error(
-                    "HTTP private resources are not included in your current plan. Please upgrade."
-                );
-            }
-        }
-
-        if (resourceData.mode === "ssh") {
-            const hasSshFeature = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPrivateResources
-            );
-            if (!hasSshFeature) {
-                throw new Error(
-                    "SSH private resources are not included in your current plan. Please upgrade."
-                );
-            }
-        }
-
         const [existingResource] = await trx
             .select()
             .from(siteResources)

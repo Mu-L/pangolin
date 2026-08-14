@@ -1,16 +1,3 @@
-/*
- * This file is part of a proprietary work.
- *
- * Copyright (c) 2025-2026 Fossorial, Inc.
- * All rights reserved.
- *
- * This file is licensed under the Fossorial Commercial License.
- * You may not use this file except in compliance with the License.
- * Unauthorized use, copying, modification, or distribution is strictly prohibited.
- *
- * This file is not licensed under the AGPLv3.
- */
-
 import { Request, Response, NextFunction } from "express";
 import { randomInt } from "crypto";
 import { z } from "zod";
@@ -35,8 +22,6 @@ import {
     SiteResource
 } from "@server/db";
 import { logAccessAudit } from "#private/lib/logAccessAudit";
-import { isLicensedOrSubscribed } from "#private/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -159,19 +144,6 @@ export async function signSshKey(
                 createHttpError(
                     HttpCode.FORBIDDEN,
                     "User does not have permission perform this action"
-                )
-            );
-        }
-
-        const isLicensed = await isLicensedOrSubscribed(
-            orgId,
-            tierMatrix.advancedPrivateResources
-        );
-        if (!isLicensed) {
-            return next(
-                createHttpError(
-                    HttpCode.FORBIDDEN,
-                    "SSH key signing requires a paid plan"
                 )
             );
         }
