@@ -183,6 +183,34 @@ export const HeaderSchema = z.object({
     value: z.string().min(1)
 });
 
+export const AiProviderModelEntrySchema = z.object({
+    model: z.string().min(1),
+    "list-type": z.enum(["allow", "block"])
+});
+
+export const AiProviderAttachmentSchema = z
+    .object({
+        provider: z.string().min(1),
+        "access-mode": z
+            .enum(["inherit", "select"])
+            .optional()
+            .default("inherit"),
+        enabled: z.boolean().optional().default(true),
+        models: z.array(AiProviderModelEntrySchema).optional().default([])
+    })
+    .refine(
+        (provider) => {
+            if (provider.models.length === 0) {
+                return true;
+            }
+            return provider["access-mode"] === "select";
+        },
+        {
+            path: ["models"],
+            error: "'models' can only be set on a provider with access-mode 'select'"
+        }
+    );
+
 export const AuthDaemonSchema = z
     .object({
         pam: z.enum(["passthrough", "push"]).optional().default("passthrough"),
@@ -209,7 +237,9 @@ export const PublicResourceSchema = z
         protocol: z
             .enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"])
             .optional(), // this was the old one and is now DEPRECATED in favor of the mode
-        mode: z.enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"]).optional(),
+        mode: z
+            .enum(["http", "tcp", "udp", "ssh", "rdp", "vnc", "inference"])
+            .optional(),
         policy: z.string().optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).optional(),
@@ -226,7 +256,8 @@ export const PublicResourceSchema = z
         "auth-daemon": AuthDaemonSchema.optional(),
         "proxy-protocol": z.boolean().optional(),
         "proxy-protocol-version": z.int().min(1).optional(),
-        labels: z.array(z.string().min(1)).optional()
+        labels: z.array(z.string().min(1)).optional(),
+        "ai-providers": z.array(AiProviderAttachmentSchema).optional()
     })
     .refine(
         (resource) => {
@@ -315,11 +346,13 @@ export const PublicResourceSchema = z
                 return true;
             }
 
-            // If protocol/mode is http, ssh, rdp, or vnc, it must have a full-domain
+            // If protocol/mode is http, ssh, rdp, vnc, or inference, it must have a full-domain
             const effectiveProtocol = resource.mode ?? resource.protocol;
             if (
                 effectiveProtocol !== undefined &&
-                ["http", "ssh", "rdp", "vnc"].includes(effectiveProtocol)
+                ["http", "ssh", "rdp", "vnc", "inference"].includes(
+                    effectiveProtocol
+                )
             ) {
                 return (
                     resource["full-domain"] !== undefined &&
@@ -330,7 +363,43 @@ export const PublicResourceSchema = z
         },
         {
             path: ["full-domain"],
-            error: "When protocol is 'http', 'ssh', 'rdp', or 'vnc', a 'full-domain' must be provided"
+            error: "When protocol is 'http', 'ssh', 'rdp', 'vnc', or 'inference', a 'full-domain' must be provided"
+        }
+    )
+    .refine(
+        (resource) => {
+            if (isTargetsOnlyResource(resource)) {
+                return true;
+            }
+
+            const effectiveMode = resource.mode ?? resource.protocol;
+            if (effectiveMode !== "inference") {
+                return true;
+            }
+
+            return resource.targets.every((target) => target == null);
+        },
+        {
+            path: ["targets"],
+            error: "When mode is 'inference', 'targets' must not be provided"
+        }
+    )
+    .refine(
+        (resource) => {
+            if (isTargetsOnlyResource(resource)) {
+                return true;
+            }
+
+            const effectiveMode = resource.mode ?? resource.protocol;
+            if (effectiveMode === "inference") {
+                return true;
+            }
+
+            return (resource["ai-providers"]?.length ?? 0) === 0;
+        },
+        {
+            path: ["ai-providers"],
+            error: "'ai-providers' can only be set when mode is 'inference'"
         }
     )
     .refine(
@@ -464,7 +533,7 @@ export function isTargetsOnlyResource(resource: any): boolean {
 export const PrivateResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr", "http", "ssh"]),
+        mode: z.enum(["host", "cidr", "http", "ssh", "inference"]),
         site: z.string().optional(), // DEPRECATED IN FAVOR OF sites
         sites: z.array(z.string()).optional().default([]),
         // protocol: z.enum(["tcp", "udp"]).optional(),
@@ -495,16 +564,17 @@ export const PrivateResourceSchema = z
         users: z.array(z.string()).optional().default([]),
         machines: z.array(z.string()).optional().default([]),
         labels: z.array(z.string().min(1)).optional().default([]),
-        "auth-daemon": AuthDaemonSchema.optional()
+        "auth-daemon": AuthDaemonSchema.optional(),
+        "ai-providers": z.array(AiProviderAttachmentSchema).optional().default([])
     })
     .refine(
         (data) => {
-            // destination is optional only for ssh+native; required for everything else
+            // destination is optional only for ssh+native or inference; required for everything else
             const isNativeSSH =
                 data.mode === "ssh" &&
                 (data["auth-daemon"] === undefined ||
                     data["auth-daemon"].mode === "native");
-            if (!isNativeSSH && !data.destination) {
+            if (data.mode !== "inference" && !isNativeSSH && !data.destination) {
                 return false;
             }
             return true;
@@ -512,7 +582,19 @@ export const PrivateResourceSchema = z
         {
             path: ["destination"],
             message:
-                "destination is required unless mode is 'ssh' with auth-daemon mode 'native'"
+                "destination is required unless mode is 'ssh' with auth-daemon mode 'native', or mode is 'inference'"
+        }
+    )
+    .refine(
+        (data) => {
+            if (data.mode === "inference") {
+                return true;
+            }
+            return (data["ai-providers"]?.length ?? 0) === 0;
+        },
+        {
+            path: ["ai-providers"],
+            error: "'ai-providers' can only be set when mode is 'inference'"
         }
     )
     .refine(

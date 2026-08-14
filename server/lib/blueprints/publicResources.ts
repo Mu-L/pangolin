@@ -56,6 +56,7 @@ import createHttpError from "http-errors";
 import next from "next";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
+import { syncInferenceAiConfig } from "./aiProviders";
 
 export type PublicResourcesResults = {
     proxyResource: Resource;
@@ -287,7 +288,7 @@ export async function updatePublicResources(
         if (existingResource) {
             let domain;
             if (
-                ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
+                ["http", "ssh", "rdp", "vnc", "inference"].includes(resourceData.mode || "")
             ) {
                 if (resourceData["full-domain"]?.startsWith("*.")) {
                     const isLicensed = await isLicensedOrSubscribed(
@@ -371,12 +372,12 @@ export async function updatePublicResources(
                             name: resourceData.name || "Unnamed Resource",
 
                             mode: resourceData.mode,
-                            proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                            proxyPort: ["http", "ssh", "rdp", "vnc", "inference"].includes(
                                 resourceData.mode || ""
                             )
                                 ? null
                                 : resourceData["proxy-port"],
-                            fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                            fullDomain: ["http", "ssh", "rdp", "vnc", "inference"].includes(
                                 resourceData.mode || ""
                             )
                                 ? resourceData["full-domain"]
@@ -567,12 +568,13 @@ export async function updatePublicResources(
                         .update(resources)
                         .set({
                             name: resourceData.name || "Unnamed Resource",
-                            proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                            mode: resourceData.mode,
+                            proxyPort: ["http", "ssh", "rdp", "vnc", "inference"].includes(
                                 resourceData.mode || ""
                             )
                                 ? null
                                 : resourceData["proxy-port"],
-                            fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                            fullDomain: ["http", "ssh", "rdp", "vnc", "inference"].includes(
                                 resourceData.mode || ""
                             )
                                 ? resourceData["full-domain"]
@@ -674,6 +676,25 @@ export async function updatePublicResources(
                         trx
                     );
                 }
+
+                await syncInferenceAiConfig({
+                    orgId,
+                    trx,
+                    mode: resourceData.mode || "",
+                    scope: "public",
+                    resourceId: existingResource.resourceId,
+                    providers: (resourceData["ai-providers"] || []).map(
+                        (p) => ({
+                            provider: p.provider,
+                            accessMode: p["access-mode"],
+                            enabled: p.enabled,
+                            models: p.models.map((m) => ({
+                                model: m.model,
+                                listType: m["list-type"]
+                            }))
+                        })
+                    )
+                });
             }
 
             const existingResourceTargets = await trx
@@ -754,7 +775,7 @@ export async function updatePublicResources(
                                     : undefined),
                             rewritePathType: targetData["rewrite-match"],
                             priority: targetData.priority,
-                            mode: resourceData.mode
+                            mode: resourceData.mode as Target["mode"]
                         })
                         .where(eq(targets.targetId, existingTarget.targetId))
                         .returning();
@@ -1059,7 +1080,7 @@ export async function updatePublicResources(
 
             let domain;
             if (
-                ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
+                ["http", "ssh", "rdp", "vnc", "inference"].includes(resourceData.mode || "")
             ) {
                 if (resourceData["full-domain"]?.startsWith("*.")) {
                     const isLicensed = await isLicensedOrSubscribed(
@@ -1156,12 +1177,12 @@ export async function updatePublicResources(
                     status: resourceStatusFromSite,
                     name: resourceData.name || "Unnamed Resource",
                     mode: resourceData.mode,
-                    proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                    proxyPort: ["http", "ssh", "rdp", "vnc", "inference"].includes(
                         resourceData.mode || ""
                     )
                         ? null
                         : resourceData["proxy-port"],
-                    fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                    fullDomain: ["http", "ssh", "rdp", "vnc", "inference"].includes(
                         resourceData.mode || ""
                     )
                         ? resourceData["full-domain"]
@@ -1217,6 +1238,23 @@ export async function updatePublicResources(
                 .returning();
 
             resource = newResource;
+
+            await syncInferenceAiConfig({
+                orgId,
+                trx,
+                mode: resourceData.mode || "",
+                scope: "public",
+                resourceId: newResource.resourceId,
+                providers: (resourceData["ai-providers"] || []).map((p) => ({
+                    provider: p.provider,
+                    accessMode: p["access-mode"],
+                    enabled: p.enabled,
+                    models: p.models.map((m) => ({
+                        model: m.model,
+                        listType: m["list-type"]
+                    }))
+                }))
+            });
 
             await trx.insert(roleResources).values({
                 roleId: adminRole.roleId,

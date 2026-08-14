@@ -29,11 +29,13 @@ import { tierMatrix } from "../billing/tierMatrix";
 import { build } from "@server/build";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
+import { syncInferenceAiConfig } from "./aiProviders";
 
 async function getDomainForSiteResource(
     siteResourceId: number | undefined,
     fullDomain: string,
     orgId: string,
+    isInference: boolean,
     trx: Transaction
 ): Promise<{ subdomain: string | null; domainId: string }> {
     const [fullDomainExists] = await trx
@@ -43,6 +45,9 @@ async function getDomainForSiteResource(
             and(
                 eq(siteResources.fullDomain, fullDomain),
                 eq(siteResources.orgId, orgId),
+                // exclude looking at the ones on exit nodes if this is an inference resource,
+                // and vice versa, so inference and non-inference resources can share a full-domain
+                ne(siteResources.requiresExitNodeConnection, !isInference),
                 siteResourceId
                     ? ne(siteResources.siteResourceId, siteResourceId)
                     : isNotNull(siteResources.siteResourceId)
@@ -214,7 +219,7 @@ export async function updatePrivateResources(
             resourceStatusFromSite = siteSingle.status ?? "approved";
         }
 
-        if (allSites.length === 0) {
+        if (resourceData.mode !== "inference" && allSites.length === 0) {
             throw new Error(
                 `No valid sites found for private private resource ${resourceNiceId} in org ${orgId}`
             );
@@ -231,11 +236,16 @@ export async function updatePrivateResources(
             let domainInfo:
                 | { subdomain: string | null; domainId: string }
                 | undefined;
-            if (resourceData["full-domain"] && resourceData.mode === "http") {
+            if (
+                resourceData["full-domain"] &&
+                (resourceData.mode === "http" ||
+                    resourceData.mode === "inference")
+            ) {
                 domainInfo = await getDomainForSiteResource(
                     existingResource.siteResourceId,
                     resourceData["full-domain"],
                     orgId,
+                    resourceData.mode === "inference",
                     trx
                 );
             }
@@ -265,6 +275,8 @@ export async function updatePrivateResources(
                 }
             }
 
+            const isInference = resourceData.mode === "inference";
+
             // Update existing resource
             const [updatedResource] = await trx
                 .update(siteResources)
@@ -279,13 +291,15 @@ export async function updatePrivateResources(
                     alias: resourceData.alias || null,
                     disableIcmp:
                         resourceData["disable-icmp"] ||
-                        (resourceData.mode == "http" ? true : false), // default to true for http resources, otherwise false
+                        (resourceData.mode == "http" || isInference
+                            ? true
+                            : false), // default to true for http/inference resources, otherwise false
                     tcpPortRangeString:
-                        resourceData.mode == "http"
+                        resourceData.mode == "http" || isInference
                             ? "443,80"
                             : resourceData["tcp-ports"],
                     udpPortRangeString:
-                        resourceData.mode == "http"
+                        resourceData.mode == "http" || isInference
                             ? ""
                             : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
@@ -295,7 +309,9 @@ export async function updatePrivateResources(
                     authDaemonMode:
                         resourceData["auth-daemon"]?.mode || "native",
                     authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
-                    status: resourceStatusFromSite
+                    status: resourceStatusFromSite,
+                    networkId: isInference ? null : undefined,
+                    requiresExitNodeConnection: isInference
                 })
                 .where(
                     eq(
@@ -307,7 +323,19 @@ export async function updatePrivateResources(
 
             const siteResourceId = existingResource.siteResourceId;
 
-            if (updatedResource.networkId) {
+            if (isInference) {
+                // inference resources are not attached to any site network
+                if (existingResource.networkId) {
+                    await trx
+                        .delete(siteNetworks)
+                        .where(
+                            eq(
+                                siteNetworks.networkId,
+                                existingResource.networkId
+                            )
+                        );
+                }
+            } else if (updatedResource.networkId) {
                 await trx
                     .delete(siteNetworks)
                     .where(
@@ -321,6 +349,23 @@ export async function updatePrivateResources(
                     });
                 }
             }
+
+            await syncInferenceAiConfig({
+                orgId,
+                trx,
+                mode: resourceData.mode,
+                scope: "site",
+                siteResourceId,
+                providers: resourceData["ai-providers"].map((p) => ({
+                    provider: p.provider,
+                    accessMode: p["access-mode"],
+                    enabled: p.enabled,
+                    models: p.models.map((m) => ({
+                        model: m.model,
+                        listType: m["list-type"]
+                    }))
+                }))
+            });
 
             await trx
                 .delete(clientSiteResources)
@@ -501,14 +546,20 @@ export async function updatePrivateResources(
                 releaseAliasLock = release;
             }
 
+            const isInference = resourceData.mode === "inference";
+
             let domainInfo:
                 | { subdomain: string | null; domainId: string }
                 | undefined;
-            if (resourceData["full-domain"] && resourceData.mode === "http") {
+            if (
+                resourceData["full-domain"] &&
+                (resourceData.mode === "http" || isInference)
+            ) {
                 domainInfo = await getDomainForSiteResource(
                     undefined,
                     resourceData["full-domain"],
                     orgId,
+                    isInference,
                     trx
                 );
             }
@@ -534,13 +585,16 @@ export async function updatePrivateResources(
                 }
             }
 
-            const [network] = await trx
-                .insert(networks)
-                .values({
-                    scope: "resource",
-                    orgId: orgId
-                })
-                .returning();
+            let network: typeof networks.$inferSelect | undefined;
+            if (!isInference) {
+                [network] = await trx
+                    .insert(networks)
+                    .values({
+                        scope: "resource",
+                        orgId: orgId
+                    })
+                    .returning();
+            }
 
             // Create new resource
             const [newResource] = await trx
@@ -548,8 +602,8 @@ export async function updatePrivateResources(
                 .values({
                     orgId: orgId,
                     niceId: resourceNiceId,
-                    networkId: network.networkId,
-                    defaultNetworkId: network.networkId,
+                    networkId: network ? network.networkId : null,
+                    defaultNetworkId: network ? network.networkId : null,
                     name: resourceData.name || resourceNiceId,
                     mode: resourceData.mode,
                     ssl: resourceData.ssl,
@@ -561,13 +615,15 @@ export async function updatePrivateResources(
                     aliasAddress: aliasAddress,
                     disableIcmp:
                         resourceData["disable-icmp"] ||
-                        (resourceData.mode == "http" ? true : false), // default to true for http resources, otherwise false
+                        (resourceData.mode == "http" || isInference
+                            ? true
+                            : false), // default to true for http/inference resources, otherwise false
                     tcpPortRangeString:
-                        resourceData.mode == "http"
+                        resourceData.mode == "http" || isInference
                             ? "443,80"
                             : resourceData["tcp-ports"],
                     udpPortRangeString:
-                        resourceData.mode == "http"
+                        resourceData.mode == "http" || isInference
                             ? ""
                             : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
@@ -577,7 +633,8 @@ export async function updatePrivateResources(
                     authDaemonMode:
                         resourceData["auth-daemon"]?.mode || "native",
                     authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
-                    status: resourceStatusFromSite
+                    status: resourceStatusFromSite,
+                    requiresExitNodeConnection: isInference
                 })
                 .returning();
 
@@ -585,12 +642,31 @@ export async function updatePrivateResources(
 
             const siteResourceId = newResource.siteResourceId;
 
-            for (const site of allSites) {
-                await trx.insert(siteNetworks).values({
-                    siteId: site.siteId,
-                    networkId: network.networkId
-                });
+            if (network) {
+                for (const site of allSites) {
+                    await trx.insert(siteNetworks).values({
+                        siteId: site.siteId,
+                        networkId: network.networkId
+                    });
+                }
             }
+
+            await syncInferenceAiConfig({
+                orgId,
+                trx,
+                mode: resourceData.mode,
+                scope: "site",
+                siteResourceId,
+                providers: resourceData["ai-providers"].map((p) => ({
+                    provider: p.provider,
+                    accessMode: p["access-mode"],
+                    enabled: p.enabled,
+                    models: p.models.map((m) => ({
+                        model: m.model,
+                        listType: m["list-type"]
+                    }))
+                }))
+            });
 
             const [adminRole] = await trx
                 .select()
