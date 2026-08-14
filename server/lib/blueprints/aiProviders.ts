@@ -26,7 +26,7 @@ export type BlueprintAiProviderInput = {
     provider: string;
     accessMode: AccessMode;
     enabled: boolean;
-    models: BlueprintAiModelInput[];
+    models: string[];
 };
 
 async function resolveProviderNiceIds(
@@ -99,12 +99,12 @@ async function resolveModelKeys(
     for (const provider of providers) {
         const providerId = providerIdByNiceId.get(provider.provider)!;
         for (const m of provider.models) {
-            const modelId = byProviderAndKey.get(`${providerId}::${m.model}`);
+            const modelId = byProviderAndKey.get(`${providerId}::${m}`);
             if (modelId === undefined) {
-                missing.push(`${provider.provider}/${m.model}`);
+                missing.push(`${provider.provider}/${m}`);
                 continue;
             }
-            modelIdByEntryKey.set(`${provider.provider}::${m.model}`, modelId);
+            modelIdByEntryKey.set(`${provider.provider}::${m}`, modelId);
         }
     }
 
@@ -117,7 +117,7 @@ async function resolveModelKeys(
 
 async function validateModelEntries(input: {
     orgId: string;
-    entries: { modelId: number; listType: ModelListType }[];
+    entries: { modelId: number }[];
     selectProviderIds: number[];
     trx: Transaction;
 }): Promise<void> {
@@ -157,13 +157,10 @@ async function validateModelEntries(input: {
                 `Model ${entry.modelId} does not exist or does not belong to a select-mode attached provider`
             );
         }
-        if (catalog.listType !== entry.listType) {
-            throw new Error(
-                `Model ${entry.modelId} must use list-type "${catalog.listType}" to match the provider catalog entry`
-            );
-        }
         if (!catalog.enabled) {
-            throw new Error(`Model ${entry.modelId} is disabled on its provider`);
+            throw new Error(
+                `Model ${entry.modelId} is disabled on its provider`
+            );
         }
     }
 }
@@ -238,8 +235,7 @@ export async function syncInferenceAiConfig(
 
     const modelEntries = input.providers.flatMap((p) =>
         p.models.map((m) => ({
-            modelId: modelIdByEntryKey.get(`${p.provider}::${m.model}`)!,
-            listType: m.listType
+            modelId: modelIdByEntryKey.get(`${p.provider}::${m}`)!
         }))
     );
 
@@ -262,8 +258,7 @@ export async function syncInferenceAiConfig(
             await trx.insert(resourceAiModels).values(
                 modelEntries.map((m) => ({
                     resourceId: input.resourceId,
-                    modelId: m.modelId,
-                    listType: m.listType
+                    modelId: m.modelId
                 }))
             );
         }
@@ -277,8 +272,7 @@ export async function syncInferenceAiConfig(
             await trx.insert(siteResourceAiModels).values(
                 modelEntries.map((m) => ({
                     siteResourceId: input.siteResourceId,
-                    modelId: m.modelId,
-                    listType: m.listType
+                    modelId: m.modelId
                 }))
             );
         }

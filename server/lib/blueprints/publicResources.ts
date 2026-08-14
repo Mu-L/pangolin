@@ -708,10 +708,7 @@ export async function updatePublicResources(
                             provider: p.provider,
                             accessMode: p["access-mode"],
                             enabled: p.enabled,
-                            models: p.models.map((m) => ({
-                                model: m.model,
-                                listType: m["list-type"]
-                            }))
+                            models: p.models
                         })
                     )
                 });
@@ -1288,10 +1285,7 @@ export async function updatePublicResources(
                     provider: p.provider,
                     accessMode: p["access-mode"],
                     enabled: p.enabled,
-                    models: p.models.map((m) => ({
-                        model: m.model,
-                        listType: m["list-type"]
-                    }))
+                    models: p.models
                 }))
             });
 

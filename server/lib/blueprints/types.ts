@@ -188,11 +188,6 @@ export const HeaderSchema = z.object({
     value: z.string().min(1)
 });
 
-export const AiProviderModelEntrySchema = z.object({
-    model: z.string().min(1),
-    "list-type": z.enum(["allow", "block"])
-});
-
 export const AiProviderAttachmentSchema = z
     .object({
         provider: z.string().min(1),
@@ -201,7 +196,7 @@ export const AiProviderAttachmentSchema = z
             .optional()
             .default("inherit"),
         enabled: z.boolean().optional().default(true),
-        models: z.array(AiProviderModelEntrySchema).optional().default([])
+        models: z.array(z.string()).optional().default([])
     })
     .refine(
         (provider) => {
@@ -598,7 +593,10 @@ export const PrivateResourceSchema = z
         machines: z.array(z.string()).optional().default([]),
         labels: z.array(z.string().min(1)).optional().default([]),
         "auth-daemon": AuthDaemonSchema.optional(),
-        "ai-providers": z.array(AiProviderAttachmentSchema).optional().default([]),
+        "ai-providers": z
+            .array(AiProviderAttachmentSchema)
+            .optional()
+            .default([]),
         "ai-budget": AiBudgetListSchemaWithDefault
     })
     .refine(
@@ -608,7 +606,11 @@ export const PrivateResourceSchema = z
                 data.mode === "ssh" &&
                 (data["auth-daemon"] === undefined ||
                     data["auth-daemon"].mode === "native");
-            if (data.mode !== "inference" && !isNativeSSH && !data.destination) {
+            if (
+                data.mode !== "inference" &&
+                !isNativeSSH &&
+                !data.destination
+            ) {
                 return false;
             }
             return true;
