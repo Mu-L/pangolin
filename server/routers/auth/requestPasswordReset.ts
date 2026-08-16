@@ -49,7 +49,12 @@ export async function requestPasswordReset(
         const existingUser = await db
             .select()
             .from(users)
-            .where(eq(users.email, email));
+            .where(
+                and(
+                    eq(users.email, email),
+                    eq(users.type, UserType.Internal)
+                )
+            );
 
         if (!existingUser || !existingUser.length) {
             await randomDelay(2000);
