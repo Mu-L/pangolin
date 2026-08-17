@@ -248,10 +248,7 @@ export default async function ResourceAuthPage(props: {
     if (searchParams.token) {
         return (
             <div className="w-full max-w-md">
-                <AccessToken
-                    token={searchParams.token}
-                    resourceId={authInfo.resourceId}
-                />
+                <AccessToken token={searchParams.token} />
             </div>
         );
     }

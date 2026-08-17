@@ -821,10 +821,6 @@ export async function verifyResourceSession(
                 }
 
                 if (resourceSession.accessTokenId) {
-                    logger.debug(
-                        "Resource allowed because access token session is valid"
-                    );
-
                     const [tokenItem] = await db
                         .select()
                         .from(resourceAccessToken)
@@ -836,26 +832,37 @@ export async function verifyResourceSession(
                         )
                         .limit(1);
 
-                    const userData = tokenItem
-                        ? await getAccessTokenUserData(
-                              tokenItem,
-                              resource.orgId
-                          )
-                        : undefined;
+                    if (
+                        tokenItem &&
+                        tokenItem.resourceId === resource.resourceId
+                    ) {
+                        logger.debug(
+                            "Resource allowed because access token session is valid"
+                        );
 
-                    logAccessTokenRequestAudit(
-                        {
-                            resourceId: resource.resourceId,
-                            orgId: resource.orgId,
-                            location: ipCC,
-                            accessTokenId: resourceSession.accessTokenId,
-                            tokenTitle: tokenItem?.title ?? null,
-                            userData
-                        },
-                        parsedBody.data
+                        const userData = await getAccessTokenUserData(
+                            tokenItem,
+                            resource.orgId
+                        );
+
+                        logAccessTokenRequestAudit(
+                            {
+                                resourceId: resource.resourceId,
+                                orgId: resource.orgId,
+                                location: ipCC,
+                                accessTokenId: resourceSession.accessTokenId,
+                                tokenTitle: tokenItem.title ?? null,
+                                userData
+                            },
+                            parsedBody.data
+                        );
+
+                        return allowed(res, userData, dontStripSession);
+                    }
+
+                    logger.debug(
+                        "Access token session does not belong to this resource"
                     );
-
-                    return allowed(res, userData, dontStripSession);
                 }
 
                 if (resourceSession.userSessionId && sso) {
