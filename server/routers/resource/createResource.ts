@@ -24,14 +24,14 @@ import logger from "@server/logger";
 import { subdomainSchema, wildcardSubdomainSchema } from "@server/lib/schemas";
 import config from "@server/lib/config";
 import { OpenAPITags, registry } from "@server/openApi";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates";
 import {
     validateAndConstructDomain,
     checkWildcardDomainConflict
 } from "@server/lib/domainUtils";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     getUniqueResourceName,
     getUniqueResourcePolicyName
@@ -454,21 +454,6 @@ async function createHttpResource(
         }
     }
 
-    if (
-        ["ssh", "rdp", "vnc"].includes(effectiveMode) &&
-        !isLicensedOrSubscribed(
-            orgId!,
-            tierMatrix[TierFeature.AdvancedPublicResources]
-        )
-    ) {
-        return next(
-            createHttpError(
-                HttpCode.BAD_REQUEST,
-                "Your current subscription does not support browser gateway resources. Please upgrade to access this feature."
-            )
-        );
-    }
-
     // Validate domain and construct full domain
     const domainResult = await validateAndConstructDomain(
         domainId,
@@ -647,9 +632,7 @@ async function createHttpResource(
         );
     }
 
-    if (build !== "oss") {
-        await createCertificate(domainId, fullDomain, db);
-    }
+    await createCertificate(domainId, fullDomain, db);
 
     return response<CreateResourceResponse>(res, {
         data: resource,

@@ -16,7 +16,6 @@ import {
     type DescribedSelectOption
 } from "@app/components/DescribedSelect";
 import DomainPicker from "@app/components/DomainPicker";
-import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { Button } from "@app/components/ui/button";
 import {
     Form,
@@ -30,7 +29,6 @@ import {
 import { Input } from "@app/components/ui/input";
 import type { Selectedsite } from "@app/components/site-selector";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import {
@@ -77,12 +75,6 @@ export default function CreatePrivateResourcePage() {
     const { env } = useEnvContext();
     const api = createApiClient({ env });
     const orgId = params.orgId as string;
-    const disableEnterpriseFeatures = env.flags.disableEnterpriseFeatures;
-    const { isPaidUser } = usePaidStatus();
-    const httpSectionDisabled = !isPaidUser(
-        tierMatrix.advancedPrivateResources
-    );
-    const sshSectionDisabled = !isPaidUser(tierMatrix.advancedPrivateResources);
     const [isSubmitting, startTransition] = useTransition();
 
     const siteIdParam = searchParams.get("siteId");
@@ -158,31 +150,22 @@ export default function CreatePrivateResourcePage() {
             title: t("createInternalResourceDialogModeCidr"),
             description: t("privateResourceTypeCidrDescription")
         },
-        ...(!disableEnterpriseFeatures
-            ? [
-                  {
-                      value: "http" as const,
-                      title: t("createInternalResourceDialogModeHttp"),
-                      description: t("privateResourceTypeHttpDescription")
-                  },
-                  {
-                      value: "ssh" as const,
-                      title: t("createInternalResourceDialogModeSsh"),
-                      description: t("privateResourceTypeSshDescription")
-                  }
-              ]
-            : []),
+        {
+            value: "http" as const,
+            title: t("createInternalResourceDialogModeHttp"),
+            description: t("privateResourceTypeHttpDescription")
+        },
+        {
+            value: "ssh" as const,
+            title: t("createInternalResourceDialogModeSsh"),
+            description: t("privateResourceTypeSshDescription")
+        },
         {
             value: "inference" as const,
             title: t("createInternalResourceDialogModeInference"),
             description: t("resourceTypeInferenceDescription")
         }
     ];
-
-    const submitDisabled =
-        isSubmitting ||
-        (mode === "http" && httpSectionDisabled) ||
-        (mode === "ssh" && sshSectionDisabled);
 
     function onSubmit(values: FormValues) {
         startTransition(async () => {
@@ -467,10 +450,6 @@ export default function CreatePrivateResourcePage() {
                                                 )}
                                                 watch={asAnyWatch(form.watch)}
                                                 labelPrefix="create"
-                                                disabled={
-                                                    mode === "ssh" &&
-                                                    sshSectionDisabled
-                                                }
                                             />
                                         </SettingsFormCell>
                                     )}
@@ -584,9 +563,6 @@ export default function CreatePrivateResourcePage() {
                     {/* HTTP configuration */}
                     {mode === "http" && (
                         <SettingsSection>
-                            <PaidFeaturesAlert
-                                tiers={tierMatrix.advancedPrivateResources}
-                            />
                             <SettingsSectionHeader>
                                 <SettingsSectionTitle>
                                     {t("httpSettings")}
@@ -597,62 +573,43 @@ export default function CreatePrivateResourcePage() {
                                     )}
                                 </SettingsSectionDescription>
                             </SettingsSectionHeader>
-                            <fieldset
-                                disabled={httpSectionDisabled}
-                                className={
-                                    httpSectionDisabled
-                                        ? "opacity-50 pointer-events-none"
-                                        : ""
-                                }
-                            >
-                                <SettingsSectionBody>
-                                    <SettingsSectionForm variant="half">
-                                        <SettingsFormGrid>
-                                            <SettingsFormCell span="half">
-                                                <PrivateResourceSitesField
-                                                    control={form.control}
-                                                    orgId={orgId}
-                                                    selectedSites={
-                                                        selectedSites
-                                                    }
-                                                    onSelectedSitesChange={
-                                                        setSelectedSites
-                                                    }
-                                                />
-                                            </SettingsFormCell>
-                                            <SettingsFormCell span="full">
-                                                <PrivateResourceHttpFields
-                                                    control={asAnyControl(
-                                                        form.control
-                                                    )}
-                                                    setValue={asAnySetValue(
-                                                        form.setValue
-                                                    )}
-                                                    orgId={orgId}
-                                                    watch={asAnyWatch(
-                                                        form.watch
-                                                    )}
-                                                    disabled={
-                                                        httpSectionDisabled
-                                                    }
-                                                    labelPrefix="create"
-                                                    hideDomainPicker
-                                                    hidePaidFeaturesAlert
-                                                />
-                                            </SettingsFormCell>
-                                        </SettingsFormGrid>
-                                    </SettingsSectionForm>
-                                </SettingsSectionBody>
-                            </fieldset>
+
+                            <SettingsSectionBody>
+                                <SettingsSectionForm variant="half">
+                                    <SettingsFormGrid>
+                                        <SettingsFormCell span="half">
+                                            <PrivateResourceSitesField
+                                                control={form.control}
+                                                orgId={orgId}
+                                                selectedSites={selectedSites}
+                                                onSelectedSitesChange={
+                                                    setSelectedSites
+                                                }
+                                            />
+                                        </SettingsFormCell>
+                                        <SettingsFormCell span="full">
+                                            <PrivateResourceHttpFields
+                                                control={asAnyControl(
+                                                    form.control
+                                                )}
+                                                setValue={asAnySetValue(
+                                                    form.setValue
+                                                )}
+                                                orgId={orgId}
+                                                watch={asAnyWatch(form.watch)}
+                                                labelPrefix="create"
+                                                hideDomainPicker
+                                            />
+                                        </SettingsFormCell>
+                                    </SettingsFormGrid>
+                                </SettingsSectionForm>
+                            </SettingsSectionBody>
                         </SettingsSection>
                     )}
 
                     {/* SSH server */}
                     {mode === "ssh" && (
                         <SettingsSection>
-                            <PaidFeaturesAlert
-                                tiers={tierMatrix.advancedPrivateResources}
-                            />
                             <SettingsSectionHeader>
                                 <SettingsSectionTitle>
                                     {t("sshSettings")}
@@ -661,37 +618,22 @@ export default function CreatePrivateResourcePage() {
                                     {t("sshServerDescription")}
                                 </SettingsSectionDescription>
                             </SettingsSectionHeader>
-                            <fieldset
-                                disabled={sshSectionDisabled}
-                                className={
-                                    sshSectionDisabled
-                                        ? "opacity-50 pointer-events-none"
-                                        : ""
-                                }
-                            >
-                                <SettingsSectionBody>
-                                    <SettingsSectionForm variant="half">
-                                        <PrivateResourceSshFields
-                                            control={asAnyControl(form.control)}
-                                            setValue={asAnySetValue(
-                                                form.setValue
-                                            )}
-                                            watch={asAnyWatch(form.watch)}
-                                            orgId={orgId}
-                                            disabled={sshSectionDisabled}
-                                            selectedSites={selectedSites}
-                                            onSelectedSitesChange={
-                                                setSelectedSites
-                                            }
-                                            labelPrefix="create"
-                                            showSshSettings={true}
-                                            layout="wizard"
-                                            showPaidFeaturesAlert={false}
-                                            hideAlias
-                                        />
-                                    </SettingsSectionForm>
-                                </SettingsSectionBody>
-                            </fieldset>
+                            <SettingsSectionBody>
+                                <SettingsSectionForm variant="half">
+                                    <PrivateResourceSshFields
+                                        control={asAnyControl(form.control)}
+                                        setValue={asAnySetValue(form.setValue)}
+                                        watch={asAnyWatch(form.watch)}
+                                        orgId={orgId}
+                                        selectedSites={selectedSites}
+                                        onSelectedSitesChange={setSelectedSites}
+                                        labelPrefix="create"
+                                        showSshSettings={true}
+                                        layout="wizard"
+                                        hideAlias
+                                    />
+                                </SettingsSectionForm>
+                            </SettingsSectionBody>
                         </SettingsSection>
                     )}
 
@@ -776,7 +718,7 @@ export default function CreatePrivateResourcePage() {
                         <Button
                             type="submit"
                             form="create-private-resource-form"
-                            disabled={submitDisabled}
+                            disabled={isSubmitting}
                             loading={isSubmitting}
                         >
                             {t("createInternalResourceDialogCreateResource")}

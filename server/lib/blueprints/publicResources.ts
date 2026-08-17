@@ -1,5 +1,5 @@
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import { hashPassword } from "@server/auth/password";
 import { generateId } from "@server/auth/sessions/app";
 import { build } from "@server/build";
@@ -51,9 +51,6 @@ import { tierMatrix } from "../billing/tierMatrix";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { Config, isTargetsOnlyResource, TargetData } from "./types";
 import { getOrCreateLabelIds, syncResourceLabels } from "./labels";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import next from "next";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
 import { syncInferenceAiConfig } from "./aiProviders";
@@ -262,18 +259,6 @@ export async function updatePublicResources(
             headers = JSON.stringify(resourceData.headers);
         }
 
-        if (["ssh", "rdp", "vnc"].includes(resourceData.mode || "")) {
-            const isLicensed = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPublicResources
-            );
-            if (!isLicensed) {
-                throw new Error(
-                    "Your current subscription does not support browser gateway resources. Please upgrade to access this feature."
-                );
-            }
-        }
-
         if (resourceData.policy) {
             const isLicensed = await isLicensedOrSubscribed(
                 orgId,
@@ -331,7 +316,7 @@ export async function updatePublicResources(
 
                 const isLicensed = await isLicensedOrSubscribed(
                     orgId,
-                    tierMatrix.maintencePage
+                    tierMatrix.maintenancePage
                 );
                 if (!isLicensed) {
                     resourceData.maintenance = undefined;
@@ -1138,7 +1123,7 @@ export async function updatePublicResources(
 
             const isLicensed = await isLicensedOrSubscribed(
                 orgId,
-                tierMatrix.maintencePage
+                tierMatrix.maintenancePage
             );
             if (!isLicensed) {
                 resourceData.maintenance = undefined;

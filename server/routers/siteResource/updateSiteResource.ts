@@ -10,8 +10,6 @@ import {
     sites,
     userSiteResources
 } from "@server/db";
-import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import response from "@server/lib/response";
 import { eq, and, ne, inArray } from "drizzle-orm";
@@ -362,26 +360,6 @@ export async function updateSiteResource(
             );
         }
 
-        if (mode == "http") {
-            const hasHttpFeature = await isLicensedOrSubscribed(
-                existingSiteResource.orgId,
-                tierMatrix[TierFeature.AdvancedPrivateResources]
-            );
-            if (!hasHttpFeature) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "HTTP private resources are not included in your current plan. Please upgrade."
-                    )
-                );
-            }
-        }
-
-        const isLicensedSshPam = await isLicensedOrSubscribed(
-            existingSiteResource.orgId,
-            tierMatrix.advancedPrivateResources
-        );
-
         const [org] = await db
             .select()
             .from(orgs)
@@ -541,10 +519,9 @@ export async function updateSiteResource(
         await db.transaction(async (trx) => {
             // Update the site resource
             const sshPamSet =
-                isLicensedSshPam &&
-                (authDaemonPort !== undefined ||
-                    authDaemonMode !== undefined ||
-                    pamMode !== undefined)
+                authDaemonPort !== undefined ||
+                authDaemonMode !== undefined ||
+                pamMode !== undefined
                     ? {
                           ...(authDaemonPort !== undefined && {
                               authDaemonPort
@@ -741,8 +718,7 @@ export async function updateSiteResource(
             ssl &&
             (mode === "http" || mode == "inference") &&
             domainId &&
-            fullDomain &&
-            build != "oss"
+            fullDomain
         ) {
             await createCertificate(domainId, fullDomain, db);
         }

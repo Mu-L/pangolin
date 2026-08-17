@@ -23,9 +23,7 @@ import { getOrCreateLabelIds, syncSiteResourceLabels } from "./labels";
 import logger from "@server/logger";
 import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 import { getNextAvailableAliasAddress } from "../ip";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
-import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "../billing/tierMatrix";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import { build } from "@server/build";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
@@ -128,30 +126,6 @@ export async function updatePrivateResources(
     for (const [resourceNiceId, resourceData] of Object.entries(
         config["client-resources"]
     )) {
-        if (resourceData.mode === "http") {
-            const hasHttpFeature = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPrivateResources
-            );
-            if (!hasHttpFeature) {
-                throw new Error(
-                    "HTTP private resources are not included in your current plan. Please upgrade."
-                );
-            }
-        }
-
-        if (resourceData.mode === "ssh") {
-            const hasSshFeature = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPrivateResources
-            );
-            if (!hasSshFeature) {
-                throw new Error(
-                    "SSH private resources are not included in your current plan. Please upgrade."
-                );
-            }
-        }
-
         const [existingResource] = await trx
             .select()
             .from(siteResources)

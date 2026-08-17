@@ -468,7 +468,6 @@ export default function PublicResourcesTable({
                     const domainId = resourceRow.domainId;
                     const certHostname = resourceRow.fullDomain;
                     const showHttpsCertIndicator =
-                        build !== "oss" &&
                         resourceRow.ssl &&
                         certHostname != null &&
                         certHostname !== "";

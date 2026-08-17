@@ -40,7 +40,6 @@ import {
     sites,
     siteNetworks,
     siteResources,
-    Target,
     targets
 } from "@server/db";
 import {
@@ -49,44 +48,47 @@ import {
     validatePathRewriteConfig
 } from "@server/lib/traefik/utils";
 import privateConfig from "#private/lib/config";
-import createPathRewriteMiddleware from "@server/lib/traefik/middleware";
+import { applyPathRewriteMiddleware } from "@server/lib/traefik/middleware";
 import {
     CertificateResult,
     getValidCertificatesForDomains
-} from "#private/lib/certificates";
+} from "@server/lib/certificates";
 import { build } from "@server/build";
 import regionalCache from "#private/lib/cache";
+import { TargetWithSite } from "@server/lib/traefik/types";
+import { buildWildcardTls } from "@server/lib/traefik/certResolver";
 import {
-    AI_GATEWAY_TRUST_HEADER,
-    AI_GATEWAY_RESOURCE_TYPE_HEADER,
-    AI_GATEWAY_CLIENT_IP_HEADER,
-    getAiGatewayTrustToken
-} from "@server/lib/aiGatewayTrust";
+    buildHostRule,
+    appendPathMatch,
+    computeRoutePriority
+} from "@server/lib/traefik/rule";
+import {
+    buildHttpLoadBalancerServers,
+    buildStickySessionCookie,
+    buildTcpUdpLoadBalancerServers,
+    buildStickySessionIp
+} from "@server/lib/traefik/loadBalancer";
+import { buildCustomHeadersMiddleware } from "@server/lib/traefik/headersMiddleware";
+import {
+    AI_GATEWAY_TRUST_MIDDLEWARE_RESOURCE,
+    AI_GATEWAY_TRUST_MIDDLEWARE_SITE_RESOURCE,
+    AI_GATEWAY_CLIENT_IP_MIDDLEWARE_NAME,
+    getAiGatewayHost,
+    buildAiGatewayTrustMiddlewares,
+    buildAiGatewayClientIpMiddleware,
+    buildAiGatewayHostHeaderMiddleware,
+    buildAiGatewayRouterAndService
+} from "@server/lib/traefik/aiGatewayMiddlewares";
+import {
+    buildBrowserGatewayResourcesMap,
+    buildBrowserGatewayConfig
+} from "@server/lib/traefik/browserGateway";
+import { buildSiteResourceAliasCertPlaceholders } from "@server/lib/traefik/siteResourceAlias";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const redirectToRootMiddlewareName = "redirect-to-root";
 const badgerMiddlewareName = "badger";
 const landingRateLimitMiddlewareName = "landing-ratelimit";
-const bgRateLimitMiddlewareName = "bg-ratelimit";
-
-// Define extended target type with site information
-type TargetWithSite = Target & {
-    resourceId: number;
-    targetId: number;
-    ip: string | null;
-    method: string | null;
-    port: number | null;
-    internalPort: number | null;
-    enabled: boolean;
-    health: string | null;
-    site: {
-        siteId: number;
-        type: string;
-        subnet: string | null;
-        exitNodeId: number | null;
-        online: boolean;
-    };
-};
 
 export async function getTraefikConfig(
     exitNodeId: number,
@@ -313,74 +315,12 @@ export async function getTraefikConfig(
     }
 
     // Group browser gateway targets by resource
-    type BrowserGatewayResourceEntry = {
-        resourceId: number;
-        name: string;
-        fullDomain: string | null;
-        ssl: boolean | null;
-        subdomain: string | null;
-        domainId: string | null;
-        enabled: boolean | null;
-        wildcard: boolean | null;
-        domainCertResolver: string | null;
-        preferWildcardCert: boolean | null;
-        maintenanceModeEnabled: boolean | null;
-        maintenanceModeType: string | null;
-        maintenanceTitle: string | null;
-        maintenanceMessage: string | null;
-        maintenanceEstimatedTime: string | null;
-        targets: {
-            targetId: number;
-            bgType: string;
-            siteId: number;
-            siteType: string;
-            siteOnline: boolean | null;
-            subnet: string | null;
-        }[];
-    };
-    const browserGatewayResourcesMap = new Map<
-        number,
-        BrowserGatewayResourceEntry
-    >();
-
-    if (browserGatewayUiUrl) {
-        for (const row of resourcesWithTargetsAndSites) {
-            if (!["ssh", "vnc", "rdp"].includes(row.mode)) {
-                continue;
-            }
-            if (filterOutNamespaceDomains && row.domainNamespaceId) {
-                continue;
-            }
-            if (!browserGatewayResourcesMap.has(row.resourceId)) {
-                browserGatewayResourcesMap.set(row.resourceId, {
-                    resourceId: row.resourceId,
-                    name: sanitize(row.resourceName) || "",
-                    fullDomain: row.fullDomain,
-                    ssl: row.ssl,
-                    subdomain: row.subdomain,
-                    domainId: row.domainId,
-                    enabled: row.enabled,
-                    wildcard: row.wildcard,
-                    domainCertResolver: row.domainCertResolver,
-                    preferWildcardCert: row.preferWildcardCert,
-                    maintenanceModeEnabled: row.maintenanceModeEnabled,
-                    maintenanceModeType: row.maintenanceModeType,
-                    maintenanceTitle: row.maintenanceTitle,
-                    maintenanceMessage: row.maintenanceMessage,
-                    maintenanceEstimatedTime: row.maintenanceEstimatedTime,
-                    targets: []
-                });
-            }
-            browserGatewayResourcesMap.get(row.resourceId)!.targets.push({
-                targetId: row.targetId,
-                bgType: row.mode,
-                siteId: row.siteId,
-                siteType: row.siteType,
-                siteOnline: row.siteOnline,
-                subnet: row.subnet
-            });
-        }
-    }
+    const browserGatewayResourcesMap = browserGatewayUiUrl
+        ? buildBrowserGatewayResourcesMap(
+              resourcesWithTargetsAndSites,
+              filterOutNamespaceDomains
+          )
+        : new Map();
 
     let siteResourcesWithFullDomain: {
         siteResourceId: number;
@@ -515,12 +455,6 @@ export async function getTraefikConfig(
                         average: traefikRateLimit.average,
                         burst: traefikRateLimit.burst
                     }
-                },
-                [bgRateLimitMiddlewareName]: {
-                    rateLimit: {
-                        average: traefikRateLimit.average,
-                        burst: traefikRateLimit.burst
-                    }
                 }
             }
         }
@@ -580,91 +514,23 @@ export async function getTraefikConfig(
                 ...additionalMiddlewares
             ];
 
-            let rule: string;
-            if (resource.wildcard && fullDomain.startsWith("*.")) {
-                // Convert *.foo.bar.com -> HostRegexp(`^[^.]+\.foo\.bar\.com$`)
-                const escaped = fullDomain
-                    .slice(2) // remove leading "*."
-                    .replace(/\./g, "\\.");
-                rule = `HostRegexp(\`^[^.]+\\.${escaped}$\`)`;
-            } else {
-                rule = `Host(\`${fullDomain}\`)`;
-            }
+            let rule: string = buildHostRule(fullDomain, resource.wildcard);
 
-            // priority logic
-            let priority: number;
-            if (resource.priority && resource.priority != 100) {
-                priority = resource.priority;
-            } else {
-                priority = 100;
-                if (resource.path && resource.pathMatchType) {
-                    priority += 10;
-                    if (resource.pathMatchType === "exact") {
-                        priority += 5;
-                    } else if (resource.pathMatchType === "prefix") {
-                        priority += 3;
-                    } else if (resource.pathMatchType === "regex") {
-                        priority += 2;
-                    }
-                    if (resource.path === "/") {
-                        priority = 1; // lowest for catch-all
-                    }
-                }
-            }
+            const priority = computeRoutePriority(
+                resource.priority,
+                resource.path,
+                resource.pathMatchType
+            );
 
             let tls = {};
             if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
-                const domainParts = fullDomain.split(".");
-                let wildCard;
-                if (domainParts.length <= 2) {
-                    wildCard = `*.${domainParts.join(".")}`;
-                } else {
-                    wildCard = `*.${domainParts.slice(1).join(".")}`;
-                }
-
-                if (!resource.subdomain) {
-                    wildCard = resource.fullDomain;
-                }
-
-                const globalDefaultResolver =
-                    config.getRawConfig().traefik.cert_resolver;
-                const globalDefaultPreferWildcard =
-                    config.getRawConfig().traefik.prefer_wildcard_cert;
-
-                const domainCertResolver = resource.domainCertResolver;
-                const preferWildcardCert =
-                    resource.preferWildcardCert || resource.wildcard;
-
-                let resolverName: string | undefined;
-                let preferWildcard: boolean | undefined;
-                // Handle both letsencrypt & custom cases
-                if (domainCertResolver) {
-                    resolverName = domainCertResolver.trim();
-                } else {
-                    resolverName = globalDefaultResolver;
-                }
-
-                if (
-                    preferWildcardCert !== undefined &&
-                    preferWildcardCert !== null
-                ) {
-                    preferWildcard = preferWildcardCert;
-                } else {
-                    preferWildcard = globalDefaultPreferWildcard;
-                }
-
-                tls = {
-                    certResolver: resolverName,
-                    ...(preferWildcard
-                        ? {
-                              domains: [
-                                  {
-                                      main: wildCard
-                                  }
-                              ]
-                          }
-                        : {})
-                };
+                tls = buildWildcardTls({
+                    fullDomain,
+                    hasSubdomain: !!resource.subdomain,
+                    domainCertResolver: resource.domainCertResolver,
+                    preferWildcardCert:
+                        resource.preferWildcardCert || resource.wildcard
+                });
             } else {
                 // find a cert that matches the full domain, if not continue
                 const matchingCert = validCerts.find(
@@ -803,111 +669,32 @@ export async function getTraefikConfig(
             }
 
             // Handle path rewriting middleware
-            if (
-                resource.rewritePath !== null &&
-                resource.path !== null &&
-                resource.pathMatchType &&
-                resource.rewritePathType
-            ) {
-                // Create a unique middleware name
-                const rewriteMiddlewareName = `rewrite-r${resource.resourceId}-${key}`;
+            applyPathRewriteMiddleware(
+                config_output,
+                resource.resourceId,
+                key,
+                resource.path,
+                resource.pathMatchType,
+                resource.rewritePath,
+                resource.rewritePathType,
+                routerMiddlewares
+            );
 
-                try {
-                    const rewriteResult = createPathRewriteMiddleware(
-                        rewriteMiddlewareName,
-                        resource.path,
-                        resource.pathMatchType,
-                        resource.rewritePath,
-                        resource.rewritePathType
-                    );
-
-                    // Initialize middlewares object if it doesn't exist
-                    if (!config_output.http.middlewares) {
-                        config_output.http.middlewares = {};
-                    }
-
-                    // the middleware to the config
-                    Object.assign(
-                        config_output.http.middlewares,
-                        rewriteResult.middlewares
-                    );
-
-                    // middlewares to the router middleware chain
-                    if (rewriteResult.chain) {
-                        // For chained middlewares (like stripPrefix + addPrefix)
-                        routerMiddlewares.push(...rewriteResult.chain);
-                    } else {
-                        // Single middleware
-                        routerMiddlewares.push(rewriteMiddlewareName);
-                    }
-
-                    // logger.debug(
-                    //     `Created path rewrite middleware ${rewriteMiddlewareName}: ${resource.pathMatchType}(${resource.path}) -> ${resource.rewritePathType}(${resource.rewritePath})`
-                    // );
-                } catch (error) {
-                    logger.error(
-                        `Failed to create path rewrite middleware for resource ${resource.resourceId}: ${error}`
-                    );
+            const customHeadersMiddleware = buildCustomHeadersMiddleware(
+                resource.headers,
+                resource.setHostHeader,
+                resource.resourceId
+            );
+            if (customHeadersMiddleware) {
+                if (!config_output.http.middlewares) {
+                    config_output.http.middlewares = {};
                 }
+                config_output.http.middlewares[headersMiddlewareName] =
+                    customHeadersMiddleware;
+                routerMiddlewares.push(headersMiddlewareName);
             }
 
-            if (resource.headers || resource.setHostHeader) {
-                // if there are headers, parse them into an object
-                const headersObj: { [key: string]: string } = {};
-                if (resource.headers) {
-                    let headersArr: { name: string; value: string }[] = [];
-                    try {
-                        headersArr = JSON.parse(resource.headers) as {
-                            name: string;
-                            value: string;
-                        }[];
-                    } catch (e) {
-                        logger.warn(
-                            `Failed to parse headers for resource ${resource.resourceId}: ${e}`
-                        );
-                    }
-
-                    headersArr.forEach((header) => {
-                        headersObj[header.name] = header.value;
-                    });
-                }
-
-                if (resource.setHostHeader) {
-                    headersObj["Host"] = resource.setHostHeader;
-                }
-
-                // check if the object is not empty
-                if (Object.keys(headersObj).length > 0) {
-                    // Add the headers middleware
-                    if (!config_output.http.middlewares) {
-                        config_output.http.middlewares = {};
-                    }
-                    config_output.http.middlewares[headersMiddlewareName] = {
-                        headers: {
-                            customRequestHeaders: headersObj
-                        }
-                    };
-
-                    routerMiddlewares.push(headersMiddlewareName);
-                }
-            }
-
-            if (resource.path && resource.pathMatchType) {
-                //priority += 1;
-                // add path to rule based on match type
-                let path = resource.path;
-                // if the path doesn't start with a /, add it
-                if (!path.startsWith("/")) {
-                    path = `/${path}`;
-                }
-                if (resource.pathMatchType === "exact") {
-                    rule += ` && Path(\`${path}\`)`;
-                } else if (resource.pathMatchType === "prefix") {
-                    rule += ` && PathPrefix(\`${path}\`)`;
-                } else if (resource.pathMatchType === "regex") {
-                    rule += ` && PathRegexp(\`${resource.path}\`)`; // this is the raw path because it's a regex
-                }
-            }
+            rule = appendPathMatch(rule, resource.path, resource.pathMatchType);
 
             config_output.http.routers![routerName] = {
                 entryPoints: [
@@ -924,90 +711,9 @@ export async function getTraefikConfig(
 
             config_output.http.services![serviceName] = {
                 loadBalancer: {
-                    servers: (() => {
-                        // Check if any sites are online
-                        // THIS IS SO THAT THERE IS SOME IMMEDIATE FEEDBACK
-                        // EVEN IF THE SITES HAVE NOT UPDATED YET FROM THE
-                        // RECEIVE BANDWIDTH ENDPOINT.
-
-                        // TODO: HOW TO HANDLE ^^^^^^ BETTER
-                        const anySitesOnline = targets.some(
-                            (target) => target.site.online
-                        );
-
-                        return (
-                            targets
-                                .filter((target) => {
-                                    if (!target.enabled) {
-                                        return false;
-                                    }
-
-                                    if (target.health == "unhealthy") {
-                                        return false;
-                                    }
-
-                                    // If any sites are online, exclude offline sites
-                                    if (anySitesOnline && !target.site.online) {
-                                        return false;
-                                    }
-
-                                    if (
-                                        target.site.type === "local" ||
-                                        target.site.type === "wireguard"
-                                    ) {
-                                        if (
-                                            !target.ip ||
-                                            !target.port ||
-                                            !target.method
-                                        ) {
-                                            return false;
-                                        }
-                                    } else if (target.site.type === "newt") {
-                                        if (
-                                            !target.internalPort ||
-                                            !target.method ||
-                                            !target.site.subnet
-                                        ) {
-                                            return false;
-                                        }
-                                    }
-                                    return true;
-                                })
-                                .map((target) => {
-                                    if (
-                                        target.site.type === "local" ||
-                                        target.site.type === "wireguard"
-                                    ) {
-                                        return {
-                                            url: `${target.method}://${target.ip}:${target.port}`
-                                        };
-                                    } else if (target.site.type === "newt") {
-                                        const ip =
-                                            target.site.subnet!.split("/")[0];
-                                        return {
-                                            url: `${target.method}://${ip}:${target.internalPort}`
-                                        };
-                                    }
-                                })
-                                // filter out duplicates
-                                .filter(
-                                    (v, i, a) =>
-                                        a.findIndex(
-                                            (t) => t && v && t.url === v.url
-                                        ) === i
-                                )
-                        );
-                    })(),
+                    servers: buildHttpLoadBalancerServers(targets),
                     ...(resource.stickySession
-                        ? {
-                              sticky: {
-                                  cookie: {
-                                      name: "p_sticky", // TODO: make this configurable via config.yml like other cookies
-                                      secure: resource.ssl,
-                                      httpOnly: true
-                                  }
-                              }
-                          }
+                        ? buildStickySessionCookie(resource.ssl)
                         : {})
                 }
             };
@@ -1057,131 +763,42 @@ export async function getTraefikConfig(
 
             config_output[protocol].services[serviceName] = {
                 loadBalancer: {
-                    servers: (() => {
-                        // Check if any sites are online
-                        const anySitesOnline = targets.some(
-                            (target) => target.site.online
-                        );
-
-                        return targets
-                            .filter((target) => {
-                                if (!target.enabled) {
-                                    return false;
-                                }
-
-                                // If any sites are online, exclude offline sites
-                                if (anySitesOnline && !target.site.online) {
-                                    return false;
-                                }
-
-                                if (
-                                    target.site.type === "local" ||
-                                    target.site.type === "wireguard"
-                                ) {
-                                    if (!target.ip || !target.port) {
-                                        return false;
-                                    }
-                                } else if (target.site.type === "newt") {
-                                    if (
-                                        !target.internalPort ||
-                                        !target.site.subnet
-                                    ) {
-                                        return false;
-                                    }
-                                }
-                                return true;
-                            })
-                            .map((target) => {
-                                if (
-                                    target.site.type === "local" ||
-                                    target.site.type === "wireguard"
-                                ) {
-                                    return {
-                                        address: `${target.ip}:${target.port}`
-                                    };
-                                } else if (target.site.type === "newt") {
-                                    const ip =
-                                        target.site.subnet!.split("/")[0];
-                                    return {
-                                        address: `${ip}:${target.internalPort}`
-                                    };
-                                }
-                            });
-                    })(),
+                    servers: buildTcpUdpLoadBalancerServers(targets),
                     ...(resource.proxyProtocol && protocol == "tcp" // proxy protocol only works for tcp
                         ? {
                               serversTransport: `${ppPrefix}${resource.proxyProtocolVersion || 1}@file` // TODO: does @file here cause issues?
                           }
                         : {}),
-                    ...(resource.stickySession
-                        ? {
-                              sticky: {
-                                  ipStrategy: {
-                                      depth: 0,
-                                      sourcePort: true
-                                  }
-                              }
-                          }
-                        : {})
+                    ...(resource.stickySession ? buildStickySessionIp() : {})
                 }
             };
         }
     }
 
     if (browserGatewayUiUrl) {
-        // Generate Traefik config for browser gateway resources
-        const browserGatewayPort = 39999;
-        for (const [, bgResource] of browserGatewayResourcesMap.entries()) {
-            if (!bgResource.enabled) continue;
-            if (!bgResource.domainId) continue;
-            if (!bgResource.fullDomain) continue;
-
-            if (!config_output.http.routers) config_output.http.routers = {};
-            if (!config_output.http.services) config_output.http.services = {};
-
-            const fullDomain = bgResource.fullDomain;
-            const additionalMiddlewares =
-                config.getRawConfig().traefik.additional_middlewares || [];
-            const routerMiddlewares = [
-                badgerMiddlewareName,
-                bgRateLimitMiddlewareName,
-                ...additionalMiddlewares
-            ];
-
-            const hostRule = `Host(\`${fullDomain}\`)`;
-
-            // Build TLS config
-            let tls = {};
-            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
-                const domainParts = fullDomain.split(".");
-                let wildCard: string;
-                if (domainParts.length <= 2) {
-                    wildCard = `*.${domainParts.join(".")}`;
-                } else {
-                    wildCard = `*.${domainParts.slice(1).join(".")}`;
+        buildBrowserGatewayConfig({
+            config_output,
+            browserGatewayResourcesMap,
+            browserGatewayUiUrl,
+            maintenancePageUiUrl,
+            badgerMiddlewareName,
+            redirectHttpsMiddlewareName,
+            resolveTls: ({
+                fullDomain,
+                hasSubdomain,
+                domainCertResolver,
+                preferWildcardCert
+            }) => {
+                if (
+                    !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
+                ) {
+                    return buildWildcardTls({
+                        fullDomain,
+                        hasSubdomain,
+                        domainCertResolver,
+                        preferWildcardCert
+                    });
                 }
-                if (!bgResource.subdomain) {
-                    wildCard = fullDomain;
-                }
-
-                const globalDefaultResolver =
-                    config.getRawConfig().traefik.cert_resolver;
-                const globalDefaultPreferWildcard =
-                    config.getRawConfig().traefik.prefer_wildcard_cert;
-                const resolverName = bgResource.domainCertResolver
-                    ? bgResource.domainCertResolver.trim()
-                    : globalDefaultResolver;
-                const preferWildcard =
-                    bgResource.preferWildcardCert !== undefined &&
-                    bgResource.preferWildcardCert !== null
-                        ? bgResource.preferWildcardCert
-                        : globalDefaultPreferWildcard;
-
-                tls = {
-                    certResolver: resolverName,
-                    ...(preferWildcard ? { domains: [{ main: wildCard }] } : {})
-                };
-            } else {
                 const matchingCert = validCerts.find(
                     (cert) => cert.queriedDomain === fullDomain
                 );
@@ -1189,231 +806,11 @@ export async function getTraefikConfig(
                     logger.debug(
                         `No matching certificate found for browser gateway domain: ${fullDomain}`
                     );
-                    continue;
+                    return null;
                 }
+                return {};
             }
-
-            const bgUiServiceName = `bg-r${bgResource.resourceId}-ui-service`;
-
-            if (bgResource.ssl) {
-                const redirectRouterName = `bg-r${bgResource.resourceId}-redirect`;
-                config_output.http.routers![redirectRouterName] = {
-                    entryPoints: [
-                        config.getRawConfig().traefik.http_entrypoint
-                    ],
-                    middlewares: [redirectHttpsMiddlewareName],
-                    service: bgUiServiceName,
-                    rule: hostRule,
-                    priority: 100
-                };
-            }
-
-            // Collect online sites for this resource (for any type)
-            const anySiteOnline = bgResource.targets.some((t) => t.siteOnline);
-
-            // Maintenance page logic for browser gateway resources
-            let showBgMaintenancePage = false;
-            if (bgResource.maintenanceModeEnabled) {
-                if (bgResource.maintenanceModeType === "forced") {
-                    showBgMaintenancePage = true;
-                } else if (bgResource.maintenanceModeType === "automatic") {
-                    showBgMaintenancePage = !anySiteOnline;
-                }
-            }
-
-            if (showBgMaintenancePage && maintenancePageUiUrl) {
-                const bgMaintenanceServiceName = `bg-r${bgResource.resourceId}-maintenance-service`;
-                const bgMaintenanceRouterName = `bg-r${bgResource.resourceId}-maintenance-router`;
-                const bgRewriteMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-rewrite`;
-                const bgMaintenanceHeadersMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-headers`;
-
-                const entrypointHttp =
-                    config.getRawConfig().traefik.http_entrypoint;
-                const entrypointHttps =
-                    config.getRawConfig().traefik.https_entrypoint;
-
-                if (!config_output.http.services)
-                    config_output.http.services = {};
-                if (!config_output.http.middlewares)
-                    config_output.http.middlewares = {};
-                if (!config_output.http.routers)
-                    config_output.http.routers = {};
-
-                config_output.http.services![bgMaintenanceServiceName] = {
-                    loadBalancer: {
-                        servers: [
-                            {
-                                url: maintenancePageUiUrl
-                            }
-                        ],
-                        passHostHeader: true
-                    }
-                };
-
-                config_output.http.middlewares![bgRewriteMiddlewareName] = {
-                    replacePathRegex: {
-                        regex: "^/(.*)",
-                        replacement: "/maintenance-screen"
-                    }
-                };
-
-                config_output.http.middlewares![
-                    bgMaintenanceHeadersMiddlewareName
-                ] = {
-                    headers: {
-                        customRequestHeaders: {
-                            Host: "app.pangolin.net", // if we are sending to the cloud the host needs to be this but we will pull the p-host to find the resource
-                            "p-host": fullDomain
-                        }
-                    }
-                };
-
-                config_output.http.routers![bgMaintenanceRouterName] = {
-                    entryPoints: [
-                        bgResource.ssl ? entrypointHttps : entrypointHttp
-                    ],
-                    service: bgMaintenanceServiceName,
-                    middlewares: [
-                        bgRewriteMiddlewareName,
-                        bgMaintenanceHeadersMiddlewareName
-                    ],
-                    rule: hostRule,
-                    priority: 2000,
-                    ...(bgResource.ssl ? { tls } : {})
-                };
-
-                config_output.http.routers![
-                    `${bgMaintenanceRouterName}-assets`
-                ] = {
-                    entryPoints: [
-                        bgResource.ssl ? entrypointHttps : entrypointHttp
-                    ],
-                    service: bgMaintenanceServiceName,
-                    middlewares: [bgMaintenanceHeadersMiddlewareName],
-                    rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
-                    priority: 2001,
-                    ...(bgResource.ssl ? { tls } : {})
-                };
-
-                continue;
-            }
-
-            // Group targets by type and generate per-type websocket routers and services
-            const typeMap = new Map<string, typeof bgResource.targets>();
-            for (const t of bgResource.targets) {
-                if (!typeMap.has(t.bgType)) typeMap.set(t.bgType, []);
-                typeMap.get(t.bgType)!.push(t);
-            }
-
-            for (const [bgType, typedTargets] of typeMap.entries()) {
-                const bgKey = `bg-r${bgResource.resourceId}-${bgType}`;
-                const bgRouterName = `${bgKey}-router`;
-                const bgServiceName = `${bgKey}-service`;
-                const bgRule = `${hostRule} && PathPrefix(\`/gateway/${bgType}\`)`;
-
-                const servers = typedTargets
-                    .filter((t) => {
-                        if (!t.siteOnline && anySiteOnline) return false;
-                        if (t.siteType === "newt") return !!t.subnet;
-                        return false; // browser gateway only supported on newt sites
-                    })
-                    .map((t) => ({
-                        url: `http://${t.subnet!.split("/")[0]}:${browserGatewayPort}`
-                    }))
-                    .filter(
-                        (v, i, a) => a.findIndex((u) => u.url === v.url) === i
-                    );
-
-                config_output.http.routers![bgRouterName] = {
-                    entryPoints: [
-                        bgResource.ssl
-                            ? config.getRawConfig().traefik.https_entrypoint
-                            : config.getRawConfig().traefik.http_entrypoint
-                    ],
-                    middlewares: routerMiddlewares,
-                    service: bgServiceName,
-                    rule: bgRule,
-                    priority: 110, // highest - websocket path takes precedence
-                    ...(bgResource.ssl ? { tls } : {})
-                };
-
-                config_output.http.services![bgServiceName] = {
-                    loadBalancer: {
-                        servers
-                    }
-                };
-            }
-
-            // UI: serve the browser gateway page from the internal pangolin instance.
-            // The primary type is used for the path rewrite (e.g. /rdp), mirroring
-            // how the maintenance page rewrites everything to /maintenance-screen.
-            const primaryType = typeMap.keys().next().value as string;
-            const uiRewriteMiddlewareName = `bg-r${bgResource.resourceId}-ui-rewrite`;
-            const uiHeadersMiddlewareName = `bg-r${bgResource.resourceId}-ui-headers`;
-            const entrypoint = bgResource.ssl
-                ? config.getRawConfig().traefik.https_entrypoint
-                : config.getRawConfig().traefik.http_entrypoint;
-
-            if (!config_output.http.middlewares) {
-                config_output.http.middlewares = {};
-            }
-
-            config_output.http.middlewares![uiRewriteMiddlewareName] = {
-                replacePathRegex: {
-                    regex: "^/(.*)",
-                    replacement: `/${primaryType}`
-                }
-            };
-
-            config_output.http.middlewares![uiHeadersMiddlewareName] = {
-                headers: {
-                    customRequestHeaders: {
-                        Host: "app.pangolin.net", // if we are sending to the cloud the host needs to be this but we will pull the p-host to find the resource
-                        "p-host": fullDomain
-                    }
-                }
-            };
-
-            config_output.http.services![bgUiServiceName] = {
-                loadBalancer: {
-                    servers: [
-                        {
-                            url: browserGatewayUiUrl
-                        }
-                    ]
-                }
-            };
-
-            // Assets router at higher priority so /_next files load without rewrite.
-            // Do NOT apply the path-rewrite middleware here — static assets must
-            // keep their original path; only the host headers are needed.
-            config_output.http.routers![
-                `bg-r${bgResource.resourceId}-assets-router`
-            ] = {
-                entryPoints: [entrypoint],
-                middlewares: [...routerMiddlewares, uiHeadersMiddlewareName],
-                service: bgUiServiceName,
-                rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
-                priority: 101,
-                ...(bgResource.ssl ? { tls } : {})
-            };
-
-            // Catch-all router rewrites everything on the domain to /{primaryType}
-            config_output.http.routers![
-                `bg-r${bgResource.resourceId}-ui-router`
-            ] = {
-                entryPoints: [entrypoint],
-                middlewares: [
-                    ...routerMiddlewares,
-                    uiRewriteMiddlewareName,
-                    uiHeadersMiddlewareName
-                ],
-                service: bgUiServiceName,
-                rule: hostRule,
-                priority: 100,
-                ...(bgResource.ssl ? { tls } : {})
-            };
-        }
+        });
     }
 
     // Add Traefik routes for siteResource aliases (HTTP mode + SSL) so that
@@ -1428,79 +825,24 @@ export async function getTraefikConfig(
             }
         }
 
-        for (const sr of siteResourcesWithFullDomain) {
-            if (!sr.fullDomain) continue;
-
-            // Skip if this alias is already handled by a resource router
-            if (existingFullDomains.has(sr.fullDomain)) continue;
-
-            const fullDomain = sr.fullDomain;
-            const srKey = `site-resource-cert-${sr.siteResourceId}`;
-            const siteResourceServiceName = `${srKey}-service`;
-            const siteResourceRouterName = `${srKey}-router`;
-            const siteResourceRewriteMiddlewareName = `${srKey}-rewrite`;
-
-            if (!config_output.http.routers) {
-                config_output.http.routers = {};
-            }
-            if (!config_output.http.services) {
-                config_output.http.services = {};
-            }
-            if (!config_output.http.middlewares) {
-                config_output.http.middlewares = {};
-            }
-
-            // Service pointing at the internal maintenance/Next.js page
-            config_output.http.services[siteResourceServiceName] = {
-                loadBalancer: {
-                    servers: [
-                        {
-                            url: maintenancePageUiUrl
-                        }
-                    ],
-                    passHostHeader: true
+        buildSiteResourceAliasCertPlaceholders({
+            config_output,
+            siteResourcesWithFullDomain,
+            existingFullDomains,
+            maintenancePageUiUrl,
+            redirectHttpsMiddlewareName,
+            resolveTls: (fullDomain) => {
+                if (
+                    !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
+                ) {
+                    // siteResource aliases don't have a per-domain cert
+                    // resolver stored, so always fall back to the global
+                    // defaults.
+                    return buildWildcardTls({
+                        fullDomain,
+                        hasSubdomain: true
+                    });
                 }
-            };
-
-            // Middleware that rewrites any path to /maintenance-screen
-            config_output.http.middlewares[siteResourceRewriteMiddlewareName] =
-                {
-                    replacePathRegex: {
-                        regex: "^/(.*)",
-                        replacement: "/private-maintenance-screen"
-                    }
-                };
-
-            // HTTP -> HTTPS redirect so the ACME challenge can be served
-            config_output.http.routers[`${siteResourceRouterName}-redirect`] = {
-                entryPoints: [config.getRawConfig().traefik.http_entrypoint],
-                middlewares: [redirectHttpsMiddlewareName],
-                service: siteResourceServiceName,
-                rule: `Host(\`${fullDomain}\`)`,
-                priority: 100
-            };
-
-            // Determine TLS / cert-resolver configuration
-            let tls: any = {};
-            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
-                const domainParts = fullDomain.split(".");
-                const wildCard =
-                    domainParts.length <= 2
-                        ? `*.${domainParts.join(".")}`
-                        : `*.${domainParts.slice(1).join(".")}`;
-
-                const globalDefaultResolver =
-                    config.getRawConfig().traefik.cert_resolver;
-                const globalDefaultPreferWildcard =
-                    config.getRawConfig().traefik.prefer_wildcard_cert;
-
-                tls = {
-                    certResolver: globalDefaultResolver,
-                    ...(globalDefaultPreferWildcard
-                        ? { domains: [{ main: wildCard }] }
-                        : {})
-                };
-            } else {
                 // pangolin-dns: only add route if we already have a valid cert
                 const matchingCert = validCerts.find(
                     (cert) => cert.queriedDomain === fullDomain
@@ -1509,29 +851,11 @@ export async function getTraefikConfig(
                     logger.debug(
                         `No matching certificate found for siteResource alias: ${fullDomain}`
                     );
-                    continue;
+                    return null;
                 }
+                return {};
             }
-
-            // HTTPS router - presence of this entry triggers cert generation
-            config_output.http.routers[siteResourceRouterName] = {
-                entryPoints: [config.getRawConfig().traefik.https_entrypoint],
-                service: siteResourceServiceName,
-                middlewares: [siteResourceRewriteMiddlewareName],
-                rule: `Host(\`${fullDomain}\`)`,
-                priority: 100,
-                tls
-            };
-
-            // Assets bypass router - lets Next.js static files load without rewrite
-            config_output.http.routers[`${siteResourceRouterName}-assets`] = {
-                entryPoints: [config.getRawConfig().traefik.https_entrypoint],
-                service: siteResourceServiceName,
-                rule: `Host(\`${fullDomain}\`) && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
-                priority: 101,
-                tls
-            };
-        }
+        });
     }
 
     if (aiGatewayUrl) {
@@ -1542,12 +866,7 @@ export async function getTraefikConfig(
         // recognize, so we pin the Host header to the gateway's own host
         // and smuggle the original resource host through in "p-host"
         // instead (same pattern as the maintenance-page routes above).
-        let aiGatewayHost: string | undefined;
-        try {
-            aiGatewayHost = new URL(aiGatewayUrl).host;
-        } catch {
-            aiGatewayHost = undefined;
-        }
+        const aiGatewayHost = getAiGatewayHost(aiGatewayUrl);
 
         // The p-host smuggling above is only necessary when the AI gateway
         // is overridden to a different host than the resource's own. In the
@@ -1556,54 +875,18 @@ export async function getTraefikConfig(
         const aiGatewayOverride =
             config.getRawConfig().server.ai_gateway_override;
 
-        // The trust token is the same for every inference route on this exit
-        // node, so it's defined once here and attached to each router below
-        // instead of being duplicated into a per-resource middleware. Two
-        // variants exist (public resource vs. siteResource) so the resource
-        // type header lets the gateway know which kind of router the
-        // request came through without re-deriving it from resourceId.
-        const aiGatewayTrustMiddlewareNameResource =
-            "ai-gateway-trust-headers-resource";
-        const aiGatewayTrustMiddlewareNameSiteResource =
-            "ai-gateway-trust-headers-site-resource";
-        config_output.http.middlewares[aiGatewayTrustMiddlewareNameResource] = {
-            headers: {
-                customRequestHeaders: {
-                    [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken(),
-                    [AI_GATEWAY_RESOURCE_TYPE_HEADER]: "resource"
-                }
-            }
-        };
-        config_output.http.middlewares[
-            aiGatewayTrustMiddlewareNameSiteResource
-        ] = {
-            headers: {
-                customRequestHeaders: {
-                    [AI_GATEWAY_TRUST_HEADER]: getAiGatewayTrustToken(),
-                    [AI_GATEWAY_RESOURCE_TYPE_HEADER]: "site-resource"
-                }
-            }
-        };
+        Object.assign(
+            config_output.http.middlewares,
+            buildAiGatewayTrustMiddlewares()
+        );
 
-        // Opt-in: a Badger instance with forward auth disabled, used only
-        // to stamp the resolved client IP into a dedicated header before
-        // the request reaches whatever sits between Traefik and the AI
-        // gateway. Only the site-resource router below needs this - it's
-        // the only path that resolves request identity from the client IP
-        // (see resolveRequestUser in aiGateway/pipeline.ts) - and it's the
-        // only inference router that doesn't already run Badger.
-        const aiGatewayClientIpMiddlewareName = "ai-gateway-client-ip";
-        const enableAiGatewayClientIpHeader =
-            config.getRawConfig().server.enable_ai_gateway_client_ip_header;
-        if (enableAiGatewayClientIpHeader) {
-            config_output.http.middlewares[aiGatewayClientIpMiddlewareName] = {
-                plugin: {
-                    badger: {
-                        disableForwardAuth: true,
-                        realIpHeader: AI_GATEWAY_CLIENT_IP_HEADER
-                    }
-                }
-            };
+        const aiGatewayClientIpMiddleware = buildAiGatewayClientIpMiddleware();
+        const enableAiGatewayClientIpHeader = !!aiGatewayClientIpMiddleware;
+        if (aiGatewayClientIpMiddleware) {
+            Object.assign(
+                config_output.http.middlewares,
+                aiGatewayClientIpMiddleware
+            );
         }
 
         // Public inference resources: same TLS/cert-resolver handling as
@@ -1621,44 +904,16 @@ export async function getTraefikConfig(
             const routerName = `${irKey}-router`;
             const serviceName = `${irKey}-service`;
 
-            let rule: string;
-            if (ir.wildcard && fullDomain.startsWith("*.")) {
-                const escaped = fullDomain.slice(2).replace(/\./g, "\\.");
-                rule = `HostRegexp(\`^[^.]+\\.${escaped}$\`)`;
-            } else {
-                rule = `Host(\`${fullDomain}\`)`;
-            }
+            const rule = buildHostRule(fullDomain, ir.wildcard);
 
             let tls: any = {};
             if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
-                const domainParts = fullDomain.split(".");
-                let wildCard;
-                if (domainParts.length <= 2) {
-                    wildCard = `*.${domainParts.join(".")}`;
-                } else {
-                    wildCard = `*.${domainParts.slice(1).join(".")}`;
-                }
-                if (!ir.subdomain) {
-                    wildCard = fullDomain;
-                }
-
-                const globalDefaultResolver =
-                    config.getRawConfig().traefik.cert_resolver;
-                const globalDefaultPreferWildcard =
-                    config.getRawConfig().traefik.prefer_wildcard_cert;
-                const resolverName = ir.domainCertResolver
-                    ? ir.domainCertResolver.trim()
-                    : globalDefaultResolver;
-                const preferWildcard =
-                    ir.preferWildcardCert !== undefined &&
-                    ir.preferWildcardCert !== null
-                        ? ir.preferWildcardCert
-                        : globalDefaultPreferWildcard;
-
-                tls = {
-                    certResolver: resolverName,
-                    ...(preferWildcard ? { domains: [{ main: wildCard }] } : {})
-                };
+                tls = buildWildcardTls({
+                    fullDomain,
+                    hasSubdomain: !!ir.subdomain,
+                    domainCertResolver: ir.domainCertResolver,
+                    preferWildcardCert: ir.preferWildcardCert
+                });
             } else {
                 const matchingCert = validCerts.find(
                     (cert) => cert.queriedDomain === fullDomain
@@ -1675,54 +930,34 @@ export async function getTraefikConfig(
                 config.getRawConfig().traefik.additional_middlewares || [];
             const routerMiddlewares = [
                 badgerMiddlewareName,
-                aiGatewayTrustMiddlewareNameResource
+                AI_GATEWAY_TRUST_MIDDLEWARE_RESOURCE
             ];
 
             if (aiGatewayOverride) {
                 const irHeadersMiddlewareName = `${irKey}-headers-middleware`;
-                config_output.http.middlewares[irHeadersMiddlewareName] = {
-                    headers: {
-                        customRequestHeaders: {
-                            ...(aiGatewayHost ? { Host: aiGatewayHost } : {}),
-                            "p-host": fullDomain
-                        }
-                    }
-                };
+                config_output.http.middlewares[irHeadersMiddlewareName] =
+                    buildAiGatewayHostHeaderMiddleware(
+                        aiGatewayHost,
+                        fullDomain
+                    );
                 routerMiddlewares.push(irHeadersMiddlewareName);
             }
 
             routerMiddlewares.push(...additionalMiddlewares);
 
-            if (ir.ssl) {
-                config_output.http.routers[routerName + "-redirect"] = {
-                    entryPoints: [
-                        config.getRawConfig().traefik.http_entrypoint
-                    ],
-                    middlewares: [redirectHttpsMiddlewareName],
-                    service: serviceName,
-                    rule,
-                    priority: 100
-                };
-            }
-
-            config_output.http.routers[routerName] = {
-                entryPoints: [
-                    ir.ssl
-                        ? config.getRawConfig().traefik.https_entrypoint
-                        : config.getRawConfig().traefik.http_entrypoint
-                ],
-                middlewares: routerMiddlewares,
-                service: serviceName,
+            const { routers, services } = buildAiGatewayRouterAndService({
+                routerName,
+                serviceName,
                 rule,
+                ssl: ir.ssl,
+                tls,
                 priority: 100,
-                ...(ir.ssl ? { tls } : {})
-            };
-
-            config_output.http.services[serviceName] = {
-                loadBalancer: {
-                    servers: [{ url: aiGatewayUrl }]
-                }
-            };
+                routerMiddlewares,
+                aiGatewayUrl,
+                redirectHttpsMiddlewareName
+            });
+            Object.assign(config_output.http.routers, routers);
+            Object.assign(config_output.http.services, services);
         }
 
         if (exitNode) {
@@ -1749,23 +984,13 @@ export async function getTraefikConfig(
                 if (
                     !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
                 ) {
-                    const domainParts = fullDomain.split(".");
-                    const wildCard =
-                        domainParts.length <= 2
-                            ? `*.${domainParts.join(".")}`
-                            : `*.${domainParts.slice(1).join(".")}`;
-
-                    const globalDefaultResolver =
-                        config.getRawConfig().traefik.cert_resolver;
-                    const globalDefaultPreferWildcard =
-                        config.getRawConfig().traefik.prefer_wildcard_cert;
-
-                    tls = {
-                        certResolver: globalDefaultResolver,
-                        ...(globalDefaultPreferWildcard
-                            ? { domains: [{ main: wildCard }] }
-                            : {})
-                    };
+                    // siteResource aliases don't have a per-domain cert
+                    // resolver stored, so always fall back to the global
+                    // defaults.
+                    tls = buildWildcardTls({
+                        fullDomain,
+                        hasSubdomain: true
+                    });
                 } else {
                     const matchingCert = validCerts.find(
                         (cert) => cert.queriedDomain === fullDomain
@@ -1782,58 +1007,36 @@ export async function getTraefikConfig(
                     config.getRawConfig().traefik.additional_middlewares || [];
                 const routerMiddlewares: string[] = [
                     ...(enableAiGatewayClientIpHeader
-                        ? [aiGatewayClientIpMiddlewareName]
+                        ? [AI_GATEWAY_CLIENT_IP_MIDDLEWARE_NAME]
                         : []),
-                    aiGatewayTrustMiddlewareNameSiteResource
+                    AI_GATEWAY_TRUST_MIDDLEWARE_SITE_RESOURCE
                 ];
 
                 if (aiGatewayOverride) {
                     const srHeadersMiddlewareName = `${srKey}-headers-middleware`;
-                    config_output.http.middlewares[srHeadersMiddlewareName] = {
-                        headers: {
-                            customRequestHeaders: {
-                                ...(aiGatewayHost
-                                    ? { Host: aiGatewayHost }
-                                    : {}),
-                                "p-host": fullDomain
-                            }
-                        }
-                    };
+                    config_output.http.middlewares[srHeadersMiddlewareName] =
+                        buildAiGatewayHostHeaderMiddleware(
+                            aiGatewayHost,
+                            fullDomain
+                        );
                     routerMiddlewares.push(srHeadersMiddlewareName);
                 }
 
                 routerMiddlewares.push(...additionalMiddlewares);
 
-                if (sr.ssl) {
-                    config_output.http.routers[routerName + "-redirect"] = {
-                        entryPoints: [
-                            config.getRawConfig().traefik.http_entrypoint
-                        ],
-                        middlewares: [redirectHttpsMiddlewareName],
-                        service: serviceName,
-                        rule,
-                        priority: 200 // we want to match on the site resource first because the clientIP rule is more specific than the public inference resource rule, which is just the exit node IP range. so we give it a higher priority to ensure it matches first.
-                    };
-                }
-
-                config_output.http.routers[routerName] = {
-                    entryPoints: [
-                        sr.ssl
-                            ? config.getRawConfig().traefik.https_entrypoint
-                            : config.getRawConfig().traefik.http_entrypoint
-                    ],
-                    middlewares: routerMiddlewares,
-                    service: serviceName,
+                const { routers, services } = buildAiGatewayRouterAndService({
+                    routerName,
+                    serviceName,
                     rule,
+                    ssl: sr.ssl,
+                    tls,
                     priority: 200, // we want to match on the site resource first because the clientIP rule is more specific than the public inference resource rule, which is just the exit node IP range. so we give it a higher priority to ensure it matches first.
-                    ...(sr.ssl ? { tls } : {})
-                };
-
-                config_output.http.services[serviceName] = {
-                    loadBalancer: {
-                        servers: [{ url: aiGatewayUrl }]
-                    }
-                };
+                    routerMiddlewares,
+                    aiGatewayUrl,
+                    redirectHttpsMiddlewareName
+                });
+                Object.assign(config_output.http.routers, routers);
+                Object.assign(config_output.http.services, services);
             }
         }
     }

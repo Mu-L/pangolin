@@ -763,7 +763,7 @@ export const roles = pgTable("roles", {
     name: varchar("name").notNull(),
     description: varchar("description"),
     requireDeviceApproval: boolean("requireDeviceApproval").default(false),
-    sshSudoMode: varchar("sshSudoMode", { length: 32 }).default("none"), // "none" | "full" | "commands"
+    sshSudoMode: varchar("sshSudoMode", { length: 32 }).default("full"), // "none" | "full" | "commands"
     sshSudoCommands: text("sshSudoCommands").default("[]"),
     sshCreateHomeDir: boolean("sshCreateHomeDir").default(true),
     sshUnixGroups: text("sshUnixGroups").default("[]")
@@ -2017,6 +2017,25 @@ export const aiSessionLog = pgTable(
     ]
 );
 
+export const certificates = pgTable("certificates", {
+    certId: serial("certId").primaryKey(),
+    domain: varchar("domain", { length: 255 }).notNull().unique(),
+    domainId: varchar("domainId").references(() => domains.domainId, {
+        onDelete: "cascade"
+    }),
+    wildcard: boolean("wildcard").default(false),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, requested, valid, expired, failed
+    expiresAt: bigint("expiresAt", { mode: "number" }),
+    lastRenewalAttempt: bigint("lastRenewalAttempt", { mode: "number" }),
+    createdAt: bigint("createdAt", { mode: "number" }).notNull(),
+    updatedAt: bigint("updatedAt", { mode: "number" }).notNull(),
+    orderId: varchar("orderId", { length: 500 }),
+    errorMessage: text("errorMessage"),
+    renewalCount: integer("renewalCount").default(0),
+    certFile: text("certFile"),
+    keyFile: text("keyFile")
+});
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -2117,3 +2136,4 @@ export type SiteResourceAiProvider = InferSelectModel<
 >;
 export type ResourceAiModel = InferSelectModel<typeof resourceAiModels>;
 export type SiteResourceAiModel = InferSelectModel<typeof siteResourceAiModels>;
+export type Certificate = InferSelectModel<typeof certificates>;

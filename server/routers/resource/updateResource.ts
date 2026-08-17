@@ -38,7 +38,7 @@ import {
 } from "@server/lib/schemas";
 import { registry } from "@server/openApi";
 import { OpenAPITags } from "@server/openApi";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import {
     validateAndConstructDomain,
     checkWildcardDomainConflict
@@ -678,9 +678,7 @@ async function updateHttpResource(
         // Update the subdomain in the update data
         updateData.subdomain = finalSubdomain;
 
-        if (build != "oss") {
-            await createCertificate(domainId, fullDomain, db);
-        }
+        await createCertificate(domainId, fullDomain, db);
     }
 
     let headers = undefined;

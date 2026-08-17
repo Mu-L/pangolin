@@ -10,8 +10,7 @@ import {
     SiteResource,
     siteResources,
     sites,
-    userSiteResources,
-    primaryDb
+    userSiteResources
 } from "@server/db";
 import { getUniqueSiteResourceName } from "@server/db/names";
 import {
@@ -19,8 +18,6 @@ import {
     isIpInCidr,
     portRangeStringSchema
 } from "@server/lib/ip";
-import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     rebuildClientAssociationsFromSiteResource,
     isOrgRebuildRateLimited
@@ -35,7 +32,7 @@ import createHttpError from "http-errors";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import { build } from "@server/build";
 import { usageService } from "@server/lib/billing/usageService";
 import { LimitId } from "@server/lib/billing";
@@ -408,21 +405,6 @@ export async function createSiteResource(
             }
         }
 
-        if (mode == "http") {
-            const hasHttpFeature = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix[TierFeature.AdvancedPrivateResources]
-            );
-            if (!hasHttpFeature) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "HTTP private resources are not included in your current plan. Please upgrade."
-                    )
-                );
-            }
-        }
-
         // Verify the site exists and belongs to the org
         const sitesToAssign = await db
             .select()
@@ -557,20 +539,6 @@ export async function createSiteResource(
             }
         }
 
-        const isLicensedSshPam = await isLicensedOrSubscribed(
-            orgId,
-            tierMatrix.advancedPrivateResources
-        );
-
-        if (mode == "ssh" && !isLicensedSshPam) {
-            return next(
-                createHttpError(
-                    HttpCode.FORBIDDEN,
-                    "SSH private resources are not included in your current plan. Please upgrade."
-                )
-            );
-        }
-
         let updatedNiceId = niceId;
         if (!niceId) {
             updatedNiceId = await getUniqueSiteResourceName(orgId);
@@ -646,13 +614,13 @@ export async function createSiteResource(
                     fullDomain,
                     requiresExitNodeConnection: mode === "inference" // in the future we might want to have different modes that do this
                 };
-                if (isLicensedSshPam) {
-                    if (authDaemonPort !== undefined)
-                        insertValues.authDaemonPort = authDaemonPort;
-                    if (authDaemonMode !== undefined)
-                        insertValues.authDaemonMode = authDaemonMode;
-                    if (pamMode !== undefined) insertValues.pamMode = pamMode;
-                }
+
+                if (authDaemonPort !== undefined)
+                    insertValues.authDaemonPort = authDaemonPort;
+                if (authDaemonMode !== undefined)
+                    insertValues.authDaemonMode = authDaemonMode;
+                if (pamMode !== undefined) insertValues.pamMode = pamMode;
+
                 [newSiteResource] = await trx
                     .insert(siteResources)
                     .values(insertValues)
@@ -771,8 +739,7 @@ export async function createSiteResource(
             ssl &&
             (mode === "http" || mode == "inference") &&
             domainId &&
-            fullDomain &&
-            build != "oss"
+            fullDomain
         ) {
             await createCertificate(domainId, fullDomain, db);
         }

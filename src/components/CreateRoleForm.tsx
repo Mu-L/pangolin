@@ -52,7 +52,7 @@ export default function CreateRoleForm({
             requireDeviceApproval: values.requireDeviceApproval,
             allowSsh: values.allowSsh
         };
-        if (isPaidUser(tierMatrix.advancedPrivateResources)) {
+        if (isPaidUser(tierMatrix.roleBasedSSHControls)) {
             payload.sshSudoMode = values.sshSudoMode;
             payload.sshCreateHomeDir = values.sshCreateHomeDir;
             payload.sshSudoCommands =

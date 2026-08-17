@@ -38,3 +38,4 @@ export * from "./logActionAudit";
 export * from "./verifyOlmAccess";
 export * from "./verifyLimits";
 export * from "./verifyResourcePolicyAccess";
+export * from "./verifyCertificateAccess";

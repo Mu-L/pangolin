@@ -29,25 +29,6 @@ import {
     labels
 } from "./schema";
 
-export const certificates = pgTable("certificates", {
-    certId: serial("certId").primaryKey(),
-    domain: varchar("domain", { length: 255 }).notNull().unique(),
-    domainId: varchar("domainId").references(() => domains.domainId, {
-        onDelete: "cascade"
-    }),
-    wildcard: boolean("wildcard").default(false),
-    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, requested, valid, expired, failed
-    expiresAt: bigint("expiresAt", { mode: "number" }),
-    lastRenewalAttempt: bigint("lastRenewalAttempt", { mode: "number" }),
-    createdAt: bigint("createdAt", { mode: "number" }).notNull(),
-    updatedAt: bigint("updatedAt", { mode: "number" }).notNull(),
-    orderId: varchar("orderId", { length: 500 }),
-    errorMessage: text("errorMessage"),
-    renewalCount: integer("renewalCount").default(0),
-    certFile: text("certFile"),
-    keyFile: text("keyFile")
-});
-
 export const dnsChallenge = pgTable("dnsChallenges", {
     dnsChallengeId: serial("dnsChallengeId").primaryKey(),
     domain: varchar("domain", { length: 255 }).notNull(),
@@ -633,7 +614,6 @@ export const trialNotifications = pgTable("trialNotifications", {
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
-export type Certificate = InferSelectModel<typeof certificates>;
 export type DnsChallenge = InferSelectModel<typeof dnsChallenge>;
 export type Customer = InferSelectModel<typeof customers>;
 export type Subscription = InferSelectModel<typeof subscriptions>;

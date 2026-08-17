@@ -995,7 +995,7 @@ export const roles = sqliteTable("roles", {
     requireDeviceApproval: integer("requireDeviceApproval", {
         mode: "boolean"
     }).default(false),
-    sshSudoMode: text("sshSudoMode").default("none"), // "none" | "full" | "commands"
+    sshSudoMode: text("sshSudoMode").default("full"), // "none" | "full" | "commands"
     sshSudoCommands: text("sshSudoCommands").default("[]"),
     sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
         true
@@ -2013,6 +2013,25 @@ export const aiSessionLog = sqliteTable(
     ]
 );
 
+export const certificates = sqliteTable("certificates", {
+    certId: integer("certId").primaryKey({ autoIncrement: true }),
+    domain: text("domain").notNull().unique(),
+    domainId: text("domainId").references(() => domains.domainId, {
+        onDelete: "cascade"
+    }),
+    wildcard: integer("wildcard", { mode: "boolean" }).default(false),
+    status: text("status").notNull().default("pending"), // pending, requested, valid, expired, failed
+    expiresAt: integer("expiresAt"),
+    lastRenewalAttempt: integer("lastRenewalAttempt"),
+    createdAt: integer("createdAt").notNull(),
+    updatedAt: integer("updatedAt").notNull(),
+    orderId: text("orderId"),
+    errorMessage: text("errorMessage"),
+    renewalCount: integer("renewalCount").default(0),
+    certFile: text("certFile"),
+    keyFile: text("keyFile")
+});
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -2111,3 +2130,4 @@ export type SiteResourceAiProvider = InferSelectModel<
 >;
 export type ResourceAiModel = InferSelectModel<typeof resourceAiModels>;
 export type SiteResourceAiModel = InferSelectModel<typeof siteResourceAiModels>;
+export type Certificate = InferSelectModel<typeof certificates>;

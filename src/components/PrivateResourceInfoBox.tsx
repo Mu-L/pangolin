@@ -18,7 +18,6 @@ import {
     type LauncherAccessFields
 } from "@app/lib/launcherResourceAccess";
 import type { PrivateResourceMode } from "@app/lib/privateResourceForm";
-import { build } from "@server/build";
 import { useTranslations } from "next-intl";
 
 type SiteResourceInfoInput = {
@@ -121,8 +120,7 @@ export function PrivateResourceInfoSections({
         (siteResource.mode === "http" || siteResource.mode === "inference") &&
         siteResource.ssl &&
         siteResource.domainId &&
-        siteResource.fullDomain &&
-        build != "oss"
+        siteResource.fullDomain
     );
     const showPortRestrictions =
         isPanel &&

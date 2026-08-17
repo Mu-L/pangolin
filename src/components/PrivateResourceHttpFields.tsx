@@ -1,7 +1,6 @@
 "use client";
 
 import DomainPicker from "@app/components/DomainPicker";
-import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import {
     SettingsFormCell,
     SettingsFormGrid,
@@ -25,7 +24,6 @@ import {
     SelectTrigger,
     SelectValue
 } from "@app/components/ui/select";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { useTranslations } from "next-intl";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
@@ -49,8 +47,7 @@ export function PrivateResourceHttpFields({
     disabled = false,
     siteResourceId,
     labelPrefix = "edit",
-    hideDomainPicker = false,
-    hidePaidFeaturesAlert = false
+    hideDomainPicker = false
 }: PrivateResourceHttpFieldsProps) {
     const t = useTranslations();
     const schemeLabelKey =
@@ -88,14 +85,6 @@ export function PrivateResourceHttpFields({
 
     return (
         <SettingsFormGrid>
-            {!hidePaidFeaturesAlert && (
-                <SettingsFormCell span="full">
-                    <PaidFeaturesAlert
-                        tiers={tierMatrix.advancedPrivateResources}
-                    />
-                </SettingsFormCell>
-            )}
-
             <SettingsFormCell span="quarter">
                 <FormField
                     control={control}

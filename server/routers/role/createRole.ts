@@ -135,7 +135,7 @@ export async function createRole(
 
         const isLicensedSshPam = await isLicensedOrSubscribed(
             orgId,
-            tierMatrix.advancedPrivateResources
+            tierMatrix.roleBasedSSHControls
         );
         const roleInsertValues: Record<string, unknown> = {
             name: roleData.name,

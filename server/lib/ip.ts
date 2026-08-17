@@ -6,7 +6,7 @@ import z from "zod";
 import logger from "@server/logger";
 import semver from "semver";
 import { createHash } from "crypto";
-import { getValidCertificatesForDomains } from "#dynamic/lib/certificates";
+import { getValidCertificatesForDomains } from "@server/lib/certificates";
 import { lockManager } from "#dynamic/lib/lock";
 
 interface IPRange {
