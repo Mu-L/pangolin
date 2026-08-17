@@ -450,7 +450,6 @@ export default function CreatePrivateResourcePage() {
                                                 )}
                                                 watch={asAnyWatch(form.watch)}
                                                 labelPrefix="create"
-                                                disabled={false}
                                             />
                                         </SettingsFormCell>
                                     )}
@@ -598,7 +597,6 @@ export default function CreatePrivateResourcePage() {
                                                 )}
                                                 orgId={orgId}
                                                 watch={asAnyWatch(form.watch)}
-                                                disabled={true}
                                                 labelPrefix="create"
                                                 hideDomainPicker
                                             />
@@ -627,7 +625,6 @@ export default function CreatePrivateResourcePage() {
                                         setValue={asAnySetValue(form.setValue)}
                                         watch={asAnyWatch(form.watch)}
                                         orgId={orgId}
-                                        disabled={false}
                                         selectedSites={selectedSites}
                                         onSelectedSitesChange={setSelectedSites}
                                         labelPrefix="create"

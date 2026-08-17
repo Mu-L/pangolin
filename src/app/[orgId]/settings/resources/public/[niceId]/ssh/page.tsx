@@ -95,7 +95,6 @@ export default function SshSettingsPage(props: {
                 orgId={params.orgId}
                 resource={resource}
                 updateResource={updateResource}
-                disabled={false}
                 targetsResponse={targetsResponse ?? { targets: [] }}
             />
         </SettingsContainer>
@@ -106,13 +105,11 @@ function SshServerForm({
     orgId,
     resource,
     updateResource,
-    disabled,
     targetsResponse
 }: {
     orgId: string;
     resource: GetResourceResponse;
     updateResource: ResourceContextType["updateResource"];
-    disabled: boolean;
     targetsResponse: ResourceTargetsResponse;
 }) {
     const t = useTranslations();
@@ -368,10 +365,6 @@ function SshServerForm({
                     {t("sshServerDescription")}
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
-            <fieldset
-                disabled={disabled}
-                className={disabled ? "opacity-50 pointer-events-none" : ""}
-            >
                 <Form {...form}>
                     <SettingsSectionBody>
                         <SettingsSectionForm variant="half">
@@ -523,7 +516,6 @@ function SshServerForm({
                         </Button>
                     </form>
                 </Form>
-            </fieldset>
         </SettingsSection>
     );
 }

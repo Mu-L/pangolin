@@ -75,7 +75,6 @@ export default function VncSettingsPage(props: {
                 orgId={params.orgId}
                 resource={resource}
                 updateResource={updateResource}
-                disabled={true}
                 targetsResponse={targetsResponse ?? { targets: [] }}
             />
         </SettingsContainer>
@@ -85,13 +84,11 @@ export default function VncSettingsPage(props: {
 function VncServerForm({
     orgId,
     resource,
-    disabled,
     targetsResponse
 }: {
     orgId: string;
     resource: GetResourceResponse;
     updateResource: ResourceContextType["updateResource"];
-    disabled: boolean;
     targetsResponse: ResourceTargetsResponse;
 }) {
     const t = useTranslations();
@@ -208,10 +205,6 @@ function VncServerForm({
                     {t("vncServerDescription")}
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
-            <fieldset
-                disabled={disabled}
-                className={disabled ? "opacity-50 pointer-events-none" : ""}
-            >
                 <Form {...form}>
                     <SettingsSectionBody>
                         <SettingsSectionForm variant="half">
@@ -237,7 +230,6 @@ function VncServerForm({
                         </Button>
                     </form>
                 </Form>
-            </fieldset>
         </SettingsSection>
     );
 }
