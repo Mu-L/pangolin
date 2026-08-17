@@ -739,8 +739,7 @@ export async function createSiteResource(
             ssl &&
             (mode === "http" || mode == "inference") &&
             domainId &&
-            fullDomain &&
-            build != "oss"
+            fullDomain
         ) {
             await createCertificate(domainId, fullDomain, db);
         }

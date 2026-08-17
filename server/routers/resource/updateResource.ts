@@ -678,9 +678,7 @@ async function updateHttpResource(
         // Update the subdomain in the update data
         updateData.subdomain = finalSubdomain;
 
-        if (build != "oss") {
-            await createCertificate(domainId, fullDomain, db);
-        }
+        await createCertificate(domainId, fullDomain, db);
     }
 
     let headers = undefined;

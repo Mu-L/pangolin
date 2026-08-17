@@ -632,9 +632,7 @@ async function createHttpResource(
         );
     }
 
-    if (build !== "oss") {
-        await createCertificate(domainId, fullDomain, db);
-    }
+    await createCertificate(domainId, fullDomain, db);
 
     return response<CreateResourceResponse>(res, {
         data: resource,

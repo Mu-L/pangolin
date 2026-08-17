@@ -718,8 +718,7 @@ export async function updateSiteResource(
             ssl &&
             (mode === "http" || mode == "inference") &&
             domainId &&
-            fullDomain &&
-            build != "oss"
+            fullDomain
         ) {
             await createCertificate(domainId, fullDomain, db);
         }
