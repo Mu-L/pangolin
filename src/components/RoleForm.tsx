@@ -183,7 +183,7 @@ export function RoleForm({
               description: "",
               requireDeviceApproval: false,
               allowSsh: false,
-              sshSudoMode: "none",
+              sshSudoMode: "full",
               sshSudoCommands: "",
               sshCreateHomeDir: true,
               sshUnixGroups: ""
