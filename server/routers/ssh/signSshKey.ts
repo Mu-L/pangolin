@@ -21,7 +21,7 @@ import {
     Resource,
     SiteResource
 } from "@server/db";
-import { logAccessAudit } from "#private/lib/logAccessAudit";
+import { logAccessAudit } from "#dynamic/lib/logAccessAudit";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -32,7 +32,7 @@ import { canUserAccessResource } from "@server/auth/canUserAccessResource";
 import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResource";
 import { signPublicKey, getOrgCAKeys } from "@server/lib/sshCA";
 import config from "@server/lib/config";
-import { sendToClient } from "#private/routers/ws";
+import { sendToClient } from "#dynamic/routers/ws";
 import { ActionsEnum } from "@server/auth/actions";
 import type { SignSshKeyResponse } from "@server/routers/ssh/types";
 

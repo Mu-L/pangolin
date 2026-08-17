@@ -17,13 +17,8 @@ import * as orgIdp from "#private/routers/orgIdp";
 import * as billing from "#private/routers/billing";
 import * as license from "#private/routers/license";
 import * as resource from "#private/routers/resource";
-import * as ws from "@server/routers/ws";
-import * as browserTarget from "#private/routers/browserGatewayTarget";
 
-import {
-    verifySessionUserMiddleware,
-    verifyUserFromResourceSessionMiddleware
-} from "@server/middlewares";
+import { verifySessionUserMiddleware } from "@server/middlewares";
 
 import { internalRouter as ir } from "@server/routers/internal";
 
@@ -45,11 +40,3 @@ internalRouter.post(
 internalRouter.get(`/license/status`, license.getLicenseStatus);
 
 internalRouter.get("/maintenance/info", resource.getMaintenanceInfo);
-
-internalRouter.get(
-    "/ws/round-trip-message/:messageId",
-    verifyUserFromResourceSessionMiddleware,
-    ws.checkRoundTripMessage
-);
-
-internalRouter.get("/resource/browser-target", browserTarget.getBrowserTarget);
