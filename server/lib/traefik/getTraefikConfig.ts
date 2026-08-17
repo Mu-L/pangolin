@@ -598,19 +598,31 @@ export async function getTraefikConfig(
         // plain http-mode resources, but the service points at the AI
         // gateway instead of any real backend targets.
         //
-        // A siteResource inference alias can share the exact same fullDomain
-        // as one of these (both ultimately proxy to the same aiGatewayUrl),
-        // so track which domains get a public router here and skip creating
-        // a second, duplicate router for the siteResource alias below.
-        const publicInferenceDomains = new Set<string>();
-        for (const ir of inferenceResources) {
-            if (!ir.enabled) continue;
-            if (!ir.domainId || !ir.fullDomain) continue;
+        // Inference-mode resources are allowed to share a fullDomain with
+        // each other (see createResource.ts), and a siteResource inference
+        // alias can share that domain too - all of them proxy to the same
+        // aiGatewayUrl, so dedupe by fullDomain here (lowest resourceId
+        // wins, for stable output across regenerations) and skip the
+        // siteResource alias router for any domain already covered below.
+        const eligibleInferenceResources = inferenceResources
+            .filter((ir) => ir.enabled && ir.domainId && ir.fullDomain)
+            .sort((a, b) => a.resourceId - b.resourceId);
+        const dedupedInferenceResources = new Map<
+            string,
+            (typeof eligibleInferenceResources)[number]
+        >();
+        for (const ir of eligibleInferenceResources) {
+            if (!dedupedInferenceResources.has(ir.fullDomain!)) {
+                dedupedInferenceResources.set(ir.fullDomain!, ir);
+            }
+        }
 
+        const publicInferenceDomains = new Set<string>();
+        for (const ir of dedupedInferenceResources.values()) {
             if (!config_output.http.routers) config_output.http.routers = {};
             if (!config_output.http.services) config_output.http.services = {};
 
-            const fullDomain = ir.fullDomain;
+            const fullDomain = ir.fullDomain!;
             const irKey = `inference-r${ir.resourceId}`;
             const routerName = `${irKey}-router`;
             const serviceName = `${irKey}-service`;
