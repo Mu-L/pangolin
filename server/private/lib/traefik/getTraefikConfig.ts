@@ -892,6 +892,12 @@ export async function getTraefikConfig(
         // Public inference resources: same TLS/cert-resolver handling as
         // plain http-mode resources, but the service points at the AI
         // gateway instead of any real backend targets.
+        //
+        // A siteResource inference alias can share the exact same fullDomain
+        // as one of these (both ultimately proxy to the same aiGatewayUrl),
+        // so track which domains get a public router here and skip creating
+        // a second, duplicate router for the siteResource alias below.
+        const publicInferenceDomains = new Set<string>();
         for (const ir of inferenceResources) {
             if (!ir.enabled) continue;
             if (!ir.domainId || !ir.fullDomain) continue;
@@ -958,6 +964,7 @@ export async function getTraefikConfig(
             });
             Object.assign(config_output.http.routers, routers);
             Object.assign(config_output.http.services, services);
+            publicInferenceDomains.add(fullDomain);
         }
 
         if (exitNode) {
@@ -968,6 +975,11 @@ export async function getTraefikConfig(
             // reachability-only for now.
             for (const sr of siteResourcesInference) {
                 if (!sr.enabled || !sr.fullDomain) continue;
+
+                // A public inference resource already owns a router for
+                // this exact fullDomain - both point at the same AI gateway,
+                // so avoid registering a duplicate router for it here.
+                if (publicInferenceDomains.has(sr.fullDomain)) continue;
 
                 if (!config_output.http.routers)
                     config_output.http.routers = {};
