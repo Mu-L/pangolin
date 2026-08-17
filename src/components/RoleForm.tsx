@@ -506,20 +506,16 @@ export function RoleForm({
                                             <OptionSelect<"allow" | "disallow">
                                                 options={allowSshOptions}
                                                 value={
-                                                    sshDisabled
-                                                        ? "disallow"
-                                                        : field.value
-                                                          ? "allow"
-                                                          : "disallow"
+                                                    field.value
+                                                        ? "allow"
+                                                        : "disallow"
                                                 }
                                                 onChange={(v) => {
-                                                    if (sshDisabled) return;
                                                     field.onChange(
                                                         v === "allow"
                                                     );
                                                 }}
                                                 cols={2}
-                                                disabled={sshDisabled}
                                             />
                                             <FormDescription>
                                                 {t("roleAllowSshDescription")}

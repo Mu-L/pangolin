@@ -995,7 +995,7 @@ export const roles = sqliteTable("roles", {
     requireDeviceApproval: integer("requireDeviceApproval", {
         mode: "boolean"
     }).default(false),
-    sshSudoMode: text("sshSudoMode").default("none"), // "none" | "full" | "commands"
+    sshSudoMode: text("sshSudoMode").default("full"), // "none" | "full" | "commands"
     sshSudoCommands: text("sshSudoCommands").default("[]"),
     sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
         true

@@ -763,7 +763,7 @@ export const roles = pgTable("roles", {
     name: varchar("name").notNull(),
     description: varchar("description"),
     requireDeviceApproval: boolean("requireDeviceApproval").default(false),
-    sshSudoMode: varchar("sshSudoMode", { length: 32 }).default("none"), // "none" | "full" | "commands"
+    sshSudoMode: varchar("sshSudoMode", { length: 32 }).default("full"), // "none" | "full" | "commands"
     sshSudoCommands: text("sshSudoCommands").default("[]"),
     sshCreateHomeDir: boolean("sshCreateHomeDir").default(true),
     sshUnixGroups: text("sshUnixGroups").default("[]")
