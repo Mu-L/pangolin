@@ -8,6 +8,8 @@ import { fromZodError } from "zod-validation-error";
 
 const version = "1.22.0";
 
+const actionsToGrant = ["getSiteResource", "listSiteResources"] as const;
+
 export default async function migration() {
     console.log(`Running setup script ${version}...`);
 
@@ -22,6 +24,23 @@ export default async function migration() {
                 `
                 `
             ).run();
+
+            const insertRoleAction = db.prepare(`
+                INSERT INTO 'roleActions' ("roleId", "actionId", "orgId")
+                SELECT r."roleId", ?, r."orgId"
+                FROM 'roles' r
+                WHERE COALESCE(r."isAdmin", 0) = 0
+                  AND NOT EXISTS (
+                    SELECT 1 FROM 'roleActions' ra
+                    WHERE ra."roleId" = r."roleId"
+                      AND ra."actionId" = ?
+                      AND ra."orgId" = r."orgId"
+                  );
+            `);
+
+            for (const actionId of actionsToGrant) {
+                insertRoleAction.run(actionId, actionId);
+            }
         })();
 
         db.pragma("foreign_keys = ON");

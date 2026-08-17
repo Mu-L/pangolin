@@ -9,6 +9,8 @@ import { fromZodError } from "zod-validation-error";
 
 const version = "1.22.0";
 
+const actionsToGrant = ["getSiteResource", "listSiteResources"] as const;
+
 export default async function migration() {
     console.log(`Running setup script ${version}...`);
 
@@ -16,8 +18,22 @@ export default async function migration() {
         await db.execute(sql`BEGIN`);
 
         await db.execute(sql`
-
         `);
+
+        for (const actionId of actionsToGrant) {
+            await db.execute(sql`
+                INSERT INTO "roleActions" ("roleId", "actionId", "orgId")
+                SELECT r."roleId", ${actionId}, r."orgId"
+                FROM "roles" r
+                WHERE COALESCE(r."isAdmin", false) = false
+                  AND NOT EXISTS (
+                    SELECT 1 FROM "roleActions" ra
+                    WHERE ra."roleId" = r."roleId"
+                      AND ra."actionId" = ${actionId}
+                      AND ra."orgId" = r."orgId"
+                  );
+            `);
+        }
 
         await db.execute(sql`COMMIT`);
         console.log("Migrated database");
