@@ -114,7 +114,7 @@ export const privateConfigSchema = z
                 // Kept here only so existing private config files keep parsing;
                 // any value set here is migrated into the public config at
                 // startup by PrivateConfig (server/private/lib/config.ts).
-                enable_acme_cert_sync: z.boolean().optional().default(true),
+                enable_acme_cert_sync: z.boolean().optional(),
                 disable_private_http_placeholder: z
                     .boolean()
                     .optional()
@@ -128,12 +128,9 @@ export const privateConfigSchema = z
         // public config at startup by PrivateConfig (server/private/lib/config.ts).
         acme: z
             .object({
-                acme_json_path: z
-                    .string()
-                    .optional()
-                    .default("config/letsencrypt/acme.json"),
+                acme_json_path: z.string().optional(),
                 acme_http_endpoint: z.string().optional(),
-                sync_interval_ms: z.number().optional().default(5000)
+                sync_interval_ms: z.number().optional()
             })
             .optional(),
         branding: z
