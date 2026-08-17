@@ -1,3 +1,4 @@
+import { build } from "@server/build";
 import { db } from "@server/db/pg/driver";
 import { APP_PATH } from "@server/lib/consts";
 import { sql } from "drizzle-orm";
@@ -201,6 +202,23 @@ export default async function migration() {
         await db.execute(
             sql`ALTER TABLE "roles" ALTER COLUMN "sshSudoMode" SET DEFAULT 'full';`
         );
+
+        const licenseKeyCountQuery = await db.execute(
+            sql`SELECT COUNT(*)::int as count FROM "licenseKey";`
+        );
+        const licenseKeyCount = licenseKeyCountQuery.rows[0] as {
+            count: number;
+        };
+
+        if (
+            build === "oss" ||
+            (build === "enterprise" && licenseKeyCount.count === 0)
+        ) {
+            await db.execute(
+                sql`UPDATE "roles" SET "sshSudoMode" = 'full' WHERE "sshSudoMode" = 'none';`
+            );
+        }
+
         await db.execute(
             sql`ALTER TABLE "targets" ALTER COLUMN "resourceId" DROP NOT NULL;`
         );

@@ -1,3 +1,4 @@
+import { build } from "@server/build";
 import { APP_PATH } from "@server/lib/consts";
 import Database from "better-sqlite3";
 import fs from "fs";
@@ -342,6 +343,19 @@ export default async function migration() {
             db.prepare(
                 `ALTER TABLE 'roles' RENAME COLUMN "sshSudoModeNew" TO "sshSudoMode";`
             ).run();
+
+            const licenseKeyCount = db
+                .prepare(`SELECT COUNT(*) as count FROM 'licenseKey';`)
+                .get() as { count: number };
+
+            if (
+                build === "oss" ||
+                (build === "enterprise" && licenseKeyCount.count === 0)
+            ) {
+                db.prepare(
+                    `UPDATE 'roles' SET "sshSudoMode" = 'full' WHERE "sshSudoMode" = 'none';`
+                ).run();
+            }
 
             db.prepare(
                 `
