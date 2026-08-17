@@ -61,6 +61,7 @@ export default function PublicResourceInferencePage() {
                 providers: z.array(
                     z.object({
                         providerId: z.number().int().positive(),
+                        niceId: z.string(),
                         name: z.string(),
                         accessMode: z.enum(["inherit", "select"]),
                         enabled: z.boolean(),
@@ -111,6 +112,7 @@ export default function PublicResourceInferencePage() {
         form.reset({
             providers: attachedQuery.data.map((provider) => ({
                 providerId: provider.providerId,
+                niceId: provider.niceId,
                 name: provider.name,
                 accessMode: provider.accessMode,
                 enabled: provider.enabled,

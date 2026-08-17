@@ -339,6 +339,7 @@ export async function listPublicResourceAiProviders(resourceId: number) {
     return db
         .select({
             providerId: resourceAiProviders.providerId,
+            niceId: aiProviders.niceId,
             name: aiProviders.name,
             type: aiProviders.type,
             enabled: resourceAiProviders.enabled,
@@ -357,6 +358,7 @@ export async function listSiteResourceAiProviders(siteResourceId: number) {
     return db
         .select({
             providerId: siteResourceAiProviders.providerId,
+            niceId: aiProviders.niceId,
             name: aiProviders.name,
             type: aiProviders.type,
             enabled: siteResourceAiProviders.enabled,

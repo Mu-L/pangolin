@@ -89,7 +89,7 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
               },
               {
                   title: t(`${resource.mode}Settings`),
-                  href: `/{orgId}/settings/resources/public/{niceId}/${resource.mode}`
+                  href: `/{orgId}/settings/resources/public/{niceId}/${resource.mode === "inference" ? "ai-gateway" : resource.mode}`
               }
           ];
 

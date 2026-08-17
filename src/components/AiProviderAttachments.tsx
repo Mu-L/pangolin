@@ -49,6 +49,7 @@ import { z } from "zod";
 
 export type AiProviderAttachmentValue = {
     providerId: number;
+    niceId: string;
     name: string;
     accessMode: "inherit" | "select";
     enabled: boolean;
@@ -88,7 +89,7 @@ export function AiProviderAttachments({
 
     const editing = value.find((v) => v.providerId === editingProviderId);
 
-    function addProvider(providerId: number, name: string) {
+    function addProvider(providerId: number, niceId: string, name: string) {
         if (value.some((v) => v.providerId === providerId)) {
             return;
         }
@@ -96,6 +97,7 @@ export function AiProviderAttachments({
             ...value,
             {
                 providerId,
+                niceId,
                 name,
                 accessMode: "inherit",
                 enabled: true,
@@ -168,7 +170,11 @@ export function AiProviderAttachments({
                         <DropdownMenuItem
                             key={provider.providerId}
                             onSelect={() =>
-                                addProvider(provider.providerId, provider.name)
+                                addProvider(
+                                    provider.providerId,
+                                    provider.niceId,
+                                    provider.name
+                                )
                             }
                         >
                             {provider.name}
@@ -445,6 +451,7 @@ function EditAttachmentCredenza({
     function onSubmit(values: EditFormValues) {
         onSave({
             providerId: attachment.providerId,
+            niceId: attachment.niceId,
             name: attachment.name,
             accessMode: values.accessMode,
             enabled: attachment.enabled,
@@ -576,7 +583,7 @@ function EditAttachmentCredenza({
                         asChild
                     >
                         <Link
-                            href={`/${orgId}/settings/ai-providers/${attachment.providerId}`}
+                            href={`/${orgId}/settings/ai-providers/${attachment.niceId}`}
                         >
                             {t("viewProviderSettings")}
                         </Link>

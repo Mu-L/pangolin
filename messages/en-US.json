@@ -288,7 +288,7 @@
     "noCountryFound": "No country found.",
     "siteSelectionDescription": "This site will provide connectivity to the target.",
     "resourceType": "Resource Type",
-    "resourceTypeDescription": "This controls the resource protocol and how it will be rendered in the browser. This can’t be changed later.",
+    "resourceTypeDescription": "This controls the resource protocol and can’t be changed later.",
     "resourceTypeSearch": "Search resource types...",
     "resourceTypeNotFound": "No resource type found",
     "resourceTypeHttpDescription": "Proxy web traffic over HTTPS using a domain name",

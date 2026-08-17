@@ -62,7 +62,7 @@ export default async function PrivateResourceLayout(
         },
         {
             title: t(modeSettingsKey),
-            href: `/{orgId}/settings/resources/private/{niceId}/${siteResource.mode}`
+            href: `/{orgId}/settings/resources/private/{niceId}/${siteResource.mode === "inference" ? "ai-gateway" : siteResource.mode}`
         },
         {
             title: t("authentication"),

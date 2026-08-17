@@ -1558,6 +1558,7 @@ export const resourceQueries = {
                     AxiosResponse<{
                         providers: Array<{
                             providerId: number;
+                            niceId: string;
                             name: string;
                             type: string;
                             enabled: boolean;
@@ -1579,6 +1580,7 @@ export const resourceQueries = {
                     AxiosResponse<{
                         providers: Array<{
                             providerId: number;
+                            niceId: string;
                             name: string;
                             type: string;
                             enabled: boolean;
