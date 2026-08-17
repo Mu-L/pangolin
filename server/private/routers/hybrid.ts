@@ -360,9 +360,9 @@ hybridRouter.get(
                 true, // But don't allow domain namespace resources
                 false, // Dont include login pages,
                 true, // allow raw resources
-                pangolinUIUrl, // dont generate maintenance page
+                pangolinUIUrl, // generate maintenance page
                 pangolinUIUrl, // generate browser gateway targets
-                aiGatewayUrl
+                null // dont generate ai gateway resources
             );
 
             return response(res, {
