@@ -1607,6 +1607,8 @@
     "commandPaletteCreateMachineClient": "Создать клиент машин",
     "commandPaletteCreateAlertRule": "Создать правило предупреждения",
     "commandPaletteCreateIdentityProvider": "Создать поставщика удостоверений",
+    "commandPaletteCreateAiProvider": "Create AI Provider",
+    "commandPaletteCreateVirtualApiKey": "Create Virtual API Key",
     "commandPaletteToggleTheme": "Переключить тему",
     "commandPaletteChooseOrganization": "Выбрать организацию",
     "commandPaletteShortcutMac": "⌘K",
