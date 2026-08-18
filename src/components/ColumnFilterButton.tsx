@@ -21,7 +21,7 @@ import { useTranslations } from "next-intl";
 
 interface FilterOption {
     value: string;
-    label: string;
+    label: React.ReactNode;
 }
 
 interface ColumnFilterButtonProps {
@@ -101,7 +101,7 @@ export function ColumnFilterButton({
                             {options.map((option) => (
                                 <CommandItem
                                     key={option.value}
-                                    value={option.label}
+                                    value={option.value}
                                     onSelect={() => {
                                         onValueChange(
                                             selectedValue === option.value

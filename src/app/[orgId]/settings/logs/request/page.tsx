@@ -21,6 +21,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import type { QueryRequestAuditLogResponse } from "@server/routers/auditLogs/types";
 import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
+import { countryCodeToFlagEmoji } from "@app/lib/countryCodeToFlagEmoji";
 
 export default function GeneralPage() {
     const router = useRouter();
@@ -339,7 +340,7 @@ export default function GeneralPage() {
                             options={filterAttributes.locations.map(
                                 (location) => ({
                                     value: location,
-                                    label: location
+                                    label: `${location} ${countryCodeToFlagEmoji(location)}`
                                 })
                             )}
                             selectedValue={filters.location}
@@ -359,7 +360,8 @@ export default function GeneralPage() {
                     <span className="flex items-center gap-1">
                         {row.original.location ? (
                             <span className="text-muted-foreground text-xs">
-                                {row.original.location}
+                                {row.original.location}{" "}
+                                {countryCodeToFlagEmoji(row.original.location)}
                             </span>
                         ) : (
                             <span className="text-muted-foreground text-xs">
