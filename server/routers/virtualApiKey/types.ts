@@ -23,6 +23,8 @@ export type ListMyVirtualApiKeysResponse = {
     userKey: VirtualApiKeyWithResources;
     manualKeys: VirtualApiKeyWithResources[];
     resourceName?: string | null;
+    resourceNiceId?: string | null;
+    resourceAccessUrl?: string | null;
 };
 
 export type GetMyVirtualApiKeyResponse = {

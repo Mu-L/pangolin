@@ -40,6 +40,7 @@ type AiClientConfigCardProps = {
     keyAuth: AiClientAuthInput;
     description: string;
     iconSrc: { light: string; dark: string };
+    resourceNiceId?: string;
 };
 
 export function AiClientConfigCard({
@@ -48,7 +49,8 @@ export function AiClientConfigCard({
     endpoint,
     keyAuth,
     description,
-    iconSrc
+    iconSrc,
+    resourceNiceId
 }: AiClientConfigCardProps) {
     const t = useTranslations();
     const { theme } = useTheme();
@@ -94,16 +96,23 @@ export function AiClientConfigCard({
 
     const guide = useMemo(() => {
         if (keyAuth.mode === "keyless") {
-            return buildAiClientGuide(clientId, endpoint, { mode: "keyless" });
+            return buildAiClientGuide(
+                clientId,
+                endpoint,
+                { mode: "keyless" },
+                resourceNiceId
+            );
         }
         if (revealedKey === null) {
             return null;
         }
-        return buildAiClientGuide(clientId, endpoint, {
-            mode: "keyed",
-            key: revealedKey
-        });
-    }, [clientId, endpoint, keyAuth.mode, revealedKey]);
+        return buildAiClientGuide(
+            clientId,
+            endpoint,
+            { mode: "keyed", key: revealedKey },
+            resourceNiceId
+        );
+    }, [clientId, endpoint, keyAuth.mode, revealedKey, resourceNiceId]);
 
     const preset =
         guide?.presets.find((p) => p.id === presetId) ?? guide?.presets[0];

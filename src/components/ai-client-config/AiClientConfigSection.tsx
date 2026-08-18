@@ -27,6 +27,12 @@ type AiClientConfigSectionProps = {
      */
     layout?: "wide" | "compact";
     className?: string;
+    /**
+     * The resource's niceId, when known, so the displayed CLI commands can
+     * include `--resource <niceId>` and let `pangolin configure` skip its
+     * own resource picker.
+     */
+    resourceNiceId?: string;
 };
 
 // Each logo file is named for its own color, not the theme it belongs on, so
@@ -54,7 +60,8 @@ export function AiClientConfigSection({
     endpoint,
     auth,
     layout = "compact",
-    className
+    className,
+    resourceNiceId
 }: AiClientConfigSectionProps) {
     const t = useTranslations();
     const isWide = layout === "wide";
@@ -93,6 +100,7 @@ export function AiClientConfigSection({
                                 keyAuth={auth}
                                 description={descriptions[clientId]}
                                 iconSrc={CLIENT_LOGOS[clientId]}
+                                resourceNiceId={resourceNiceId}
                             />
                         ))}
                     </div>

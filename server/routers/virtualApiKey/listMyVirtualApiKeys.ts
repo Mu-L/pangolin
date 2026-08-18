@@ -20,6 +20,7 @@ import {
     toPublicVirtualApiKey
 } from "@server/lib/virtualApiKey";
 import type { ListMyVirtualApiKeysResponse } from "@server/routers/virtualApiKey/types";
+import { formatPublicResourceAccess } from "@server/routers/launcher/formatLauncherAccess";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -125,11 +126,19 @@ export async function listMyVirtualApiKeys(
 
         let resourceId: number | undefined;
         let resourceName: string | undefined;
+        let resourceNiceId: string | undefined;
+        let resourceAccessUrl: string | null = null;
         if (resourceGuid) {
             const [resource] = await db
                 .select({
                     resourceId: resources.resourceId,
-                    name: resources.name
+                    name: resources.name,
+                    niceId: resources.niceId,
+                    mode: resources.mode,
+                    fullDomain: resources.fullDomain,
+                    ssl: resources.ssl,
+                    proxyPort: resources.proxyPort,
+                    wildcard: resources.wildcard
                 })
                 .from(resources)
                 .where(
@@ -151,6 +160,14 @@ export async function listMyVirtualApiKeys(
 
             resourceId = resource.resourceId;
             resourceName = resource.name;
+            resourceNiceId = resource.niceId;
+            resourceAccessUrl = formatPublicResourceAccess({
+                mode: resource.mode ?? "",
+                fullDomain: resource.fullDomain,
+                ssl: resource.ssl,
+                proxyPort: resource.proxyPort,
+                wildcard: resource.wildcard
+            }).accessUrl;
         }
 
         const [user] = await db
@@ -223,7 +240,9 @@ export async function listMyVirtualApiKeys(
                 manualKeys: manualRows.map((row) =>
                     toKeyWithResources(row, resourceIdsByKey)
                 ),
-                ...(resourceName !== undefined ? { resourceName } : {})
+                ...(resourceName !== undefined ? { resourceName } : {}),
+                ...(resourceNiceId !== undefined ? { resourceNiceId } : {}),
+                ...(resourceNiceId !== undefined ? { resourceAccessUrl } : {})
             },
             success: true,
             error: false,

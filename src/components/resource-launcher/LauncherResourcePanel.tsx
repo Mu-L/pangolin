@@ -351,6 +351,7 @@ function PublicResourceDetails({
                                 mode: "keyed",
                                 getKeyText: getAiKeyCopyText
                             }}
+                            resourceNiceId={launcherResource.niceId}
                         />
                     ) : null}
                 </>
@@ -428,6 +429,7 @@ function PrivateResourceDetails({
                     <AiClientConfigSection
                         endpoint={launcherResource.accessUrl ?? ""}
                         auth={{ mode: "keyless" }}
+                        resourceNiceId={launcherResource.niceId}
                     />
                 </>
             ) : null}

@@ -59,12 +59,17 @@ function block(
 
 function buildCli(
     clientArg: "claude" | "codex" | "opencode",
-    auth: AiClientAuth
+    auth: AiClientAuth,
+    resourceNiceId?: string
 ): AiCliCommands {
+    const resourceFlag = resourceNiceId
+        ? ` --resource ${resourceNiceId}`
+        : "";
+
     const configure: AiConfigBlock = {
         id: `cli-configure-${clientArg}`,
         label: "Configure",
-        displayText: `pangolin configure ${clientArg}`
+        displayText: `pangolin configure ${clientArg}${resourceFlag}`
     };
 
     if (auth.mode !== "keyed") {
@@ -76,12 +81,16 @@ function buildCli(
         configureWithKey: {
             id: `cli-configure-key-${clientArg}`,
             label: "Configure with an API key",
-            displayText: `pangolin configure ${clientArg} ${auth.key}`
+            displayText: `pangolin configure ${clientArg} ${auth.key}${resourceFlag}`
         }
     };
 }
 
-function buildClaudeGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
+function buildClaudeGuide(
+    endpoint: string,
+    auth: AiClientAuth,
+    resourceNiceId?: string
+): AiClientGuide {
     const defaultSettings = block(
         "claude-default-settings",
         "~/.claude/settings.json",
@@ -168,7 +177,7 @@ function buildClaudeGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
     return {
         id: "claude",
         name: AI_CLIENT_NAMES.claude,
-        cli: buildCli("claude", auth),
+        cli: buildCli("claude", auth, resourceNiceId),
         presets: [
             {
                 id: "default",
@@ -194,7 +203,11 @@ function buildClaudeGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
     };
 }
 
-function buildCodexGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
+function buildCodexGuide(
+    endpoint: string,
+    auth: AiClientAuth,
+    resourceNiceId?: string
+): AiClientGuide {
     const settings = block(
         "codex-settings",
         "~/.codex/config.toml",
@@ -224,7 +237,7 @@ function buildCodexGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
     return {
         id: "codex",
         name: AI_CLIENT_NAMES.codex,
-        cli: buildCli("codex", auth),
+        cli: buildCli("codex", auth, resourceNiceId),
         presets: [
             {
                 id: "default",
@@ -235,7 +248,11 @@ function buildCodexGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
     };
 }
 
-function buildOpencodeGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
+function buildOpencodeGuide(
+    endpoint: string,
+    auth: AiClientAuth,
+    resourceNiceId?: string
+): AiClientGuide {
     const config = block(
         "opencode-config",
         "Step 1: opencode.json",
@@ -273,7 +290,7 @@ function buildOpencodeGuide(endpoint: string, auth: AiClientAuth): AiClientGuide
     return {
         id: "opencode",
         name: AI_CLIENT_NAMES.opencode,
-        cli: buildCli("opencode", auth),
+        cli: buildCli("opencode", auth, resourceNiceId),
         presets: [
             {
                 id: "default",
@@ -318,7 +335,11 @@ function buildCursorGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
 
 const GUIDE_BUILDERS: Record<
     AiClientId,
-    (endpoint: string, auth: AiClientAuth) => AiClientGuide
+    (
+        endpoint: string,
+        auth: AiClientAuth,
+        resourceNiceId?: string
+    ) => AiClientGuide
 > = {
     claude: buildClaudeGuide,
     codex: buildCodexGuide,
@@ -329,7 +350,8 @@ const GUIDE_BUILDERS: Record<
 export function buildAiClientGuide(
     clientId: AiClientId,
     endpoint: string,
-    auth: AiClientAuth
+    auth: AiClientAuth,
+    resourceNiceId?: string
 ): AiClientGuide {
-    return GUIDE_BUILDERS[clientId](endpoint, auth);
+    return GUIDE_BUILDERS[clientId](endpoint, auth, resourceNiceId);
 }

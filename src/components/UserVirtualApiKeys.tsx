@@ -26,6 +26,10 @@ import { formatVirtualApiKeyPreview } from "@app/lib/virtualApiKeyFormat";
 type UserVirtualApiKeysProps = {
     orgId: string;
     initialData: ListMyVirtualApiKeysResponse;
+    /** The resource's niceId, when this page is scoped to a single resource. */
+    resourceNiceId?: string;
+    /** The resource's real access URL, when known; falls back to a placeholder otherwise. */
+    endpoint?: string;
 };
 
 function OwnedKeySecret({
@@ -163,7 +167,9 @@ function ManualKeyRow({
 
 export default function UserVirtualApiKeys({
     orgId,
-    initialData
+    initialData,
+    resourceNiceId,
+    endpoint
 }: UserVirtualApiKeysProps) {
     const t = useTranslations();
     const resourceName = initialData.resourceName;
@@ -217,11 +223,12 @@ export default function UserVirtualApiKeys({
 
                 <AiClientConfigSection
                     layout="wide"
-                    endpoint={t("aiClientConfigEndpointPlaceholder")}
+                    endpoint={endpoint ?? t("aiClientConfigEndpointPlaceholder")}
                     auth={{
                         mode: "keyed",
                         getKeyText: getKeyCopyText
                     }}
+                    resourceNiceId={resourceNiceId}
                 />
             </SettingsContainer>
         </>

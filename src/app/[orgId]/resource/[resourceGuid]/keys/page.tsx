@@ -113,7 +113,12 @@ export default async function ResourceKeysPage(props: ResourceKeysPageProps) {
                 launcherMode
                 showViewAsAdmin={isAdminOrOwner}
             >
-                <UserVirtualApiKeys orgId={orgId} initialData={keysData} />
+                <UserVirtualApiKeys
+                    orgId={orgId}
+                    initialData={keysData}
+                    resourceNiceId={keysData.resourceNiceId ?? undefined}
+                    endpoint={keysData.resourceAccessUrl ?? undefined}
+                />
             </Layout>
         </UserProvider>
     );
