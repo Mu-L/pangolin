@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { cn } from "@app/lib/cn";
 import { useTranslations } from "next-intl";
-import { BarChart3, LineChart as LineChartIcon, LoaderIcon } from "lucide-react";
+import {
+    BarChart3,
+    LineChart as LineChartIcon,
+    LoaderIcon
+} from "lucide-react";
 import {
     Bar,
     BarChart,
@@ -63,7 +67,12 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
     const hasData = props.data.length > 0;
 
     return (
-        <div className={cn("relative flex flex-col gap-2", props.className)}>
+        <div
+            className={cn(
+                "relative flex min-w-0 flex-col gap-2",
+                props.className
+            )}
+        >
             <div className="flex items-center justify-between gap-2">
                 <h3 className="font-semibold">{props.title}</h3>
                 <div className="flex gap-1">
@@ -102,17 +111,23 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
             ) : (
                 <ChartContainer
                     config={chartConfig}
-                    className="min-h-50 w-full h-64"
+                    className="aspect-auto min-h-50 h-64 w-full min-w-0 overflow-hidden"
                 >
                     {chartType === "bar" ? (
                         <BarChart accessibilityLayer data={props.data}>
-                            <ChartLegend content={<ChartLegendContent />} />
+                            <ChartLegend
+                                content={
+                                    <ChartLegendContent className="flex-wrap" />
+                                }
+                            />
                             <ChartTooltip
                                 content={
                                     <ChartTooltipContent
                                         indicator="dot"
                                         labelFormatter={(_value, payload) =>
-                                            formatDay(payload?.[0]?.payload?.day)
+                                            formatDay(
+                                                payload?.[0]?.payload?.day
+                                            )
                                         }
                                     />
                                 }
@@ -143,13 +158,19 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
                         </BarChart>
                     ) : (
                         <LineChart accessibilityLayer data={props.data}>
-                            <ChartLegend content={<ChartLegendContent />} />
+                            <ChartLegend
+                                content={
+                                    <ChartLegendContent className="flex-wrap" />
+                                }
+                            />
                             <ChartTooltip
                                 content={
                                     <ChartTooltipContent
                                         indicator="line"
                                         labelFormatter={(_value, payload) =>
-                                            formatDay(payload?.[0]?.payload?.day)
+                                            formatDay(
+                                                payload?.[0]?.payload?.day
+                                            )
                                         }
                                     />
                                 }
