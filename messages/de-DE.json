@@ -1607,6 +1607,8 @@
     "commandPaletteCreateMachineClient": "Maschinen-Client erstellen",
     "commandPaletteCreateAlertRule": "Alarmregel erstellen",
     "commandPaletteCreateIdentityProvider": "Identitätsanbieter erstellen",
+    "commandPaletteCreateAiProvider": "Create AI Provider",
+    "commandPaletteCreateVirtualApiKey": "Create Virtual API Key",
     "commandPaletteToggleTheme": "Thema umschalten",
     "commandPaletteChooseOrganization": "Organisation auswählen",
     "commandPaletteShortcutMac": "⌘K",
