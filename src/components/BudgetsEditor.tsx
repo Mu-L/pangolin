@@ -327,7 +327,7 @@ export function BudgetRowsFields({
                         return (
                             <div
                                 key={row.key}
-                                className="flex items-center gap-2"
+                                className="flex items-center gap-1 sm:gap-2"
                             >
                                 <div
                                     className={cn(
@@ -340,7 +340,7 @@ export function BudgetRowsFields({
                                 >
                                     <BudgetRowUnitSelect
                                         {...fields}
-                                        className="h-full w-28 min-w-28 shrink-0 rounded-none border-0 px-2 shadow-none focus-visible:ring-0"
+                                        className="h-full w-20 min-w-20 shrink-0 rounded-none border-0 px-2 shadow-none focus-visible:ring-0 sm:w-28 sm:min-w-28 max-sm:[&_svg]:hidden"
                                     />
                                     <div
                                         className="w-px shrink-0 bg-border"
@@ -353,7 +353,7 @@ export function BudgetRowsFields({
                                 </div>
                                 <BudgetRowPeriodSelect
                                     {...fields}
-                                    className="h-9 w-32 min-w-32 shrink-0"
+                                    className="h-9 w-24 min-w-24 shrink-0 sm:w-32 sm:min-w-32 max-sm:[&_svg]:hidden"
                                 />
                                 <Button
                                     type="button"
