@@ -1607,6 +1607,8 @@
     "commandPaletteCreateMachineClient": "创建机器客户端",
     "commandPaletteCreateAlertRule": "创建警报规则",
     "commandPaletteCreateIdentityProvider": "创建身份提供商",
+    "commandPaletteCreateAiProvider": "Create AI Provider",
+    "commandPaletteCreateVirtualApiKey": "Create Virtual API Key",
     "commandPaletteToggleTheme": "切换主题",
     "commandPaletteChooseOrganization": "选择组织",
     "commandPaletteShortcutMac": "⌘K",
