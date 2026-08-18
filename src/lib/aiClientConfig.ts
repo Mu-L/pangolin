@@ -238,13 +238,18 @@ function buildCodexGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
 function buildOpencodeGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
     const config = block(
         "opencode-config",
-        "opencode.json",
+        "Step 1: opencode.json",
         () =>
             [
                 "{",
                 '    "$schema": "https://opencode.ai/config.json",',
                 '    "provider": {',
                 '        "anthropic": {',
+                '            "options": {',
+                `                "baseURL": "${endpoint}/v1"`,
+                "            }",
+                "        }",
+                '        "openai": {',
                 '            "options": {',
                 `                "baseURL": "${endpoint}/v1"`,
                 "            }",
@@ -257,7 +262,7 @@ function buildOpencodeGuide(endpoint: string, auth: AiClientAuth): AiClientGuide
 
     const authFile = block(
         "opencode-auth",
-        "auth.json",
+        "Step 2: auth.json",
         (key) =>
             ["{", '    "anthropic": {', '        "type": "api",', `        "key": "${key}"`, "    }", "}"].join(
                 "\n"
