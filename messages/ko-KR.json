@@ -1607,6 +1607,8 @@
     "commandPaletteCreateMachineClient": "머신 클라이언트 생성",
     "commandPaletteCreateAlertRule": "경고 규칙 생성",
     "commandPaletteCreateIdentityProvider": "신원 공급자 생성",
+    "commandPaletteCreateAiProvider": "Create AI Provider",
+    "commandPaletteCreateVirtualApiKey": "Create Virtual API Key",
     "commandPaletteToggleTheme": "테마 전환",
     "commandPaletteChooseOrganization": "조직 선택",
     "commandPaletteShortcutMac": "⌘K",
