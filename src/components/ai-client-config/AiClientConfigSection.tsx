@@ -87,7 +87,7 @@ export function AiClientConfigSection({
                 <div className={cn("@container min-w-0", className)}>
                     <div
                         className={cn(
-                            "grid min-w-0 gap-3",
+                            "grid min-w-0 items-start gap-3",
                             isWide && "@3xl:grid-cols-2"
                         )}
                     >
