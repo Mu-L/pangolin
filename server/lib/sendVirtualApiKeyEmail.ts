@@ -7,6 +7,18 @@ import VirtualApiKeyGenerated from "@server/emails/templates/VirtualApiKeyGenera
 import { formatVirtualApiKeyCredential } from "@server/lib/virtualApiKey";
 
 const EMAIL_GATEWAY_URL_LIMIT = 5;
+const VIRTUAL_API_KEY_EMAIL_BATCH_SIZE = 50;
+
+export async function mapInBatches<T>(
+    items: T[],
+    fn: (item: T) => Promise<void>,
+    batchSize = VIRTUAL_API_KEY_EMAIL_BATCH_SIZE
+): Promise<void> {
+    for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        await Promise.all(batch.map(fn));
+    }
+}
 
 async function listVirtualApiKeyGatewayUrls(params: {
     orgId: string;
@@ -161,7 +173,7 @@ export async function sendVirtualApiKeyEmails(params: {
         ? `Your identity key for ${params.orgName}`
         : `Virtual API key for ${params.orgName}`;
 
-    for (const to of params.recipients) {
+    await mapInBatches(params.recipients, async (to) => {
         await sendEmail(
             params.isIdentityKey
                 ? IdentityApiKeyGenerated({
@@ -184,5 +196,5 @@ export async function sendVirtualApiKeyEmails(params: {
                 subject
             }
         );
-    }
+    });
 }

@@ -12,7 +12,8 @@ import config from "@server/lib/config";
 import { getOrCreateUserVirtualApiKey } from "@server/lib/virtualApiKey";
 import {
     sendVirtualApiKeyEmails,
-    listOrgInferenceGatewayUrls
+    listOrgInferenceGatewayUrls,
+    mapInBatches
 } from "@server/lib/sendVirtualApiKeyEmail";
 import type { EmailIdentityKeysResponse } from "@server/routers/virtualApiKey/types";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -218,15 +219,13 @@ export async function emailIdentityKeys(
 
         const orgName = org?.name || orgId;
         const gatewayUrls = await listOrgInferenceGatewayUrls(orgId);
+        const recipients = members.flatMap(({ user }) =>
+            user.email ? [{ user, email: user.email }] : []
+        );
         let sent = 0;
-        let skipped = 0;
+        const skipped = members.length - recipients.length;
 
-        for (const { user } of members) {
-            if (!user.email) {
-                skipped += 1;
-                continue;
-            }
-
+        await mapInBatches(recipients, async ({ user, email }) => {
             const { key, secret } = await getOrCreateUserVirtualApiKey({
                 orgId,
                 user,
@@ -234,7 +233,7 @@ export async function emailIdentityKeys(
             });
 
             await sendVirtualApiKeyEmails({
-                recipients: [user.email],
+                recipients: [email],
                 orgName,
                 orgId,
                 keyName: key.name,
@@ -242,11 +241,11 @@ export async function emailIdentityKeys(
                 secret,
                 allResources: true,
                 isIdentityKey: true,
-                accountLabel: user.email || user.name || user.username,
+                accountLabel: email,
                 gatewayUrls
             });
             sent += 1;
-        }
+        });
 
         return response<EmailIdentityKeysResponse>(res, {
             data: { sent, skipped },
