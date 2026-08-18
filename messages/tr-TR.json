@@ -1607,6 +1607,8 @@
     "commandPaletteCreateMachineClient": "Makine İstemcisi Oluştur",
     "commandPaletteCreateAlertRule": "Uyarı Kuralı Oluştur",
     "commandPaletteCreateIdentityProvider": "Kimlik Sağlayıcı Oluştur",
+    "commandPaletteCreateAiProvider": "Create AI Provider",
+    "commandPaletteCreateVirtualApiKey": "Create Virtual API Key",
     "commandPaletteToggleTheme": "Temayı Aç/Kapat",
     "commandPaletteChooseOrganization": "Organizasyon Seç",
     "commandPaletteShortcutMac": "⌘K",
