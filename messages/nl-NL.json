@@ -1607,6 +1607,8 @@
     "commandPaletteCreateMachineClient": "Machineclient aanmaken",
     "commandPaletteCreateAlertRule": "Alarmregel aanmaken",
     "commandPaletteCreateIdentityProvider": "Identiteitsprovider aanmaken",
+    "commandPaletteCreateAiProvider": "Create AI Provider",
+    "commandPaletteCreateVirtualApiKey": "Create Virtual API Key",
     "commandPaletteToggleTheme": "Thema wisselen",
     "commandPaletteChooseOrganization": "Kies Organisatie",
     "commandPaletteShortcutMac": "⌘K",
