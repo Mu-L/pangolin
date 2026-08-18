@@ -197,7 +197,7 @@ export default async function migration() {
             );
         `);
         await db.execute(
-            sql`ALTER TABLE "clients" RENAME COLUMN "subnet" TO "exitNodeSubnet";`
+            sql`ALTER TABLE "clients" ADD COLUMN "exitNodeSubnet" text;`
         );
         await db.execute(
             sql`ALTER TABLE "roles" ALTER COLUMN "sshSudoMode" SET DEFAULT 'full';`
@@ -232,7 +232,7 @@ export default async function migration() {
             sql`ALTER TABLE "siteResources" ADD COLUMN "requiresExitNodeConnection" boolean DEFAULT false NOT NULL;`
         );
         await db.execute(
-            sql`ALTER TABLE "sites" ADD COLUMN "exitNodeSubnet" text;`
+            sql`ALTER TABLE "sites" RENAME COLUMN "subnet" TO "exitNodeSubnet";`
         );
         await db.execute(
             sql`ALTER TABLE "targets" ADD COLUMN "providerId" integer;`
