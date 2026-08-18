@@ -169,7 +169,7 @@
         "esbuild-node-externals": "1.22.0",
         "eslint": "10.4.0",
         "eslint-config-next": "16.2.6",
-        "postcss": "8.5.15",
+        "postcss": "8.5.23",
         "prettier": "3.8.3",
         "react-email": "6.5.0",
         "tailwindcss": "4.3.0",
@@ -181,6 +181,6 @@
     "overrides": {
         "esbuild": "0.28.1",
         "dompurify": "3.4.0",
-        "postcss": "8.5.15"
+        "postcss": "8.5.23"
     }
 }
