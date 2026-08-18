@@ -1607,6 +1607,8 @@
     "commandPaletteCreateMachineClient": "Create Machine Client",
     "commandPaletteCreateAlertRule": "Create Alert Rule",
     "commandPaletteCreateIdentityProvider": "Create Identity Provider",
+    "commandPaletteCreateAiProvider": "Create AI Provider",
+    "commandPaletteCreateVirtualApiKey": "Create Virtual API Key",
     "commandPaletteToggleTheme": "Toggle Theme",
     "commandPaletteChooseOrganization": "Choose Organization",
     "commandPaletteShortcutMac": "⌘K",
