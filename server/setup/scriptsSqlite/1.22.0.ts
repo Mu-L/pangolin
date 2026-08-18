@@ -384,7 +384,7 @@ export default async function migration() {
             ).run();
 
             db.prepare(
-                `INSERT INTO '__new_targets'("targetId", "resourceId", "providerId", "siteId", "ip", "method", "port", "internalPort", "enabled", "path", "pathMatchType", "rewritePath", "rewritePathType", "priority", "mode", "authToken") SELECT "targetId", "resourceId", "providerId", "siteId", "ip", "method", "port", "internalPort", "enabled", "path", "pathMatchType", "rewritePath", "rewritePathType", "priority", "mode", "authToken" FROM 'targets';`
+                `INSERT INTO '__new_targets'("targetId", "resourceId", "siteId", "ip", "method", "port", "internalPort", "enabled", "path", "pathMatchType", "rewritePath", "rewritePathType", "priority", "mode", "authToken") SELECT "targetId", "resourceId", "siteId", "ip", "method", "port", "internalPort", "enabled", "path", "pathMatchType", "rewritePath", "rewritePathType", "priority", "mode", "authToken" FROM 'targets';`
             ).run();
             db.prepare(`DROP TABLE 'targets';`).run();
             db.prepare(
