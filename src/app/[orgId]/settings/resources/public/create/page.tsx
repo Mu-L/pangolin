@@ -928,7 +928,8 @@ export default function Page() {
                                                                 <FormItem>
                                                                     <DomainPicker
                                                                         allowWildcard={
-                                                                            true
+                                                                            resourceType !==
+                                                                            "inference"
                                                                         }
                                                                         orgId={
                                                                             orgId as string

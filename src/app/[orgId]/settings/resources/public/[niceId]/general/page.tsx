@@ -405,7 +405,10 @@ export default function GeneralForm() {
                                             <SettingsFormCell span="full">
                                                 <div id="resource-domain-picker">
                                                     <DomainPicker
-                                                        allowWildcard={true}
+                                                        allowWildcard={
+                                                            resource.mode !==
+                                                            "inference"
+                                                        }
                                                         key={
                                                             resource.resourceId
                                                         }

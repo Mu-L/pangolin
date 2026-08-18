@@ -531,6 +531,20 @@ async function updateHttpResource(
         }
     }
 
+    // Wildcard subdomains are not allowed for inference-mode resources
+    if (
+        resource.mode === "inference" &&
+        updateData.subdomain &&
+        updateData.subdomain.includes("*")
+    ) {
+        return next(
+            createHttpError(
+                HttpCode.BAD_REQUEST,
+                "Wildcard subdomains are not supported for inference-mode resources."
+            )
+        );
+    }
+
     // Wildcard subdomains are a paid feature
     if (updateData.subdomain && updateData.subdomain.includes("*")) {
         if (!isLicensed) {
