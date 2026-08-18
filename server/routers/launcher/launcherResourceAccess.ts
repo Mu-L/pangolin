@@ -316,6 +316,7 @@ function buildSearchConditionForPublic(query: string) {
     const pattern = searchPattern(query.toLowerCase());
     const queryList = [
         like(sql`LOWER(${resources.name})`, pattern),
+        like(sql`LOWER(${resources.niceId})`, pattern),
         like(sql`LOWER(${resources.fullDomain})`, pattern),
         like(sql`LOWER(cast(${resources.proxyPort} as text))`, pattern),
         inArray(
@@ -348,6 +349,7 @@ function buildSearchConditionForSiteResource(query: string) {
     const pattern = searchPattern(query.toLowerCase());
     const queryList = [
         like(sql`LOWER(${siteResources.name})`, pattern),
+        like(sql`LOWER(${siteResources.niceId})`, pattern),
         like(sql`LOWER(${siteResources.destination})`, pattern),
         like(
             sql`LOWER(cast(${siteResources.destinationPort} as text))`,
