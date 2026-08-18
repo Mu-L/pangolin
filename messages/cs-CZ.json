@@ -1607,6 +1607,8 @@
     "commandPaletteCreateMachineClient": "Vytvořit strojového klienta",
     "commandPaletteCreateAlertRule": "Vytvořit pravidlo upozornění",
     "commandPaletteCreateIdentityProvider": "Vytvořit poskytovatele identity",
+    "commandPaletteCreateAiProvider": "Create AI Provider",
+    "commandPaletteCreateVirtualApiKey": "Create Virtual API Key",
     "commandPaletteToggleTheme": "Přepnout téma",
     "commandPaletteChooseOrganization": "Vybrat organizaci",
     "commandPaletteShortcutMac": "⌘K",
