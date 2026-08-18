@@ -32,6 +32,7 @@ interface ColumnFilterButtonProps {
     emptyMessage?: string;
     className?: string;
     label: string;
+    allowArbitraryValues?: boolean;
 }
 
 export function ColumnFilterButton({
@@ -41,7 +42,8 @@ export function ColumnFilterButton({
     searchPlaceholder = "Search...",
     emptyMessage = "No options found",
     className,
-    label
+    label,
+    allowArbitraryValues
 }: ColumnFilterButtonProps) {
     const [open, setOpen] = useState(false);
 
