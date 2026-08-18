@@ -14,7 +14,6 @@ import {
     type AiClientAuthInput
 } from "@app/lib/aiClientConfig";
 import { cn } from "@app/lib/cn";
-import { MousePointerClick, Sparkles, SquareTerminal, TerminalSquare } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 type AiClientConfigSectionProps = {
@@ -30,11 +29,25 @@ type AiClientConfigSectionProps = {
     className?: string;
 };
 
-const CLIENT_ICONS = {
-    claude: Sparkles,
-    codex: TerminalSquare,
-    opencode: SquareTerminal,
-    cursor: MousePointerClick
+// Each logo file is named for its own color, not the theme it belongs on, so
+// the light-colored "-light" asset is what we show in dark mode and vice versa.
+const CLIENT_LOGOS = {
+    claude: {
+        light: "/third-party/claude-dark.svg",
+        dark: "/third-party/claude-light.svg"
+    },
+    codex: {
+        light: "/third-party/openai-dark.svg",
+        dark: "/third-party/openai-light.svg"
+    },
+    opencode: {
+        light: "/third-party/opencode-dark.svg",
+        dark: "/third-party/opencode-light.svg"
+    },
+    cursor: {
+        light: "/third-party/cursor-dark.svg",
+        dark: "/third-party/cursor-light.svg"
+    }
 } as const;
 
 export function AiClientConfigSection({
@@ -79,7 +92,7 @@ export function AiClientConfigSection({
                                 endpoint={endpoint}
                                 keyAuth={auth}
                                 description={descriptions[clientId]}
-                                icon={CLIENT_ICONS[clientId]}
+                                iconSrc={CLIENT_LOGOS[clientId]}
                             />
                         ))}
                     </div>

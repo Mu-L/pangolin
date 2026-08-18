@@ -27,9 +27,11 @@ import type {
 } from "@app/lib/aiClientConfig";
 import { buildAiClientGuide } from "@app/lib/aiClientConfig";
 import { cn } from "@app/lib/cn";
-import { ChevronDown, Loader2, type LucideIcon } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
+import { useTheme } from "next-themes";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type AiClientConfigCardProps = {
     clientId: AiClientId;
@@ -37,7 +39,7 @@ type AiClientConfigCardProps = {
     endpoint: string;
     keyAuth: AiClientAuthInput;
     description: string;
-    icon: LucideIcon;
+    iconSrc: { light: string; dark: string };
 };
 
 export function AiClientConfigCard({
@@ -46,14 +48,29 @@ export function AiClientConfigCard({
     endpoint,
     keyAuth,
     description,
-    icon: Icon
+    iconSrc
 }: AiClientConfigCardProps) {
     const t = useTranslations();
+    const { theme } = useTheme();
+    const [resolvedIconSrc, setResolvedIconSrc] = useState(iconSrc.light);
     const [open, setOpen] = useState(false);
     const [presetId, setPresetId] = useState<AiClientPresetId>("default");
     const [revealedKey, setRevealedKey] = useState<string | null>(null);
     const [revealing, setRevealing] = useState(false);
     const [revealError, setRevealError] = useState(false);
+
+    useEffect(() => {
+        let lightOrDark = theme;
+        if (theme === "system" || !theme) {
+            lightOrDark = window.matchMedia("(prefers-color-scheme: dark)")
+                .matches
+                ? "dark"
+                : "light";
+        }
+        setResolvedIconSrc(
+            lightOrDark === "dark" ? iconSrc.dark : iconSrc.light
+        );
+    }, [theme, iconSrc]);
 
     const reveal = () => {
         if (keyAuth.mode !== "keyed" || revealedKey !== null || revealing) {
@@ -127,7 +144,13 @@ export function AiClientConfigCard({
             className="min-w-0 rounded-md border bg-card"
         >
             <CollapsibleTrigger className="flex w-full items-center gap-3 px-4 py-3 text-left cursor-pointer">
-                <Icon className="size-4 shrink-0 text-muted-foreground" />
+                <Image
+                    src={resolvedIconSrc}
+                    alt={name}
+                    width={16}
+                    height={16}
+                    className="size-4 shrink-0 object-contain"
+                />
                 <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">{name}</p>
                     <p className="text-xs text-muted-foreground truncate">
