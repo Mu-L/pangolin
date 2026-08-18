@@ -338,25 +338,23 @@ export default function ConnectionLogsPage() {
                 );
             },
             cell: ({ row }) => {
-                if (row.original.resourceName && row.original.resourceNiceId) {
+                if (!row.original.resourceNiceId) {
                     return (
-                        <Link
-                            href={getPrivateResourceSettingsHref(
-                                row.original.orgId,
-                                row.original.resourceNiceId
-                            )}
-                        >
-                            <Button variant="outline" size="sm">
-                                {row.original.resourceName}
-                                <ArrowUpRight className="ml-2 h-3 w-3" />
-                            </Button>
-                        </Link>
+                        <span className="text-xs text-muted-foreground">-</span>
                     );
                 }
                 return (
-                    <span className="whitespace-nowrap">
-                        {row.original.resourceName ?? "-"}
-                    </span>
+                    <Link
+                        href={getPrivateResourceSettingsHref(
+                            row.original.orgId,
+                            row.original.resourceNiceId
+                        )}
+                    >
+                        <Button variant="outline" size="sm">
+                            {row.original.resourceName}
+                            <ArrowUpRight className="ml-2 h-3 w-3" />
+                        </Button>
+                    </Link>
                 );
             }
         },

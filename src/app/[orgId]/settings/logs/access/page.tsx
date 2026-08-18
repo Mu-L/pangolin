@@ -357,6 +357,11 @@ export default function GeneralPage() {
                 );
             },
             cell: ({ row }) => {
+                if (!row.original.resourceNiceId) {
+                    return (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    );
+                }
                 return (
                     <Link
                         href={
