@@ -1,5 +1,5 @@
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import { hashPassword } from "@server/auth/password";
 import { generateId } from "@server/auth/sessions/app";
 import { build } from "@server/build";
@@ -50,11 +50,11 @@ import { and, asc, eq, isNotNull, ne, or } from "drizzle-orm";
 import { tierMatrix } from "../billing/tierMatrix";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { Config, isTargetsOnlyResource, TargetData } from "./types";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import next from "next";
+import { getOrCreateLabelIds, syncResourceLabels } from "./labels";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
+import { syncInferenceAiConfig } from "./aiProviders";
+import { syncAiBudgets } from "./aiBudgets";
 
 export type PublicResourcesResults = {
     proxyResource: Resource;
@@ -259,18 +259,6 @@ export async function updatePublicResources(
             headers = JSON.stringify(resourceData.headers);
         }
 
-        if (["ssh", "rdp", "vnc"].includes(resourceData.mode || "")) {
-            const isLicensed = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPublicResources
-            );
-            if (!isLicensed) {
-                throw new Error(
-                    "Your current subscription does not support browser gateway resources. Please upgrade to access this feature."
-                );
-            }
-        }
-
         if (resourceData.policy) {
             const isLicensed = await isLicensedOrSubscribed(
                 orgId,
@@ -286,7 +274,9 @@ export async function updatePublicResources(
         if (existingResource) {
             let domain;
             if (
-                ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
+                ["http", "ssh", "rdp", "vnc", "inference"].includes(
+                    resourceData.mode || ""
+                )
             ) {
                 if (resourceData["full-domain"]?.startsWith("*.")) {
                     const isLicensed = await isLicensedOrSubscribed(
@@ -304,6 +294,7 @@ export async function updatePublicResources(
                     existingResource.resourceId,
                     resourceData["full-domain"]!,
                     orgId,
+                    resourceData.mode === "inference",
                     trx
                 );
 
@@ -325,7 +316,7 @@ export async function updatePublicResources(
 
                 const isLicensed = await isLicensedOrSubscribed(
                     orgId,
-                    tierMatrix.maintencePage
+                    tierMatrix.maintenancePage
                 );
                 if (!isLicensed) {
                     resourceData.maintenance = undefined;
@@ -370,14 +361,22 @@ export async function updatePublicResources(
                             name: resourceData.name || "Unnamed Resource",
 
                             mode: resourceData.mode,
-                            proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
-                                resourceData.mode || ""
-                            )
+                            proxyPort: [
+                                "http",
+                                "ssh",
+                                "rdp",
+                                "vnc",
+                                "inference"
+                            ].includes(resourceData.mode || "")
                                 ? null
                                 : resourceData["proxy-port"],
-                            fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
-                                resourceData.mode || ""
-                            )
+                            fullDomain: [
+                                "http",
+                                "ssh",
+                                "rdp",
+                                "vnc",
+                                "inference"
+                            ].includes(resourceData.mode || "")
                                 ? resourceData["full-domain"]
                                 : null,
                             subdomain: domain ? domain.subdomain : null,
@@ -566,14 +565,23 @@ export async function updatePublicResources(
                         .update(resources)
                         .set({
                             name: resourceData.name || "Unnamed Resource",
-                            proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
-                                resourceData.mode || ""
-                            )
+                            mode: resourceData.mode,
+                            proxyPort: [
+                                "http",
+                                "ssh",
+                                "rdp",
+                                "vnc",
+                                "inference"
+                            ].includes(resourceData.mode || "")
                                 ? null
                                 : resourceData["proxy-port"],
-                            fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
-                                resourceData.mode || ""
-                            )
+                            fullDomain: [
+                                "http",
+                                "ssh",
+                                "rdp",
+                                "vnc",
+                                "inference"
+                            ].includes(resourceData.mode || "")
                                 ? resourceData["full-domain"]
                                 : null,
                             subdomain: domain ? domain.subdomain : null,
@@ -673,6 +681,30 @@ export async function updatePublicResources(
                         trx
                     );
                 }
+
+                await syncInferenceAiConfig({
+                    orgId,
+                    trx,
+                    mode: resourceData.mode || "",
+                    scope: "public",
+                    resourceId: existingResource.resourceId,
+                    providers: (resourceData["ai-providers"] || []).map(
+                        (p) => ({
+                            provider: p.provider,
+                            accessMode: p["access-mode"],
+                            enabled: p.enabled,
+                            models: p.models
+                        })
+                    )
+                });
+
+                await syncAiBudgets({
+                    orgId,
+                    trx,
+                    scope: "public",
+                    resourceId: existingResource.resourceId,
+                    budgets: resourceData["ai-budget"] || []
+                });
             }
 
             const existingResourceTargets = await trx
@@ -753,7 +785,7 @@ export async function updatePublicResources(
                                     : undefined),
                             rewritePathType: targetData["rewrite-match"],
                             priority: targetData.priority,
-                            mode: resourceData.mode
+                            mode: resourceData.mode as Target["mode"]
                         })
                         .where(eq(targets.targetId, existingTarget.targetId))
                         .returning();
@@ -1058,7 +1090,9 @@ export async function updatePublicResources(
 
             let domain;
             if (
-                ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
+                ["http", "ssh", "rdp", "vnc", "inference"].includes(
+                    resourceData.mode || ""
+                )
             ) {
                 if (resourceData["full-domain"]?.startsWith("*.")) {
                     const isLicensed = await isLicensedOrSubscribed(
@@ -1076,6 +1110,7 @@ export async function updatePublicResources(
                     undefined,
                     resourceData["full-domain"]!,
                     orgId,
+                    resourceData.mode === "inference",
                     trx
                 );
 
@@ -1088,7 +1123,7 @@ export async function updatePublicResources(
 
             const isLicensed = await isLicensedOrSubscribed(
                 orgId,
-                tierMatrix.maintencePage
+                tierMatrix.maintenancePage
             );
             if (!isLicensed) {
                 resourceData.maintenance = undefined;
@@ -1155,14 +1190,22 @@ export async function updatePublicResources(
                     status: resourceStatusFromSite,
                     name: resourceData.name || "Unnamed Resource",
                     mode: resourceData.mode,
-                    proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
-                        resourceData.mode || ""
-                    )
+                    proxyPort: [
+                        "http",
+                        "ssh",
+                        "rdp",
+                        "vnc",
+                        "inference"
+                    ].includes(resourceData.mode || "")
                         ? null
                         : resourceData["proxy-port"],
-                    fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
-                        resourceData.mode || ""
-                    )
+                    fullDomain: [
+                        "http",
+                        "ssh",
+                        "rdp",
+                        "vnc",
+                        "inference"
+                    ].includes(resourceData.mode || "")
                         ? resourceData["full-domain"]
                         : null,
                     subdomain: domain ? domain.subdomain : null,
@@ -1216,6 +1259,28 @@ export async function updatePublicResources(
                 .returning();
 
             resource = newResource;
+
+            await syncInferenceAiConfig({
+                orgId,
+                trx,
+                mode: resourceData.mode || "",
+                scope: "public",
+                resourceId: newResource.resourceId,
+                providers: (resourceData["ai-providers"] || []).map((p) => ({
+                    provider: p.provider,
+                    accessMode: p["access-mode"],
+                    enabled: p.enabled,
+                    models: p.models
+                }))
+            });
+
+            await syncAiBudgets({
+                orgId,
+                trx,
+                scope: "public",
+                resourceId: newResource.resourceId,
+                budgets: resourceData["ai-budget"] || []
+            });
 
             await trx.insert(roleResources).values({
                 roleId: adminRole.roleId,
@@ -1349,6 +1414,15 @@ export async function updatePublicResources(
             await usageService.add(orgId, LimitId.PUBLIC_RESOURCES, 1, trx);
 
             logger.debug(`Created resource ${newResource.resourceId}`);
+        }
+
+        if (!isTargetsOnlyResource(resourceData)) {
+            const labelIds = await getOrCreateLabelIds(
+                orgId,
+                resourceData.labels || [],
+                trx
+            );
+            await syncResourceLabels(resource.resourceId, labelIds, trx);
         }
 
         results.push({
@@ -2065,6 +2139,7 @@ export async function getDomain(
     resourceId: number | undefined,
     fullDomain: string,
     orgId: string,
+    isInference: boolean,
     trx: Transaction
 ) {
     const [fullDomainExists] = await trx
@@ -2074,6 +2149,14 @@ export async function getDomain(
             and(
                 eq(resources.fullDomain, fullDomain),
                 eq(resources.orgId, orgId),
+                // Inference resources route through the central AI gateway
+                // rather than normal target-based proxying, so they're
+                // allowed to share a full-domain with a non-inference
+                // resource (and vice versa) - only conflicts within the
+                // same routing category are rejected.
+                isInference
+                    ? ne(resources.mode, "inference")
+                    : eq(resources.mode, "inference"),
                 resourceId
                     ? ne(resources.resourceId, resourceId)
                     : isNotNull(resources.resourceId)

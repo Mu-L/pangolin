@@ -33,9 +33,9 @@
     },
     "dependencies": {
         "@asteasolutions/zod-to-openapi": "8.5.0",
+        "@aws-sdk/client-s3": "3.1056.0",
         "@devolutions/iron-remote-desktop": "https://static.pangolin.net/packages/devolutions-iron-remote-desktop-0.0.0.tgz",
         "@devolutions/iron-remote-desktop-rdp": "https://static.pangolin.net/packages/devolutions-iron-remote-desktop-rdp-0.0.1.tgz",
-        "@aws-sdk/client-s3": "3.1056.0",
         "@headlessui/react": "2.2.10",
         "@hookform/resolvers": "5.4.0",
         "@monaco-editor/react": "4.7.0",
@@ -88,6 +88,7 @@
         "express": "5.2.1",
         "express-rate-limit": "8.5.2",
         "glob": "13.0.6",
+        "gpt-tokenizer": "^3.4.0",
         "helmet": "8.2.0",
         "http-errors": "2.0.1",
         "input-otp": "1.4.2",
@@ -165,7 +166,7 @@
         "@types/yargs": "17.0.35",
         "babel-plugin-react-compiler": "1.0.0",
         "drizzle-kit": "0.31.10",
-        "esbuild": "0.28.1",
+        "esbuild": "0.28.0",
         "esbuild-node-externals": "1.22.0",
         "eslint": "10.4.0",
         "eslint-config-next": "16.2.6",
@@ -179,7 +180,7 @@
         "typescript-eslint": "8.60.0"
     },
     "overrides": {
-        "esbuild": "0.28.1",
+        "esbuild": "0.28.0",
         "dompurify": "3.4.0",
         "postcss": "8.5.23"
     }

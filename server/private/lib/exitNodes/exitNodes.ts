@@ -25,7 +25,6 @@ import {
     Transaction
 } from "@server/db";
 import logger from "@server/logger";
-import { ExitNodePingResult } from "@server/routers/newt";
 import { eq, and, or, ne, isNull, inArray } from "drizzle-orm";
 import axios from "axios";
 import config from "../config";
@@ -329,6 +328,16 @@ export async function listExitNodes(
 
     return exitNodesList;
 }
+
+export type ExitNodePingResult = {
+    exitNodeId: number;
+    latencyMs: number;
+    weight: number;
+    error?: string;
+    exitNodeName: string;
+    endpoint: string;
+    wasPreviouslyConnected: boolean;
+};
 
 /**
  * Selects the most suitable exit node from a list of ping results.

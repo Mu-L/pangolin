@@ -280,7 +280,7 @@ export default function PublicResourcesTable({
             },
             {
                 accessorKey: "protocol",
-                friendlyName: t("protocol"),
+                friendlyName: t("type"),
                 enableHiding: true,
                 header: () => (
                     <ColumnFilterButton
@@ -312,6 +312,12 @@ export default function PublicResourcesTable({
                             {
                                 value: "vnc",
                                 label: t("vncTitle")
+                            },
+                            {
+                                value: "inference",
+                                label: t(
+                                    "createInternalResourceDialogModeInference"
+                                )
                             }
                         ]}
                         selectedValue={
@@ -322,7 +328,7 @@ export default function PublicResourcesTable({
                         }
                         searchPlaceholder={t("searchPlaceholder")}
                         emptyMessage={t("emptySearchOptions")}
-                        label={t("protocol")}
+                        label={t("type")}
                         className="p-3"
                     />
                 ),
@@ -334,7 +340,11 @@ export default function PublicResourcesTable({
                                 ? resourceRow.ssl
                                     ? "HTTPS"
                                     : "HTTP"
-                                : resourceRow.mode?.toUpperCase()}
+                                : resourceRow.mode === "inference"
+                                  ? t(
+                                        "createInternalResourceDialogModeInference"
+                                    )
+                                  : resourceRow.mode?.toUpperCase()}
                         </span>
                     );
                 }
@@ -428,7 +438,7 @@ export default function PublicResourcesTable({
                     const resourceRow = row.original;
 
                     if (
-                        !["http", "ssh", "rdp", "vnc"].includes(
+                        !["http", "ssh", "rdp", "vnc", "inference"].includes(
                             resourceRow.mode || ""
                         )
                     ) {
@@ -458,7 +468,6 @@ export default function PublicResourcesTable({
                     const domainId = resourceRow.domainId;
                     const certHostname = resourceRow.fullDomain;
                     const showHttpsCertIndicator =
-                        build !== "oss" &&
                         resourceRow.ssl &&
                         certHostname != null &&
                         certHostname !== "";
@@ -737,7 +746,6 @@ export default function PublicResourcesTable({
                 enableColumnVisibility
                 columnVisibility={{
                     niceId: false,
-                    protocol: false,
                     labels: true
                 }}
                 stickyLeftColumn="name"
@@ -894,7 +902,9 @@ function ResourceEnabledForm({
     resource,
     onToggleResourceEnabled
 }: ResourceEnabledFormProps) {
-    const enabled = ["http", "ssh", "rdp", "vnc"].includes(resource.mode || "")
+    const enabled = ["http", "ssh", "rdp", "vnc", "inference"].includes(
+        resource.mode || ""
+    )
         ? !!resource.domainId && resource.enabled
         : resource.enabled;
     const [optimisticEnabled, setOptimisticEnabled] = useOptimistic(enabled);
@@ -912,7 +922,7 @@ function ResourceEnabledForm({
             <Switch
                 checked={optimisticEnabled}
                 disabled={
-                    (["http", "ssh", "rdp", "vnc"].includes(
+                    (["http", "ssh", "rdp", "vnc", "inference"].includes(
                         resource.mode || ""
                     ) &&
                         !resource.domainId) ||

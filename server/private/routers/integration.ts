@@ -15,7 +15,7 @@ import * as orgIdp from "#private/routers/orgIdp";
 import * as org from "#private/routers/org";
 import * as logs from "#private/routers/auditLogs";
 import * as alertEvents from "#private/routers/alertEvents";
-import * as certificates from "#private/routers/certificates";
+import * as certificates from "@server/routers/certificates";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as policy from "#private/routers/policy";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";

@@ -31,6 +31,7 @@ import {
     inArray,
     isNull,
     like,
+    ne,
     or,
     sql,
     type SQL
@@ -40,6 +41,7 @@ import {
     formatSiteResourceAccess
 } from "./formatLauncherAccess";
 import {
+    LAUNCHER_AI_GATEWAY_GROUP_KEY,
     LAUNCHER_FLAT_GROUP_KEY,
     LAUNCHER_NO_SITE_GROUP_KEY,
     LAUNCHER_UNLABELED_GROUP_KEY,
@@ -314,6 +316,7 @@ function buildSearchConditionForPublic(query: string) {
     const pattern = searchPattern(query.toLowerCase());
     const queryList = [
         like(sql`LOWER(${resources.name})`, pattern),
+        like(sql`LOWER(${resources.niceId})`, pattern),
         like(sql`LOWER(${resources.fullDomain})`, pattern),
         like(sql`LOWER(cast(${resources.proxyPort} as text))`, pattern),
         inArray(
@@ -346,6 +349,7 @@ function buildSearchConditionForSiteResource(query: string) {
     const pattern = searchPattern(query.toLowerCase());
     const queryList = [
         like(sql`LOWER(${siteResources.name})`, pattern),
+        like(sql`LOWER(${siteResources.niceId})`, pattern),
         like(sql`LOWER(${siteResources.destination})`, pattern),
         like(
             sql`LOWER(cast(${siteResources.destinationPort} as text))`,
@@ -652,6 +656,7 @@ async function listSiteGroups(
         }
     }
 
+    let aiGatewayCount = 0;
     let noSiteCount = 0;
 
     if (accessible.resourceIds.length > 0 && siteFilterIds.length === 0) {
@@ -665,27 +670,49 @@ async function listSiteGroups(
             noSitePublicConditions.push(searchPublic);
         }
 
-        let noSitePublicQuery = db
-            .select({
-                itemCount: countDistinct(resources.resourceId)
-            })
-            .from(resources)
-            .leftJoin(targets, eq(targets.resourceId, resources.resourceId));
+        const buildNoSitePublicQuery = () => {
+            let queryBuilder = db
+                .select({
+                    itemCount: countDistinct(resources.resourceId)
+                })
+                .from(resources)
+                .leftJoin(
+                    targets,
+                    eq(targets.resourceId, resources.resourceId)
+                );
+
+            if (labelFilterIds.length > 0) {
+                queryBuilder = queryBuilder.innerJoin(
+                    resourceLabels,
+                    eq(resourceLabels.resourceId, resources.resourceId)
+                );
+            }
+
+            return queryBuilder;
+        };
 
         if (labelFilterIds.length > 0) {
-            noSitePublicQuery = noSitePublicQuery.innerJoin(
-                resourceLabels,
-                eq(resourceLabels.resourceId, resources.resourceId)
-            );
             noSitePublicConditions.push(
                 inArray(resourceLabels.labelId, labelFilterIds)
             );
         }
 
-        const [noSitePublicRow] = await noSitePublicQuery.where(
-            and(...noSitePublicConditions, isNull(targets.targetId))
+        const [aiGatewayPublicRow] = await buildNoSitePublicQuery().where(
+            and(
+                ...noSitePublicConditions,
+                isNull(targets.targetId),
+                eq(resources.mode, "inference")
+            )
+        );
+        const [noSitePublicRow] = await buildNoSitePublicQuery().where(
+            and(
+                ...noSitePublicConditions,
+                isNull(targets.targetId),
+                ne(resources.mode, "inference")
+            )
         );
 
+        aiGatewayCount += Number(aiGatewayPublicRow?.itemCount ?? 0);
         noSiteCount += Number(noSitePublicRow?.itemCount ?? 0);
     }
 
@@ -700,38 +727,57 @@ async function listSiteGroups(
             noSiteSiteConditions.push(searchSite);
         }
 
-        let noSiteSiteQuery = db
-            .select({
-                itemCount: countDistinct(siteResources.siteResourceId)
-            })
-            .from(siteResources)
-            .leftJoin(
-                siteNetworks,
-                eq(siteResources.networkId, siteNetworks.networkId)
-            )
-            .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId));
+        const buildNoSiteSiteQuery = () => {
+            let queryBuilder = db
+                .select({
+                    itemCount: countDistinct(siteResources.siteResourceId)
+                })
+                .from(siteResources)
+                .leftJoin(
+                    siteNetworks,
+                    eq(siteResources.networkId, siteNetworks.networkId)
+                )
+                .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId));
+
+            if (labelFilterIds.length > 0) {
+                queryBuilder = queryBuilder.innerJoin(
+                    siteResourceLabels,
+                    eq(
+                        siteResourceLabels.siteResourceId,
+                        siteResources.siteResourceId
+                    )
+                );
+            }
+
+            return queryBuilder;
+        };
 
         if (labelFilterIds.length > 0) {
-            noSiteSiteQuery = noSiteSiteQuery.innerJoin(
-                siteResourceLabels,
-                eq(
-                    siteResourceLabels.siteResourceId,
-                    siteResources.siteResourceId
-                )
-            );
             noSiteSiteConditions.push(
                 inArray(siteResourceLabels.labelId, labelFilterIds)
             );
         }
 
-        const [noSiteSiteRow] = await noSiteSiteQuery.where(
-            and(...noSiteSiteConditions, isNull(sites.siteId))
+        const [aiGatewaySiteRow] = await buildNoSiteSiteQuery().where(
+            and(
+                ...noSiteSiteConditions,
+                isNull(sites.siteId),
+                eq(siteResources.mode, "inference")
+            )
+        );
+        const [noSiteSiteRow] = await buildNoSiteSiteQuery().where(
+            and(
+                ...noSiteSiteConditions,
+                isNull(sites.siteId),
+                ne(siteResources.mode, "inference")
+            )
         );
 
+        aiGatewayCount += Number(aiGatewaySiteRow?.itemCount ?? 0);
         noSiteCount += Number(noSiteSiteRow?.itemCount ?? 0);
     }
 
-    let groups: LauncherGroup[] = Array.from(siteCountMap.values()).map(
+    const siteGroups: LauncherGroup[] = Array.from(siteCountMap.values()).map(
         (row) => ({
             groupKey: String(row.siteId),
             name: row.name,
@@ -742,8 +788,26 @@ async function listSiteGroups(
         })
     );
 
+    siteGroups.sort((a, b) => {
+        const cmp = a.name.localeCompare(b.name, undefined, {
+            sensitivity: "base"
+        });
+        return query.order === "desc" ? -cmp : cmp;
+    });
+
+    const pinnedGroups: LauncherGroup[] = [];
+
+    if (aiGatewayCount > 0 && siteFilterIds.length === 0) {
+        pinnedGroups.push({
+            groupKey: LAUNCHER_AI_GATEWAY_GROUP_KEY,
+            name: "AI Gateway",
+            groupType: "site",
+            itemCount: aiGatewayCount
+        });
+    }
+
     if (noSiteCount > 0 && siteFilterIds.length === 0) {
-        groups.push({
+        pinnedGroups.push({
             groupKey: LAUNCHER_NO_SITE_GROUP_KEY,
             name: "No Site",
             groupType: "site",
@@ -751,12 +815,7 @@ async function listSiteGroups(
         });
     }
 
-    groups.sort((a, b) => {
-        const cmp = a.name.localeCompare(b.name, undefined, {
-            sensitivity: "base"
-        });
-        return query.order === "desc" ? -cmp : cmp;
-    });
+    const groups = [...pinnedGroups, ...siteGroups];
 
     const total = groups.length;
     return {
@@ -1189,8 +1248,11 @@ function filterResourcesBySite(
     items: LauncherResource[],
     groupKey: string
 ): LauncherResource[] {
+    if (groupKey === LAUNCHER_AI_GATEWAY_GROUP_KEY) {
+        return items.filter((item) => item.mode === "inference");
+    }
     if (groupKey === LAUNCHER_NO_SITE_GROUP_KEY) {
-        return items.filter((item) => !item.site);
+        return items.filter((item) => !item.site && item.mode !== "inference");
     }
     const siteId = Number.parseInt(groupKey, 10);
     if (!Number.isFinite(siteId)) {
@@ -1327,7 +1389,8 @@ async function listLauncherResourcesForUserUncached(
 
     const parsedSiteId =
         query.groupBy === "site" &&
-        query.groupKey !== LAUNCHER_NO_SITE_GROUP_KEY
+        query.groupKey !== LAUNCHER_NO_SITE_GROUP_KEY &&
+        query.groupKey !== LAUNCHER_AI_GATEWAY_GROUP_KEY
             ? Number.parseInt(query.groupKey, 10)
             : Number.NaN;
     const siteIdFilter = Number.isFinite(parsedSiteId)

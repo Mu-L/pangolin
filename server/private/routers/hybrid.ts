@@ -351,6 +351,7 @@ hybridRouter.get(
         }
 
         const pangolinUIUrl = config.getRawConfig().app.dashboard_url; // points to the dashboard to serve from there
+        const aiGatewayUrl = `${config.getRawConfig().app.dashboard_url}/api/v1/ai-gateway`;
 
         try {
             const traefikConfig = await getTraefikConfig(
@@ -359,8 +360,9 @@ hybridRouter.get(
                 true, // But don't allow domain namespace resources
                 false, // Dont include login pages,
                 true, // allow raw resources
-                pangolinUIUrl, // dont generate maintenance page
-                pangolinUIUrl // generate browser gateway targets
+                pangolinUIUrl, // generate maintenance page
+                pangolinUIUrl, // generate browser gateway targets
+                null // dont generate ai gateway resources
             );
 
             return response(res, {

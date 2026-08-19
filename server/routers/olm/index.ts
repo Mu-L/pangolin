@@ -15,3 +15,4 @@ export * from "./handleOlmServerInitAddPeerHandshake";
 export * from "./offlineChecker";
 export * from "./handleOlmUnLocalMessage";
 export * from "./handleOlmLocalMessage";
+export * from "./handleOlmExitNodesRequestMessage";

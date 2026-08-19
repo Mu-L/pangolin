@@ -13,6 +13,9 @@ import * as apiKeys from "./apiKeys";
 import * as idp from "./idp";
 import * as logs from "./auditLogs";
 import * as siteResource from "./siteResource";
+import * as aiProvider from "./aiProvider";
+import * as aiBudget from "./aiBudget";
+import * as virtualApiKey from "./virtualApiKey";
 import {
     verifyApiKey,
     verifyApiKeyOrgAccess,
@@ -31,6 +34,10 @@ import {
     verifyLimits,
     verifyApiKeyDomainAccess,
     verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyAiBudgetAccess,
+    verifyApiKeyVirtualApiKeyAccess,
     verifyUserHasAction
 } from "@server/middlewares";
 import HttpCode from "@server/types/HttpCode";
@@ -243,6 +250,26 @@ authenticated.get(
     siteResource.listSiteResourceClients
 );
 
+authenticated.get(
+    [
+        "/site-resource/:siteResourceId/ai-models",
+        "/private-resource/:siteResourceId/ai-models"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.listResourceAiModels),
+    siteResource.listSiteResourceAiModels
+);
+
+authenticated.get(
+    [
+        "/site-resource/:siteResourceId/ai-providers",
+        "/private-resource/:siteResourceId/ai-providers"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.listResourceAiModels),
+    siteResource.listSiteResourceAiProviders
+);
+
 authenticated.post(
     [
         "/site-resource/:siteResourceId/roles",
@@ -293,6 +320,72 @@ authenticated.post(
     verifyApiKeyHasAction(ActionsEnum.setResourceRoles),
     logActionAudit(ActionsEnum.setResourceRoles),
     siteResource.removeRoleFromSiteResource
+);
+
+authenticated.post(
+    [
+        "/site-resource/:siteResourceId/ai-models",
+        "/private-resource/:siteResourceId/ai-models"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.setSiteResourceAiModels
+);
+
+authenticated.post(
+    [
+        "/site-resource/:siteResourceId/ai-models/add",
+        "/private-resource/:siteResourceId/ai-models/add"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.addAiModelToSiteResource
+);
+
+authenticated.post(
+    [
+        "/site-resource/:siteResourceId/ai-models/remove",
+        "/private-resource/:siteResourceId/ai-models/remove"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.removeAiModelFromSiteResource
+);
+
+authenticated.post(
+    [
+        "/site-resource/:siteResourceId/ai-providers",
+        "/private-resource/:siteResourceId/ai-providers"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.setSiteResourceAiProviders
+);
+
+authenticated.post(
+    [
+        "/site-resource/:siteResourceId/ai-providers/add",
+        "/private-resource/:siteResourceId/ai-providers/add"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.addAiProviderToSiteResource
+);
+
+authenticated.post(
+    [
+        "/site-resource/:siteResourceId/ai-providers/remove",
+        "/private-resource/:siteResourceId/ai-providers/remove"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    siteResource.removeAiProviderFromSiteResource
 );
 
 authenticated.post(
@@ -508,6 +601,26 @@ authenticated.get(
 );
 
 authenticated.get(
+    [
+        "/resource/:resourceId/ai-models",
+        "/public-resource/:resourceId/ai-models"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.listResourceAiModels),
+    resource.listResourceAiModels
+);
+
+authenticated.get(
+    [
+        "/resource/:resourceId/ai-providers",
+        "/public-resource/:resourceId/ai-providers"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.listResourceAiModels),
+    resource.listResourceAiProviders
+);
+
+authenticated.get(
     ["/resource/:resourceId", "/public-resource/:resourceId"],
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.getResource),
@@ -709,6 +822,28 @@ authenticated.post(
 );
 
 authenticated.post(
+    [
+        "/resource/:resourceId/ai-models",
+        "/public-resource/:resourceId/ai-models"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.setResourceAiModels
+);
+
+authenticated.post(
+    [
+        "/resource/:resourceId/ai-providers",
+        "/public-resource/:resourceId/ai-providers"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.setResourceAiProviders
+);
+
+authenticated.post(
     ["/resource/:resourceId/users", "/public-resource/:resourceId/users"],
     verifyApiKeyResourceAccess,
     verifyApiKeySetResourceUsers,
@@ -898,6 +1033,50 @@ authenticated.post(
     verifyApiKeyHasAction(ActionsEnum.setResourceRoles),
     logActionAudit(ActionsEnum.setResourceRoles),
     resource.removeRoleFromResource
+);
+
+authenticated.post(
+    [
+        "/resource/:resourceId/ai-models/add",
+        "/public-resource/:resourceId/ai-models/add"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.addAiModelToResource
+);
+
+authenticated.post(
+    [
+        "/resource/:resourceId/ai-models/remove",
+        "/public-resource/:resourceId/ai-models/remove"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.removeAiModelFromResource
+);
+
+authenticated.post(
+    [
+        "/resource/:resourceId/ai-providers/add",
+        "/public-resource/:resourceId/ai-providers/add"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.addAiProviderToResource
+);
+
+authenticated.post(
+    [
+        "/resource/:resourceId/ai-providers/remove",
+        "/public-resource/:resourceId/ai-providers/remove"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.setResourceAiModels),
+    logActionAudit(ActionsEnum.setResourceAiModels),
+    resource.removeAiProviderFromResource
 );
 
 authenticated.post(
@@ -1354,6 +1533,63 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/logs/ai",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiSessionLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/export",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.exportLogs),
+    logActionAudit(ActionsEnum.exportLogs),
+    logs.exportAiSessionLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/filters",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageFilterOptions
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/overview",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageOverview
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/providers",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageProviders
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/resources",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageResources
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/users-roles",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageUsersRoles
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/usage/virtual-api-keys",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    logs.queryAiUsageVirtualApiKeys
+);
+
+authenticated.get(
     "/org/:orgId/logs/analytics",
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.viewLogs),
@@ -1365,4 +1601,250 @@ authenticated.get(
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.listResources),
     resource.listAllResourceNames
+);
+
+authenticated.put(
+    "/org/:orgId/ai-provider",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.createAiProvider),
+    logActionAudit(ActionsEnum.createAiProvider),
+    aiProvider.createAiProvider
+);
+
+authenticated.get(
+    "/org/:orgId/ai-providers",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiProviders),
+    aiProvider.listAiProviders
+);
+
+authenticated.get(
+    "/ai-provider/:providerId",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.getAiProvider),
+    aiProvider.getAiProvider
+);
+authenticated.get(
+    "/org/:orgId/ai-provider/:niceId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.getAiProvider),
+    aiProvider.getAiProvider
+);
+
+authenticated.put(
+    "/ai-provider/:providerId/target",
+    verifyApiKeyAiProviderAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.createTarget),
+    logActionAudit(ActionsEnum.createTarget),
+    target.createTarget
+);
+
+authenticated.get(
+    "/ai-provider/:providerId/targets",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.listTargets),
+    target.listTargets
+);
+
+authenticated.post(
+    "/ai-provider/:providerId",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateAiProvider),
+    logActionAudit(ActionsEnum.updateAiProvider),
+    aiProvider.updateAiProvider
+);
+
+authenticated.delete(
+    "/ai-provider/:providerId",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteAiProvider),
+    logActionAudit(ActionsEnum.deleteAiProvider),
+    aiProvider.deleteAiProvider
+);
+
+authenticated.put(
+    "/ai-provider/:providerId/model",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.createAiModel),
+    logActionAudit(ActionsEnum.createAiModel),
+    aiProvider.createAiModel
+);
+
+authenticated.get(
+    "/ai-provider/:providerId/models",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiModels),
+    aiProvider.listAiModels
+);
+
+authenticated.get(
+    "/ai-provider/:providerId/catalog-models",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiModels),
+    aiProvider.listCatalogModels
+);
+
+authenticated.get(
+    "/org/:orgId/ai-catalog-models",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiModels),
+    aiProvider.listCatalogModelsByType
+);
+
+authenticated.get(
+    "/ai-model/:modelId",
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyHasAction(ActionsEnum.getAiModel),
+    aiProvider.getAiModel
+);
+
+authenticated.post(
+    "/ai-model/:modelId",
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateAiModel),
+    logActionAudit(ActionsEnum.updateAiModel),
+    aiProvider.updateAiModel
+);
+
+authenticated.delete(
+    "/ai-model/:modelId",
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteAiModel),
+    logActionAudit(ActionsEnum.deleteAiModel),
+    aiProvider.deleteAiModel
+);
+
+authenticated.put(
+    "/org/:orgId/ai-budget",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.createAiBudget),
+    logActionAudit(ActionsEnum.createAiBudget),
+    aiBudget.createAiBudget
+);
+
+authenticated.get(
+    "/org/:orgId/ai-budgets",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgets
+);
+
+authenticated.get(
+    "/ai-budget/:budgetId",
+    verifyApiKeyAiBudgetAccess,
+    verifyApiKeyHasAction(ActionsEnum.getAiBudget),
+    aiBudget.getAiBudget
+);
+
+authenticated.post(
+    "/ai-budget/:budgetId",
+    verifyApiKeyAiBudgetAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateAiBudget),
+    logActionAudit(ActionsEnum.updateAiBudget),
+    aiBudget.updateAiBudget
+);
+
+authenticated.delete(
+    "/ai-budget/:budgetId",
+    verifyApiKeyAiBudgetAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteAiBudget),
+    logActionAudit(ActionsEnum.deleteAiBudget),
+    aiBudget.deleteAiBudget
+);
+
+authenticated.put(
+    "/org/:orgId/virtual-api-key",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.createVirtualApiKey),
+    logActionAudit(ActionsEnum.createVirtualApiKey),
+    virtualApiKey.createVirtualApiKey
+);
+
+authenticated.get(
+    "/org/:orgId/virtual-api-keys",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listVirtualApiKeys),
+    virtualApiKey.listVirtualApiKeys
+);
+
+authenticated.post(
+    "/org/:orgId/virtual-api-keys/email-identity-keys",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.getVirtualApiKey),
+    virtualApiKey.emailIdentityKeysRateLimit,
+    logActionAudit(ActionsEnum.getVirtualApiKey),
+    virtualApiKey.emailIdentityKeys
+);
+
+authenticated.get(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyApiKeyVirtualApiKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.getVirtualApiKey),
+    virtualApiKey.getVirtualApiKey
+);
+
+authenticated.post(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyApiKeyVirtualApiKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateVirtualApiKey),
+    logActionAudit(ActionsEnum.updateVirtualApiKey),
+    virtualApiKey.updateVirtualApiKey
+);
+
+authenticated.delete(
+    "/virtual-api-key/:virtualApiKeyId",
+    verifyApiKeyVirtualApiKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteVirtualApiKey),
+    logActionAudit(ActionsEnum.deleteVirtualApiKey),
+    virtualApiKey.deleteVirtualApiKey
+);
+
+authenticated.get(
+    "/ai-provider/:providerId/ai-budgets",
+    verifyApiKeyAiProviderAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForProvider
+);
+
+authenticated.get(
+    "/ai-model/:modelId/ai-budgets",
+    verifyApiKeyAiModelAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForModel
+);
+
+authenticated.get(
+    [
+        "/resource/:resourceId/ai-budgets",
+        "/public-resource/:resourceId/ai-budgets"
+    ],
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForResource
+);
+
+authenticated.get(
+    [
+        "/site-resource/:siteResourceId/ai-budgets",
+        "/private-resource/:siteResourceId/ai-budgets"
+    ],
+    verifyApiKeySiteResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForSiteResource
+);
+
+authenticated.get(
+    "/role/:roleId/ai-budgets",
+    verifyApiKeyRoleAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForRole
+);
+
+authenticated.get(
+    "/virtual-api-key/:virtualApiKeyId/ai-budgets",
+    verifyApiKeyVirtualApiKeyAccess,
+    verifyApiKeyHasAction(ActionsEnum.listAiBudgets),
+    aiBudget.listAiBudgetsForVirtualApiKey
 );

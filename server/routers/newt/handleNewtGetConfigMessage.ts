@@ -95,16 +95,16 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
             .limit(1);
         if (
             exitNode.reachableAt &&
-            existingSite.subnet &&
+            existingSite.exitNodeSubnet &&
             existingSite.listenPort
         ) {
             const payload = {
                 oldDestination: {
-                    destinationIP: existingSite.subnet?.split("/")[0],
+                    destinationIP: existingSite.exitNodeSubnet?.split("/")[0],
                     destinationPort: existingSite.listenPort || 1 // this satisfies gerbil for now but should be reevaluated
                 },
                 newDestination: {
-                    destinationIP: site.subnet?.split("/")[0],
+                    destinationIP: site.exitNodeSubnet?.split("/")[0],
                     destinationPort: site.listenPort || 1 // this satisfies gerbil for now but should be reevaluated
                 }
             };
@@ -132,7 +132,10 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
         ({ targets: dedupedTargets, certs } = dedupeCertsForTargets(targets));
     }
 
-    const targetsToSend = await convertTargetsIfNecessary(newt.newtId, dedupedTargets); // for backward compatibility with old newt versions that don't support the new target format
+    const targetsToSend = await convertTargetsIfNecessary(
+        newt.newtId,
+        dedupedTargets
+    ); // for backward compatibility with old newt versions that don't support the new target format
 
     return {
         message: {

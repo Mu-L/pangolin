@@ -19,6 +19,7 @@ import logger from "@server/logger";
 import { and, eq, inArray } from "drizzle-orm";
 import { addPeer, deletePeer } from "../newt/peers";
 import config from "@server/lib/config";
+import { SiR } from "react-icons/si";
 
 export async function buildSiteConfigurationForOlmClient(
     client: Client,
@@ -38,6 +39,8 @@ export async function buildSiteConfigurationForOlmClient(
         aliases: Alias[];
     }[] = [];
 
+    let exitNodeAliases: string[] = [];
+
     // Get all sites data
     const sitesData = await db
         .select()
@@ -47,10 +50,6 @@ export async function buildSiteConfigurationForOlmClient(
             eq(sites.siteId, clientSitesAssociationsCache.siteId)
         )
         .where(eq(clientSitesAssociationsCache.clientId, client.clientId));
-
-    if (sitesData.length === 0) {
-        return siteConfigurations;
-    }
 
     // Batch-fetch every site resource this client has access to across ALL sites
     // in a single query, then group by siteId in memory. This avoids issuing one
@@ -68,8 +67,8 @@ export async function buildSiteConfigurationForOlmClient(
                 clientSiteResourcesAssociationsCache.siteResourceId
             )
         )
-        .innerJoin(networks, eq(siteResources.networkId, networks.networkId))
-        .innerJoin(siteNetworks, eq(networks.networkId, siteNetworks.networkId))
+        .leftJoin(networks, eq(siteResources.networkId, networks.networkId))
+        .leftJoin(siteNetworks, eq(networks.networkId, siteNetworks.networkId))
         .where(
             and(
                 eq(
@@ -81,13 +80,32 @@ export async function buildSiteConfigurationForOlmClient(
         );
 
     const siteResourcesBySiteId = new Map<number, SiteResource[]>();
+    let siteResourcesForExitNode = [];
     for (const row of allClientSiteResources) {
+        if (row.siteResource.requiresExitNodeConnection) {
+            siteResourcesForExitNode.push(row.siteResource);
+        }
+        if (!row.siteId) {
+            // because we are doing a leftJoin above to get the inference resources without a network / sites
+            continue;
+        }
         const arr = siteResourcesBySiteId.get(row.siteId);
         if (arr) {
             arr.push(row.siteResource);
         } else {
             siteResourcesBySiteId.set(row.siteId, [row.siteResource]);
         }
+    }
+
+    exitNodeAliases = siteResourcesForExitNode
+        .map((sr) => sr.fullDomain || sr.alias) // take either in case we introduce different resource types that don't have a fullDomain
+        .filter((a) => a != null);
+
+    if (sitesData.length == 0) {
+        return {
+            siteConfigurations,
+            exitNodeAliases
+        };
     }
 
     // Batch-fetch exit nodes for all sites in one query (only needed in relay mode).
@@ -167,7 +185,7 @@ export async function buildSiteConfigurationForOlmClient(
             peerOps.push(deletePeer(site.siteId, client.pubKey!));
         }
 
-        if (!site.subnet) {
+        if (!site.exitNodeSubnet) {
             logger.debug(`Site ${site.siteId} has no subnet, skipping`);
             continue;
         }
@@ -226,5 +244,8 @@ export async function buildSiteConfigurationForOlmClient(
         });
     }
 
-    return siteConfigurations;
+    return {
+        siteConfigurations,
+        exitNodeAliases
+    };
 }

@@ -109,7 +109,12 @@ export const privateConfigSchema = z
                 enable_redis: z.boolean().optional().default(false),
                 use_pangolin_dns: z.boolean().optional().default(false),
                 use_org_only_idp: z.boolean().optional(),
-                enable_acme_cert_sync: z.boolean().optional().default(true),
+                // @deprecated Moved to the public config file as
+                // `flags.enable_acme_cert_sync` (server/lib/readConfigFile.ts).
+                // Kept here only so existing private config files keep parsing;
+                // any value set here is migrated into the public config at
+                // startup by PrivateConfig (server/private/lib/config.ts).
+                enable_acme_cert_sync: z.boolean().optional(),
                 disable_private_http_placeholder: z
                     .boolean()
                     .optional()
@@ -117,14 +122,15 @@ export const privateConfigSchema = z
             })
             .optional()
             .prefault({}),
+        // @deprecated Moved to the public config file as `acme`
+        // (server/lib/readConfigFile.ts). Kept here only so existing private
+        // config files keep parsing; any value set here is migrated into the
+        // public config at startup by PrivateConfig (server/private/lib/config.ts).
         acme: z
             .object({
-                acme_json_path: z
-                    .string()
-                    .optional()
-                    .default("config/letsencrypt/acme.json"),
+                acme_json_path: z.string().optional(),
                 acme_http_endpoint: z.string().optional(),
-                sync_interval_ms: z.number().optional().default(5000)
+                sync_interval_ms: z.number().optional()
             })
             .optional(),
         branding: z

@@ -151,6 +151,23 @@ export default function GeneralPage() {
         setCurrentPage(newPage);
     };
 
+    const handleRefresh = () => {
+        // When the end date has no explicit time, it represents an
+        // open-ended "up to now" upper bound. Since dateRange is only
+        // recomputed on user interaction, that upper bound otherwise stays
+        // frozen at whenever the page first loaded, so refreshing would
+        // never surface logs created since then. Bump it to the current
+        // time so the query key changes and refetches the latest window.
+        if (dateRange.endDate?.date && !dateRange.endDate.time) {
+            setDateRange((prev) => ({
+                ...prev,
+                endDate: { date: new Date() }
+            }));
+        } else {
+            refetch();
+        }
+    };
+
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
         setCurrentPage(0);
@@ -247,6 +264,7 @@ export default function GeneralPage() {
     // 106 - Valid email
     // 107 - Valid SSO
     // 108 - Connected Client
+    // 109 - Valid Virtual API Key
 
     // 201 - Resource Not Found
     // 202 - Resource Blocked
@@ -265,6 +283,7 @@ export default function GeneralPage() {
         106: t("validEmail"),
         107: t("validSSO"),
         108: t("connectedClient"),
+        109: t("validVirtualAPIKey"),
         201: t("resourceNotFound"),
         202: t("resourceBlocked"),
         203: t("droppedByRule"),
@@ -328,7 +347,14 @@ export default function GeneralPage() {
         },
         {
             accessorKey: "ip",
-            header: ({ column }) => <span className="px-2">{t("ip")}</span>
+            header: ({ column }) => <span className="px-2">{t("ip")}</span>,
+            cell: ({ row }) => {
+                return row.original.ip ? (
+                    row.original.ip
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                );
+            }
         },
         {
             accessorKey: "location",
@@ -392,6 +418,14 @@ export default function GeneralPage() {
                 );
             },
             cell: ({ row }) => {
+                if (
+                    !row.original.resourceNiceId ||
+                    !row.original.resourceName
+                ) {
+                    return (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    );
+                }
                 return (
                     <Link
                         href={
@@ -434,6 +468,11 @@ export default function GeneralPage() {
                 );
             },
             cell: ({ row }) => {
+                if (!row.original.host) {
+                    return (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    );
+                }
                 return (
                     <span className="flex items-center gap-1">
                         {row.original.tls ? (
@@ -465,6 +504,13 @@ export default function GeneralPage() {
                             emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
+                );
+            },
+            cell: ({ row }) => {
+                return row.original.path ? (
+                    row.original.path
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
                 );
             }
         },
@@ -499,6 +545,13 @@ export default function GeneralPage() {
                             emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
+                );
+            },
+            cell: ({ row }) => {
+                return row.original.method ? (
+                    row.original.method
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
                 );
             }
         },
@@ -542,7 +595,11 @@ export default function GeneralPage() {
             cell: ({ row }) => {
                 return (
                     <span className="flex items-center gap-1">
-                        {reasonMap[row.original.reason]}
+                        {reasonMap[row.original.reason] ?? (
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
+                        )}
                     </span>
                 );
             }
@@ -581,7 +638,9 @@ export default function GeneralPage() {
                                 {row.original.actor}
                             </>
                         ) : (
-                            <>-</>
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
                         )}
                     </span>
                 );
@@ -661,7 +720,7 @@ export default function GeneralPage() {
                 title={t("requestLogs")}
                 searchPlaceholder={t("searchLogs")}
                 searchColumn="host"
-                onRefresh={() => refetch()}
+                onRefresh={handleRefresh}
                 isRefreshing={isFetching}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}

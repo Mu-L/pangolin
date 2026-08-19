@@ -170,6 +170,23 @@ export default function ConnectionLogsPage() {
         setCurrentPage(newPage);
     };
 
+    const handleRefresh = () => {
+        // When the end date has no explicit time, it represents an
+        // open-ended "up to now" upper bound. Since dateRange is only
+        // recomputed on user interaction, that upper bound otherwise stays
+        // frozen at whenever the page first loaded, so refreshing would
+        // never surface logs created since then. Bump it to the current
+        // time so the query key changes and refetches the latest window.
+        if (dateRange.endDate?.date && !dateRange.endDate.time) {
+            setDateRange((prev) => ({
+                ...prev,
+                endDate: { date: new Date() }
+            }));
+        } else {
+            refetch();
+        }
+    };
+
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
         setCurrentPage(0);
@@ -294,7 +311,9 @@ export default function ConnectionLogsPage() {
             cell: ({ row }) => {
                 return (
                     <span className="whitespace-nowrap font-mono text-xs">
-                        {row.original.protocol?.toUpperCase()}
+                        {row.original.protocol?.toUpperCase() || (
+                            <span className="text-muted-foreground">-</span>
+                        )}
                     </span>
                 );
             }
@@ -321,25 +340,26 @@ export default function ConnectionLogsPage() {
                 );
             },
             cell: ({ row }) => {
-                if (row.original.resourceName && row.original.resourceNiceId) {
+                if (
+                    !row.original.resourceNiceId ||
+                    !row.original.resourceName
+                ) {
                     return (
-                        <Link
-                            href={getPrivateResourceSettingsHref(
-                                row.original.orgId,
-                                row.original.resourceNiceId
-                            )}
-                        >
-                            <Button variant="outline" size="sm">
-                                {row.original.resourceName}
-                                <ArrowUpRight className="ml-2 h-3 w-3" />
-                            </Button>
-                        </Link>
+                        <span className="text-xs text-muted-foreground">-</span>
                     );
                 }
                 return (
-                    <span className="whitespace-nowrap">
-                        {row.original.resourceName ?? "-"}
-                    </span>
+                    <Link
+                        href={getPrivateResourceSettingsHref(
+                            row.original.orgId,
+                            row.original.resourceNiceId
+                        )}
+                    >
+                        <Button variant="outline" size="sm">
+                            {row.original.resourceName}
+                            <ArrowUpRight className="ml-2 h-3 w-3" />
+                        </Button>
+                    </Link>
                 );
             }
         },
@@ -379,11 +399,14 @@ export default function ConnectionLogsPage() {
                         </Link>
                     );
                 }
-                return (
-                    <span className="whitespace-nowrap">
-                        {row.original.clientName ?? "-"}
-                    </span>
-                );
+                if (row.original.clientName) {
+                    return (
+                        <span className="whitespace-nowrap">
+                            {row.original.clientName}
+                        </span>
+                    );
+                }
+                return <span className="text-xs text-muted-foreground">-</span>;
             }
         },
         {
@@ -416,17 +439,19 @@ export default function ConnectionLogsPage() {
                         </span>
                     );
                 }
-                return <span>-</span>;
+                return <span className="text-xs text-muted-foreground">-</span>;
             }
         },
         {
             accessorKey: "sourceAddr",
             header: () => <span className="px-2">{t("sourceAddress")}</span>,
             cell: ({ row }) => {
-                return (
+                return row.original.sourceAddr ? (
                     <span className="whitespace-nowrap font-mono text-xs">
                         {row.original.sourceAddr}
                     </span>
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
                 );
             }
         },
@@ -452,10 +477,12 @@ export default function ConnectionLogsPage() {
                 );
             },
             cell: ({ row }) => {
-                return (
+                return row.original.destAddr ? (
                     <span className="whitespace-nowrap font-mono text-xs">
                         {row.original.destAddr}
                     </span>
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
                 );
             }
         },
@@ -561,7 +588,7 @@ export default function ConnectionLogsPage() {
                 title={t("connectionLogs")}
                 searchPlaceholder={t("searchLogs")}
                 searchColumn="protocol"
-                onRefresh={() => refetch()}
+                onRefresh={handleRefresh}
                 isRefreshing={isFetching}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}

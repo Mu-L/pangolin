@@ -6,7 +6,7 @@ import z from "zod";
 import logger from "@server/logger";
 import semver from "semver";
 import { createHash } from "crypto";
-import { getValidCertificatesForDomains } from "#dynamic/lib/certificates";
+import { getValidCertificatesForDomains } from "@server/lib/certificates";
 import { lockManager } from "#dynamic/lib/lock";
 
 interface IPRange {
@@ -528,7 +528,10 @@ export function generateRemoteSubnets(
 
 export type Alias = { alias: string | null; aliasAddress: string | null };
 
-export function generateAliasConfig(allSiteResources: SiteResource[]): Alias[] {
+export function generateAliasConfig(
+    allSiteResources: SiteResource[],
+    overrideIp?: string
+): Alias[] {
     return allSiteResources
         .filter(
             (sr) =>
@@ -539,7 +542,7 @@ export function generateAliasConfig(allSiteResources: SiteResource[]): Alias[] {
         )
         .map((sr) => ({
             alias: sr.alias || sr.fullDomain,
-            aliasAddress: sr.aliasAddress
+            aliasAddress: overrideIp || sr.aliasAddress
         }));
 }
 
@@ -660,9 +663,10 @@ export type CertRef = { id: string; cert: string; key: string };
  * certificate (e.g. a wildcard cert used by thousands of site resources)
  * only need that certificate sent once per sync message.
  */
-export function dedupeCertsForTargets(
-    targetsV2: SubnetProxyTargetV2[]
-): { targets: SubnetProxyTargetV2[]; certs: CertRef[] } {
+export function dedupeCertsForTargets(targetsV2: SubnetProxyTargetV2[]): {
+    targets: SubnetProxyTargetV2[];
+    certs: CertRef[];
+} {
     const idByContent = new Map<string, string>();
     const certs: CertRef[] = [];
 
@@ -674,7 +678,10 @@ export function dedupeCertsForTargets(
         const contentKey = `${target.tlsCert}|${target.tlsKey}`;
         let id = idByContent.get(contentKey);
         if (!id) {
-            id = createHash("sha1").update(contentKey).digest("hex").slice(0, 16);
+            id = createHash("sha1")
+                .update(contentKey)
+                .digest("hex")
+                .slice(0, 16);
             idByContent.set(contentKey, id);
             certs.push({ id, cert: target.tlsCert, key: target.tlsKey });
         }
@@ -708,7 +715,9 @@ export async function batchFetchCertsForSiteResources(
 ): Promise<CertByDomain> {
     const domains = new Set(
         allSiteResources
-            .filter((r) => r.enabled && r.mode === "http" && r.ssl && r.fullDomain)
+            .filter(
+                (r) => r.enabled && r.mode === "http" && r.ssl && r.fullDomain
+            )
             .map((r) => r.fullDomain as string)
     );
 
@@ -852,7 +861,11 @@ export async function generateSubnetProxyTargetV2(
                         new Set([siteResource.fullDomain]),
                         true
                     );
-                    if (certs.length > 0 && certs[0].certFile && certs[0].keyFile) {
+                    if (
+                        certs.length > 0 &&
+                        certs[0].certFile &&
+                        certs[0].keyFile
+                    ) {
                         tlsCert = certs[0].certFile;
                         tlsKey = certs[0].keyFile;
                     } else {

@@ -125,7 +125,7 @@ function querySitesBase() {
             niceId: sites.niceId,
             name: sites.name,
             pubKey: sites.pubKey,
-            subnet: sites.subnet,
+            subnet: sites.exitNodeSubnet,
             megabytesIn: sites.megabytesIn,
             megabytesOut: sites.megabytesOut,
             orgName: orgs.name,
