@@ -328,8 +328,8 @@ export default function AlertRuleGraphEditor({
                                                 }
                                                 loading={isTestingAlert}
                                             >
-                                                {t("alertingTestRule")}
                                                 <ZapIcon className="size-3.5 flex-none" />
+                                                {t("alertingTestRule")}
                                             </Button>
                                         </div>
                                     </fieldset>
