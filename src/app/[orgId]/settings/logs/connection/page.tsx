@@ -311,7 +311,9 @@ export default function ConnectionLogsPage() {
             cell: ({ row }) => {
                 return (
                     <span className="whitespace-nowrap font-mono text-xs">
-                        {row.original.protocol?.toUpperCase()}
+                        {row.original.protocol?.toUpperCase() || (
+                            <span className="text-muted-foreground">-</span>
+                        )}
                     </span>
                 );
             }
@@ -338,7 +340,10 @@ export default function ConnectionLogsPage() {
                 );
             },
             cell: ({ row }) => {
-                if (!row.original.resourceNiceId) {
+                if (
+                    !row.original.resourceNiceId ||
+                    !row.original.resourceName
+                ) {
                     return (
                         <span className="text-xs text-muted-foreground">-</span>
                     );
@@ -394,11 +399,14 @@ export default function ConnectionLogsPage() {
                         </Link>
                     );
                 }
-                return (
-                    <span className="whitespace-nowrap">
-                        {row.original.clientName ?? "-"}
-                    </span>
-                );
+                if (row.original.clientName) {
+                    return (
+                        <span className="whitespace-nowrap">
+                            {row.original.clientName}
+                        </span>
+                    );
+                }
+                return <span className="text-xs text-muted-foreground">-</span>;
             }
         },
         {
@@ -431,17 +439,19 @@ export default function ConnectionLogsPage() {
                         </span>
                     );
                 }
-                return <span>-</span>;
+                return <span className="text-xs text-muted-foreground">-</span>;
             }
         },
         {
             accessorKey: "sourceAddr",
             header: () => <span className="px-2">{t("sourceAddress")}</span>,
             cell: ({ row }) => {
-                return (
+                return row.original.sourceAddr ? (
                     <span className="whitespace-nowrap font-mono text-xs">
                         {row.original.sourceAddr}
                     </span>
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
                 );
             }
         },
@@ -467,10 +477,12 @@ export default function ConnectionLogsPage() {
                 );
             },
             cell: ({ row }) => {
-                return (
+                return row.original.destAddr ? (
                     <span className="whitespace-nowrap font-mono text-xs">
                         {row.original.destAddr}
                     </span>
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
                 );
             }
         },

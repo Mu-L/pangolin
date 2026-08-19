@@ -297,7 +297,11 @@ export default function AiSessionLogsPage() {
                 return (
                     <span className="flex items-center gap-1">
                         <Bot className="h-4 w-4" />
-                        {row.original.providerName || "-"}
+                        {row.original.providerName || (
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
+                        )}
                     </span>
                 );
             }
@@ -353,7 +357,11 @@ export default function AiSessionLogsPage() {
                 );
             },
             cell: ({ row }) => {
-                return <span>{row.original.requestedModel || "-"}</span>;
+                return row.original.requestedModel ? (
+                    <span>{row.original.requestedModel}</span>
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                );
             }
         },
         {
@@ -378,7 +386,10 @@ export default function AiSessionLogsPage() {
                 );
             },
             cell: ({ row }) => {
-                if (!row.original.resourceNiceId) {
+                if (
+                    !row.original.resourceNiceId ||
+                    !row.original.resourceName
+                ) {
                     return (
                         <span className="text-xs text-muted-foreground">-</span>
                     );
@@ -471,7 +482,9 @@ export default function AiSessionLogsPage() {
                                 {row.original.userEmail}
                             </>
                         ) : (
-                            <>-</>
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
                         )}
                     </span>
                 );

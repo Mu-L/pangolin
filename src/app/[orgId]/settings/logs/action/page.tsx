@@ -303,7 +303,11 @@ export default function GeneralPage() {
                         ) : (
                             <Key className="h-4 w-4" />
                         )}
-                        {row.original.actor}
+                        {row.original.actor || (
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
+                        )}
                     </span>
                 );
             }
@@ -314,7 +318,11 @@ export default function GeneralPage() {
             cell: ({ row }) => {
                 return (
                     <span className="flex items-center gap-1">
-                        {row.original.actorId}
+                        {row.original.actorId || (
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
+                        )}
                     </span>
                 );
             }

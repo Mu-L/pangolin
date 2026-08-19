@@ -347,7 +347,14 @@ export default function GeneralPage() {
         },
         {
             accessorKey: "ip",
-            header: ({ column }) => <span className="px-2">{t("ip")}</span>
+            header: ({ column }) => <span className="px-2">{t("ip")}</span>,
+            cell: ({ row }) => {
+                return row.original.ip ? (
+                    row.original.ip
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                );
+            }
         },
         {
             accessorKey: "location",
@@ -411,7 +418,10 @@ export default function GeneralPage() {
                 );
             },
             cell: ({ row }) => {
-                if (!row.original.resourceNiceId) {
+                if (
+                    !row.original.resourceNiceId ||
+                    !row.original.resourceName
+                ) {
                     return (
                         <span className="text-xs text-muted-foreground">-</span>
                     );
@@ -458,6 +468,11 @@ export default function GeneralPage() {
                 );
             },
             cell: ({ row }) => {
+                if (!row.original.host) {
+                    return (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    );
+                }
                 return (
                     <span className="flex items-center gap-1">
                         {row.original.tls ? (
@@ -489,6 +504,13 @@ export default function GeneralPage() {
                             emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
+                );
+            },
+            cell: ({ row }) => {
+                return row.original.path ? (
+                    row.original.path
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
                 );
             }
         },
@@ -523,6 +545,13 @@ export default function GeneralPage() {
                             emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
+                );
+            },
+            cell: ({ row }) => {
+                return row.original.method ? (
+                    row.original.method
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
                 );
             }
         },
@@ -566,7 +595,11 @@ export default function GeneralPage() {
             cell: ({ row }) => {
                 return (
                     <span className="flex items-center gap-1">
-                        {reasonMap[row.original.reason]}
+                        {reasonMap[row.original.reason] ?? (
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
+                        )}
                     </span>
                 );
             }
@@ -605,7 +638,9 @@ export default function GeneralPage() {
                                 {row.original.actor}
                             </>
                         ) : (
-                            <>-</>
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
                         )}
                     </span>
                 );
