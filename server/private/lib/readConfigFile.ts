@@ -115,10 +115,13 @@ export const privateConfigSchema = z
                 // any value set here is migrated into the public config at
                 // startup by PrivateConfig (server/private/lib/config.ts).
                 enable_acme_cert_sync: z.boolean().optional(),
-                disable_private_http_placeholder: z
-                    .boolean()
-                    .optional()
-                    .default(false)
+                // @deprecated Moved to the public config file as
+                // `flags.disable_private_http_placeholder`
+                // (server/lib/readConfigFile.ts). Kept here only so existing
+                // private config files keep parsing; any value set here is
+                // migrated into the public config at startup by PrivateConfig
+                // (server/private/lib/config.ts).
+                disable_private_http_placeholder: z.boolean().optional()
             })
             .optional()
             .prefault({}),

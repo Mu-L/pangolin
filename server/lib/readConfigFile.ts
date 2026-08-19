@@ -443,7 +443,11 @@ export const configSchema = z
                 disable_config_managed_domains: z.boolean().optional(),
                 disable_product_help_banners: z.boolean().optional(),
                 disable_enterprise_features: z.boolean().optional(),
-                enable_acme_cert_sync: z.boolean().optional().default(true)
+                enable_acme_cert_sync: z.boolean().optional().default(true),
+                disable_private_http_placeholder: z
+                    .boolean()
+                    .optional()
+                    .default(false)
             })
             .optional(),
         acme: z

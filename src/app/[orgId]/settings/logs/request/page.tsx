@@ -2,9 +2,11 @@
 import { ColumnFilter } from "@app/components/ColumnFilter";
 import { DateTimeValue } from "@app/components/DateTimePicker";
 import { LogDataTable } from "@app/components/LogDataTable";
+import LogRetentionWarning from "@app/components/LogRetentionWarning";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { Button } from "@app/components/ui/button";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { useTranslations } from "next-intl";
@@ -28,6 +30,8 @@ export default function GeneralPage() {
     const t = useTranslations();
     const { orgId } = useParams();
     const searchParams = useSearchParams();
+
+    const { org } = useOrgContext();
 
     const [isExporting, startTransition] = useTransition();
 
@@ -713,6 +717,13 @@ export default function GeneralPage() {
                 title={t("requestLogs")}
                 description={t("requestLogsDescription")}
             />
+
+            {org.org.settingsLogRetentionDaysRequest === 0 && (
+                <LogRetentionWarning
+                    orgId={orgId as string}
+                    logTypeLabel={t("requestLogs")}
+                />
+            )}
 
             <LogDataTable
                 columns={columns}
