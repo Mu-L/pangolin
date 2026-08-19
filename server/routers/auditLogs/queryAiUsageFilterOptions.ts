@@ -1,5 +1,6 @@
 import {
     db,
+    logsDb,
     aiUsageRecords,
     aiProviders,
     resources,
@@ -78,22 +79,22 @@ async function query(data: Q) {
         uniqueUsers,
         uniqueVirtualApiKeys
     ] = await Promise.all([
-        db
+        logsDb
             .selectDistinct({ id: aiUsageRecords.providerId })
             .from(aiUsageRecords)
             .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1),
-        db
+        logsDb
             .selectDistinct({ model: aiUsageRecords.requestedModel })
             .from(aiUsageRecords)
             .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1),
-        db
+        logsDb
             .selectDistinct({ id: aiUsageRecords.resourceId })
             .from(aiUsageRecords)
             .where(and(baseConditions, not(isNull(aiUsageRecords.resourceId))))
             .limit(DISTINCT_LIMIT + 1),
-        db
+        logsDb
             .selectDistinct({ id: aiUsageRecords.siteResourceId })
             .from(aiUsageRecords)
             .where(
@@ -104,12 +105,12 @@ async function query(data: Q) {
                 )
             )
             .limit(DISTINCT_LIMIT + 1),
-        db
+        logsDb
             .selectDistinct({ userId: aiUsageRecords.userId })
             .from(aiUsageRecords)
             .where(and(baseConditions, not(isNull(aiUsageRecords.userId))))
             .limit(DISTINCT_LIMIT + 1),
-        db
+        logsDb
             .selectDistinct({ id: aiUsageRecords.virtualApiKeyId })
             .from(aiUsageRecords)
             .where(

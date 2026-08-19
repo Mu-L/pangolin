@@ -1,4 +1,4 @@
-import { db, aiUsageRecords, resources, siteResources } from "@server/db";
+import { db, logsDb, aiUsageRecords, resources, siteResources } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -39,7 +39,7 @@ async function query(data: Q) {
     const baseConditions = buildAiUsageWhere(data, roleUserIds);
     const dayExpr = dayBucketExpr();
 
-    const resourceByDay = await db
+    const resourceByDay = await logsDb
         .select({
             day: dayExpr.as("day"),
             resourceId: aiUsageRecords.resourceId,
@@ -80,7 +80,7 @@ async function query(data: Q) {
         topByTokens
     );
 
-    const topResourcesRaw = await db
+    const topResourcesRaw = await logsDb
         .select({
             resourceId: aiUsageRecords.resourceId,
             siteResourceId: aiUsageRecords.siteResourceId,

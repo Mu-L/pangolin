@@ -1,4 +1,4 @@
-import { db, aiUsageRecords } from "@server/db";
+import { logsDb, aiUsageRecords } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -29,7 +29,7 @@ async function query(data: Q) {
     const roleUserIds = await resolveRoleUserIds(data.orgId, data.roleId);
     const baseConditions = buildAiUsageWhere(data, roleUserIds);
 
-    const [totalsRow] = await db
+    const [totalsRow] = await logsDb
         .select({
             requests: count(),
             promptTokens: sql<number>`COALESCE(SUM(${aiUsageRecords.promptTokens}), 0)`,
@@ -46,7 +46,7 @@ async function query(data: Q) {
 
     const dayExpr = dayBucketExpr();
 
-    const requestsPerDay = await db
+    const requestsPerDay = await logsDb
         .select({
             day: dayExpr.as("day"),
             requests: count()
@@ -56,7 +56,7 @@ async function query(data: Q) {
         .groupBy(dayExpr)
         .orderBy(dayExpr);
 
-    const tokensPerDay = await db
+    const tokensPerDay = await logsDb
         .select({
             day: dayExpr.as("day"),
             promptTokens: sql<number>`COALESCE(SUM(${aiUsageRecords.promptTokens}), 0)`,
@@ -70,7 +70,7 @@ async function query(data: Q) {
         .groupBy(dayExpr)
         .orderBy(dayExpr);
 
-    const costPerDay = await db
+    const costPerDay = await logsDb
         .select({
             day: dayExpr.as("day"),
             cost: sql<number>`COALESCE(SUM(${aiUsageRecords.costUsd}), 0)`
@@ -80,7 +80,7 @@ async function query(data: Q) {
         .groupBy(dayExpr)
         .orderBy(dayExpr);
 
-    const modelByDay = await db
+    const modelByDay = await logsDb
         .select({
             day: dayExpr.as("day"),
             model: aiUsageRecords.requestedModel,
@@ -117,7 +117,7 @@ async function query(data: Q) {
         topModelsByTokens
     );
 
-    const topModelsRaw = await db
+    const topModelsRaw = await logsDb
         .select({
             model: aiUsageRecords.requestedModel,
             requests: count(),
