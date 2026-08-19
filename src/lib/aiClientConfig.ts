@@ -347,7 +347,7 @@ function buildCursorGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
                 auth.mode === "keyed"
                     ? `4. Paste your API key into the OpenAI API Key field: ${key}`
                     : '4. Leave the OpenAI API Key field set to a placeholder (e.g. "-"). Pangolin authenticates the request over your Newt/Olm connection automatically.',
-                "5. Add a custom model matching the model your Pangolin AI Gateway serves (e.g. claude-sonnet-4-6)."
+                "5. Add a custom model matching the model your Pangolin AI Gateway serves (e.g. gpt-5.6-sol)."
             ].join("\n"),
         auth,
         "steps",
