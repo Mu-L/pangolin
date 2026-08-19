@@ -82,6 +82,7 @@ import {
     needsStreamUsageInjection,
     withStreamUsageOption,
     extractResponseModel,
+    emptyUsage,
     type AiUsage
 } from "@server/lib/aiUsageExtraction";
 import { streamAiGatewayResponse } from "@server/routers/aiGateway/streamAiGatewayResponse";
@@ -713,19 +714,35 @@ export function recordAiGatewayCompletion(args: {
         budgets
     } = args;
 
-    let usage: AiUsage | null = extractUsage(
-        capability,
-        responseText,
-        isStream,
-        headers
-    );
-    if (!usage || isUsageEmpty(usage)) {
-        usage = estimateUsage(JSON.stringify(requestBody ?? ""), responseText);
-    }
+    // A non-2xx status means the upstream provider rejected the request
+    // (bad auth, invalid request, rate limit, 5xx, etc.) before ever running
+    // the model - no tokens were actually billed, so don't estimate usage
+    // off the error body text or price/charge it. We still record a
+    // zeroed-out row below (rather than skipping it) so request-count
+    // dashboards built on aiUsageRecords keep counting every attempt.
+    const upstreamSucceeded = statusCode >= 200 && statusCode < 300;
 
-    const model = extractResponseModel(responseText) ?? requestedModel;
-    const pricing = getModelPricing(provider.type as AiProviderType, model);
-    const cost = calculateAiCost(pricing, usage);
+    let usage: AiUsage;
+    let model: string | undefined;
+    let pricing: ReturnType<typeof getModelPricing> = null;
+    let cost: ReturnType<typeof calculateAiCost> = null;
+
+    if (upstreamSucceeded) {
+        usage = extractUsage(capability, responseText, isStream, headers) ?? emptyUsage();
+        if (isUsageEmpty(usage)) {
+            usage = estimateUsage(
+                JSON.stringify(requestBody ?? ""),
+                responseText
+            );
+        }
+
+        model = extractResponseModel(responseText) ?? requestedModel;
+        pricing = getModelPricing(provider.type as AiProviderType, model);
+        cost = calculateAiCost(pricing, usage);
+    } else {
+        usage = emptyUsage();
+        model = requestedModel;
+    }
 
     // Shared by the usage record and the session log so the two can be
     // joined later to show token/cost usage alongside the transcript -
@@ -738,6 +755,7 @@ export function recordAiGatewayCompletion(args: {
         providerId: provider.providerId,
         providerType: provider.type,
         model,
+        statusCode,
         estimated: usage.estimated,
         promptTokens: usage.promptTokens,
         cacheReadTokens: usage.cacheReadTokens,
