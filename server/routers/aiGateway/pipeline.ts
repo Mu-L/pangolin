@@ -86,7 +86,7 @@ import {
     type AiUsage
 } from "@server/lib/aiUsageExtraction";
 import { streamAiGatewayResponse } from "@server/routers/aiGateway/streamAiGatewayResponse";
-import { logAiSession } from "@server/routers/aiGateway/logAiSession";
+import { logAiSession } from "#dynamic/routers/aiGateway/logAiSession";
 
 const EXIT_NODE_RANGES_CACHE_KEY = "aiGateway:exitNodeRanges";
 const EXIT_NODE_RANGES_TTL_SEC = 6000;
@@ -728,7 +728,9 @@ export function recordAiGatewayCompletion(args: {
     let cost: ReturnType<typeof calculateAiCost> = null;
 
     if (upstreamSucceeded) {
-        usage = extractUsage(capability, responseText, isStream, headers) ?? emptyUsage();
+        usage =
+            extractUsage(capability, responseText, isStream, headers) ??
+            emptyUsage();
         if (isUsageEmpty(usage)) {
             usage = estimateUsage(
                 JSON.stringify(requestBody ?? ""),

@@ -291,6 +291,10 @@ async function disableFeature(
                 await disableConnectionLogs(orgId);
                 break;
 
+            case TierFeature.AISessionLogs:
+                await disableAISessionLogs(orgId);
+                break;
+
             case TierFeature.RotateCredentials:
                 await disableRotateCredentials(orgId);
                 break;
@@ -491,6 +495,15 @@ async function disableConnectionLogs(orgId: string): Promise<void> {
         .where(eq(orgs.orgId, orgId));
 
     logger.info(`Disabled connection logs for org ${orgId}`);
+}
+
+async function disableAISessionLogs(orgId: string): Promise<void> {
+    await db
+        .update(orgs)
+        .set({ settingsLogRetentionDaysAISessions: 0 })
+        .where(eq(orgs.orgId, orgId));
+
+    logger.info(`Disabled AI session logs for org ${orgId}`);
 }
 
 async function disableRotateCredentials(orgId: string): Promise<void> {}

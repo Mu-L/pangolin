@@ -43,6 +43,10 @@ import {
     unauthenticated as ua,
     authenticated as a
 } from "@server/routers/integration";
+import {
+    queryAiSessionLogs,
+    exportAiSessionLogs
+} from "@server/routers/auditLogs";
 import { logActionAudit } from "#private/middlewares";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { build } from "@server/build";
@@ -151,6 +155,25 @@ authenticated.get(
     verifyApiKeyHasAction(ActionsEnum.exportLogs),
     logActionAudit(ActionsEnum.exportLogs),
     logs.exportConnectionAuditLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.aiSessionLogs),
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    queryAiSessionLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/export",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.aiSessionLogs),
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.exportLogs),
+    logActionAudit(ActionsEnum.exportLogs),
+    exportAiSessionLogs
 );
 
 authenticated.put(
