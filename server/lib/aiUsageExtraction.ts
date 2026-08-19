@@ -17,7 +17,7 @@ export type AiUsage = {
     estimated: boolean;
 };
 
-function emptyUsage(): AiUsage {
+export function emptyUsage(): AiUsage {
     return {
         promptTokens: 0,
         cacheReadTokens: 0,

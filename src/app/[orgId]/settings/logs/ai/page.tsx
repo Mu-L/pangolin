@@ -3,9 +3,11 @@ import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 import { DateTimeValue } from "@app/components/DateTimePicker";
 import { LogDataTable } from "@app/components/LogDataTable";
 import { AiSessionChatView } from "@app/components/AiSessionChatView";
+import LogRetentionWarning from "@app/components/LogRetentionWarning";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { Button } from "@app/components/ui/button";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { useTranslations } from "next-intl";
@@ -40,6 +42,8 @@ export default function AiSessionLogsPage() {
     const t = useTranslations();
     const { orgId } = useParams();
     const searchParams = useSearchParams();
+
+    const { org } = useOrgContext();
 
     const [isExporting, startTransition] = useTransition();
 
@@ -640,6 +644,13 @@ export default function AiSessionLogsPage() {
                 title={t("aiSessionLogs")}
                 description={t("aiSessionLogsDescription")}
             />
+
+            {org.org.settingsLogRetentionDaysAISessions === 0 && (
+                <LogRetentionWarning
+                    orgId={orgId as string}
+                    logTypeLabel={t("aiSessionLogs")}
+                />
+            )}
 
             <LogDataTable
                 columns={columns}

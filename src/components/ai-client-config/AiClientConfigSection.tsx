@@ -49,10 +49,6 @@ const CLIENT_LOGOS = {
     opencode: {
         light: "/third-party/opencode-dark.svg",
         dark: "/third-party/opencode-light.svg"
-    },
-    cursor: {
-        light: "/third-party/cursor-dark.svg",
-        dark: "/third-party/cursor-light.svg"
     }
 } as const;
 
@@ -69,8 +65,7 @@ export function AiClientConfigSection({
     const descriptions: Record<string, string> = {
         claude: t("aiClientConfigDescriptionClaude"),
         codex: t("aiClientConfigDescriptionCodex"),
-        opencode: t("aiClientConfigDescriptionOpencode"),
-        cursor: t("aiClientConfigDescriptionCursor")
+        opencode: t("aiClientConfigDescriptionOpencode")
     };
 
     return (

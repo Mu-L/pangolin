@@ -201,7 +201,11 @@ export default async function ResourceAuthPage(props: {
     // Inference resources never establish a resource session on the inference
     // host. Authenticated users retrieve their virtual API key on the dashboard.
     if (isInference && user) {
-        redirect(keysPath);
+        if (host !== expectedHost) {
+            redirect(`/auth/org?redirect=${encodeURIComponent(keysPath)}`);
+        } else {
+            redirect(keysPath);
+        }
     }
 
     // After password/pincode/SSO, do not send the browser back to the

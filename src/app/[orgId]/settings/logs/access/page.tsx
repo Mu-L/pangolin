@@ -19,6 +19,8 @@ import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHr
 import axios from "axios";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import LogRetentionWarning from "@app/components/LogRetentionWarning";
+import { useOrgContext } from "@app/hooks/useOrgContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { logQueries } from "@app/lib/queries";
@@ -32,6 +34,7 @@ export default function GeneralPage() {
     const t = useTranslations();
     const { orgId } = useParams();
 
+    const { org } = useOrgContext();
     const { isPaidUser } = usePaidStatus();
 
     const [isExporting, startTransition] = useTransition();
@@ -528,6 +531,13 @@ export default function GeneralPage() {
             />
 
             <PaidFeaturesAlert tiers={tierMatrix.accessLogs} />
+
+            {org.org.settingsLogRetentionDaysAccess === 0 && (
+                <LogRetentionWarning
+                    orgId={orgId as string}
+                    logTypeLabel={t("accessLogs")}
+                />
+            )}
 
             <LogDataTable
                 columns={columns}

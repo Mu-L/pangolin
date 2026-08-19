@@ -3,8 +3,10 @@ import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 import { DateTimeValue } from "@app/components/DateTimePicker";
 import { LogDataTable } from "@app/components/LogDataTable";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import LogRetentionWarning from "@app/components/LogRetentionWarning";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useOrgContext } from "@app/hooks/useOrgContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { toast } from "@app/hooks/useToast";
@@ -29,6 +31,7 @@ export default function GeneralPage() {
     const { orgId } = useParams();
     const searchParams = useSearchParams();
 
+    const { org } = useOrgContext();
     const { isPaidUser } = usePaidStatus();
 
     const [isExporting, startTransition] = useTransition();
@@ -358,6 +361,13 @@ export default function GeneralPage() {
             />
 
             <PaidFeaturesAlert tiers={tierMatrix.actionLogs} />
+
+            {org.org.settingsLogRetentionDaysAction === 0 && (
+                <LogRetentionWarning
+                    orgId={orgId as string}
+                    logTypeLabel={t("actionLogs")}
+                />
+            )}
 
             <LogDataTable
                 columns={columns}

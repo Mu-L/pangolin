@@ -1,11 +1,10 @@
-export const AI_CLIENT_IDS = ["claude", "codex", "opencode", "cursor"] as const;
+export const AI_CLIENT_IDS = ["claude", "codex", "opencode"] as const;
 export type AiClientId = (typeof AI_CLIENT_IDS)[number];
 
 export const AI_CLIENT_NAMES: Record<AiClientId, string> = {
     claude: "Claude Code",
     codex: "Codex",
-    opencode: "OpenCode",
-    cursor: "Cursor"
+    opencode: "OpenCode"
 };
 
 /** Auth as supplied by callers: the real key isn't fetched yet. */
@@ -293,7 +292,7 @@ function buildOpencodeGuide(
                 '            "options": {',
                 `                "baseURL": "${endpoint}/v1"`,
                 "            }",
-                "        }",
+                "        },",
                 '        "openai": {',
                 '            "options": {',
                 `                "baseURL": "${endpoint}/v1"`,
@@ -314,10 +313,24 @@ function buildOpencodeGuide(
                 '    "anthropic": {',
                 '        "type": "api",',
                 `        "key": "${key}"`,
+                "    },",
+                '    "openai": {',
+                '        "type": "api",',
+                `        "key": "${key}"`,
                 "    }",
                 "}"
             ].join("\n"),
         auth
+    );
+
+    const moreProviders = block(
+        "opencode-more-providers",
+        "More providers",
+        () =>
+            "OpenCode configures providers individually, so Anthropic and OpenAI are just the ones set up above. " +
+            'You can point any other OpenCode-supported provider (e.g. "openrouter", "google", "groq") at this gateway the same way: add a matching entry under "provider" in opencode.json, and under auth.json if it needs an API key.',
+        auth,
+        "steps"
     );
 
     return {
@@ -329,41 +342,10 @@ function buildOpencodeGuide(
                 id: "default",
                 label: "Default",
                 relation: "steps",
-                blocks: [config, authFile]
-            }
-        ]
-    };
-}
-
-function buildCursorGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
-    const steps = block(
-        "cursor-steps",
-        "Cursor Settings",
-        (key) =>
-            [
-                "1. Open Cursor Settings -> Models.",
-                '2. Enable "Override OpenAI Base URL".',
-                `3. Set the base URL to: ${endpoint}/v1`,
-                auth.mode === "keyed"
-                    ? `4. Paste your API key into the OpenAI API Key field: ${key}`
-                    : '4. Leave the OpenAI API Key field set to a placeholder (e.g. "-"). Pangolin authenticates the request over your Newt/Olm connection automatically.',
-                "5. Add a custom model matching the model your Pangolin AI Gateway serves (e.g. claude-sonnet-4-6)."
-            ].join("\n"),
-        auth,
-        "steps",
-        true
-    );
-
-    return {
-        id: "cursor",
-        name: AI_CLIENT_NAMES.cursor,
-        cli: null,
-        presets: [
-            {
-                id: "default",
-                label: "Default",
-                relation: "steps",
-                blocks: [steps]
+                blocks:
+                    auth.mode === "keyed"
+                        ? [config, authFile, moreProviders]
+                        : [config, moreProviders]
             }
         ]
     };
@@ -379,8 +361,7 @@ const GUIDE_BUILDERS: Record<
 > = {
     claude: buildClaudeGuide,
     codex: buildCodexGuide,
-    opencode: buildOpencodeGuide,
-    cursor: buildCursorGuide
+    opencode: buildOpencodeGuide
 };
 
 export function buildAiClientGuide(

@@ -21,7 +21,9 @@ export function createAiGatewayServer() {
 
     aiGatewayServer.use(helmet());
     aiGatewayServer.use(cors());
-    aiGatewayServer.use(express.json());
+    // AI requests can carry large payloads (long conversation history, tool
+    // results, embedded documents), well beyond express.json()'s 100kb default.
+    aiGatewayServer.use(express.json({ limit: "50mb" }));
 
     aiGatewayServer.use(createAiGatewayRouter());
 

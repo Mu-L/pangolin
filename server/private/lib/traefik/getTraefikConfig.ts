@@ -329,8 +329,7 @@ export async function getTraefikConfig(
     }[] = [];
     if (
         build == "enterprise" &&
-        !privateConfig.getRawPrivateConfig().flags
-            .disable_private_http_placeholder
+        !config.getRawConfig().flags?.disable_private_http_placeholder
     ) {
         // we dont want to do this on the cloud
         // Query siteResources in HTTP mode with SSL enabled and aliases - cert generation / HTTPS edge

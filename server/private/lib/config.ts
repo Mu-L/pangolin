@@ -48,7 +48,7 @@ export class PrivateConfig {
 
         this.rawPrivateConfig = parsedPrivateConfig;
 
-        this.migrateDeprecatedAcmeConfig(privateEnvironment);
+        this.migrateDeprecatedConfig(privateEnvironment);
 
         process.env.BRANDING_HIDE_AUTH_LAYOUT_FOOTER =
             this.rawPrivateConfig.branding?.hide_auth_layout_footer === true
@@ -152,12 +152,12 @@ export class PrivateConfig {
         return this.rawPrivateConfig;
     }
 
-    // `flags.enable_acme_cert_sync` and `acme` used to live in the private
-    // config file. They now live in the public config file. If an operator
-    // still has them set in the private config and hasn't moved them over to
-    // the public config, pull them forward so behavior doesn't silently
-    // change out from under them.
-    private migrateDeprecatedAcmeConfig(privateEnvironment: any) {
+    // `flags.enable_acme_cert_sync`, `flags.disable_private_http_placeholder`,
+    // and `acme` used to live in the private config file. They now live in
+    // the public config file. If an operator still has them set in the
+    // private config and hasn't moved them over to the public config, pull
+    // them forward so behavior doesn't silently change out from under them.
+    private migrateDeprecatedConfig(privateEnvironment: any) {
         const publicEnvironment: any = readPublicConfigFile();
         const rawConfig: any = config.getRawConfig();
 
@@ -181,6 +181,20 @@ export class PrivateConfig {
                 "`acme` is deprecated in the private config file and has moved to the public config file. Using the value from the private config file for now, but please move it to the public config."
             );
             rawConfig.acme = this.rawPrivateConfig.acme;
+        }
+
+        if (
+            privateEnvironment?.flags?.disable_private_http_placeholder !==
+                undefined &&
+            publicEnvironment?.flags?.disable_private_http_placeholder ===
+                undefined
+        ) {
+            logger.warn(
+                "`flags.disable_private_http_placeholder` is deprecated in the private config file and has moved to the public config file. Using the value from the private config file for now, but please move it to the public config."
+            );
+            rawConfig.flags = rawConfig.flags ?? {};
+            rawConfig.flags.disable_private_http_placeholder =
+                this.rawPrivateConfig.flags.disable_private_http_placeholder;
         }
     }
 }
