@@ -1,11 +1,10 @@
-export const AI_CLIENT_IDS = ["claude", "codex", "opencode", "cursor"] as const;
+export const AI_CLIENT_IDS = ["claude", "codex", "opencode"] as const;
 export type AiClientId = (typeof AI_CLIENT_IDS)[number];
 
 export const AI_CLIENT_NAMES: Record<AiClientId, string> = {
     claude: "Claude Code",
     codex: "Codex",
-    opencode: "OpenCode",
-    cursor: "Cursor"
+    opencode: "OpenCode"
 };
 
 /** Auth as supplied by callers: the real key isn't fetched yet. */
@@ -352,40 +351,6 @@ function buildOpencodeGuide(
     };
 }
 
-function buildCursorGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
-    const steps = block(
-        "cursor-steps",
-        "Cursor Settings",
-        (key) =>
-            [
-                "1. Open Cursor Settings -> Models.",
-                '2. Enable "Override OpenAI Base URL".',
-                `3. Set the base URL to: ${endpoint}/v1`,
-                auth.mode === "keyed"
-                    ? `4. Paste your API key into the OpenAI API Key field: ${key}`
-                    : '4. Leave the OpenAI API Key field set to a placeholder (e.g. "-"). Pangolin authenticates the request over your Newt/Olm connection automatically.',
-                "5. Add a custom model matching the model your Pangolin AI Gateway serves (e.g. gpt-5.6-sol)."
-            ].join("\n"),
-        auth,
-        "steps",
-        true
-    );
-
-    return {
-        id: "cursor",
-        name: AI_CLIENT_NAMES.cursor,
-        cli: null,
-        presets: [
-            {
-                id: "default",
-                label: "Default",
-                relation: "steps",
-                blocks: [steps]
-            }
-        ]
-    };
-}
-
 const GUIDE_BUILDERS: Record<
     AiClientId,
     (
@@ -396,8 +361,7 @@ const GUIDE_BUILDERS: Record<
 > = {
     claude: buildClaudeGuide,
     codex: buildCodexGuide,
-    opencode: buildOpencodeGuide,
-    cursor: buildCursorGuide
+    opencode: buildOpencodeGuide
 };
 
 export function buildAiClientGuide(

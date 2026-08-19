@@ -1785,7 +1785,6 @@
     "aiClientConfigDescriptionClaude": "Anthropic's agentic coding tool for the terminal.",
     "aiClientConfigDescriptionCodex": "OpenAI's agentic coding tool for the terminal.",
     "aiClientConfigDescriptionOpencode": "Open source terminal coding agent.",
-    "aiClientConfigDescriptionCursor": "AI code editor built on VS Code.",
     "aiClientConfigSetup": "Setup",
     "aiClientConfigTabCli": "Automatic (CLI)",
     "aiClientConfigTabManual": "Manual Configuration",
