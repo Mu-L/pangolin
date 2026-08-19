@@ -293,7 +293,7 @@ function buildOpencodeGuide(
                 '            "options": {',
                 `                "baseURL": "${endpoint}/v1"`,
                 "            }",
-                "        }",
+                "        },",
                 '        "openai": {',
                 '            "options": {',
                 `                "baseURL": "${endpoint}/v1"`,
@@ -314,10 +314,24 @@ function buildOpencodeGuide(
                 '    "anthropic": {',
                 '        "type": "api",',
                 `        "key": "${key}"`,
+                "    },",
+                '    "openai": {',
+                '        "type": "api",',
+                `        "key": "${key}"`,
                 "    }",
                 "}"
             ].join("\n"),
         auth
+    );
+
+    const moreProviders = block(
+        "opencode-more-providers",
+        "More providers",
+        () =>
+            "OpenCode configures providers individually, so Anthropic and OpenAI are just the ones set up above. " +
+            'You can point any other OpenCode-supported provider (e.g. "openrouter", "google", "groq") at this gateway the same way: add a matching entry under "provider" in opencode.json, and under auth.json if it needs an API key.',
+        auth,
+        "steps"
     );
 
     return {
@@ -329,7 +343,10 @@ function buildOpencodeGuide(
                 id: "default",
                 label: "Default",
                 relation: "steps",
-                blocks: [config, authFile]
+                blocks:
+                    auth.mode === "keyed"
+                        ? [config, authFile, moreProviders]
+                        : [config, moreProviders]
             }
         ]
     };
