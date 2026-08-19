@@ -19,9 +19,6 @@ export default async function migration() {
         await db.execute(sql`BEGIN`);
 
         await db.execute(sql`
-        `);
-
-        await db.execute(sql`
             CREATE TABLE "aiBudgetBreachEvents" (
                 "id" serial PRIMARY KEY NOT NULL,
                 "orgId" varchar NOT NULL,
