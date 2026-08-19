@@ -1,4 +1,11 @@
-import { db, aiUsageRecords, users, roles, userOrgRoles } from "@server/db";
+import {
+    db,
+    logsDb,
+    aiUsageRecords,
+    users,
+    roles,
+    userOrgRoles
+} from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -36,7 +43,7 @@ async function query(data: Q) {
     // userId, so role totals are derived by expanding each user's usage into
     // every role they hold in the org (per-role double counting for
     // multi-role users is expected/accepted).
-    const userByDay = await db
+    const userByDay = await logsDb
         .select({
             day: dayExpr.as("day"),
             userId: aiUsageRecords.userId,
@@ -48,7 +55,7 @@ async function query(data: Q) {
         .groupBy(dayExpr, aiUsageRecords.userId)
         .orderBy(dayExpr);
 
-    const userTotalsRaw = await db
+    const userTotalsRaw = await logsDb
         .select({
             userId: aiUsageRecords.userId,
             requests: count(),

@@ -19,9 +19,6 @@ export default async function migration() {
         await db.execute(sql`BEGIN`);
 
         await db.execute(sql`
-        `);
-
-        await db.execute(sql`
             CREATE TABLE "aiBudgetBreachEvents" (
                 "id" serial PRIMARY KEY NOT NULL,
                 "orgId" varchar NOT NULL,
@@ -454,14 +451,14 @@ export default async function migration() {
             throw new Error(fromZodError(parsedConfig.error).toString());
         }
 
-        traefikConfig.experimental.plugins.badger.version = "v1.6.0";
+        traefikConfig.experimental.plugins.badger.version = "v1.6.1";
 
         const updatedTraefikYaml = yaml.dump(traefikConfig);
 
         fs.writeFileSync(traefikPath, updatedTraefikYaml, "utf8");
 
         console.log(
-            "Updated the version of Badger in your Traefik configuration to v1.6.0"
+            "Updated the version of Badger in your Traefik configuration to v1.6.1"
         );
     } catch (e) {
         console.log(

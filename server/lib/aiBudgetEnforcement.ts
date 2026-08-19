@@ -16,6 +16,7 @@ import {
     aiModels,
     aiUsageRecords,
     db,
+    logsDb,
     userOrgRoles
 } from "@server/db";
 import { modelKeyMatches } from "@server/lib/aiModelKeyMatch";
@@ -168,7 +169,7 @@ async function sumUsageAmount(
 ): Promise<number> {
     const column =
         unit === "usd" ? aiUsageRecords.costUsd : aiUsageRecords.totalTokens;
-    const [row] = await db
+    const [row] = await logsDb
         .select({ total: sql<number>`coalesce(sum(${column}), 0)` })
         .from(aiUsageRecords)
         .where(where);
@@ -200,7 +201,7 @@ export async function sumUsageForBudget(
         if (!model) {
             return 0;
         }
-        const rows = await db
+        const rows = await logsDb
             .select({
                 requestedModel: aiUsageRecords.requestedModel,
                 costUsd: aiUsageRecords.costUsd,
@@ -496,7 +497,7 @@ async function flushUsageRecords() {
 
     try {
         // Use a transaction to ensure all inserts succeed or fail together
-        await db.transaction(async (tx) => {
+        await logsDb.transaction(async (tx) => {
             // Batch insert in groups to avoid overwhelming the database
             const DB_BATCH_SIZE = 25;
             for (let i = 0; i < recordsToWrite.length; i += DB_BATCH_SIZE) {

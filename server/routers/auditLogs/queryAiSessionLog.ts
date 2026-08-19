@@ -312,7 +312,7 @@ async function enrichWithDetails(
     >();
     const sessionIds = logs.map((log) => log.sessionId);
     if (sessionIds.length > 0) {
-        const usageDetails = await primaryDb
+        const usageDetails = await logsDb
             .select({
                 sessionId: aiUsageRecords.sessionId,
                 promptTokens: aiUsageRecords.promptTokens,

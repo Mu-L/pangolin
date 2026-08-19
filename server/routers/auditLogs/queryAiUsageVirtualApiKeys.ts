@@ -1,4 +1,4 @@
-import { db, aiUsageRecords, virtualApiKeys } from "@server/db";
+import { db, logsDb, aiUsageRecords, virtualApiKeys } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -31,7 +31,7 @@ async function query(data: Q) {
     const baseConditions = buildAiUsageWhere(data, roleUserIds);
     const dayExpr = dayBucketExpr();
 
-    const virtualApiKeyByDay = await db
+    const virtualApiKeyByDay = await logsDb
         .select({
             day: dayExpr.as("day"),
             virtualApiKeyId: aiUsageRecords.virtualApiKeyId,
@@ -43,7 +43,7 @@ async function query(data: Q) {
         .groupBy(dayExpr, aiUsageRecords.virtualApiKeyId)
         .orderBy(dayExpr);
 
-    const virtualApiKeyTotalsRaw = await db
+    const virtualApiKeyTotalsRaw = await logsDb
         .select({
             virtualApiKeyId: aiUsageRecords.virtualApiKeyId,
             requests: count(),
