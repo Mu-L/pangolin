@@ -1,25 +1,13 @@
 "use client";
 
-import { AiConfigCodeBlock } from "@app/components/ai-client-config/AiConfigCodeBlock";
+import { AiConfigBlocks } from "@app/components/ai-client-config/AiConfigBlocks";
 import { Button } from "@app/components/ui/button";
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger
 } from "@app/components/ui/collapsible";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@app/components/ui/select";
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger
-} from "@app/components/ui/tabs";
+import { OptionSelect } from "@app/components/OptionSelect";
 import type {
     AiClientAuthInput,
     AiClientId,
@@ -43,6 +31,8 @@ type AiClientConfigCardProps = {
     resourceNiceId?: string;
 };
 
+type SetupMode = "cli" | "manual";
+
 export function AiClientConfigCard({
     clientId,
     name,
@@ -57,6 +47,7 @@ export function AiClientConfigCard({
     const [resolvedIconSrc, setResolvedIconSrc] = useState(iconSrc.light);
     const [open, setOpen] = useState(false);
     const [presetId, setPresetId] = useState<AiClientPresetId>("default");
+    const [setupMode, setSetupMode] = useState<SetupMode>("cli");
     const [revealedKey, setRevealedKey] = useState<string | null>(null);
     const [revealing, setRevealing] = useState(false);
     const [revealError, setRevealError] = useState(false);
@@ -120,29 +111,24 @@ export function AiClientConfigCard({
     const manualContent = guide ? (
         <div className="min-w-0 space-y-4">
             {guide.presets.length > 1 ? (
-                <Select
-                    value={presetId}
-                    onValueChange={(value) =>
-                        setPresetId(value as AiClientPresetId)
-                    }
-                >
-                    <SelectTrigger size="sm" className="max-w-xs">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {guide.presets.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                                {p.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <OptionSelect<AiClientPresetId>
+                    label={t("aiClientConfigPreset")}
+                    options={guide.presets.map((p) => ({
+                        value: p.id,
+                        label: p.label
+                    }))}
+                    value={preset?.id ?? presetId}
+                    onChange={setPresetId}
+                    cols={2}
+                />
             ) : null}
-            <div className="grid min-w-0 gap-4">
-                {preset?.blocks.map((block) => (
-                    <AiConfigCodeBlock key={block.id} block={block} />
-                ))}
-            </div>
+            {preset ? (
+                <AiConfigBlocks
+                    key={preset.id}
+                    blocks={preset.blocks}
+                    relation={preset.relation}
+                />
+            ) : null}
         </div>
     ) : null;
 
@@ -191,35 +177,32 @@ export function AiClientConfigCard({
                 ) : null}
                 {guide ? (
                     guide.cli ? (
-                        <Tabs defaultValue="cli">
-                            <TabsList>
-                                <TabsTrigger value="cli">
-                                    {t("aiClientConfigTabCli")}
-                                </TabsTrigger>
-                                <TabsTrigger value="manual">
-                                    {t("aiClientConfigTabManual")}
-                                </TabsTrigger>
-                            </TabsList>
-                            <TabsContent
-                                value="cli"
-                                className="grid min-w-0 gap-4 mt-4"
-                            >
-                                <AiConfigCodeBlock
-                                    block={guide.cli.configure}
+                        <div className="min-w-0 space-y-4">
+                            <OptionSelect<SetupMode>
+                                label={t("aiClientConfigSetup")}
+                                options={[
+                                    {
+                                        value: "cli",
+                                        label: t("aiClientConfigTabCli")
+                                    },
+                                    {
+                                        value: "manual",
+                                        label: t("aiClientConfigTabManual")
+                                    }
+                                ]}
+                                value={setupMode}
+                                onChange={setSetupMode}
+                                cols={2}
+                            />
+                            {setupMode === "cli" ? (
+                                <AiConfigBlocks
+                                    blocks={guide.cli}
+                                    relation="options"
                                 />
-                                {guide.cli.configureWithKey ? (
-                                    <AiConfigCodeBlock
-                                        block={guide.cli.configureWithKey}
-                                    />
-                                ) : null}
-                            </TabsContent>
-                            <TabsContent
-                                value="manual"
-                                className="min-w-0 mt-4"
-                            >
-                                {manualContent}
-                            </TabsContent>
-                        </Tabs>
+                            ) : (
+                                manualContent
+                            )}
+                        </div>
                     ) : (
                         manualContent
                     )

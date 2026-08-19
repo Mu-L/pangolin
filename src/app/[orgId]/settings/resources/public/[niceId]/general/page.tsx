@@ -50,6 +50,7 @@ import { useOrgContext } from "@app/hooks/useOrgContext";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { build } from "@server/build";
 import { TierFeature } from "@server/lib/billing/tierMatrix";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
@@ -255,17 +256,26 @@ export default function GeneralForm() {
                         </SettingsSectionTitle>
                         <SettingsSectionDescription>
                             {t("resourceGeneralDescription")}
+                            {resource.mode === "inference" ? (
+                                <>
+                                    {" "}
+                                    {t.rich(
+                                        "resourceGeneralAiClientConfigDescription",
+                                        {
+                                            configLink: (chunks) => (
+                                                <Link
+                                                    href={`/${resource.orgId}?openResource=${encodeURIComponent(resource.niceId)}&openResourceQuery=${encodeURIComponent(resource.name)}`}
+                                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                                >
+                                                    {chunks}
+                                                    <ExternalLink className="size-3.5 shrink-0" />
+                                                </Link>
+                                            )
+                                        }
+                                    )}
+                                </>
+                            ) : null}
                         </SettingsSectionDescription>
-                        {resource.mode === "inference" ? (
-                            <p className="text-sm pt-1">
-                                <Link
-                                    href={`/${resource.orgId}?openResource=${encodeURIComponent(resource.niceId)}&openResourceQuery=${encodeURIComponent(resource.name)}`}
-                                    className="text-primary hover:underline"
-                                >
-                                    {t("resourceGeneralAiClientConfigLink")}
-                                </Link>
-                            </p>
-                        ) : null}
                     </SettingsSectionHeader>
 
                     <SettingsSectionBody>

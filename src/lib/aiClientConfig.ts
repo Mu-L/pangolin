@@ -21,25 +21,26 @@ export type AiConfigBlock = {
     label: string;
     kind?: "code" | "steps";
     displayText: string;
+    /** True when the snippet includes example values the user must replace. */
+    hasPlaceholders?: boolean;
 };
 
 export type AiClientPresetId = "default" | "bedrock" | "vertex" | "kimi";
 
+export type AiConfigRelation = "options" | "steps";
+
 export type AiConfigPreset = {
     id: AiClientPresetId;
     label: string;
+    relation: AiConfigRelation;
     blocks: AiConfigBlock[];
-};
-
-export type AiCliCommands = {
-    configure: AiConfigBlock;
-    configureWithKey?: AiConfigBlock;
 };
 
 export type AiClientGuide = {
     id: AiClientId;
     name: string;
-    cli: AiCliCommands | null;
+    /** Alternative CLI commands. Empty/null means this client has no CLI setup. */
+    cli: AiConfigBlock[] | null;
     presets: AiConfigPreset[];
 };
 
@@ -52,19 +53,33 @@ function block(
     label: string,
     build: (keyValue: string) => string,
     auth: AiClientAuth,
-    kind: "code" | "steps" = "code"
+    kind: "code" | "steps" = "code",
+    hasPlaceholders = false
 ): AiConfigBlock {
-    return { id, label, kind, displayText: build(keyValue(auth)) };
+    return {
+        id,
+        label,
+        kind,
+        displayText: build(keyValue(auth)),
+        hasPlaceholders
+    };
+}
+
+const EXAMPLE_RESOURCE_HOST = "example.resource.url.com";
+
+export function aiConfigBlockHasPlaceholders(block: AiConfigBlock): boolean {
+    return (
+        block.hasPlaceholders === true ||
+        block.displayText.includes(EXAMPLE_RESOURCE_HOST)
+    );
 }
 
 function buildCli(
     clientArg: "claude" | "codex" | "opencode",
     auth: AiClientAuth,
     resourceNiceId?: string
-): AiCliCommands {
-    const resourceFlag = resourceNiceId
-        ? ` --resource ${resourceNiceId}`
-        : "";
+): AiConfigBlock[] {
+    const resourceFlag = resourceNiceId ? ` --resource ${resourceNiceId}` : "";
 
     const configure: AiConfigBlock = {
         id: `cli-configure-${clientArg}`,
@@ -73,17 +88,17 @@ function buildCli(
     };
 
     if (auth.mode !== "keyed") {
-        return { configure };
+        return [configure];
     }
 
-    return {
+    return [
         configure,
-        configureWithKey: {
+        {
             id: `cli-configure-key-${clientArg}`,
             label: "Configure with an API key",
             displayText: `pangolin configure ${clientArg} ${auth.key}${resourceFlag}`
         }
-    };
+    ];
 }
 
 function buildClaudeGuide(
@@ -132,7 +147,9 @@ function buildClaudeGuide(
                 "    }",
                 "}"
             ].join("\n"),
-        auth
+        auth,
+        "code",
+        true
     );
 
     const vertexSettings = block(
@@ -150,7 +167,9 @@ function buildClaudeGuide(
                 "    }",
                 "}"
             ].join("\n"),
-        auth
+        auth,
+        "code",
+        true
     );
 
     const kimiSettings = block(
@@ -171,7 +190,9 @@ function buildClaudeGuide(
                 "    }",
                 "}"
             ].join("\n"),
-        auth
+        auth,
+        "code",
+        true
     );
 
     return {
@@ -182,21 +203,25 @@ function buildClaudeGuide(
             {
                 id: "default",
                 label: "Default (Anthropic)",
+                relation: "options",
                 blocks: [defaultSettings, defaultShell]
             },
             {
                 id: "bedrock",
                 label: "Amazon Bedrock",
+                relation: "options",
                 blocks: [bedrockSettings]
             },
             {
                 id: "vertex",
                 label: "Google Vertex AI",
+                relation: "options",
                 blocks: [vertexSettings]
             },
             {
                 id: "kimi",
                 label: "Kimi K2 (Moonshot AI)",
+                relation: "options",
                 blocks: [kimiSettings]
             }
         ]
@@ -219,7 +244,9 @@ function buildCodexGuide(
                 'name = "Pangolin AI Gateway"',
                 `base_url = "${endpoint}/v1"`,
                 'wire_api = "responses"',
-                ...(auth.mode === "keyed" ? ['env_key = "PANGOLIN_API_KEY"'] : [])
+                ...(auth.mode === "keyed"
+                    ? ['env_key = "PANGOLIN_API_KEY"']
+                    : [])
             ].join("\n"),
         auth
     );
@@ -242,6 +269,7 @@ function buildCodexGuide(
             {
                 id: "default",
                 label: "Default",
+                relation: "steps",
                 blocks: shell ? [settings, shell] : [settings]
             }
         ]
@@ -255,7 +283,7 @@ function buildOpencodeGuide(
 ): AiClientGuide {
     const config = block(
         "opencode-config",
-        "Step 1: opencode.json",
+        "opencode.json",
         () =>
             [
                 "{",
@@ -279,11 +307,16 @@ function buildOpencodeGuide(
 
     const authFile = block(
         "opencode-auth",
-        "Step 2: auth.json",
+        "auth.json",
         (key) =>
-            ["{", '    "anthropic": {', '        "type": "api",', `        "key": "${key}"`, "    }", "}"].join(
-                "\n"
-            ),
+            [
+                "{",
+                '    "anthropic": {',
+                '        "type": "api",',
+                `        "key": "${key}"`,
+                "    }",
+                "}"
+            ].join("\n"),
         auth
     );
 
@@ -295,6 +328,7 @@ function buildOpencodeGuide(
             {
                 id: "default",
                 label: "Default",
+                relation: "steps",
                 blocks: [config, authFile]
             }
         ]
@@ -316,7 +350,8 @@ function buildCursorGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
                 "5. Add a custom model matching the model your Pangolin AI Gateway serves (e.g. claude-sonnet-4-6)."
             ].join("\n"),
         auth,
-        "steps"
+        "steps",
+        true
     );
 
     return {
@@ -327,6 +362,7 @@ function buildCursorGuide(endpoint: string, auth: AiClientAuth): AiClientGuide {
             {
                 id: "default",
                 label: "Default",
+                relation: "steps",
                 blocks: [steps]
             }
         ]
