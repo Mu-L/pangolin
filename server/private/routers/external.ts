@@ -766,6 +766,14 @@ authenticated.get(
     alertRule.listAlertRules
 );
 
+authenticated.post(
+    "/org/:orgId/test-alert-rule",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.testAlertRule),
+    alertRule.testAlertRule
+);
+
 authenticated.get(
     "/org/:orgId/alert-rule/:alertRuleId",
     verifyValidLicense,
