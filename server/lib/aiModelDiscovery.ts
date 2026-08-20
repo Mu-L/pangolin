@@ -2,6 +2,7 @@ import {
     isAllowedByLists,
     isModelKeyPattern
 } from "@server/lib/aiModelKeyMatch";
+import type { AiModelCapabilityFlags } from "@server/lib/aiModelCatalog";
 
 // Anthropic's Models API pagination: 20 per page by default, 1..1000.
 export const MODEL_PAGE_DEFAULT_LIMIT = 20;
@@ -25,11 +26,65 @@ export type AnthropicModelInfo = {
     created_at: string;
     max_input_tokens: number | null;
     max_tokens: number | null;
-    capabilities: null;
+    capabilities: Record<string, unknown> | null;
 };
 
 /** A model row an administrator configured explicitly on a provider. */
 export type ConfiguredModel = { name: string; createdAt: number };
+
+/** What the pricing catalog knows about a model beyond its id. */
+export type CatalogModelMetadata = {
+    maxInputTokens: number | null;
+    maxOutputTokens: number | null;
+    capabilities: AiModelCapabilityFlags;
+};
+
+/**
+ * Translates the catalog's flat feature flags into the nested shape
+ * Anthropic's Models API uses. Best-effort by nature: the catalog carries a
+ * coarser set of flags than the Models API describes, so anything it reports
+ * as unknown (`null`) is surfaced as unsupported rather than invented.
+ */
+export function capabilitiesFromCatalog(
+    flags: AiModelCapabilityFlags
+): Record<string, unknown> {
+    const supported = (value: boolean | null) => ({
+        supported: value === true
+    });
+    // The catalog has a single `reasoning` flag and no way to distinguish
+    // adaptive from budget_tokens-style thinking, so both variants follow it.
+    const reasoning = flags.reasoning === true;
+
+    return {
+        batch: supported(null),
+        citations: supported(null),
+        code_execution: supported(null),
+        context_management: {
+            supported: false,
+            clear_thinking_20251015: null,
+            clear_tool_uses_20250919: null,
+            compact_20260112: null
+        },
+        effort: {
+            supported: reasoning,
+            low: supported(flags.reasoning),
+            medium: supported(flags.reasoning),
+            high: supported(flags.reasoning),
+            max: supported(flags.reasoning),
+            xhigh: null
+        },
+        image_input: supported(flags.vision),
+        pdf_input: supported(null),
+        structured_outputs: supported(flags.responseSchema),
+        thinking: {
+            supported: reasoning,
+            types: {
+                adaptive: { supported: reasoning },
+                enabled: { supported: reasoning }
+            }
+        }
+    };
+}
 
 /**
  * One attached provider's contribution to a resource's model listing, with the
@@ -40,12 +95,13 @@ export type ModelDiscoveryProvider = {
     allows: string[];
     blocks: string[];
     /**
-     * Concrete model ids the provider's type is known to serve. This is what
-     * lets a wildcard allow such as `claude-*` enumerate into real ids;
-     * provider types with no catalog (aggregators, custom) pass an empty list
-     * and surface only their exact allow entries.
+     * Concrete model ids the provider's type is known to serve, with whatever
+     * the catalog knows about each. This is what lets a wildcard allow such as
+     * `claude-*` enumerate into real ids; provider types with no catalog
+     * (aggregators, custom) pass an empty map and surface only their exact
+     * allow entries.
      */
-    catalogModelIds: string[];
+    catalog: Map<string, CatalogModelMetadata>;
     /** Keyed by model key, for display names and creation times. */
     configured: Map<string, ConfiguredModel>;
 };
@@ -73,7 +129,7 @@ export function expandProviderModels(
             candidates.add(allow);
         }
     }
-    for (const modelId of provider.catalogModelIds) {
+    for (const modelId of provider.catalog.keys()) {
         candidates.add(modelId);
     }
 
@@ -83,6 +139,8 @@ export function expandProviderModels(
             continue;
         }
         const configured = provider.configured.get(modelKey);
+        const catalog = provider.catalog.get(modelKey);
+
         models.push({
             type: "model",
             id: modelKey,
@@ -90,9 +148,11 @@ export function expandProviderModels(
             created_at: configured
                 ? new Date(configured.createdAt).toISOString()
                 : UNKNOWN_CREATED_AT,
-            max_input_tokens: null,
-            max_tokens: null,
-            capabilities: null
+            max_input_tokens: catalog?.maxInputTokens ?? null,
+            max_tokens: catalog?.maxOutputTokens ?? null,
+            capabilities: catalog
+                ? capabilitiesFromCatalog(catalog.capabilities)
+                : null
         });
     }
 

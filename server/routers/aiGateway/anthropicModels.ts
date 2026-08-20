@@ -15,12 +15,13 @@ import {
     isAiGatewayTrustHeaderValid
 } from "@server/lib/aiGatewayTrust";
 import { resolveEffectiveLists } from "@server/lib/aiInferenceResource";
-import { listCatalogModelsForType } from "@server/lib/aiModelCatalog";
+import { listCatalogEntriesForType } from "@server/lib/aiModelCatalog";
 import {
     listPermittedModels,
     paginateModels,
     MODEL_PAGE_DEFAULT_LIMIT,
     MODEL_PAGE_MAX_LIMIT,
+    type CatalogModelMetadata,
     type ConfiguredModel,
     type ModelDiscoveryProvider
 } from "@server/lib/aiModelDiscovery";
@@ -113,6 +114,20 @@ async function loadProviderModelLists(
     return lists;
 }
 
+function catalogMetadataForType(
+    type: AiProviderType
+): Map<string, CatalogModelMetadata> {
+    const metadata = new Map<string, CatalogModelMetadata>();
+    for (const entry of listCatalogEntriesForType(type)) {
+        metadata.set(entry.model, {
+            maxInputTokens: entry.limits.input,
+            maxOutputTokens: entry.limits.output,
+            capabilities: entry.capabilities
+        });
+    }
+    return metadata;
+}
+
 function buildDiscoveryProviders(
     attachments: ProviderAttachment[],
     resourceListsByProvider: Map<number, ProviderPatternLists>,
@@ -133,9 +148,9 @@ function buildDiscoveryProviders(
             providerId,
             allows,
             blocks,
-            catalogModelIds: listCatalogModelsForType(
+            catalog: catalogMetadataForType(
                 attachment.provider.type as AiProviderType
-            ).map((entry) => entry.model),
+            ),
             configured: lists.configuredByProvider.get(providerId) ?? new Map()
         };
     });

@@ -161,11 +161,34 @@ enumerable. Provider types with no catalog mapping (`openRouter`,
 allow on those types lists nothing - **add exact allow entries to make their
 models discoverable.**
 
-Fields the API declares nullable and an allow/block list cannot supply
-(`max_input_tokens`, `max_tokens`, `capabilities`) are returned as `null`.
-`display_name` and `created_at` come from the configured model row when the id
-matches one; otherwise the id doubles as the display name and `created_at` is
-the epoch, which the Models API permits when the release date is unknown.
+### Where each field comes from
+
+Token limits and capability flags can't be derived from an allow/block list.
+They come from the model catalog (`server/lib/aiModelCatalog.ts`), which the
+Fossorial API builds from LiteLLM:
+
+| Field | Source |
+|-------|--------|
+| `max_input_tokens` | catalog `limits.input` |
+| `max_tokens` | catalog `limits.output` |
+| `capabilities` | catalog flags, mapped to the Models API shape by `capabilitiesFromCatalog` |
+| `display_name` | the configured model row's name, else the model id |
+| `created_at` | the configured model row's timestamp, else the epoch |
+
+A model the catalog doesn't know (an exact allow entry for a fine-tune, say)
+reports `null` for all three metadata fields. The Models API declares them
+nullable, so that is a valid answer rather than a broken one.
+
+The catalog's flags are coarser than the Models API describes: it carries a
+single `reasoning` flag with no way to distinguish adaptive from
+`budget_tokens`-style thinking, and nothing at all for batch, citations, code
+execution, PDF input, or context management. Anything it reports as unknown
+(`null`) is surfaced as unsupported rather than invented, so `capabilities`
+understates rather than overstates what a model can do.
+
+The gateway does **not** query the provider's own `/v1/models`. Discovery is
+answered entirely from local state.
+
 Results are ordered newest-first with the id as tie-break, and paginated with
 Anthropic's `limit` / `after_id` / `before_id` semantics (default 20, max
 1000).

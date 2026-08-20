@@ -15,7 +15,7 @@ import { logsDb, db, orgs, aiSessionLog, type AiProvider } from "@server/db";
 import type { InferInsertModel } from "drizzle-orm";
 import logger from "@server/logger";
 import { and, eq, lt } from "drizzle-orm";
-import cache from "#dynamic/lib/cache";
+import cache from "#private/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 import { sanitizeString } from "@server/lib/sanitize";
 import type { AiCapability } from "@server/lib/aiCapabilities";
