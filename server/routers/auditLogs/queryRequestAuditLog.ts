@@ -82,7 +82,7 @@ export const queryAccessAuditLogsQuery = z.strictObject({
         .default("0")
         .transform(Number)
         .pipe(z.int().nonnegative()),
-    ips: z
+    ip: z
         .preprocess((val) => {
             if (val === undefined || val === null || val === "") {
                 return undefined;
@@ -146,7 +146,8 @@ function getWhere(data: Q) {
         data.path ? eq(requestAuditLog.path, data.path) : undefined,
         data.action !== undefined
             ? eq(requestAuditLog.action, data.action)
-            : undefined
+            : undefined,
+        data.ip ? inArray(requestAuditLog.ip, data.ip) : undefined
     );
 }
 

@@ -42,7 +42,7 @@ import {
     queryOptions
 } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
-import z, { meta } from "zod";
+import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
 import type { ListOrgLabelsResponse } from "@server/routers/labels/types";
@@ -782,7 +782,8 @@ export const httpLogsFiltersSchema = z.object({
     actor: z.string().optional().catch(undefined),
     method: z.string().optional().catch(undefined),
     reason: z.string().optional().catch(undefined),
-    path: z.string().optional().catch(undefined)
+    path: z.string().optional().catch(undefined),
+    ips: z.array(z.string()).optional().catch(undefined)
 });
 
 export type HttpLogFilters = z.output<typeof httpLogsFiltersSchema>;
