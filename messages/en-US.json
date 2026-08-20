@@ -1785,6 +1785,7 @@
     "aiClientConfigDescriptionClaude": "Anthropic's agentic coding tool for the terminal.",
     "aiClientConfigDescriptionCodex": "OpenAI's agentic coding tool for the terminal.",
     "aiClientConfigDescriptionOpencode": "Open source terminal coding agent.",
+    "aiClientConfigDescriptionGemini": "Google's agentic coding tool for the terminal.",
     "aiClientConfigSetup": "Setup",
     "aiClientConfigTabCli": "Automatic (CLI)",
     "aiClientConfigTabManual": "Manual Configuration",

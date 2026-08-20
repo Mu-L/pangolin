@@ -1,10 +1,16 @@
-export const AI_CLIENT_IDS = ["claude", "codex", "opencode"] as const;
+export const AI_CLIENT_IDS = [
+    "claude",
+    "codex",
+    "opencode",
+    "gemini"
+] as const;
 export type AiClientId = (typeof AI_CLIENT_IDS)[number];
 
 export const AI_CLIENT_NAMES: Record<AiClientId, string> = {
     claude: "Claude Code",
     codex: "Codex",
-    opencode: "OpenCode"
+    opencode: "OpenCode",
+    gemini: "Gemini CLI"
 };
 
 /** Auth as supplied by callers: the real key isn't fetched yet. */
@@ -74,7 +80,7 @@ export function aiConfigBlockHasPlaceholders(block: AiConfigBlock): boolean {
 }
 
 function buildCli(
-    clientArg: "claude" | "codex" | "opencode",
+    clientArg: "claude" | "codex" | "opencode" | "gemini",
     auth: AiClientAuth,
     resourceNiceId?: string
 ): AiConfigBlock[] {
@@ -351,6 +357,49 @@ function buildOpencodeGuide(
     };
 }
 
+function buildGeminiGuide(
+    endpoint: string,
+    auth: AiClientAuth,
+    resourceNiceId?: string
+): AiClientGuide {
+    const defaultEnv = block(
+        "gemini-default-env",
+        "~/.gemini/.env",
+        (key) =>
+            [
+                `GOOGLE_GEMINI_BASE_URL=${endpoint}`,
+                `GEMINI_API_KEY=${auth.mode === "keyed" ? key : "none"}`
+            ].join("\n"),
+        auth
+    );
+
+    const defaultShell = block(
+        "gemini-default-shell",
+        "Shell",
+        (key) =>
+            [
+                `export GOOGLE_GEMINI_BASE_URL=${endpoint}`,
+                `export GEMINI_API_KEY=${auth.mode === "keyed" ? key : "none"}`,
+                "gemini"
+            ].join("\n"),
+        auth
+    );
+
+    return {
+        id: "gemini",
+        name: AI_CLIENT_NAMES.gemini,
+        cli: buildCli("gemini", auth, resourceNiceId),
+        presets: [
+            {
+                id: "default",
+                label: "Default",
+                relation: "options",
+                blocks: [defaultEnv, defaultShell]
+            }
+        ]
+    };
+}
+
 const GUIDE_BUILDERS: Record<
     AiClientId,
     (
@@ -361,7 +410,8 @@ const GUIDE_BUILDERS: Record<
 > = {
     claude: buildClaudeGuide,
     codex: buildCodexGuide,
-    opencode: buildOpencodeGuide
+    opencode: buildOpencodeGuide,
+    gemini: buildGeminiGuide
 };
 
 export function buildAiClientGuide(
