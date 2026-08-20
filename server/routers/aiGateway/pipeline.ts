@@ -137,7 +137,7 @@ async function findClientByIp(ip: string): Promise<CachedClient> {
     return result;
 }
 
-type ProviderAttachment = {
+export type ProviderAttachment = {
     provider: AiProvider;
     accessMode: AccessMode;
 };
@@ -149,12 +149,12 @@ type ResourceModelPattern = {
     enabled: boolean;
 };
 
-type ProviderPatternLists = {
+export type ProviderPatternLists = {
     allows: string[];
     blocks: string[];
 };
 
-type ResolvedTarget = {
+export type ResolvedTarget = {
     resourceId: number | null;
     siteResourceId: number | null;
     orgId: string | null;
@@ -362,7 +362,7 @@ function getRequestHeader(req: Request, name: string): string | undefined {
 // request came through, per the trust middleware's resource-type header -
 // falls back to checking both (public preferred on overlap) only when that
 // header is absent, e.g. a request that reached the gateway outside Traefik.
-async function resolveTarget(
+export async function resolveTarget(
     host: string,
     resourceType: AiGatewayResourceType | null
 ): Promise<ResolvedTarget | null> {
@@ -812,6 +812,17 @@ export function recordAiGatewayCompletion(args: {
     });
 }
 
+// p-host is only used sometimes when overriding the host header for some
+// middleware proxy. Shared with the model-discovery endpoint so both resolve
+// the inference resource off the same hostname.
+export function resolveGatewayHost(req: Request): string {
+    return (
+        (req.headers["p-host"] as string | undefined) ||
+        req.headers.host ||
+        ""
+    ).split(":")[0];
+}
+
 export async function handleAiGatewayProxy(
     req: Request,
     res: Response,
@@ -820,11 +831,7 @@ export async function handleAiGatewayProxy(
     try {
         const def = AI_CAPABILITY_DEFS[capability];
 
-        const host = (
-            (req.headers["p-host"] as string | undefined) || // p-host is only used sometimes when overriding the host header for some middleware proxy
-            req.headers.host ||
-            ""
-        ).split(":")[0];
+        const host = resolveGatewayHost(req);
         if (!host) {
             return res
                 .status(HttpCode.BAD_REQUEST)

@@ -43,7 +43,7 @@ export const AI_PROVIDER_DEFAULTS: Record<
     anthropic: {
         upstreamUrl: "https://api.anthropic.com",
         authType: "x-api-key",
-        capabilities: ["anthropic_messages"]
+        capabilities: ["anthropic_messages", "anthropic_models"]
     },
     googleGemini: {
         upstreamUrl: "https://generativelanguage.googleapis.com",
@@ -63,7 +63,12 @@ export const AI_PROVIDER_DEFAULTS: Record<
     microsoftFoundry: {
         upstreamUrl: null,
         authType: "bearer",
-        capabilities: ["openai_chat", "openai_responses", "anthropic_messages"]
+        capabilities: [
+            "openai_chat",
+            "openai_responses",
+            "anthropic_messages",
+            "anthropic_models"
+        ]
     },
     openRouter: {
         upstreamUrl: "https://openrouter.ai/api/v1",

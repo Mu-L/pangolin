@@ -1,19 +1,37 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import {
     AI_CAPABILITY_DEFS,
     type AiCapability
 } from "@server/lib/aiCapabilities";
 import { handleAiGatewayProxy } from "@server/routers/aiGateway/pipeline";
+import { handleAnthropicModels } from "@server/routers/aiGateway/anthropicModels";
+
+type CapabilityHandler = (
+    req: Request,
+    res: Response,
+    capability: AiCapability
+) => Promise<any>;
+
+// Capabilities the gateway answers itself instead of proxying upstream.
+// Everything else goes through the inference pipeline.
+const LOCAL_HANDLERS: Partial<Record<AiCapability, CapabilityHandler>> = {
+    anthropic_models: handleAnthropicModels
+};
 
 export function createAiGatewayRouter() {
     const router = Router();
 
     for (const def of Object.values(AI_CAPABILITY_DEFS)) {
         const capability = def.id as AiCapability;
+        const handler = LOCAL_HANDLERS[capability] ?? handleAiGatewayProxy;
         for (const route of def.routes) {
-            router.post(route.path, (req, res) =>
-                handleAiGatewayProxy(req, res, capability)
-            );
+            const bind = (req: Request, res: Response) =>
+                handler(req, res, capability);
+            if (route.method === "GET") {
+                router.get(route.path, bind);
+            } else {
+                router.post(route.path, bind);
+            }
         }
     }
 

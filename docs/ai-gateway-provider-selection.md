@@ -7,6 +7,8 @@ inference resource has more than one AI provider.
 
 - Route → capability binding: `server/routers/aiGateway/createAiGatewayRouter.ts`
 - Request pipeline: `server/routers/aiGateway/pipeline.ts` (`selectProvider`)
+- Model discovery: `server/routers/aiGateway/anthropicModels.ts` and
+  `server/lib/aiModelDiscovery.ts`
 - Tie-break scoring: `server/lib/aiProviderSelection.ts`
 - Allow/block matching: `server/lib/aiModelKeyMatch.ts`
 - Model catalog: `server/lib/aiModelCatalog.ts`
@@ -39,6 +41,7 @@ The incoming path selects a capability before any provider logic runs.
 | `POST /v1/chat/completions` | `openai_chat` |
 | `POST /v1/responses` | `openai_responses` |
 | `POST /v1/messages` | `anthropic_messages` |
+| `GET /v1/models`, `GET /v1/models/{id}` | `anthropic_models` |
 | Gemini / Vertex / Bedrock routes | their respective capability ids |
 
 Only attached providers that advertise that capability stay in the candidate
@@ -47,10 +50,10 @@ set. Default capabilities do not overlap for native OpenAI vs Anthropic:
 | Provider type | Default capabilities |
 |---------------|----------------------|
 | `openai` | `openai_chat`, `openai_responses` |
-| `anthropic` | `anthropic_messages` |
+| `anthropic` | `anthropic_messages`, `anthropic_models` |
 | `openRouter` | `openai_chat` |
 | `vercelAiGateway` | `openai_chat`, `openai_responses` |
-| `microsoftFoundry` | `openai_chat`, `openai_responses`, `anthropic_messages` |
+| `microsoftFoundry` | `openai_chat`, `openai_responses`, `anthropic_messages`, `anthropic_models` |
 | `custom` | whatever was configured |
 
 ### 2. Allow / Block Lists
@@ -127,6 +130,45 @@ Model "<id>" is ambiguous across multiple AI providers on this resource
 
 Typical remaining ties: two OpenAI-type providers both with `*`, or two
 customs advertising the same capability for an unknown model.
+
+## Model Discovery Is Not Selection
+
+`GET /v1/models` and `GET /v1/models/{id}` (`anthropic_models`) skip steps 3-6
+entirely. There is no requested model to disambiguate on, so the gateway does
+not pick one provider - it returns the **union** of what every attached
+provider advertising `anthropic_models` would accept, deduplicated by model id
+(lowest `providerId` wins a collision).
+
+Discovery is answered from the gateway's own view of the allow/block lists,
+never proxied upstream. Providers that expose no `/v1/models` endpoint of their
+own still get a working listing, and a model an allow/block list forbids is
+never advertised.
+
+Each provider's candidate ids come from two places:
+
+| Source | Contributes |
+|--------|-------------|
+| Exact (non-wildcard) allow entries | the model key itself |
+| The model catalog for the provider's type | every catalog id matching an allow pattern |
+
+Both sources are then filtered through the same
+`isAllowedByLists(id, allows, blocks)` check step 2 applies, so a block pattern
+hides a model from discovery exactly as it would reject it at request time.
+
+The catalog source is what makes a wildcard allow such as `claude-*`
+enumerable. Provider types with no catalog mapping (`openRouter`,
+`vercelAiGateway`, `custom`) have nothing to expand against, so a wildcard
+allow on those types lists nothing - **add exact allow entries to make their
+models discoverable.**
+
+Fields the API declares nullable and an allow/block list cannot supply
+(`max_input_tokens`, `max_tokens`, `capabilities`) are returned as `null`.
+`display_name` and `created_at` come from the configured model row when the id
+matches one; otherwise the id doubles as the display name and `created_at` is
+the epoch, which the Models API permits when the release date is unknown.
+Results are ordered newest-first with the id as tie-break, and paginated with
+Anthropic's `limit` / `after_id` / `before_id` semantics (default 20, max
+1000).
 
 ## Examples
 

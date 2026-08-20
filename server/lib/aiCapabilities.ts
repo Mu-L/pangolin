@@ -4,7 +4,7 @@ import { AI_CAPABILITIES, type AiCapability } from "@app/lib/aiCapabilities";
 export { AI_CAPABILITIES, type AiCapability };
 
 export type AiCapabilityRoute = {
-    method: "POST";
+    method: "GET" | "POST";
     path: string;
 };
 
@@ -134,6 +134,21 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
             resolveUpstreamUrl: (base, req) =>
                 joinUpstreamUrl(base, pathFromRequest(req)),
             isStreaming: isBodyOrSseStreaming
+        },
+        anthropic_models: {
+            id: "anthropic_models",
+            protocolFamily: "anthropic",
+            routes: [
+                { method: "GET", path: "/v1/models" },
+                { method: "GET", path: "/v1/models/:model" }
+            ],
+            extractModel: paramModel,
+            resolveUpstreamUrl: (base, req) =>
+                joinUpstreamUrl(base, pathFromRequest(req)),
+            // Model listings are answered from the gateway's own view of the
+            // provider allow/block lists rather than proxied upstream, so
+            // there is never a stream to detect.
+            isStreaming: () => false
         },
         gemini_generate_content: {
             id: "gemini_generate_content",
