@@ -49,8 +49,15 @@ export type AiClientGuide = {
     presets: AiConfigPreset[];
 };
 
+/**
+ * Placeholder key for keyless (private/site) resources. Those resources need
+ * no credential, but most clients refuse to start without *some* key set, so
+ * they get an obviously-inert one rather than an omitted field.
+ */
+const KEYLESS_PLACEHOLDER_KEY = "none";
+
 function keyValue(auth: AiClientAuth): string {
-    return auth.mode === "keyed" ? auth.key : "-";
+    return auth.mode === "keyed" ? auth.key : KEYLESS_PLACEHOLDER_KEY;
 }
 
 function block(
@@ -132,7 +139,7 @@ function buildClaudeGuide(
         (key) =>
             [
                 `export ANTHROPIC_BASE_URL=${endpoint}`,
-                `export ANTHROPIC_API_KEY=${auth.mode === "keyed" ? key : "none"}`,
+                `export ANTHROPIC_API_KEY=${key}`,
                 "claude"
             ].join("\n"),
         auth
@@ -334,7 +341,7 @@ function buildOpencodeGuide(
         "More providers",
         () =>
             "OpenCode configures providers individually, so Anthropic and OpenAI are just the ones set up above. " +
-            'You can point any other OpenCode-supported provider (e.g. "openrouter", "google", "groq") at this gateway the same way: add a matching entry under "provider" in opencode.json, and under auth.json if it needs an API key.',
+            'You can point any other OpenCode-supported provider (e.g. "openrouter", "google", "groq") at this gateway the same way: add a matching entry under "provider" in opencode.json, and a matching key in auth.json.',
         auth,
         "steps"
     );
@@ -348,10 +355,10 @@ function buildOpencodeGuide(
                 id: "default",
                 label: "Default",
                 relation: "steps",
-                blocks:
-                    auth.mode === "keyed"
-                        ? [config, authFile, moreProviders]
-                        : [config, moreProviders]
+                // auth.json is written even for keyless resources: OpenCode
+                // refuses to start a provider with no key at all ("OpenAI API
+                // key is missing"), so it gets the inert placeholder instead.
+                blocks: [config, authFile, moreProviders]
             }
         ]
     };
@@ -368,7 +375,7 @@ function buildGeminiGuide(
         (key) =>
             [
                 `GOOGLE_GEMINI_BASE_URL=${endpoint}`,
-                `GEMINI_API_KEY=${auth.mode === "keyed" ? key : "none"}`
+                `GEMINI_API_KEY=${key}`
             ].join("\n"),
         auth
     );
@@ -379,7 +386,7 @@ function buildGeminiGuide(
         (key) =>
             [
                 `export GOOGLE_GEMINI_BASE_URL=${endpoint}`,
-                `export GEMINI_API_KEY=${auth.mode === "keyed" ? key : "none"}`,
+                `export GEMINI_API_KEY=${key}`,
                 "gemini"
             ].join("\n"),
         auth
