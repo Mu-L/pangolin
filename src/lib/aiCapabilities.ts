@@ -2,7 +2,7 @@ export const AI_CAPABILITIES = [
     "openai_chat",
     "openai_responses",
     "anthropic_messages",
-    "anthropic_models",
+    "v1_models",
     "gemini_generate_content",
     "bedrock_model_invoke",
     "google_generate_content",

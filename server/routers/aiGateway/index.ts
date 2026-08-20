@@ -1,3 +1,3 @@
 export { handleAiGatewayProxy } from "./pipeline";
-export { handleAnthropicModels } from "./anthropicModels";
+export { handleV1Models } from "./v1Models";
 export { createAiGatewayRouter } from "./createAiGatewayRouter";

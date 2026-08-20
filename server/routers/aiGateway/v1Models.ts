@@ -35,7 +35,7 @@ import {
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 
-const CAPABILITY: AiCapability = "anthropic_models";
+const CAPABILITY: AiCapability = "v1_models";
 
 const querySchema = z.object({
     limit: z.coerce.number().int().min(1).max(MODEL_PAGE_MAX_LIMIT).optional(),
@@ -163,7 +163,7 @@ function buildDiscoveryProviders(
  * list at all or would expose models the resource's allow/block lists forbid,
  * so the response is built from the same effective lists that gate inference.
  */
-export async function handleAnthropicModels(
+export async function handleV1Models(
     req: Request,
     res: Response
 ): Promise<any> {

@@ -33,7 +33,7 @@ const capabilityLabels: Record<string, string> = {
     openai_chat: "OpenAI Chat Completions",
     openai_responses: "OpenAI Responses",
     anthropic_messages: "Anthropic Messages",
-    anthropic_models: "Anthropic Models",
+    v1_models: "Models List",
     gemini_generate_content: "Gemini",
     google_generate_content: "Vertex AI (Generate Content)",
     google_raw_predict: "Vertex AI (Raw Predict)",

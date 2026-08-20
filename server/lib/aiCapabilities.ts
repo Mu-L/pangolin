@@ -135,8 +135,8 @@ export const AI_CAPABILITY_DEFS: Record<AiCapability, AiCapabilityDefinition> =
                 joinUpstreamUrl(base, pathFromRequest(req)),
             isStreaming: isBodyOrSseStreaming
         },
-        anthropic_models: {
-            id: "anthropic_models",
+        v1_models: {
+            id: "v1_models",
             protocolFamily: "anthropic",
             routes: [
                 { method: "GET", path: "/v1/models" },

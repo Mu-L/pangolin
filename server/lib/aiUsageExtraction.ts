@@ -336,7 +336,7 @@ const EXTRACTORS: Record<
     openai_responses: extractOpenAiResponses,
     anthropic_messages: extractAnthropicMessages,
     // Model discovery never runs a model, so there are no tokens to bill.
-    anthropic_models: () => null,
+    v1_models: () => null,
     gemini_generate_content: extractGoogleGenerateContent,
     google_generate_content: extractGoogleGenerateContent,
     // rawPredict is a passthrough to whatever the underlying publisher

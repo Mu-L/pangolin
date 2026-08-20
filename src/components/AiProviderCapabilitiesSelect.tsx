@@ -20,7 +20,7 @@ const CAPABILITY_LABEL_KEYS: Record<AiCapability, string> = {
     openai_chat: "aiCapabilityOpenaiChat",
     openai_responses: "aiCapabilityOpenaiResponses",
     anthropic_messages: "aiCapabilityAnthropicMessages",
-    anthropic_models: "aiCapabilityAnthropicModels",
+    v1_models: "aiCapabilityV1Models",
     gemini_generate_content: "aiCapabilityGeminiGenerateContent",
     bedrock_model_invoke: "aiCapabilityBedrockModelInvoke",
     google_generate_content: "aiCapabilityGoogleGenerateContent",

@@ -472,7 +472,7 @@ const REQUEST_NORMALIZERS: Record<
     openai_responses: normalizeOpenAiResponsesRequest,
     anthropic_messages: normalizeAnthropicRequest,
     // Model discovery carries no transcript to normalize.
-    anthropic_models: () => null,
+    v1_models: () => null,
     gemini_generate_content: normalizeGeminiRequest,
     google_generate_content: normalizeGeminiRequest,
     google_raw_predict: normalizeBestEffortRequest,
@@ -487,7 +487,7 @@ const RESPONSE_NORMALIZERS: Record<
     openai_chat: normalizeOpenAiChatResponse,
     openai_responses: normalizeOpenAiResponsesResponse,
     anthropic_messages: normalizeAnthropicResponse,
-    anthropic_models: () => null,
+    v1_models: () => null,
     gemini_generate_content: normalizeGeminiResponse,
     google_generate_content: normalizeGeminiResponse,
     google_raw_predict: normalizeGoogleRawPredictResponse,

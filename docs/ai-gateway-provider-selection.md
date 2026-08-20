@@ -7,7 +7,7 @@ inference resource has more than one AI provider.
 
 - Route → capability binding: `server/routers/aiGateway/createAiGatewayRouter.ts`
 - Request pipeline: `server/routers/aiGateway/pipeline.ts` (`selectProvider`)
-- Model discovery: `server/routers/aiGateway/anthropicModels.ts` and
+- Model discovery: `server/routers/aiGateway/v1Models.ts` and
   `server/lib/aiModelDiscovery.ts`
 - Tie-break scoring: `server/lib/aiProviderSelection.ts`
 - Allow/block matching: `server/lib/aiModelKeyMatch.ts`
@@ -41,7 +41,7 @@ The incoming path selects a capability before any provider logic runs.
 | `POST /v1/chat/completions` | `openai_chat` |
 | `POST /v1/responses` | `openai_responses` |
 | `POST /v1/messages` | `anthropic_messages` |
-| `GET /v1/models`, `GET /v1/models/{id}` | `anthropic_models` |
+| `GET /v1/models`, `GET /v1/models/{id}` | `v1_models` |
 | Gemini / Vertex / Bedrock routes | their respective capability ids |
 
 Only attached providers that advertise that capability stay in the candidate
@@ -50,10 +50,10 @@ set. Default capabilities do not overlap for native OpenAI vs Anthropic:
 | Provider type | Default capabilities |
 |---------------|----------------------|
 | `openai` | `openai_chat`, `openai_responses` |
-| `anthropic` | `anthropic_messages`, `anthropic_models` |
+| `anthropic` | `anthropic_messages`, `v1_models` |
 | `openRouter` | `openai_chat` |
 | `vercelAiGateway` | `openai_chat`, `openai_responses` |
-| `microsoftFoundry` | `openai_chat`, `openai_responses`, `anthropic_messages`, `anthropic_models` |
+| `microsoftFoundry` | `openai_chat`, `openai_responses`, `anthropic_messages`, `v1_models` |
 | `custom` | whatever was configured |
 
 ### 2. Allow / Block Lists
@@ -133,10 +133,10 @@ customs advertising the same capability for an unknown model.
 
 ## Model Discovery Is Not Selection
 
-`GET /v1/models` and `GET /v1/models/{id}` (`anthropic_models`) skip steps 3-6
+`GET /v1/models` and `GET /v1/models/{id}` (`v1_models`) skip steps 3-6
 entirely. There is no requested model to disambiguate on, so the gateway does
 not pick one provider - it returns the **union** of what every attached
-provider advertising `anthropic_models` would accept, deduplicated by model id
+provider advertising `v1_models` would accept, deduplicated by model id
 (lowest `providerId` wins a collision).
 
 Discovery is answered from the gateway's own view of the allow/block lists,

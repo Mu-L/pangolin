@@ -4,7 +4,7 @@ import {
     type AiCapability
 } from "@server/lib/aiCapabilities";
 import { handleAiGatewayProxy } from "@server/routers/aiGateway/pipeline";
-import { handleAnthropicModels } from "@server/routers/aiGateway/anthropicModels";
+import { handleV1Models } from "@server/routers/aiGateway";
 
 type CapabilityHandler = (
     req: Request,
@@ -15,7 +15,7 @@ type CapabilityHandler = (
 // Capabilities the gateway answers itself instead of proxying upstream.
 // Everything else goes through the inference pipeline.
 const LOCAL_HANDLERS: Partial<Record<AiCapability, CapabilityHandler>> = {
-    anthropic_models: handleAnthropicModels
+    v1_models: handleV1Models
 };
 
 export function createAiGatewayRouter() {

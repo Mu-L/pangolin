@@ -38,12 +38,12 @@ export const AI_PROVIDER_DEFAULTS: Record<
     openai: {
         upstreamUrl: "https://api.openai.com/v1",
         authType: "bearer",
-        capabilities: ["openai_chat", "openai_responses"]
+        capabilities: ["openai_chat", "openai_responses", "v1_models"]
     },
     anthropic: {
         upstreamUrl: "https://api.anthropic.com",
         authType: "x-api-key",
-        capabilities: ["anthropic_messages", "anthropic_models"]
+        capabilities: ["anthropic_messages", "v1_models"]
     },
     googleGemini: {
         upstreamUrl: "https://generativelanguage.googleapis.com",
@@ -67,7 +67,7 @@ export const AI_PROVIDER_DEFAULTS: Record<
             "openai_chat",
             "openai_responses",
             "anthropic_messages",
-            "anthropic_models"
+            "v1_models"
         ]
     },
     openRouter: {
