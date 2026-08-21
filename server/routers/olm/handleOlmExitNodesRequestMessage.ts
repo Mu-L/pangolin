@@ -42,7 +42,8 @@ export const handleOlmExitNodesRequestMessage: MessageHandler = async (
         client.orgId,
         true,
         noCloud || false,
-        olm.clientId
+        olm.clientId,
+        true // don't select remote exit nodes for clients
     ); // filter for only the online ones
 
     let lastExitNodeId = null;

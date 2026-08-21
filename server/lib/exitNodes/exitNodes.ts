@@ -22,7 +22,10 @@ export async function listExitNodes(
     // Accepted for parity with the enterprise implementation (used there for
     // site-label filtering of remote exit nodes). The OSS build has no remote
     // exit nodes, so it is unused here.
-    siteId?: number
+    siteId?: number,
+    // Same as above: accepted for parity, unused since the OSS build has no
+    // remote exit nodes to exclude.
+    noRemote = false
 ) {
     // TODO: pick which nodes to send and ping better than just all of them that are not remote
     const allExitNodes = await db
