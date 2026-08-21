@@ -1,4 +1,7 @@
+import type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
+import { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
 import { build } from "@server/build";
+import { StatusHistoryResponse } from "@server/lib/statusHistory";
 import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type {
@@ -16,15 +19,30 @@ import type {
     ListDomainsResponse
 } from "@server/routers/domain";
 import type { GetDomainResponse } from "@server/routers/domain/getDomain";
+import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
+import type { ListOrgLabelsResponse } from "@server/routers/labels/types";
 import type {
-    GetResourceWhitelistResponse,
+    LauncherResource,
+    ListLauncherGroupsResponse,
+    ListLauncherLabelsResponse,
+    ListLauncherResourcesResponse,
+    ListLauncherScaleResponse,
+    ListLauncherSitesResponse,
+    ListLauncherViewsResponse
+} from "@server/routers/launcher/types";
+import type { GetResourcePolicyResponse } from "@server/routers/policy";
+import type {
     GetResourcePoliciesResponse,
+    GetResourceWhitelistResponse,
     ListResourceNamesResponse,
-    ListResourcesResponse,
     ListResourceRolesResponse,
     ListResourceRulesResponse,
+    ListResourcesResponse,
     ListResourceUsersResponse
 } from "@server/routers/resource";
+import type { GetResourceResponse } from "@server/routers/resource/getResource";
+import type { GetResourceAuthInfoResponse } from "@server/routers/resource/getResourceAuthInfo";
+import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
@@ -33,6 +51,7 @@ import type {
     ListSiteResourceRolesResponse,
     ListSiteResourceUsersResponse
 } from "@server/routers/siteResource";
+import type { GetSiteResourceResponse } from "@server/routers/siteResource/getSiteResource";
 import type { ListTargetsResponse } from "@server/routers/target";
 import type { ListUsersResponse } from "@server/routers/user";
 import type ResponseT from "@server/types/Response";
@@ -45,30 +64,9 @@ import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
-import type { ListOrgLabelsResponse } from "@server/routers/labels/types";
-import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
-import { StatusHistoryResponse } from "@server/lib/statusHistory";
-import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
-import type { GetResourcePolicyResponse } from "@server/routers/policy";
-import type {
-    ListLauncherGroupsResponse,
-    ListLauncherLabelsResponse,
-    ListLauncherResourcesResponse,
-    ListLauncherScaleResponse,
-    ListLauncherSitesResponse,
-    ListLauncherViewsResponse,
-    LauncherListQuery,
-    LauncherResource,
-    LauncherViewConfig
-} from "@server/routers/launcher/types";
-import type { GetResourceResponse } from "@server/routers/resource/getResource";
-import type { GetResourceAuthInfoResponse } from "@server/routers/resource/getResourceAuthInfo";
-import type { GetSiteResourceResponse } from "@server/routers/siteResource/getSiteResource";
-import type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
-import { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
 
-export type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
 export { buildLauncherSearchParams } from "@app/lib/launcherSearchParams";
+export type { LauncherQueryFilters } from "@app/lib/launcherSearchParams";
 
 export type ProductUpdate = {
     link: string | null;
@@ -783,7 +781,7 @@ export const httpLogsFiltersSchema = z.object({
     method: z.string().optional().catch(undefined),
     reason: z.string().optional().catch(undefined),
     path: z.string().optional().catch(undefined),
-    ips: z.array(z.string()).optional().catch(undefined)
+    ip: z.array(z.string()).optional().catch(undefined)
 });
 
 export type HttpLogFilters = z.output<typeof httpLogsFiltersSchema>;
@@ -900,10 +898,13 @@ export const logQueries = {
         queryOptions({
             queryKey: ["REQUEST_LOGS", orgId, "ALL", filters] as const,
             queryFn: async ({ signal, meta }) => {
-                const { page, pageSize, ...rest } = filters;
+                const { page, pageSize, ip, ...rest } = filters;
+                const sp = new URLSearchParams(
+                    (ip ?? []).map((ip) => ["ip", ip])
+                );
                 const res = await meta!.api.get<
                     AxiosResponse<QueryRequestAuditLogResponse>
-                >(`/org/${orgId}/logs/request`, {
+                >(`/org/${orgId}/logs/request?${sp.toString()}`, {
                     params: {
                         ...rest,
                         limit: pageSize,

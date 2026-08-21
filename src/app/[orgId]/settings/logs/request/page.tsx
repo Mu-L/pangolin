@@ -344,6 +344,8 @@ export default function GeneralPage() {
                         }))}
                         label={t("ip")}
                         allowArbitraryValues
+                        searchPlaceholder={t("ipFilterSearchPlaceholder")}
+                        emptyMessage={t("ipFilterEmptyMessage")}
                         selectedValues={filters.ip ?? []}
                         onSelectedValuesChange={(value) =>
                             handleFilterChange("ip", value)

@@ -80,7 +80,7 @@ export function ColumnMultiFilterButton({
                 selectedValues[0]
             );
         }
-        return t("accessUsersRoleFilterCount", {
+        return t("multiSelectFilterCount", {
             count: selectedValues.length
         });
     }, [selectedValues, options, t]);
