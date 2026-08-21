@@ -64,7 +64,7 @@ registry.registerPath({
 
 registry.registerPath({
     method: "get",
-    path: "/private-resource/{siteResourceId}/roles",
+    path: "/private-resource/{resourceId}/roles",
     description: "List all roles for a site resource.",
     tags: [OpenAPITags.PrivateResource, OpenAPITags.Role],
     request: {

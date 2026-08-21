@@ -63,7 +63,7 @@ registry.registerPath({
 
 registry.registerPath({
     method: "get",
-    path: "/private-resource/{siteResourceId}/clients",
+    path: "/private-resource/{resourceId}/clients",
     description: "List all clients for a site resource.",
     tags: [OpenAPITags.PrivateResource, OpenAPITags.Client],
     request: {
