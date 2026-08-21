@@ -1891,6 +1891,7 @@
     "aiProviderRoutingModeTargetDescription": "Route through targets on your sites",
     "aiProviderRoutingModeTargetNote": "After creating this provider, configure site targets on the Network Settings tab.",
     "aiProviderTargetNoOne": "This provider doesn't have any targets. Add a target to route requests through your sites.",
+    "aiProviderRemoteNodeTargetsWarning": "Sites connected to remote nodes are inaccessable to be routed to on AI Gateway providers.",
     "aiProviderSkipTlsVerification": "Skip TLS Verification",
     "aiProviderSkipTlsVerificationDescription": "Disable TLS certificate verification for the upstream connection",
     "aiProviderBudget": "Budget",

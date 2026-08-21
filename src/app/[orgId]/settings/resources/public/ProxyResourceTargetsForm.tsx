@@ -113,6 +113,8 @@ type ProxyResourceTargetsFormProps = {
     hideSaveButton?: boolean;
     /** Hide the advanced mode toggle and always use non-advanced mode (e.g. AI providers) */
     disableAdvancedMode?: boolean;
+    /** Targets picker is for an AI provider (changes which routing warnings are shown) */
+    isAiProvider?: boolean;
 };
 
 export const ProxyResourceTargetsForm = forwardRef<
@@ -131,7 +133,8 @@ export const ProxyResourceTargetsForm = forwardRef<
         emptyMessage,
         embedded = false,
         hideSaveButton = false,
-        disableAdvancedMode = false
+        disableAdvancedMode = false,
+        isAiProvider = false
     },
     ref
 ) {
@@ -257,6 +260,14 @@ export const ProxyResourceTargetsForm = forwardRef<
         orgQueries.sites({
             orgId
         })
+    );
+
+    const { data: remoteExitNodes = [] } = useQuery({
+        ...orgQueries.remoteExitNodes({ orgId }),
+        enabled: build === "saas" && isAiProvider
+    });
+    const hasRemoteExitNodes = remoteExitNodes.some(
+        (node) => node.exitNodeId !== null
     );
 
     const updateTarget = useCallback(
@@ -972,6 +983,7 @@ export const ProxyResourceTargetsForm = forwardRef<
                 </div>
             )}
             {build === "saas" &&
+                !isAiProvider &&
                 targets.length > 1 &&
                 new Set(targets.map((t) => t.siteId)).size > 1 && (
                     <p className="text-sm text-muted-foreground mt-3">
@@ -988,6 +1000,11 @@ export const ProxyResourceTargetsForm = forwardRef<
                         .
                     </p>
                 )}
+            {build === "saas" && isAiProvider && hasRemoteExitNodes && (
+                <p className="text-sm text-muted-foreground mt-3">
+                    {t("aiProviderRemoteNodeTargetsWarning")}
+                </p>
+            )}
         </>
     );
 

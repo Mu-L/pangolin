@@ -59,6 +59,7 @@ import type {
 import type { GetResourceResponse } from "@server/routers/resource/getResource";
 import type { GetResourceAuthInfoResponse } from "@server/routers/resource/getResourceAuthInfo";
 import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
+import type { ListRemoteExitNodesResponse } from "@server/routers/remoteExitNode/types";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
@@ -327,6 +328,17 @@ export const orgQueries = {
                     AxiosResponse<ListSitesResponse>
                 >(`/org/${orgId}/sites?${sp.toString()}`, { signal });
                 return res.data.data.sites;
+            }
+        }),
+
+    remoteExitNodes: ({ orgId }: { orgId: string }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "REMOTE_EXIT_NODES"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListRemoteExitNodesResponse>
+                >(`/org/${orgId}/remote-exit-nodes`, { signal });
+                return res.data.data.remoteExitNodes;
             }
         }),
 

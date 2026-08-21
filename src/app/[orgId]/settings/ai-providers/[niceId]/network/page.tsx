@@ -345,6 +345,7 @@ export default function AiProviderNetworkPage() {
                                     ref={targetsFormRef}
                                     orgId={orgId}
                                     isHttp
+                                    isAiProvider
                                     providerId={provider.providerId}
                                     initialTargets={
                                         isTargetModeSaved ? remoteTargets : []
