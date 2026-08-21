@@ -807,7 +807,8 @@ export const accessLogsFiltersSchema = z.object({
     action: z.string().optional().catch(undefined),
     location: z.string().optional().catch(undefined),
     actor: z.string().optional().catch(undefined),
-    type: z.string().optional().catch(undefined)
+    type: z.string().optional().catch(undefined),
+    ip: z.array(z.string()).optional().catch(undefined)
 });
 
 export type AccessLogFilters = z.output<typeof accessLogsFiltersSchema>;
@@ -932,10 +933,13 @@ export const logQueries = {
         queryOptions({
             queryKey: ["ACCESS_LOGS", orgId, "ALL", filters] as const,
             queryFn: async ({ signal, meta }) => {
-                const { page, pageSize, ...rest } = filters;
+                const { page, pageSize, ip, ...rest } = filters;
+                const sp = new URLSearchParams(
+                    (ip ?? []).map((ip) => ["ip", ip])
+                );
                 const res = await meta!.api.get<
                     AxiosResponse<QueryAccessAuditLogResponse>
-                >(`/org/${orgId}/logs/access`, {
+                >(`/org/${orgId}/logs/access?${sp.toString()}`, {
                     params: {
                         ...rest,
                         limit: pageSize,

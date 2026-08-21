@@ -195,6 +195,7 @@ export default function GeneralPage() {
     const exportData = async () => {
         try {
             // Prepare query params for export
+            const { ip, ...restFilters } = filters;
             const params: any = {
                 timeStart: dateRange.startDate?.date
                     ? new Date(dateRange.startDate.date).toISOString()
@@ -202,11 +203,15 @@ export default function GeneralPage() {
                 timeEnd: dateRange.endDate?.date
                     ? new Date(dateRange.endDate.date).toISOString()
                     : undefined,
-                ...filters
+                ...restFilters
             };
 
+            // axios serializes arrays as `ip[]=…`, which express's query
+            // parser does not read back as `ip`, so pass them in the URL
+            const sp = new URLSearchParams((ip ?? []).map((ip) => ["ip", ip]));
+
             const response = await api.get(
-                `/org/${orgId}/logs/request/export`,
+                `/org/${orgId}/logs/request/export?${sp.toString()}`,
                 {
                     responseType: "blob",
                     params
