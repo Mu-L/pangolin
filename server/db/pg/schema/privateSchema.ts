@@ -468,6 +468,9 @@ export const eventStreamingDestinations = pgTable(
         sendRequestLogs: boolean("sendRequestLogs").notNull().default(false),
         sendActionLogs: boolean("sendActionLogs").notNull().default(false),
         sendAccessLogs: boolean("sendAccessLogs").notNull().default(false),
+        sendAISessionLogs: boolean("sendAISessionLogs")
+            .notNull()
+            .default(false),
         type: varchar("type", { length: 50 }).notNull(), // e.g. "http", "kafka", etc.
         config: text("config").notNull(), // JSON string with the configuration for the destination
         enabled: boolean("enabled").notNull().default(true),
