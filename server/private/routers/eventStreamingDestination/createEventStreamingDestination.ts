@@ -52,7 +52,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/event-streaming-destination",
     description: "Create an event streaming destination for a specific organization.",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.EventStreamingDestination],
     request: {
         params: paramsSchema,
         body: {

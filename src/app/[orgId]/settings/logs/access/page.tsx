@@ -20,6 +20,8 @@ import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHr
 import axios from "axios";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import LogRetentionWarning from "@app/components/LogRetentionWarning";
+import { useOrgContext } from "@app/hooks/useOrgContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { logQueries } from "@app/lib/queries";
@@ -33,6 +35,7 @@ export default function GeneralPage() {
     const t = useTranslations();
     const { orgId } = useParams();
 
+    const { org } = useOrgContext();
     const { isPaidUser } = usePaidStatus();
 
     const [isExporting, startTransition] = useTransition();
@@ -150,6 +153,23 @@ export default function GeneralPage() {
 
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage);
+    };
+
+    const handleRefresh = () => {
+        // When the end date has no explicit time, it represents an
+        // open-ended "up to now" upper bound. Since dateRange is only
+        // recomputed on user interaction, that upper bound otherwise stays
+        // frozen at whenever the page first loaded, so refreshing would
+        // never surface logs created since then. Bump it to the current
+        // time so the query key changes and refetches the latest window.
+        if (dateRange.endDate?.date && !dateRange.endDate.time) {
+            setDateRange((prev) => ({
+                ...prev,
+                endDate: { date: new Date() }
+            }));
+        } else {
+            refetch();
+        }
     };
 
     const handlePageSizeChange = (newPageSize: number) => {
@@ -308,7 +328,14 @@ export default function GeneralPage() {
                         }
                     />
                 </span>
-            )
+            ),
+            cell: ({ row }) => {
+                return row.original.ip ? (
+                    row.original.ip
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                );
+            }
         },
         {
             accessorKey: "location",
@@ -371,6 +398,14 @@ export default function GeneralPage() {
                 );
             },
             cell: ({ row }) => {
+                if (
+                    !row.original.resourceNiceId ||
+                    !row.original.resourceName
+                ) {
+                    return (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    );
+                }
                 return (
                     <Link
                         href={
@@ -420,14 +455,19 @@ export default function GeneralPage() {
                 );
             },
             cell: ({ row }) => {
-                const typeLabel =
-                    row.original.type === "ssh" ||
-                    row.original.type === "rdp" ||
-                    row.original.type === "vnc"
+                const typeLabel = row.original.type
+                    ? row.original.type === "ssh" ||
+                      row.original.type === "rdp" ||
+                      row.original.type === "vnc"
                         ? row.original.type.toUpperCase()
                         : row.original.type.charAt(0).toUpperCase() +
-                          row.original.type.slice(1);
-                return <span>{typeLabel || "-"}</span>;
+                          row.original.type.slice(1)
+                    : null;
+                return typeLabel ? (
+                    <span>{typeLabel}</span>
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                );
             }
         },
         {
@@ -464,7 +504,9 @@ export default function GeneralPage() {
                                 {row.original.actor}
                             </>
                         ) : (
-                            <>-</>
+                            <span className="text-xs text-muted-foreground">
+                                -
+                            </span>
                         )}
                     </span>
                 );
@@ -475,7 +517,9 @@ export default function GeneralPage() {
             header: () => <span className="px-2">{t("actorId")}</span>,
             cell: ({ row }) => (
                 <span className="flex items-center gap-1">
-                    {row.original.actorId || "-"}
+                    {row.original.actorId || (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    )}
                 </span>
             )
         }
@@ -519,11 +563,18 @@ export default function GeneralPage() {
 
             <PaidFeaturesAlert tiers={tierMatrix.accessLogs} />
 
+            {org.org.settingsLogRetentionDaysAccess === 0 && (
+                <LogRetentionWarning
+                    orgId={orgId as string}
+                    logTypeLabel={t("accessLogs")}
+                />
+            )}
+
             <LogDataTable
                 columns={columns}
                 data={rows}
                 title={t("accessLogs")}
-                onRefresh={() => refetch()}
+                onRefresh={handleRefresh}
                 isRefreshing={isFetching}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}

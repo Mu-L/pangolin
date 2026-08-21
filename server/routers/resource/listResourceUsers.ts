@@ -38,6 +38,32 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/users",
     description: "List all users for a resource.",
+    tags: [OpenAPITags.PublicResourceLegacy],
+    request: {
+        params: listResourceUsersSchema
+    },
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.record(z.string(), z.any()).nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
+});
+
+registry.registerPath({
+    method: "get",
+    path: "/public-resource/{resourceId}/users",
+    description: "List all users for a resource.",
     tags: [OpenAPITags.PublicResource, OpenAPITags.User],
     request: {
         params: listResourceUsersSchema
