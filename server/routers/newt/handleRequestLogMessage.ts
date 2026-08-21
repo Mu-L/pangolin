@@ -13,7 +13,7 @@
 
 import { db } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
-import { sites, Newt, orgs, clients, clientSitesAssociationsCache } from "@server/db";
+import { sites, Newt, orgs, clients, clientSitesAssociationsCache, users } from "@server/db";
 import { and, eq, inArray } from "drizzle-orm";
 import logger from "@server/logger";
 import { inflate } from "zlib";
@@ -124,6 +124,8 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
     // with clientSitesAssociationsCache. The endpoint is the real-world IP:port
     // of the client device and is used for GeoIP lookup.
     const ipToEndpoint = new Map<string, string>();
+    // Build a map from sourceIp → the user associated with the client (if any)
+    const ipToUser = new Map<string, { username: string; userId: string }>();
 
     const cidrSuffix = site.orgSubnet?.includes("/")
         ? site.orgSubnet.substring(site.orgSubnet.indexOf("/"))
@@ -146,7 +148,9 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
             const matchedClients = await db
                 .select({
                     subnet: clients.subnet,
-                    endpoint: clientSitesAssociationsCache.endpoint
+                    endpoint: clientSitesAssociationsCache.endpoint,
+                    username: users.username,
+                    userId: users.userId
                 })
                 .from(clients)
                 .innerJoin(
@@ -159,6 +163,7 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
                         eq(clientSitesAssociationsCache.siteId, newt.siteId)
                     )
                 )
+                .leftJoin(users, eq(clients.userId, users.userId))
                 .where(
                     and(
                         eq(clients.orgId, orgId),
@@ -167,9 +172,12 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
                 );
 
             for (const c of matchedClients) {
+                const ip = c.subnet.split("/")[0];
                 if (c.endpoint) {
-                    const ip = c.subnet.split("/")[0];
                     ipToEndpoint.set(ip, c.endpoint);
+                }
+                if (c.userId && c.username) {
+                    ipToUser.set(ip, { userId: c.userId, username: c.username });
                 }
             }
         }
@@ -211,6 +219,7 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
                 : endpoint;
             location = await getCountryCodeForIp(endpointIp);
         }
+        const user = ipToUser.get(sourceIp);
 
         await logRequestAudit(
             {
@@ -218,7 +227,8 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
                 reason: 108,
                 siteResourceId: entry.resourceId,
                 orgId,
-                location
+                location,
+                user
             },
             {
                 path: entry.path,
