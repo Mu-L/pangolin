@@ -262,16 +262,20 @@ export const resourceAiModels = pgTable(
     (t) => [primaryKey({ columns: [t.resourceId, t.modelId] })]
 );
 
-export const labels = pgTable("labels", {
-    labelId: serial("labelId").primaryKey(),
-    name: varchar("name").notNull(),
-    color: varchar("color").notNull(),
-    orgId: varchar("orgId")
-        .references(() => orgs.orgId, {
-            onDelete: "cascade"
-        })
-        .notNull()
-});
+export const labels = pgTable(
+    "labels",
+    {
+        labelId: serial("labelId").primaryKey(),
+        name: varchar("name").notNull(),
+        color: varchar("color").notNull(),
+        orgId: varchar("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [index("idx_labels_orgid").on(t.orgId)]
+);
 
 export const launcherViews = pgTable("launcherViews", {
     viewId: serial("viewId").primaryKey(),
@@ -693,15 +697,19 @@ export const twoFactorBackupCodes = pgTable("twoFactorBackupCodes", {
     codeHash: varchar("codeHash").notNull()
 });
 
-export const sessions = pgTable("session", {
-    sessionId: varchar("id").primaryKey(),
-    userId: varchar("userId")
-        .notNull()
-        .references(() => users.userId, { onDelete: "cascade" }),
-    expiresAt: bigint("expiresAt", { mode: "number" }).notNull(),
-    issuedAt: bigint("issuedAt", { mode: "number" }),
-    deviceAuthUsed: boolean("deviceAuthUsed").notNull().default(false)
-});
+export const sessions = pgTable(
+    "session",
+    {
+        sessionId: varchar("id").primaryKey(),
+        userId: varchar("userId")
+            .notNull()
+            .references(() => users.userId, { onDelete: "cascade" }),
+        expiresAt: bigint("expiresAt", { mode: "number" }).notNull(),
+        issuedAt: bigint("issuedAt", { mode: "number" }),
+        deviceAuthUsed: boolean("deviceAuthUsed").notNull().default(false)
+    },
+    (t) => [index("idx_sessions_userid").on(t.userId)]
+);
 
 export const newtSessions = pgTable("newtSession", {
     sessionId: varchar("id").primaryKey(),
@@ -711,19 +719,26 @@ export const newtSessions = pgTable("newtSession", {
     expiresAt: bigint("expiresAt", { mode: "number" }).notNull()
 });
 
-export const userOrgs = pgTable("userOrgs", {
-    userId: varchar("userId")
-        .notNull()
-        .references(() => users.userId, { onDelete: "cascade" }),
-    orgId: varchar("orgId")
-        .references(() => orgs.orgId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    isOwner: boolean("isOwner").notNull().default(false),
-    autoProvisioned: boolean("autoProvisioned").default(false),
-    pamUsername: varchar("pamUsername") // cleaned username for ssh and such
-});
+export const userOrgs = pgTable(
+    "userOrgs",
+    {
+        userId: varchar("userId")
+            .notNull()
+            .references(() => users.userId, { onDelete: "cascade" }),
+        orgId: varchar("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        isOwner: boolean("isOwner").notNull().default(false),
+        autoProvisioned: boolean("autoProvisioned").default(false),
+        pamUsername: varchar("pamUsername") // cleaned username for ssh and such
+    },
+    (t) => [
+        index("idx_userOrgs_userid").on(t.userId),
+        index("idx_userOrgs_orgid").on(t.orgId)
+    ]
+);
 
 export const emailVerificationCodes = pgTable("emailVerificationCodes", {
     codeId: serial("id").primaryKey(),
@@ -751,22 +766,26 @@ export const actions = pgTable("actions", {
     description: varchar("description")
 });
 
-export const roles = pgTable("roles", {
-    roleId: serial("roleId").primaryKey(),
-    orgId: varchar("orgId")
-        .references(() => orgs.orgId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    isAdmin: boolean("isAdmin"),
-    name: varchar("name").notNull(),
-    description: varchar("description"),
-    requireDeviceApproval: boolean("requireDeviceApproval").default(false),
-    sshSudoMode: varchar("sshSudoMode", { length: 32 }).default("full"), // "none" | "full" | "commands"
-    sshSudoCommands: text("sshSudoCommands").default("[]"),
-    sshCreateHomeDir: boolean("sshCreateHomeDir").default(true),
-    sshUnixGroups: text("sshUnixGroups").default("[]")
-});
+export const roles = pgTable(
+    "roles",
+    {
+        roleId: serial("roleId").primaryKey(),
+        orgId: varchar("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        isAdmin: boolean("isAdmin"),
+        name: varchar("name").notNull(),
+        description: varchar("description"),
+        requireDeviceApproval: boolean("requireDeviceApproval").default(false),
+        sshSudoMode: varchar("sshSudoMode", { length: 32 }).default("full"), // "none" | "full" | "commands"
+        sshSudoCommands: text("sshSudoCommands").default("[]"),
+        sshCreateHomeDir: boolean("sshCreateHomeDir").default(true),
+        sshUnixGroups: text("sshUnixGroups").default("[]")
+    },
+    (t) => [index("idx_roles_orgid").on(t.orgId)]
+);
 
 export const userOrgRoles = pgTable(
     "userOrgRoles",
@@ -1409,7 +1428,10 @@ export const olms = pgTable(
         }),
         archived: boolean("archived").notNull().default(false)
     },
-    (t) => [index("idx_olms_clientid").on(t.clientId)]
+    (t) => [
+        index("idx_olms_clientid").on(t.clientId),
+        index("idx_olms_userid").on(t.userId)
+    ]
 );
 
 export const currentFingerprint = pgTable("currentFingerprint", {
