@@ -27,6 +27,7 @@ import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { logQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import type { QueryAccessAuditLogResponse } from "@server/routers/auditLogs/types";
+import { countryCodeToFlagEmoji } from "@app/lib/countryCodeToFlagEmoji";
 
 export default function GeneralPage() {
     const router = useRouter();
@@ -346,7 +347,7 @@ export default function GeneralPage() {
                             options={filterAttributes.locations.map(
                                 (location) => ({
                                     value: location,
-                                    label: location
+                                    label: `${location} ${countryCodeToFlagEmoji(location)}`
                                 })
                             )}
                             label={t("location")}
@@ -365,7 +366,8 @@ export default function GeneralPage() {
                     <span className="flex items-center gap-1">
                         {row.original.location ? (
                             <span className="text-muted-foreground text-xs">
-                                {row.original.location}
+                                {row.original.location}{" "}
+                                {countryCodeToFlagEmoji(row.original.location)}
                             </span>
                         ) : (
                             <span className="text-muted-foreground text-xs">

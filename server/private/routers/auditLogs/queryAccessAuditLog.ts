@@ -155,7 +155,9 @@ function getWhere(data: Q) {
         data.action !== undefined
             ? eq(accessAuditLog.action, data.action)
             : undefined,
-        data.ip ? inArray(accessAuditLog.ip, data.ip) : undefined
+        data.ip && data.ip.length > 0
+            ? inArray(accessAuditLog.ip, data.ip)
+            : undefined
     );
 }
 
