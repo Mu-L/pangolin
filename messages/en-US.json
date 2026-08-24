@@ -4090,6 +4090,8 @@
     "httpDestConnectionLogsDescription": "Site and tunnel connection events, including connects and disconnects.",
     "httpDestRequestLogsTitle": "HTTP Request Logs",
     "httpDestRequestLogsDescription": "HTTP request logs for proxied resources, including method, path, and response code.",
+    "httpDestAISessionLogsTitle": "AI Session Logs",
+    "httpDestAISessionLogsDescription": "AI gateway request and response sessions, including prompts, model responses, and token usage.",
     "httpDestSaveChanges": "Save Changes",
     "httpDestCreateDestination": "Create Destination",
     "httpDestUpdatedSuccess": "Destination updated successfully",

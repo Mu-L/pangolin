@@ -19,7 +19,8 @@ import {
     requestAuditLog,
     actionAuditLog,
     accessAuditLog,
-    connectionAuditLog
+    connectionAuditLog,
+    aiSessionLog
 } from "@server/db";
 import logger from "@server/logger";
 import { and, eq, gt, desc, max, sql } from "drizzle-orm";
@@ -309,6 +310,7 @@ export class LogStreamingManager {
         if (dest.sendActionLogs) enabledTypes.push("action");
         if (dest.sendAccessLogs) enabledTypes.push("access");
         if (dest.sendConnectionLogs) enabledTypes.push("connection");
+        if (dest.sendAISessionLogs) enabledTypes.push("aiSession");
 
         if (enabledTypes.length === 0) return;
 
@@ -585,6 +587,13 @@ export class LogStreamingManager {
                         .where(eq(connectionAuditLog.orgId, orgId));
                     return row?.maxId ?? 0;
                 }
+                case "aiSession": {
+                    const [row] = await logsDb
+                        .select({ maxId: max(aiSessionLog.id) })
+                        .from(aiSessionLog)
+                        .where(eq(aiSessionLog.orgId, orgId));
+                    return row?.maxId ?? 0;
+                }
             }
         } catch (err) {
             logger.warn(
@@ -670,6 +679,21 @@ export class LogStreamingManager {
                     .limit(limit)) as Array<
                     Record<string, unknown> & { id: number }
                 >;
+
+            case "aiSession":
+                return (await logsDb
+                    .select()
+                    .from(aiSessionLog)
+                    .where(
+                        and(
+                            eq(aiSessionLog.orgId, orgId),
+                            gt(aiSessionLog.id, afterId)
+                        )
+                    )
+                    .orderBy(aiSessionLog.id)
+                    .limit(limit)) as Array<
+                    Record<string, unknown> & { id: number }
+                >;
         }
     }
 
@@ -693,6 +717,14 @@ export class LogStreamingManager {
             case "connection":
                 timestamp =
                     typeof row.startedAt === "number" ? row.startedAt : 0;
+                break;
+            case "aiSession":
+                // createdAt is stored as epoch milliseconds; normalise to
+                // epoch seconds to match the other log types.
+                timestamp =
+                    typeof row.createdAt === "number"
+                        ? Math.floor(row.createdAt / 1000)
+                        : 0;
                 break;
         }
 
