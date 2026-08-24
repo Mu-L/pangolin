@@ -524,9 +524,13 @@ export function LogDataTable<TData, TValue>({
                                                         }
                                                         className="p-4 bg-muted/50"
                                                     >
-                                                        {renderExpandedRow(
-                                                            row.original
-                                                        )}
+                                                        {/* w-0 min-w-full keeps this cell's content from */}
+                                                        {/* blowing out the table's auto column widths */}
+                                                        <div className="w-0 min-w-full">
+                                                            {renderExpandedRow(
+                                                                row.original
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             )

@@ -79,7 +79,7 @@ function MessageBubble({ message }: { message: NormalizedAiMessage }) {
                 )}
             </div>
             <div
-                className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words ${
+                className={`min-w-0 max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words ${
                     isUser
                         ? "bg-primary text-primary-foreground"
                         : isTool
@@ -108,7 +108,7 @@ function RawFallbackBlock({
 }) {
     const pretty = prettyRaw(raw);
     return (
-        <div className="rounded-md border bg-muted/30 p-3">
+        <div className="min-w-0 rounded-md border bg-muted/30 p-3">
             <div className="mb-1 text-xs font-medium text-muted-foreground">
                 {label}
                 {pretty && unparsedLabel && (
@@ -117,7 +117,7 @@ function RawFallbackBlock({
                     </span>
                 )}
             </div>
-            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs text-muted-foreground">
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs text-muted-foreground">
                 {pretty ?? noDataLabel}
             </pre>
         </div>
@@ -172,7 +172,7 @@ export function AiSessionChatView({
                 </Button>
             </div>
             {rawMode ? (
-                <div className="flex max-h-[32rem] flex-col gap-3 overflow-y-auto rounded-md border bg-background p-4">
+                <div className="flex min-w-0 max-h-[32rem] flex-col gap-3 overflow-y-auto rounded-md border bg-background p-4">
                     <RawFallbackBlock
                         label={t("aiSessionRequest")}
                         raw={normalizedRequest}
@@ -185,7 +185,7 @@ export function AiSessionChatView({
                     />
                 </div>
             ) : (
-                <div className="flex max-h-[32rem] flex-col gap-3 overflow-y-auto rounded-md border bg-background p-4">
+                <div className="flex min-w-0 max-h-[32rem] flex-col gap-3 overflow-y-auto rounded-md border bg-background p-4">
                     {hasRequestMessages ? (
                         requestMessages!.map((message, i) => (
                             <MessageBubble key={`req-${i}`} message={message} />
