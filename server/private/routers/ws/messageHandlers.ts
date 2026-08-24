@@ -24,4 +24,4 @@ export const messageHandlers: Record<string, MessageHandler> = {
     "remoteExitNode/register": handleRemoteExitNodeRegisterMessage,
     "remoteExitNode/ping": handleRemoteExitNodePingMessage,
     "newt/access-log": handleConnectionLogMessage,
-;
+};
