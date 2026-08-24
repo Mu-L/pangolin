@@ -313,6 +313,15 @@ export function LogDataTable<TData, TValue>({
         }
     }, [currentPage, table, isServerPagination]);
 
+    // Collapse any expanded rows whenever the page changes, since row ids
+    // are reused across pages and would otherwise show the wrong content
+    // in the same expanded position.
+    const pageIndex = table.getState().pagination.pageIndex;
+    useEffect(() => {
+        setExpandedRows(new Set());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pageIndex]);
+
     const handleTabChange = (value: string) => {
         if (disabled) return;
 
