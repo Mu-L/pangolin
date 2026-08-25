@@ -135,6 +135,7 @@ type ChartTooltipContentProps = React.ComponentProps<"div"> & {
     labelKey?: string;
     color?: string;
     labelClassName?: string;
+    valueFormatter?: (value: number) => string;
 };
 
 const ChartTooltipContent = React.forwardRef<
@@ -155,7 +156,8 @@ const ChartTooltipContent = React.forwardRef<
             formatter,
             color,
             nameKey,
-            labelKey
+            labelKey,
+            valueFormatter
         },
         ref
     ) => {
@@ -302,19 +304,23 @@ const ChartTooltipContent = React.forwardRef<
                                                             item.name}
                                                     </span>
                                                 </div>
-                                                {item.value && (
+                                                {item.value !== undefined && (
                                                     <span className="font-mono font-medium tabular-nums text-foreground">
                                                         {!isNaN(
                                                             item.value as number
                                                         )
-                                                            ? new Intl.NumberFormat(
-                                                                  navigator.language,
-                                                                  {
-                                                                      maximumFractionDigits: 0
-                                                                  }
-                                                              ).format(
-                                                                  item.value as number
-                                                              )
+                                                            ? valueFormatter
+                                                                ? valueFormatter(
+                                                                      item.value as number
+                                                                  )
+                                                                : new Intl.NumberFormat(
+                                                                      navigator.language,
+                                                                      {
+                                                                          maximumFractionDigits: 0
+                                                                      }
+                                                                  ).format(
+                                                                      item.value as number
+                                                                  )
                                                             : item.value.toLocaleString()}
                                                     </span>
                                                 )}

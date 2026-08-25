@@ -64,7 +64,7 @@ registry.registerPath({
 
 registry.registerPath({
     method: "post",
-    path: "/private-resource/{siteResourceId}/users/add",
+    path: "/private-resource/{resourceId}/users/add",
     description: "Add a single user to a site resource.",
     tags: [OpenAPITags.PrivateResource, OpenAPITags.User],
     request: {

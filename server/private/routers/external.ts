@@ -21,6 +21,10 @@ import * as auth from "#private/routers/auth";
 import * as license from "#private/routers/license";
 import * as generateLicense from "#private/routers/generatedLicense";
 import * as logs from "#private/routers/auditLogs";
+import {
+    queryAiSessionLogs,
+    exportAiSessionLogs
+} from "@server/routers/auditLogs";
 import * as misc from "#private/routers/misc";
 import * as reKey from "#private/routers/re-key";
 import * as approval from "#private/routers/approvals";
@@ -589,6 +593,25 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.exportLogs),
     logActionAudit(ActionsEnum.exportLogs),
     logs.exportConnectionAuditLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.aiSessionLogs),
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.viewLogs),
+    queryAiSessionLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/export",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.aiSessionLogs),
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.exportLogs),
+    logActionAudit(ActionsEnum.exportLogs),
+    exportAiSessionLogs
 );
 
 authenticated.post(

@@ -7,6 +7,8 @@ inference resource has more than one AI provider.
 
 - Route → capability binding: `server/routers/aiGateway/createAiGatewayRouter.ts`
 - Request pipeline: `server/routers/aiGateway/pipeline.ts` (`selectProvider`)
+- Model discovery: `server/routers/aiGateway/v1Models.ts` and
+  `server/lib/aiModelDiscovery.ts`
 - Tie-break scoring: `server/lib/aiProviderSelection.ts`
 - Allow/block matching: `server/lib/aiModelKeyMatch.ts`
 - Model catalog: `server/lib/aiModelCatalog.ts`
@@ -39,6 +41,7 @@ The incoming path selects a capability before any provider logic runs.
 | `POST /v1/chat/completions` | `openai_chat` |
 | `POST /v1/responses` | `openai_responses` |
 | `POST /v1/messages` | `anthropic_messages` |
+| `GET /v1/models`, `GET /v1/models/{id}` | `v1_models` |
 | Gemini / Vertex / Bedrock routes | their respective capability ids |
 
 Only attached providers that advertise that capability stay in the candidate
@@ -47,10 +50,10 @@ set. Default capabilities do not overlap for native OpenAI vs Anthropic:
 | Provider type | Default capabilities |
 |---------------|----------------------|
 | `openai` | `openai_chat`, `openai_responses` |
-| `anthropic` | `anthropic_messages` |
+| `anthropic` | `anthropic_messages`, `v1_models` |
 | `openRouter` | `openai_chat` |
 | `vercelAiGateway` | `openai_chat`, `openai_responses` |
-| `microsoftFoundry` | `openai_chat`, `openai_responses`, `anthropic_messages` |
+| `microsoftFoundry` | `openai_chat`, `openai_responses`, `anthropic_messages`, `v1_models` |
 | `custom` | whatever was configured |
 
 ### 2. Allow / Block Lists
@@ -127,6 +130,68 @@ Model "<id>" is ambiguous across multiple AI providers on this resource
 
 Typical remaining ties: two OpenAI-type providers both with `*`, or two
 customs advertising the same capability for an unknown model.
+
+## Model Discovery Is Not Selection
+
+`GET /v1/models` and `GET /v1/models/{id}` (`v1_models`) skip steps 3-6
+entirely. There is no requested model to disambiguate on, so the gateway does
+not pick one provider - it returns the **union** of what every attached
+provider advertising `v1_models` would accept, deduplicated by model id
+(lowest `providerId` wins a collision).
+
+Discovery is answered from the gateway's own view of the allow/block lists,
+never proxied upstream. Providers that expose no `/v1/models` endpoint of their
+own still get a working listing, and a model an allow/block list forbids is
+never advertised.
+
+Each provider's candidate ids come from two places:
+
+| Source | Contributes |
+|--------|-------------|
+| Exact (non-wildcard) allow entries | the model key itself |
+| The model catalog for the provider's type | every catalog id matching an allow pattern |
+
+Both sources are then filtered through the same
+`isAllowedByLists(id, allows, blocks)` check step 2 applies, so a block pattern
+hides a model from discovery exactly as it would reject it at request time.
+
+The catalog source is what makes a wildcard allow such as `claude-*`
+enumerable. Provider types with no catalog mapping (`openRouter`,
+`vercelAiGateway`, `custom`) have nothing to expand against, so a wildcard
+allow on those types lists nothing - **add exact allow entries to make their
+models discoverable.**
+
+### Where each field comes from
+
+Token limits and capability flags can't be derived from an allow/block list.
+They come from the model catalog (`server/lib/aiModelCatalog.ts`), which the
+Fossorial API builds from LiteLLM:
+
+| Field | Source |
+|-------|--------|
+| `max_input_tokens` | catalog `limits.input` |
+| `max_tokens` | catalog `limits.output` |
+| `capabilities` | catalog flags, mapped to the Models API shape by `capabilitiesFromCatalog` |
+| `display_name` | the configured model row's name, else the model id |
+| `created_at` | the configured model row's timestamp, else the epoch |
+
+A model the catalog doesn't know (an exact allow entry for a fine-tune, say)
+reports `null` for all three metadata fields. The Models API declares them
+nullable, so that is a valid answer rather than a broken one.
+
+The catalog's flags are coarser than the Models API describes: it carries a
+single `reasoning` flag with no way to distinguish adaptive from
+`budget_tokens`-style thinking, and nothing at all for batch, citations, code
+execution, PDF input, or context management. Anything it reports as unknown
+(`null`) is surfaced as unsupported rather than invented, so `capabilities`
+understates rather than overstates what a model can do.
+
+The gateway does **not** query the provider's own `/v1/models`. Discovery is
+answered entirely from local state.
+
+Results are ordered newest-first with the id as tie-break, and paginated with
+Anthropic's `limit` / `after_id` / `before_id` semantics (default 20, max
+1000).
 
 ## Examples
 

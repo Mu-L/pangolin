@@ -1,10 +1,16 @@
-export const AI_CLIENT_IDS = ["claude", "codex", "opencode"] as const;
+export const AI_CLIENT_IDS = [
+    "claude",
+    "codex",
+    "opencode",
+    "gemini"
+] as const;
 export type AiClientId = (typeof AI_CLIENT_IDS)[number];
 
 export const AI_CLIENT_NAMES: Record<AiClientId, string> = {
     claude: "Claude Code",
     codex: "Codex",
-    opencode: "OpenCode"
+    opencode: "OpenCode",
+    gemini: "Gemini CLI"
 };
 
 /** Auth as supplied by callers: the real key isn't fetched yet. */
@@ -43,8 +49,15 @@ export type AiClientGuide = {
     presets: AiConfigPreset[];
 };
 
+/**
+ * Placeholder key for keyless (private/site) resources. Those resources need
+ * no credential, but most clients refuse to start without *some* key set, so
+ * they get an obviously-inert one rather than an omitted field.
+ */
+const KEYLESS_PLACEHOLDER_KEY = "none";
+
 function keyValue(auth: AiClientAuth): string {
-    return auth.mode === "keyed" ? auth.key : "-";
+    return auth.mode === "keyed" ? auth.key : KEYLESS_PLACEHOLDER_KEY;
 }
 
 function block(
@@ -74,7 +87,7 @@ export function aiConfigBlockHasPlaceholders(block: AiConfigBlock): boolean {
 }
 
 function buildCli(
-    clientArg: "claude" | "codex" | "opencode",
+    clientArg: "claude" | "codex" | "opencode" | "gemini",
     auth: AiClientAuth,
     resourceNiceId?: string
 ): AiConfigBlock[] {
@@ -126,7 +139,7 @@ function buildClaudeGuide(
         (key) =>
             [
                 `export ANTHROPIC_BASE_URL=${endpoint}`,
-                `export ANTHROPIC_API_KEY=${auth.mode === "keyed" ? key : "none"}`,
+                `export ANTHROPIC_API_KEY=${key}`,
                 "claude"
             ].join("\n"),
         auth
@@ -328,7 +341,7 @@ function buildOpencodeGuide(
         "More providers",
         () =>
             "OpenCode configures providers individually, so Anthropic and OpenAI are just the ones set up above. " +
-            'You can point any other OpenCode-supported provider (e.g. "openrouter", "google", "groq") at this gateway the same way: add a matching entry under "provider" in opencode.json, and under auth.json if it needs an API key.',
+            'You can point any other OpenCode-supported provider (e.g. "openrouter", "google", "groq") at this gateway the same way: add a matching entry under "provider" in opencode.json, and a matching key in auth.json.',
         auth,
         "steps"
     );
@@ -342,10 +355,53 @@ function buildOpencodeGuide(
                 id: "default",
                 label: "Default",
                 relation: "steps",
-                blocks:
-                    auth.mode === "keyed"
-                        ? [config, authFile, moreProviders]
-                        : [config, moreProviders]
+                // auth.json is written even for keyless resources: OpenCode
+                // refuses to start a provider with no key at all ("OpenAI API
+                // key is missing"), so it gets the inert placeholder instead.
+                blocks: [config, authFile, moreProviders]
+            }
+        ]
+    };
+}
+
+function buildGeminiGuide(
+    endpoint: string,
+    auth: AiClientAuth,
+    resourceNiceId?: string
+): AiClientGuide {
+    const defaultEnv = block(
+        "gemini-default-env",
+        "~/.gemini/.env",
+        (key) =>
+            [
+                `GOOGLE_GEMINI_BASE_URL=${endpoint}`,
+                `GEMINI_API_KEY=${key}`
+            ].join("\n"),
+        auth
+    );
+
+    const defaultShell = block(
+        "gemini-default-shell",
+        "Shell",
+        (key) =>
+            [
+                `export GOOGLE_GEMINI_BASE_URL=${endpoint}`,
+                `export GEMINI_API_KEY=${key}`,
+                "gemini"
+            ].join("\n"),
+        auth
+    );
+
+    return {
+        id: "gemini",
+        name: AI_CLIENT_NAMES.gemini,
+        cli: buildCli("gemini", auth, resourceNiceId),
+        presets: [
+            {
+                id: "default",
+                label: "Default",
+                relation: "options",
+                blocks: [defaultEnv, defaultShell]
             }
         ]
     };
@@ -361,7 +417,8 @@ const GUIDE_BUILDERS: Record<
 > = {
     claude: buildClaudeGuide,
     codex: buildCodexGuide,
-    opencode: buildOpencodeGuide
+    opencode: buildOpencodeGuide,
+    gemini: buildGeminiGuide
 };
 
 export function buildAiClientGuide(

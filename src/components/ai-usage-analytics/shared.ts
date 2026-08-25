@@ -47,7 +47,8 @@ export function buildSeriesFromData(
 export const currencyFormatter = new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 2
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4
 });
 
 export const compactNumberFormatter = new Intl.NumberFormat(undefined, {

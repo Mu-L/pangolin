@@ -147,6 +147,42 @@ export async function updateOrg(
             parsedBody.data.settingsEnableGlobalNewtAutoUpdate = false; // force it off
         }
 
+        // Check access logs feature
+        const hasAccessLogsFeature = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix[TierFeature.AccessLogs]
+        );
+        if (!hasAccessLogsFeature) {
+            parsedBody.data.settingsLogRetentionDaysAccess = undefined;
+        }
+
+        // Check action logs feature
+        const hasActionLogsFeature = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix[TierFeature.ActionLogs]
+        );
+        if (!hasActionLogsFeature) {
+            parsedBody.data.settingsLogRetentionDaysAction = undefined;
+        }
+
+        // Check connection logs feature
+        const hasConnectionLogsFeature = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix[TierFeature.ConnectionLogs]
+        );
+        if (!hasConnectionLogsFeature) {
+            parsedBody.data.settingsLogRetentionDaysConnection = undefined;
+        }
+
+        // Check AI session logs feature
+        const hasAISessionLogsFeature = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix[TierFeature.AISessionLogs]
+        );
+        if (!hasAISessionLogsFeature) {
+            parsedBody.data.settingsLogRetentionDaysAISessions = undefined;
+        }
+
         if (build == "saas") {
             const { tier } = await getOrgTierData(orgId);
 

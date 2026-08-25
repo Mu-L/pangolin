@@ -459,6 +459,9 @@ export const eventStreamingDestinations = sqliteTable(
         sendAccessLogs: integer("sendAccessLogs", { mode: "boolean" })
             .notNull()
             .default(false),
+        sendAISessionLogs: integer("sendAISessionLogs", { mode: "boolean" })
+            .notNull()
+            .default(false),
         type: text("type").notNull(), // e.g. "http", "kafka", etc.
         config: text("config").notNull(), // JSON string with the configuration for the destination
         enabled: integer("enabled", { mode: "boolean" })

@@ -7,7 +7,8 @@ import {
     handleNewtExitNodesRequestMessage,
     handleApplyBlueprintMessage,
     handleNewtPingMessage,
-    handleNewtDisconnectingMessage
+    handleNewtDisconnectingMessage,
+    handleRequestLogMessage
 } from "../newt";
 import {
     handleOlmRegisterMessage,
@@ -46,5 +47,6 @@ export const messageHandlers: Record<string, MessageHandler> = {
     "newt/ping/request": handleNewtExitNodesRequestMessage,
     "newt/blueprint/apply": handleApplyBlueprintMessage,
     "newt/healthcheck/status": handleHealthcheckStatusMessage,
+    "newt/request-log": handleRequestLogMessage,
     "ws/round-trip/complete": handleRoundTripMessage
 };

@@ -402,6 +402,9 @@ export default async function migration() {
             db.prepare(
                 `ALTER TABLE 'siteResources' ADD 'requiresExitNodeConnection' integer DEFAULT false NOT NULL;`
             ).run();
+            db.prepare(
+                `ALTER TABLE 'eventStreamingDestinations' ADD 'sendAISessionLogs' integer DEFAULT false NOT NULL;`
+            ).run();
 
             const insertRoleAction = db.prepare(`
                 INSERT INTO 'roleActions' ("roleId", "actionId", "orgId")

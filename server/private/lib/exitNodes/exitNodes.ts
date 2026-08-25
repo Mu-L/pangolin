@@ -153,7 +153,8 @@ export async function listExitNodes(
     orgId: string,
     filterOnline = false,
     noCloud = false,
-    siteId?: number
+    siteId?: number,
+    noRemote = false
 ) {
     const allExitNodes = await db
         .select({
@@ -242,7 +243,9 @@ export async function listExitNodes(
 
     let remoteExitNodesList = allExitNodes.filter(
         (node) =>
-            node.type === "remoteExitNode" && (!filterOnline || node.online)
+            node.type === "remoteExitNode" &&
+            !noRemote &&
+            (!filterOnline || node.online)
     );
     const gerbilExitNodes = allExitNodes.filter(
         (node) =>

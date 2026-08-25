@@ -3,11 +3,13 @@ import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 import { DateTimeValue } from "@app/components/DateTimePicker";
 import { LogDataTable } from "@app/components/LogDataTable";
 import { AiSessionChatView } from "@app/components/AiSessionChatView";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import LogRetentionWarning from "@app/components/LogRetentionWarning";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { Button } from "@app/components/ui/button";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useOrgContext } from "@app/hooks/useOrgContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { useTranslations } from "next-intl";
@@ -15,6 +17,8 @@ import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
 import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHref";
 import { logQueries } from "@app/lib/queries";
 import { formatVirtualApiKeyPreview } from "@app/lib/virtualApiKeyFormat";
+import { build } from "@server/build";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -29,6 +33,7 @@ const capabilityLabels: Record<string, string> = {
     openai_chat: "OpenAI Chat Completions",
     openai_responses: "OpenAI Responses",
     anthropic_messages: "Anthropic Messages",
+    v1_models: "Models List",
     gemini_generate_content: "Gemini",
     google_generate_content: "Vertex AI (Generate Content)",
     google_raw_predict: "Vertex AI (Raw Predict)",
@@ -44,6 +49,7 @@ export default function AiSessionLogsPage() {
     const searchParams = useSearchParams();
 
     const { org } = useOrgContext();
+    const { isPaidUser } = usePaidStatus();
 
     const [isExporting, startTransition] = useTransition();
 
@@ -133,7 +139,8 @@ export default function AiSessionLogsPage() {
         ...logQueries.aiSessions({
             orgId: orgId as string,
             filters: queryFilters
-        })
+        }),
+        enabled: isPaidUser(tierMatrix.aiSessionLogs) && build !== "oss"
     });
 
     const rows = isLoading ? generateSampleAiSessionLogs() : (data?.log ?? []);
@@ -645,6 +652,8 @@ export default function AiSessionLogsPage() {
                 description={t("aiSessionLogsDescription")}
             />
 
+            <PaidFeaturesAlert tiers={tierMatrix.aiSessionLogs} />
+
             {org.org.settingsLogRetentionDaysAISessions === 0 && (
                 <LogRetentionWarning
                     orgId={orgId as string}
@@ -679,6 +688,9 @@ export default function AiSessionLogsPage() {
                 pageSize={pageSize}
                 expandable={true}
                 renderExpandedRow={renderExpandedRow}
+                disabled={
+                    !isPaidUser(tierMatrix.aiSessionLogs) || build === "oss"
+                }
             />
         </>
     );

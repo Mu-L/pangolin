@@ -1491,21 +1491,6 @@ authenticated.get(
 );
 
 authenticated.get(
-    "/org/:orgId/logs/ai",
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.viewLogs),
-    logs.queryAiSessionLogs
-);
-
-authenticated.get(
-    "/org/:orgId/logs/ai/export",
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.exportLogs),
-    logActionAudit(ActionsEnum.exportLogs),
-    logs.exportAiSessionLogs
-);
-
-authenticated.get(
     "/org/:orgId/logs/ai/usage/filters",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.viewLogs),

@@ -44,6 +44,20 @@ export function getCatalogProviderForType(
     return PROVIDER_CATALOG_MAP[type];
 }
 
+/**
+ * Per-model feature flags as reported upstream. `null` means the catalog has
+ * no data for that model - deliberately distinct from `false`, so consumers
+ * can tell "unsupported" apart from "unknown".
+ */
+export type AiModelCapabilityFlags = {
+    functionCalling: boolean | null;
+    vision: boolean | null;
+    promptCaching: boolean | null;
+    reasoning: boolean | null;
+    responseSchema: boolean | null;
+    webSearch: boolean | null;
+};
+
 export type AiModelCatalogEntry = {
     provider: CatalogProvider;
     model: string;
@@ -53,8 +67,20 @@ export type AiModelCatalogEntry = {
         cache: number | null;
         reasoning: number | null;
     };
+    limits: {
+        /** Context window. */
+        input: number | null;
+        /** Cap on the output/max_tokens request parameter. */
+        output: number | null;
+    };
+    capabilities: AiModelCapabilityFlags;
 };
 
+const flag = z.boolean().nullable().optional();
+
+// limits/capabilities are optional so a catalog published before they were
+// added (or an operator's own merge_file) still parses - those entries just
+// report unknown metadata rather than failing the whole payload.
 const catalogEntrySchema = z.object({
     model: z.string(),
     provider: z.string(),
@@ -64,6 +90,22 @@ const catalogEntrySchema = z.object({
             out: z.number().nullable().optional(),
             cache: z.number().nullable().optional(),
             reasoning: z.number().nullable().optional()
+        })
+        .optional(),
+    limits: z
+        .object({
+            input: z.number().nullable().optional(),
+            output: z.number().nullable().optional()
+        })
+        .optional(),
+    capabilities: z
+        .object({
+            functionCalling: flag,
+            vision: flag,
+            promptCaching: flag,
+            reasoning: flag,
+            responseSchema: flag,
+            webSearch: flag
         })
         .optional()
 });
@@ -108,6 +150,18 @@ function normalizeEntry(raw: RawCatalogEntry): AiModelCatalogEntry | null {
             out: raw.pricing?.out ?? null,
             cache: raw.pricing?.cache ?? null,
             reasoning: raw.pricing?.reasoning ?? null
+        },
+        limits: {
+            input: raw.limits?.input ?? null,
+            output: raw.limits?.output ?? null
+        },
+        capabilities: {
+            functionCalling: raw.capabilities?.functionCalling ?? null,
+            vision: raw.capabilities?.vision ?? null,
+            promptCaching: raw.capabilities?.promptCaching ?? null,
+            reasoning: raw.capabilities?.reasoning ?? null,
+            responseSchema: raw.capabilities?.responseSchema ?? null,
+            webSearch: raw.capabilities?.webSearch ?? null
         }
     };
 }
@@ -284,34 +338,44 @@ export class AiModelCatalog {
 
 export const aiModelCatalog = new AiModelCatalog();
 
+/**
+ * Full catalog entries for a provider type, deduplicated by model id and
+ * sorted by id. Model discovery uses these to report real token limits and
+ * capability flags; `listCatalogModelsForType` is the id-only view of the
+ * same list.
+ */
+export function listCatalogEntriesForType(
+    type: AiProviderType,
+    query?: string
+): AiModelCatalogEntry[] {
+    const catalogProvider = getCatalogProviderForType(type);
+
+    let entries = catalogProvider ? aiModelCatalog.list(catalogProvider) : [];
+
+    if (query) {
+        const q = query.toLowerCase();
+        entries = entries.filter((e) => e.model.toLowerCase().includes(q));
+    }
+
+    const seen = new Set<string>();
+    entries = entries.filter((e) => {
+        if (seen.has(e.model)) {
+            return false;
+        }
+        seen.add(e.model);
+        return true;
+    });
+
+    return [...entries].sort((a, b) => a.model.localeCompare(b.model));
+}
+
 export function listCatalogModelsForType(
     type: AiProviderType,
     query?: string
 ): { model: string }[] {
-    const catalogProvider = getCatalogProviderForType(type);
-
-    let models = catalogProvider
-        ? aiModelCatalog.list(catalogProvider).map((entry) => ({
-              model: entry.model
-          }))
-        : [];
-
-    if (query) {
-        const q = query.toLowerCase();
-        models = models.filter((m) => m.model.toLowerCase().includes(q));
-    }
-
-    const seen = new Set<string>();
-    models = models.filter((m) => {
-        if (seen.has(m.model)) {
-            return false;
-        }
-        seen.add(m.model);
-        return true;
-    });
-
-    models.sort((a, b) => a.model.localeCompare(b.model));
-    return models;
+    return listCatalogEntriesForType(type, query).map((entry) => ({
+        model: entry.model
+    }));
 }
 
 /**

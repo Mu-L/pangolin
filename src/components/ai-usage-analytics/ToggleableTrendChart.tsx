@@ -129,6 +129,7 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
                                                 payload?.[0]?.payload?.day
                                             )
                                         }
+                                        valueFormatter={valueFormatter}
                                     />
                                 }
                             />
@@ -172,6 +173,7 @@ export function ToggleableTrendChart(props: ToggleableTrendChartProps) {
                                                 payload?.[0]?.payload?.day
                                             )
                                         }
+                                        valueFormatter={valueFormatter}
                                     />
                                 }
                             />

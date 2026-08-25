@@ -348,7 +348,6 @@ export const configSchema = z
                     .optional()
                     .pipe(z.string())
                     .transform((url) => url.toLowerCase()),
-                use_subdomain: z.boolean().optional().default(false),
                 subnet_group: z.string().optional().default("100.89.137.0/20"),
                 block_size: z.number().positive().gt(0).optional().default(24),
                 site_block_size: z

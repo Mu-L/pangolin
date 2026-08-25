@@ -18,12 +18,10 @@ import {
 import { MessageHandler } from "@server/routers/ws";
 import {
     handleConnectionLogMessage,
-    handleRequestLogMessage
 } from "#private/routers/newt";
 
 export const messageHandlers: Record<string, MessageHandler> = {
     "remoteExitNode/register": handleRemoteExitNodeRegisterMessage,
     "remoteExitNode/ping": handleRemoteExitNodePingMessage,
     "newt/access-log": handleConnectionLogMessage,
-    "newt/request-log": handleRequestLogMessage
 };

@@ -682,6 +682,7 @@ export default function CreateAiProviderPage() {
                                     <ProxyResourceTargetsForm
                                         orgId={orgId}
                                         isHttp
+                                        isAiProvider
                                         onChange={(nextTargets) => {
                                             targetsRef.current = nextTargets;
                                         }}

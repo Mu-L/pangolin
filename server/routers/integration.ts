@@ -1533,21 +1533,6 @@ authenticated.get(
 );
 
 authenticated.get(
-    "/org/:orgId/logs/ai",
-    verifyApiKeyOrgAccess,
-    verifyApiKeyHasAction(ActionsEnum.viewLogs),
-    logs.queryAiSessionLogs
-);
-
-authenticated.get(
-    "/org/:orgId/logs/ai/export",
-    verifyApiKeyOrgAccess,
-    verifyApiKeyHasAction(ActionsEnum.exportLogs),
-    logActionAudit(ActionsEnum.exportLogs),
-    logs.exportAiSessionLogs
-);
-
-authenticated.get(
     "/org/:orgId/logs/ai/usage/filters",
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.viewLogs),

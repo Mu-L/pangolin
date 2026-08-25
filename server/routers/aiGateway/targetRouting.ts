@@ -99,6 +99,7 @@ async function fetchProviderTargets(
             method: targets.method,
             exitNodeSubnet: sites.exitNodeSubnet,
             reachableAt: exitNodes.reachableAt,
+            exitNodeType: exitNodes.type,
             hcHealth: targetHealthCheck.hcHealth
         })
         .from(targets)
@@ -117,6 +118,12 @@ async function fetchProviderTargets(
         // Sites not yet connected to an exit node (no subnet assigned) or
         // whose exit node has no known HTTP address can't be routed to.
         if (!row.exitNodeSubnet || !row.reachableAt) {
+            continue;
+        }
+        // Sites connected to a remote exit node aren't reachable via a
+        // gerbil sidecar's /router/* proxy - only "gerbil" type exit nodes
+        // run that endpoint.
+        if (row.exitNodeType !== "gerbil") {
             continue;
         }
         // A target with an active health check that's currently failing is

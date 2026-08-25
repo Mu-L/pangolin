@@ -23,6 +23,12 @@ export async function createCertificate(
         throw new Error(`Domain with ID ${domainId} not found`);
     }
 
+    // Note: certificates.domain has a global UNIQUE constraint (it is not
+    // scoped per-domainId), so existence must be checked by domain value
+    // alone. Filtering on domainId here as well can cause this check to
+    // miss an existing cert (e.g. if it was stored under a different but
+    // still-valid domainId), leading to an INSERT that then fails on the
+    // unique constraint.
     let existing: Certificate[] = [];
     if (domainRecord.type == "ns" || domainRecord.type == "wildcard") {
         const domainLevelDown = domain.split(".").slice(1).join(".");
@@ -32,16 +38,13 @@ export async function createCertificate(
             .select()
             .from(certificates)
             .where(
-                and(
-                    eq(certificates.domainId, domainId),
-                    or(
-                        eq(certificates.domain, domain),
-                        and(
-                            eq(certificates.wildcard, true),
-                            or(
-                                eq(certificates.domain, domainLevelDown),
-                                eq(certificates.domain, wildcardPrefixed)
-                            )
+                or(
+                    eq(certificates.domain, domain),
+                    and(
+                        eq(certificates.wildcard, true),
+                        or(
+                            eq(certificates.domain, domainLevelDown),
+                            eq(certificates.domain, wildcardPrefixed)
                         )
                     )
                 )
@@ -51,12 +54,7 @@ export async function createCertificate(
         existing = await trx
             .select()
             .from(certificates)
-            .where(
-                and(
-                    eq(certificates.domainId, domainId),
-                    eq(certificates.domain, domain) // exact match for non-NS domains
-                )
-            );
+            .where(eq(certificates.domain, domain)); // exact match for non-NS domains
     }
 
     if (existing.length > 0) {
@@ -87,16 +85,22 @@ export async function createCertificate(
         }
     }
 
-    // No cert found, create a new one in pending state
-    await trx.insert(certificates).values({
-        domain: domainToWrite,
-        domainId,
-        wildcard:
-            domainRecord.type == "ns" ||
-            (domainRecord.type == "wildcard" &&
-                domainRecord.preferWildcardCert), // we can only create wildcard certs for NS domains
-        status: "pending",
-        updatedAt: Math.floor(Date.now() / 1000),
-        createdAt: Math.floor(Date.now() / 1000)
-    });
+    // No cert found, create a new one in pending state. onConflictDoNothing
+    // guards against the domain having been inserted concurrently (or under
+    // a different domainId) between the existence check above and this
+    // insert, since certificates.domain is globally unique.
+    await trx
+        .insert(certificates)
+        .values({
+            domain: domainToWrite,
+            domainId,
+            wildcard:
+                domainRecord.type == "ns" ||
+                (domainRecord.type == "wildcard" &&
+                    domainRecord.preferWildcardCert), // we can only create wildcard certs for NS domains
+            status: "pending",
+            updatedAt: Math.floor(Date.now() / 1000),
+            createdAt: Math.floor(Date.now() / 1000)
+        })
+        .onConflictDoNothing();
 }

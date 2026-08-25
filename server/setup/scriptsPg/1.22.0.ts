@@ -346,6 +346,9 @@ export default async function migration() {
             sql`ALTER TABLE "virtualApiKeys" ADD CONSTRAINT "virtualApiKeys_createdByUserId_user_id_fk" FOREIGN KEY ("createdByUserId") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;`
         );
         await db.execute(
+            sql`ALTER TABLE "eventStreamingDestinations" ADD "sendAISessionLogs" boolean DEFAULT false NOT NULL;`
+        );
+        await db.execute(
             sql`CREATE INDEX "idx_ai_budget_breach_events_budget_created" ON "aiBudgetBreachEvents" USING btree ("budgetId","createdAt");`
         );
         await db.execute(
