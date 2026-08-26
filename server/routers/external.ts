@@ -66,6 +66,10 @@ import * as aiBudget from "@server/routers/aiBudget";
 import * as virtualApiKey from "@server/routers/virtualApiKey";
 import * as certificates from "@server/routers/certificates";
 
+function rateLimitIdentityKey(value: unknown): string {
+    return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
 // Root routes
 export const unauthenticated = Router();
 
@@ -1927,7 +1931,7 @@ authRouter.put(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) =>
-            `signup:${ipKeyGenerator(req.ip || "")}:${req.body.email}`,
+            `signup:${ipKeyGenerator(req.ip || "")}:${rateLimitIdentityKey(req.body.email)}`,
         handler: (req, res, next) => {
             const message = `You can only sign up ${15} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
@@ -1942,7 +1946,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) =>
-            `login:${req.body.email || ipKeyGenerator(req.ip || "")}`,
+            `login:${rateLimitIdentityKey(req.body.email) || ipKeyGenerator(req.ip || "")}`,
         handler: (req, res, next) => {
             const message = `You can only log in ${15} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
@@ -1959,7 +1963,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) =>
-            `lookupUser:${req.body.identifier || ipKeyGenerator(req.ip || "")}`,
+            `lookupUser:${rateLimitIdentityKey(req.body.identifier) || ipKeyGenerator(req.ip || "")}`,
         handler: (req, res, next) => {
             const message = `You can only lookup users ${15} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
@@ -2037,7 +2041,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) => {
-            return `signup:${req.body.email || req.user?.userId || ipKeyGenerator(req.ip || "")}`;
+            return `signup:${rateLimitIdentityKey(req.body.email) || req.user?.userId || ipKeyGenerator(req.ip || "")}`;
         },
         handler: (req, res, next) => {
             const message = `You can only enable 2FA ${15} times every ${15} minutes. Please try again later.`;
@@ -2053,7 +2057,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) => {
-            return `signup:${req.body.email || req.user?.userId || ipKeyGenerator(req.ip || "")}`;
+            return `signup:${rateLimitIdentityKey(req.body.email) || req.user?.userId || ipKeyGenerator(req.ip || "")}`;
         },
         handler: (req, res, next) => {
             const message = `You can only request a 2FA code ${15} times every ${15} minutes. Please try again later.`;
@@ -2085,7 +2089,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) =>
-            `signup:${req.body.email || ipKeyGenerator(req.ip || "")}`,
+            `signup:${rateLimitIdentityKey(req.body.email) || ipKeyGenerator(req.ip || "")}`,
         handler: (req, res, next) => {
             const message = `You can only sign up ${15} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
@@ -2103,7 +2107,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) =>
-            `requestEmailVerificationCode:${req.user?.email || ipKeyGenerator(req.ip || "")}`,
+            `requestEmailVerificationCode:${rateLimitIdentityKey(req.user?.email) || ipKeyGenerator(req.ip || "")}`,
         handler: (req, res, next) => {
             const message = `You can only request an email verification code ${15} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
@@ -2125,7 +2129,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) =>
-            `requestPasswordReset:${req.body.email || ipKeyGenerator(req.ip || "")}`,
+            `requestPasswordReset:${rateLimitIdentityKey(req.body.email) || ipKeyGenerator(req.ip || "")}`,
         handler: (req, res, next) => {
             const message = `You can only request a password reset ${15} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
@@ -2141,7 +2145,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) =>
-            `resetPassword:${req.body.email || ipKeyGenerator(req.ip || "")}`,
+            `resetPassword:${rateLimitIdentityKey(req.body.email) || ipKeyGenerator(req.ip || "")}`,
         handler: (req, res, next) => {
             const message = `You can only request a password reset ${15} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
@@ -2188,7 +2192,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 15,
         keyGenerator: (req) =>
-            `authWithWhitelist:${ipKeyGenerator(req.ip || "")}:${req.body.email}:${req.params.resourceId}`,
+            `authWithWhitelist:${ipKeyGenerator(req.ip || "")}:${rateLimitIdentityKey(req.body.email)}:${req.params.resourceId}`,
         handler: (req, res, next) => {
             const message = `You can only request an email OTP ${15} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
@@ -2240,7 +2244,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000, // 15 minutes
         max: 10, // Allow 10 authentication attempts per 15 minutes per IP
         keyGenerator: (req) => {
-            return `securityKeyAuth:${req.body.email || ipKeyGenerator(req.ip || "")}`;
+            return `securityKeyAuth:${rateLimitIdentityKey(req.body.email) || ipKeyGenerator(req.ip || "")}`;
         },
         handler: (req, res, next) => {
             const message = `You can only attempt security key authentication ${10} times every ${15} minutes. Please try again later.`;
