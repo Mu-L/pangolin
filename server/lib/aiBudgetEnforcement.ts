@@ -580,6 +580,8 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
             );
         }
 
+        const timestamp = Math.floor(Date.now() / 1000);
+
         usageRecordBuffer.push({
             orgId: input.orgId,
             providerId: input.providerId,
@@ -597,7 +599,7 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
             totalTokens,
             costUsd: input.costUsd,
             estimated: usage.estimated,
-            createdAt: input.createdAt ?? Date.now()
+            createdAt: input.createdAt ?? timestamp
         });
 
         // Flush immediately if buffer is full, otherwise schedule a flush

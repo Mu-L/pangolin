@@ -1980,7 +1980,7 @@ export const aiSessionLog = sqliteTable(
             .notNull()
             .default(false),
         statusCode: integer("statusCode"),
-        createdAt: integer("createdAt").notNull() // epoch ms
+        createdAt: integer("createdAt").notNull() // epoch seconds
     },
     (t) => [
         index("idx_ai_session_log_org_created").on(t.orgId, t.createdAt),

@@ -151,17 +151,14 @@ async function getRetentionDays(orgId: string): Promise<number> {
 }
 
 export async function cleanUpOldLogs(orgId: string, retentionDays: number) {
-    // calculateCutoffTimestamp returns a seconds-epoch cutoff (built for
-    // requestAuditLog.timestamp), but aiSessionLog.createdAt is ms-epoch to
-    // match aiUsageRecords - convert before comparing.
-    const cutoffTimestampMs = calculateCutoffTimestamp(retentionDays) * 1000;
+    const cutoffTimestamp = calculateCutoffTimestamp(retentionDays) * 1000;
 
     try {
         await logsDb
             .delete(aiSessionLog)
             .where(
                 and(
-                    lt(aiSessionLog.createdAt, cutoffTimestampMs),
+                    lt(aiSessionLog.createdAt, cutoffTimestamp),
                     eq(aiSessionLog.orgId, orgId)
                 )
             );
@@ -243,6 +240,8 @@ export function logAiSession(data: {
                 );
             }
 
+            const timestamp = Math.floor(Date.now() / 1000);
+
             sessionLogBuffer.push({
                 sessionId: data.sessionId,
                 orgId: sanitizeString(data.orgId),
@@ -270,7 +269,7 @@ export function logAiSession(data: {
                     (normalizedRequestText?.truncated ?? false) ||
                     (normalizedResponseText?.truncated ?? false),
                 statusCode: data.statusCode,
-                createdAt: Date.now()
+                createdAt: timestamp
             });
 
             // Flush immediately if buffer is full, otherwise schedule a flush
