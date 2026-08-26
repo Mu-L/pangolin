@@ -397,7 +397,7 @@ export default async function migration() {
                 `ALTER TABLE 'clients' ADD 'exitNodeSubnet' text;`
             ).run();
             db.prepare(
-                `ALTER TABLE 'orgs' ADD 'settingsLogRetentionDaysAISessions' integer DEFAULT 7 NOT NULL;`
+                `ALTER TABLE 'orgs' ADD 'settingsLogRetentionDaysAISessions' integer DEFAULT 0 NOT NULL;`
             ).run();
             db.prepare(
                 `ALTER TABLE 'siteResources' ADD 'requiresExitNodeConnection' integer DEFAULT false NOT NULL;`
