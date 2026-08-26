@@ -24,6 +24,7 @@ import { AI_CAPABILITIES } from "@server/lib/aiCapabilities";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
+import { decompressText } from "@server/lib/textCompression";
 
 export const queryAiSessionLogsQuery = z.strictObject({
     // iso string just validate its a parseable date
@@ -164,6 +165,35 @@ export function queryAiSession(data: Q) {
         .from(aiSessionLog)
         .where(getWhere(data))
         .orderBy(desc(aiSessionLog.createdAt));
+}
+
+function decompressField(value: string | null): string | null {
+    if (value == null) {
+        return value;
+    }
+    try {
+        return decompressText(value);
+    } catch (error) {
+        logger.error("Failed to decompress AI session log field", { error });
+        return value;
+    }
+}
+
+export function decompressAiSessionLogRow<
+    T extends {
+        requestBody: string | null;
+        responseBody: string | null;
+        normalizedRequest: string | null;
+        normalizedResponse: string | null;
+    }
+>(row: T): T {
+    return {
+        ...row,
+        requestBody: decompressField(row.requestBody),
+        responseBody: decompressField(row.responseBody),
+        normalizedRequest: decompressField(row.normalizedRequest),
+        normalizedResponse: decompressField(row.normalizedResponse)
+    };
 }
 
 async function enrichWithDetails(
@@ -620,7 +650,9 @@ export async function queryAiSessionLogs(
 
         const baseQuery = queryAiSession(data);
 
-        const logsRaw = await baseQuery.limit(data.limit).offset(data.offset);
+        const logsRaw = (
+            await baseQuery.limit(data.limit).offset(data.offset)
+        ).map(decompressAiSessionLogRow);
 
         const log = await enrichWithDetails(logsRaw);
 

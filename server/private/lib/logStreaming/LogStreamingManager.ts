@@ -25,6 +25,7 @@ import {
 import logger from "@server/logger";
 import { and, eq, gt, desc, max, sql } from "drizzle-orm";
 import { decrypt } from "@server/lib/crypto";
+import { decompressText } from "@server/lib/textCompression";
 import config from "@server/lib/config";
 import {
     LogType,
@@ -680,8 +681,8 @@ export class LogStreamingManager {
                     Record<string, unknown> & { id: number }
                 >;
 
-            case "aiSession":
-                return (await logsDb
+            case "aiSession": {
+                const rows = (await logsDb
                     .select()
                     .from(aiSessionLog)
                     .where(
@@ -694,6 +695,33 @@ export class LogStreamingManager {
                     .limit(limit)) as Array<
                     Record<string, unknown> & { id: number }
                 >;
+
+                const compressedFields = [
+                    "requestBody",
+                    "responseBody",
+                    "normalizedRequest",
+                    "normalizedResponse"
+                ] as const;
+
+                for (const row of rows) {
+                    for (const field of compressedFields) {
+                        const value = row[field];
+                        if (typeof value !== "string") {
+                            continue;
+                        }
+                        try {
+                            row[field] = decompressText(value);
+                        } catch (error) {
+                            logger.error(
+                                `Failed to decompress AI session log field ${field}`,
+                                { error }
+                            );
+                        }
+                    }
+                }
+
+                return rows;
+            }
         }
     }
 

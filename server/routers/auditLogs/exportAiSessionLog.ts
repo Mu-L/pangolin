@@ -11,7 +11,8 @@ import {
     queryAiSessionLogsQuery,
     queryAiSessionLogsParams,
     queryAiSession,
-    countAiSessionQuery
+    countAiSessionQuery,
+    decompressAiSessionLogRow
 } from "./queryAiSessionLog";
 import { generateCSV } from "./generateCSV";
 
@@ -87,7 +88,9 @@ export async function exportAiSessionLogs(
 
         const baseQuery = queryAiSession(data);
 
-        const log = await baseQuery.limit(MAX_EXPORT_LIMIT);
+        const log = (await baseQuery.limit(MAX_EXPORT_LIMIT)).map(
+            decompressAiSessionLogRow
+        );
 
         const csvData = generateCSV(log);
 
