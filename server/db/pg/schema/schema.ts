@@ -1984,7 +1984,7 @@ export const aiSessionLog = pgTable(
         // were cut short at AI_SESSION_LOG_MAX_BODY_CHARS before storage.
         truncated: boolean("truncated").notNull().default(false),
         statusCode: integer("statusCode"),
-        createdAt: bigint("createdAt", { mode: "number" }).notNull() // epoch ms
+        createdAt: bigint("createdAt", { mode: "number" }).notNull() // epoch seconds
     },
     (t) => [
         index("idx_ai_session_log_org_created").on(t.orgId, t.createdAt),

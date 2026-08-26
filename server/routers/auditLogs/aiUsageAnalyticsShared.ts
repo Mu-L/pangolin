@@ -18,7 +18,7 @@ export const aiUsageAnalyticsFiltersQuery = z.object({
         .refine((val) => !isNaN(Date.parse(val)), {
             error: "timeStart must be a valid ISO date string"
         })
-        .transform((val) => new Date(val).getTime())
+        .transform((val) => Math.floor(new Date(val).getTime() / 1000))
         .prefault(() => getSevenDaysAgo().toISOString())
         .openapi({
             type: "string",
@@ -31,7 +31,7 @@ export const aiUsageAnalyticsFiltersQuery = z.object({
         .refine((val) => !isNaN(Date.parse(val)), {
             error: "timeEnd must be a valid ISO date string"
         })
-        .transform((val) => new Date(val).getTime())
+        .transform((val) => Math.floor(new Date(val).getTime() / 1000))
         .prefault(() => new Date().toISOString())
         .openapi({
             type: "string",
@@ -122,12 +122,12 @@ export function buildAiUsageWhere(
     );
 }
 
-// Buckets createdAt (epoch ms) down to a per-day string, dialect-aware, same
-// approach as the DATE_TRUNC/DATE branch in queryRequestAnalytics.ts.
+// Buckets createdAt (epoch seconds) down to a per-day string, dialect-aware,
+// same approach as the DATE_TRUNC/DATE branch in queryRequestAnalytics.ts.
 export function dayBucketExpr() {
     return driver === "pg"
-        ? sql<string>`DATE_TRUNC('day', TO_TIMESTAMP(${aiUsageRecords.createdAt} / 1000.0))`
-        : sql<string>`DATE(${aiUsageRecords.createdAt} / 1000, 'unixepoch')`;
+        ? sql<string>`DATE_TRUNC('day', TO_TIMESTAMP(${aiUsageRecords.createdAt}))`
+        : sql<string>`DATE(${aiUsageRecords.createdAt}, 'unixepoch')`;
 }
 
 export type DailyMetricRow<K extends string> = {

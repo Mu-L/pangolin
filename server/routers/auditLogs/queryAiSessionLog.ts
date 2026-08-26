@@ -32,7 +32,7 @@ export const queryAiSessionLogsQuery = z.strictObject({
         .refine((val) => !isNaN(Date.parse(val)), {
             error: "timeStart must be a valid ISO date string"
         })
-        .transform((val) => new Date(val).getTime())
+        .transform((val) => Math.floor(new Date(val).getTime() / 1000))
         .prefault(() => getSevenDaysAgo().toISOString())
         .openapi({
             type: "string",
@@ -45,7 +45,7 @@ export const queryAiSessionLogsQuery = z.strictObject({
         .refine((val) => !isNaN(Date.parse(val)), {
             error: "timeEnd must be a valid ISO date string"
         })
-        .transform((val) => new Date(val).getTime())
+        .transform((val) => Math.floor(new Date(val).getTime() / 1000))
         .optional()
         .prefault(() => new Date().toISOString())
         .openapi({

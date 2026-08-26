@@ -18,7 +18,7 @@ const getSiteResourceParamsSchema = z.strictObject({
         .pipe(z.int().positive().optional())
         .optional(),
     niceId: z.string().optional(),
-    orgId: z.string()
+    orgId: z.string().optional()
 });
 
 async function query(siteResourceId?: number, niceId?: string, orgId?: string) {
@@ -32,6 +32,13 @@ async function query(siteResourceId?: number, niceId?: string, orgId?: string) {
                     eq(siteResources.orgId, orgId)
                 )
             )
+            .limit(1);
+        return siteResource;
+    } else if (siteResourceId) {
+        const [siteResource] = await db
+            .select()
+            .from(siteResources)
+            .where(eq(siteResources.siteResourceId, siteResourceId))
             .limit(1);
         return siteResource;
     } else if (niceId && orgId) {
@@ -60,9 +67,7 @@ registry.registerPath({
     tags: [OpenAPITags.PrivateResourceLegacy],
     request: {
         params: z.object({
-            siteResourceId: z.number(),
-            siteId: z.number(),
-            orgId: z.string()
+            siteResourceId: z.number()
         })
     },
     responses: {
@@ -90,9 +95,7 @@ registry.registerPath({
     tags: [OpenAPITags.PrivateResource],
     request: {
         params: z.object({
-            siteResourceId: z.number(),
-            siteId: z.number(),
-            orgId: z.string()
+            siteResourceId: z.number()
         })
     },
     responses: {
