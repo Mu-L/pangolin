@@ -223,7 +223,7 @@ export default async function migration() {
             sql`ALTER TABLE "subscriptions" ADD COLUMN "override" boolean DEFAULT false;`
         );
         await db.execute(
-            sql`ALTER TABLE "orgs" ADD COLUMN "settingsLogRetentionDaysAISessions" integer DEFAULT 7 NOT NULL;`
+            sql`ALTER TABLE "orgs" ADD COLUMN "settingsLogRetentionDaysAISessions" integer DEFAULT 0 NOT NULL;`
         );
         await db.execute(
             sql`ALTER TABLE "siteResources" ADD COLUMN "requiresExitNodeConnection" boolean DEFAULT false NOT NULL;`

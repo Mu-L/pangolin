@@ -18,6 +18,7 @@ import { and, eq, lt } from "drizzle-orm";
 import cache from "#private/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 import { sanitizeString } from "@server/lib/sanitize";
+import { compressText } from "@server/lib/textCompression";
 import type { AiCapability } from "@server/lib/aiCapabilities";
 import {
     normalizeAiRequest,
@@ -151,7 +152,7 @@ async function getRetentionDays(orgId: string): Promise<number> {
 }
 
 export async function cleanUpOldLogs(orgId: string, retentionDays: number) {
-    const cutoffTimestamp = calculateCutoffTimestamp(retentionDays) * 1000;
+    const cutoffTimestamp = calculateCutoffTimestamp(retentionDays);
 
     try {
         await logsDb
@@ -255,13 +256,19 @@ export function logAiSession(data: {
                 ),
                 requestedModel: sanitizeString(data.requestedModel),
                 isStream: data.isStream,
-                requestBody: sanitizeString(requestBodyText.value),
-                responseBody: sanitizeString(responseBodyText.value),
+                requestBody: compressText(
+                    sanitizeString(requestBodyText.value)
+                ),
+                responseBody: compressText(
+                    sanitizeString(responseBodyText.value)
+                ),
                 normalizedRequest: normalizedRequestText
-                    ? sanitizeString(normalizedRequestText.value)
+                    ? compressText(sanitizeString(normalizedRequestText.value))
                     : undefined,
                 normalizedResponse: normalizedResponseText
-                    ? sanitizeString(normalizedResponseText.value)
+                    ? compressText(
+                          sanitizeString(normalizedResponseText.value)
+                      )
                     : undefined,
                 truncated:
                     requestBodyText.truncated ||
