@@ -101,7 +101,7 @@ export const AuthSchema = z.object({
 export const RuleSchema = z
     .object({
         action: z.enum(["allow", "deny", "pass"]),
-        match: z.enum(["cidr", "path", "ip", "country", "asn", "region"]),
+        match: z.enum(["cidr", "path", "ip", "country", "country_is_not", "asn", "region"]),
         value: z.coerce.string(),
         priority: z.int().optional(),
         enabled: z.boolean().optional().default(true)
@@ -136,7 +136,7 @@ export const RuleSchema = z
     )
     .refine(
         (rule) => {
-            if (rule.match === "country") {
+            if (rule.match === "country" || rule.match === "country_is_not") {
                 if (!hasMaxmindCountryDb) {
                     return false;
                 }
