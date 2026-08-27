@@ -276,7 +276,9 @@ export default function AiSessionLogsPage() {
             cell: ({ row }) => {
                 return (
                     <div className="whitespace-nowrap">
-                        {new Date(row.original.createdAt).toLocaleString()}
+                        {new Date(
+                            row.original.createdAt * 1000
+                        ).toLocaleString()}
                     </div>
                 );
             }
@@ -715,8 +717,8 @@ function generateSampleAiSessionLogs(): QueryAiSessionLogResponse["log"] {
         null
     ];
 
-    const now = Date.now();
-    const sevenDaysAgoMs = now - 7 * 24 * 60 * 60 * 1000;
+    const now = Math.floor(Date.now() / 1000);
+    const sevenDaysAgoMs = now - 7 * 24 * 60 * 60;
 
     return Array.from({ length: 10 }, (_, i) => {
         const provider =
