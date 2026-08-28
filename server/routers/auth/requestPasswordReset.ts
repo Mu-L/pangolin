@@ -6,7 +6,7 @@ import HttpCode from "@server/types/HttpCode";
 import { response } from "@server/lib/response";
 import { db } from "@server/db";
 import { passwordResetTokens, users } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { alphabet, generateRandomString, sha256 } from "oslo/crypto";
 import { createDate } from "oslo";
 import logger from "@server/logger";
@@ -49,7 +49,12 @@ export async function requestPasswordReset(
         const existingUser = await db
             .select()
             .from(users)
-            .where(eq(users.email, email));
+            .where(
+                and(
+                    eq(users.email, email),
+                    eq(users.type, UserType.Internal)
+                )
+            );
 
         if (!existingUser || !existingUser.length) {
             await randomDelay(2000);
