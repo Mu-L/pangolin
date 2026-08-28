@@ -64,10 +64,16 @@ export type AdminOrgRow = {
     orgId: string;
     name: string;
     subnet: string | null;
+    utilitySubnet: string | null;
     createdAt: string | null;
     userCount: number;
     siteCount: number;
     resourceCount: number;
+    owner: {
+        userId: string;
+        name: string | null;
+        username: string;
+    } | null;
 };
 
 export type AdminListOrgsResponse = PaginatedResponse<{
@@ -172,6 +178,7 @@ export async function adminListOrgs(
                     orgId: orgs.orgId,
                     name: orgs.name,
                     subnet: orgs.subnet,
+                    utilitySubnet: orgs.utilitySubnet,
                     createdAt: orgs.createdAt,
                     userCount: sql<number>`(
                         SELECT COUNT(*)
@@ -189,7 +196,7 @@ export async function adminListOrgs(
                         WHERE ${resources.orgId} = ${orgIdRef}
                     )`.as("resourceCount"),
                     owner: {
-                        id: users.userId,
+                        userId: users.userId,
                         name: users.name,
                         username: users.username
                     }

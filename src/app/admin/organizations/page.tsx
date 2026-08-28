@@ -1,5 +1,5 @@
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
-import OrgsTable, { type OrgRow } from "@app/components/OrgsTable";
+import OrgsTable from "@app/components/OrgsTable";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import type { AdminListOrgsResponse } from "@server/routers/org";
@@ -39,16 +39,6 @@ export default async function OrganizationsPage(props: OrganizationsPageProps) {
 
     const t = await getTranslations();
 
-    const orgRows: OrgRow[] = orgs.map((org) => ({
-        orgId: org.orgId,
-        name: org.name,
-        subnet: org.subnet,
-        createdAt: org.createdAt,
-        userCount: org.userCount,
-        siteCount: org.siteCount,
-        resourceCount: org.resourceCount
-    }));
-
     return (
         <>
             <SettingsSectionTitle
@@ -57,7 +47,7 @@ export default async function OrganizationsPage(props: OrganizationsPageProps) {
             />
 
             <OrgsTable
-                orgs={orgRows}
+                orgs={orgs}
                 rowCount={pagination.total}
                 pagination={{
                     pageIndex: pagination.page - 1,

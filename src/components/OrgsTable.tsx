@@ -5,22 +5,16 @@ import {
     ControlledDataTable,
     type ExtendedColumnDef
 } from "@app/components/ui/controlled-data-table";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from "@app/components/ui/dropdown-menu";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { toast } from "@app/hooks/useToast";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
+import type { AdminOrgRow } from "@server/routers/org";
 import { type PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
-    ArrowRight,
     ArrowUp10Icon,
-    ChevronsUpDownIcon,
-    MoreHorizontal
+    ArrowUpRight,
+    ChevronsUpDownIcon
 } from "lucide-react";
 import moment from "moment";
 import { useTranslations } from "next-intl";
@@ -29,18 +23,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 
-export type OrgRow = {
-    orgId: string;
-    name: string;
-    subnet: string | null;
-    createdAt: string | null;
-    userCount: number;
-    siteCount: number;
-    resourceCount: number;
-};
-
 type OrgTableProps = {
-    orgs: OrgRow[];
+    orgs: AdminOrgRow[];
     pagination: PaginationState;
     rowCount: number;
 };
@@ -103,7 +87,7 @@ export default function OrgsTable({
         );
     }
 
-    const columns = useMemo<ExtendedColumnDef<OrgRow>[]>(() => {
+    const columns = useMemo<ExtendedColumnDef<AdminOrgRow>[]>(() => {
         return [
             {
                 accessorKey: "name",
@@ -125,6 +109,31 @@ export default function OrgsTable({
                 }
             },
             {
+                accessorKey: "owner",
+                friendlyName: t("accessRoleOwner"),
+                header: () => (
+                    <span className="p-3">{t("accessRoleOwner")}</span>
+                ),
+                cell: ({ row }) => {
+                    const owner = row.original.owner;
+                    return owner ? (
+                        <Button
+                            className="tabular-nums"
+                            asChild
+                            variant="outline"
+                            size="sm"
+                        >
+                            <Link href={`/admin/users/${owner.userId}`}>
+                                {owner.name || owner.username}
+                                <ArrowUpRight className="ml-2 h-3 w-3" />
+                            </Link>
+                        </Button>
+                    ) : (
+                        <code>-</code>
+                    );
+                }
+            },
+            {
                 accessorKey: "orgId",
                 friendlyName: t("orgId"),
                 header: () => <span className="p-3">{t("orgId")}</span>
@@ -134,6 +143,14 @@ export default function OrgsTable({
                 friendlyName: t("subnet"),
                 header: () => <span className="p-3">{t("subnet")}</span>,
                 cell: ({ row }) => <span>{row.original.subnet || "-"}</span>
+            },
+            {
+                accessorKey: "utilitySubnet",
+                friendlyName: t("utilitySubnet"),
+                header: () => <span className="p-3">{t("utilitySubnet")}</span>,
+                cell: ({ row }) => (
+                    <span>{row.original.utilitySubnet || "-"}</span>
+                )
             },
             {
                 accessorKey: "userCount",
@@ -218,6 +235,7 @@ export default function OrgsTable({
             rowCount={rowCount}
             columnVisibility={{
                 subnet: false,
+                utilitySubnet: false,
                 orgId: false
             }}
             enableColumnVisibility
