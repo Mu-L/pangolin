@@ -50,8 +50,6 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
-import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
-import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import {
     createBrowserGatewayTargetFormSchema,
@@ -59,7 +57,6 @@ import {
     selectedSiteSchema,
     type SshSettingsFormValues
 } from "@app/lib/browserGatewayTargetFormSchema";
-import { DockerManager, DockerState } from "@app/lib/docker";
 import { orgQueries } from "@app/lib/queries";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -328,19 +325,20 @@ export default function Page() {
     const rawResourcesAllowed =
         env.flags.allowRawResources &&
         (build !== "saas" || remoteExitNodes.length > 0);
-    const enterpriseModesAllowed =
-        !env.flags.disableEnterpriseFeatures;
 
     const availableTypes = useMemo((): NewResourceType[] => {
-        const base: NewResourceType[] = ["http", "inference"];
-        if (enterpriseModesAllowed) {
-            base.push("ssh", "rdp", "vnc");
-        }
+        const base: NewResourceType[] = [
+            "http",
+            "inference",
+            "ssh",
+            "rdp",
+            "vnc"
+        ];
         if (rawResourcesAllowed) {
             base.push("tcp", "udp");
         }
         return base;
-    }, [enterpriseModesAllowed, rawResourcesAllowed]);
+    }, [rawResourcesAllowed]);
 
     useEffect(() => {
         if (!availableTypes.includes(resourceType)) {
