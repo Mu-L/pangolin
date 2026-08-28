@@ -87,6 +87,7 @@ authenticated.get("/org/checkId", org.checkId);
 authenticated.put("/org", getUserOrgs, org.createOrg);
 
 authenticated.get("/orgs", verifyUserIsServerAdmin, org.listOrgs);
+authenticated.get("/admin/orgs", verifyUserIsServerAdmin, org.adminListOrgs);
 authenticated.get("/user/:userId/orgs", verifyIsLoggedInUser, org.listUserOrgs);
 
 authenticated.get(
