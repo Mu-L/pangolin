@@ -8,7 +8,8 @@ import {
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { toast } from "@app/hooks/useToast";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
-import type { AdminOrgRow } from "@server/routers/org";
+import type { AdminOrgRow, DeleteOrgResponse } from "@server/routers/org";
+
 import { type PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
@@ -20,8 +21,13 @@ import moment from "moment";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import type { AxiosResponse } from "axios";
+import api from "gpt-tokenizer";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 
 type OrgTableProps = {
     orgs: AdminOrgRow[];
@@ -43,6 +49,10 @@ export default function OrgsTable({
     } = useNavigationContext();
 
     const [isRefreshing, startTransition] = useTransition();
+
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedOrg, setSelectedOrg] = useState<AdminOrgRow | null>();
+    const api = createApiClient(useEnvContext());
 
     function refreshData() {
         startTransition(async () => {
@@ -192,6 +202,10 @@ export default function OrgsTable({
                     return (
                         <div className="flex items-center gap-2 justify-end">
                             <Button
+                                onClick={() => {
+                                    setSelectedOrg(orgRow);
+                                    setIsDeleteModalOpen(true);
+                                }}
                                 variant="outline"
                                 className="text-red-400 focus:text-destructive "
                             >
@@ -220,27 +234,72 @@ export default function OrgsTable({
         });
     }, 300);
 
+    async function deleteOrg(orgId: string) {
+        try {
+            // TODO
+            // const res = await api.delete<AxiosResponse<DeleteOrgResponse>>(
+            //     `/org/${orgId}`
+            // );
+            toast({
+                title: t("orgDeleted"),
+                description: t("orgDeletedMessage")
+            });
+        } catch (err) {
+            console.error(err);
+            toast({
+                variant: "destructive",
+                title: t("orgErrorDelete"),
+                description: formatAxiosError(err, t("orgErrorDeleteMessage"))
+            });
+        } finally {
+            router.refresh();
+        }
+    }
+
     return (
-        <ControlledDataTable
-            columns={columns}
-            rows={orgs}
-            tableId="admin-orgs-table"
-            searchPlaceholder={t("orgSearch")}
-            pagination={pagination}
-            onPaginationChange={handlePaginationChange}
-            searchQuery={searchParams.get("query")?.toString()}
-            onSearch={handleSearchChange}
-            onRefresh={refreshData}
-            isRefreshing={isRefreshing || isFiltering}
-            rowCount={rowCount}
-            columnVisibility={{
-                subnet: false,
-                utilitySubnet: false,
-                orgId: false
-            }}
-            enableColumnVisibility
-            stickyLeftColumn="name"
-            stickyRightColumn="actions"
-        />
+        <>
+            {selectedOrg && (
+                <ConfirmDeleteDialog
+                    open={isDeleteModalOpen}
+                    setOpen={(val) => {
+                        setIsDeleteModalOpen(val);
+                        setSelectedOrg(null);
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>{t("orgQuestionRemove")}</p>
+                            <p>{t("orgMessageRemove")}</p>
+                        </div>
+                    }
+                    buttonText={t("orgDeleteConfirm")}
+                    onConfirm={async () => {
+                        startTransition(() => deleteOrg(selectedOrg.orgId));
+                    }}
+                    string={selectedOrg.name}
+                    title={t("orgDelete")}
+                />
+            )}
+            <ControlledDataTable
+                columns={columns}
+                rows={orgs}
+                tableId="admin-orgs-table"
+                searchPlaceholder={t("orgSearch")}
+                pagination={pagination}
+                onPaginationChange={handlePaginationChange}
+                searchQuery={searchParams.get("query")?.toString()}
+                onSearch={handleSearchChange}
+                onRefresh={refreshData}
+                isRefreshing={isRefreshing || isFiltering}
+                rowCount={rowCount}
+                columnVisibility={{
+                    subnet: false,
+                    utilitySubnet: false,
+                    orgId: false
+                }}
+                enableColumnVisibility
+                stickyLeftColumn="name"
+                stickyRightColumn="actions"
+            />
+        </>
     );
 }
