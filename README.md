@@ -99,6 +99,19 @@ Access private resources like SSH servers, databases, RDP, and entire network ra
 
 <img src="public/screenshots/private-resources.png" alt="Private resources" width="100%" />
 
+### Identity-aware AI gateway
+
+Put an identity-aware proxy in front of public cloud (OpenAI, Anthropic, Gemini, etc.) and self-hosted model servers (Ollama, vLLM, Mistral, etc.) so coding agents and AI clients call a single Pangolin URL. Publish it as a public resource with personal API keys, or keep it private on a client tunnel where the connected client is the credential for keykless access. Budgets, session history, and usage analytics sit in front of every call.
+
+* Access self-hosted models (vLLM, Ollama, etc) alongside cloud models (OpenAI, Anthropic, etc) in one place
+* Keyless access by authenticating users with the Pangolin desktop client
+* Or, provide users with personal API keys
+* Control costs and token usage by setting budgets
+* Audit with detailed session history and analytics
+* Integrate AI clients and coding agents (Claude Code, Codex, OpenCode, etc)
+
+<img src="public/screenshots/expanded-session-logs.png" alt="AI Session Logs" width="100%" />
+
 ### Give users and roles access to resources
 
 Use Pangolin's built-in users or bring your own identity provider and set up role-based access control (RBAC). Grant users access to specific resources, not entire networks. Unlike traditional VPNs that expose full network access, Pangolin's zero-trust model ensures users can only reach the applications, services, and routes you explicitly define.
