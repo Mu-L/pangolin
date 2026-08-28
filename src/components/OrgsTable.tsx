@@ -124,7 +124,7 @@ export default function OrgsTable({
                             size="sm"
                         >
                             <Link href={`/admin/users/${owner.userId}`}>
-                                {owner.name || owner.username}
+                                {owner.username}
                                 <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Link>
                         </Button>

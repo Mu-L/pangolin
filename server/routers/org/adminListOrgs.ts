@@ -71,7 +71,6 @@ export type AdminOrgRow = {
     resourceCount: number;
     owner: {
         userId: string;
-        name: string | null;
         username: string;
     } | null;
 };
@@ -197,7 +196,6 @@ export async function adminListOrgs(
                     )`.as("resourceCount"),
                     owner: {
                         userId: users.userId,
-                        name: users.name,
                         username: users.username
                     }
                 })
