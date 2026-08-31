@@ -149,12 +149,8 @@ LQIDAQAB
         }
 
         // Count used sites and users for license comparison
-        const [siteCountRes] = await db
-            .select({ value: count() })
-            .from(sites);
-        const [userCountRes] = await db
-            .select({ value: count() })
-            .from(users);
+        const [siteCountRes] = await db.select({ value: count() }).from(sites);
+        const [userCountRes] = await db.select({ value: count() }).from(users);
 
         const status: LicenseStatus = {
             hostId: this.hostMeta.hostMetaId,
@@ -276,10 +272,13 @@ LQIDAQAB
                         logger.error(
                             `Allowing failure. Will retry one more time at next run interval.`
                         );
-                        // return last known good status
-                        return this.statusCache.get(
+                        // Fall back to last known good status if we have
+                        // one cached; otherwise return the freshly built
+                        // status (with defaults) rather than undefined.
+                        const lastKnownStatus = this.statusCache.get(
                             this.statusKey
-                        ) as LicenseStatus;
+                        ) as LicenseStatus | undefined;
+                        return lastKnownStatus ?? status;
                     } else {
                         // Subsequent failures: fail abruptly
                         throw e;
@@ -368,10 +367,7 @@ LQIDAQAB
                 }
 
                 // Only consider quantity if defined and >= 0 (quantity = users, quantity_2 = sites)
-                if (
-                    cached.quantity_2 !== undefined &&
-                    cached.quantity_2 >= 0
-                ) {
+                if (cached.quantity_2 !== undefined && cached.quantity_2 >= 0) {
                     status.maxSites =
                         (status.maxSites ?? 0) + cached.quantity_2;
                 }
@@ -561,7 +557,7 @@ LQIDAQAB
                     // Calculate exponential backoff delay
                     const retryDelay = Math.floor(
                         initialRetryDelay *
-                        Math.pow(exponentialFactor, attempt - 1)
+                            Math.pow(exponentialFactor, attempt - 1)
                     );
 
                     logger.debug(
