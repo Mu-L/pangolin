@@ -99,131 +99,147 @@ export const orgDomains = sqliteTable("orgDomains", {
         .references(() => domains.domainId, { onDelete: "cascade" })
 });
 
-export const sites = sqliteTable("sites", {
-    siteId: integer("siteId").primaryKey({ autoIncrement: true }),
-    orgId: text("orgId")
-        .references(() => orgs.orgId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    niceId: text("niceId").notNull(),
-    exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
-        onDelete: "set null"
-    }),
-    networkId: integer("networkId").references(() => networks.networkId, {
-        onDelete: "set null"
-    }),
-    name: text("name").notNull(),
-    pubKey: text("pubKey"),
-    exitNodeSubnet: text("exitNodeSubnet"),
-    megabytesIn: integer("bytesIn").default(0),
-    megabytesOut: integer("bytesOut").default(0),
-    lastBandwidthUpdate: text("lastBandwidthUpdate"),
-    type: text("type").notNull(), // "newt" or "wireguard"
-    online: integer("online", { mode: "boolean" }).notNull().default(false),
-    lastPing: integer("lastPing"),
+export const sites = sqliteTable(
+    "sites",
+    {
+        siteId: integer("siteId").primaryKey({ autoIncrement: true }),
+        orgId: text("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        niceId: text("niceId").notNull(),
+        exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
+            onDelete: "set null"
+        }),
+        networkId: integer("networkId").references(() => networks.networkId, {
+            onDelete: "set null"
+        }),
+        name: text("name").notNull(),
+        pubKey: text("pubKey"),
+        exitNodeSubnet: text("exitNodeSubnet"),
+        megabytesIn: integer("bytesIn").default(0),
+        megabytesOut: integer("bytesOut").default(0),
+        lastBandwidthUpdate: text("lastBandwidthUpdate"),
+        type: text("type").notNull(), // "newt" or "wireguard"
+        online: integer("online", { mode: "boolean" }).notNull().default(false),
+        lastPing: integer("lastPing"),
 
-    // exit node stuff that is how to connect to the site when it has a wg server
-    address: text("address"), // this is the address of the wireguard interface in newt
-    endpoint: text("endpoint"), // this is how to reach gerbil externally - gets put into the wireguard config
-    localEndpoints: text("localEndpoints"), // JSON encoded list of string ips on the local machine to try to connect to
-    publicKey: text("publicKey"), // TODO: Fix typo in publicKey
-    lastHolePunch: integer("lastHolePunch"),
-    listenPort: integer("listenPort"),
-    dockerSocketEnabled: integer("dockerSocketEnabled", { mode: "boolean" })
-        .notNull()
-        .default(true),
-    autoUpdateEnabled: integer("autoUpdateEnabled", { mode: "boolean" })
-        .notNull()
-        .default(false),
-    autoUpdateOverrideOrg: integer("autoUpdateOverrideOrg", {
-        mode: "boolean"
-    })
-        .notNull()
-        .default(false),
-    status: text("status").$type<"pending" | "approved">().default("approved")
-});
-
-export const resources = sqliteTable("resources", {
-    resourceId: integer("resourceId").primaryKey({ autoIncrement: true }),
-    resourcePolicyId: integer("resourcePolicyId").references(
-        () => resourcePolicies.resourcePolicyId,
-        { onDelete: "set null" }
-    ),
-    defaultResourcePolicyId: integer("defaultResourcePolicyId").references(
-        () => resourcePolicies.resourcePolicyId,
-        {
-            onDelete: "restrict"
-        }
-    ),
-    resourceGuid: text("resourceGuid", { length: 36 })
-        .unique()
-        .notNull()
-        .$defaultFn(() => randomUUID()),
-    orgId: text("orgId")
-        .references(() => orgs.orgId, {
-            onDelete: "cascade"
+        // exit node stuff that is how to connect to the site when it has a wg server
+        address: text("address"), // this is the address of the wireguard interface in newt
+        endpoint: text("endpoint"), // this is how to reach gerbil externally - gets put into the wireguard config
+        localEndpoints: text("localEndpoints"), // JSON encoded list of string ips on the local machine to try to connect to
+        publicKey: text("publicKey"), // TODO: Fix typo in publicKey
+        lastHolePunch: integer("lastHolePunch"),
+        listenPort: integer("listenPort"),
+        dockerSocketEnabled: integer("dockerSocketEnabled", { mode: "boolean" })
+            .notNull()
+            .default(true),
+        autoUpdateEnabled: integer("autoUpdateEnabled", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        autoUpdateOverrideOrg: integer("autoUpdateOverrideOrg", {
+            mode: "boolean"
         })
-        .notNull(),
-    niceId: text("niceId").notNull(),
-    name: text("name").notNull(),
-    subdomain: text("subdomain"),
-    fullDomain: text("fullDomain"),
-    domainId: text("domainId").references(() => domains.domainId, {
-        onDelete: "set null"
-    }),
-    ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),
-    blockAccess: integer("blockAccess", { mode: "boolean" })
-        .notNull()
-        .default(false),
-    proxyPort: integer("proxyPort"),
-    sso: integer("sso", { mode: "boolean" }),
-    emailWhitelistEnabled: integer("emailWhitelistEnabled", {
-        mode: "boolean"
-    }),
-    applyRules: integer("applyRules", { mode: "boolean" }),
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
-    stickySession: integer("stickySession", { mode: "boolean" })
-        .notNull()
-        .default(false),
-    tlsServerName: text("tlsServerName"),
-    setHostHeader: text("setHostHeader"),
-    enableProxy: integer("enableProxy", { mode: "boolean" }).default(true),
-    skipToIdpId: integer("skipToIdpId").references(() => idp.idpId, {
-        onDelete: "set null"
-    }),
-    headers: text("headers"), // comma-separated list of headers to add to the request
-    proxyProtocol: integer("proxyProtocol", { mode: "boolean" })
-        .notNull()
-        .default(false),
-    proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
-    maintenanceModeEnabled: integer("maintenanceModeEnabled", {
-        mode: "boolean"
-    })
-        .notNull()
-        .default(false),
-    maintenanceModeType: text("maintenanceModeType", {
-        enum: ["forced", "automatic"]
-    }).default("forced"), // "forced" = always show, "automatic" = only when down
-    maintenanceTitle: text("maintenanceTitle"),
-    maintenanceMessage: text("maintenanceMessage"),
-    maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
-    postAuthPath: text("postAuthPath"),
-    health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
-    wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
-    mode: text("mode")
-        .default("http")
-        .$type<"rdp" | "ssh" | "http" | "vnc" | "inference" | "tcp" | "udp">()
-        .notNull(), // rdp, ssh, http, vnc, inference
-    pamMode: text("pamMode")
-        .$type<"passthrough" | "push">()
-        .default("passthrough"),
-    authDaemonMode: text("authDaemonMode")
-        .$type<"site" | "remote" | "native">()
-        .default("site"),
-    authDaemonPort: integer("authDaemonPort").default(22123),
-    status: text("status").$type<"pending" | "approved">().default("approved")
-});
+            .notNull()
+            .default(false),
+        status: text("status")
+            .$type<"pending" | "approved">()
+            .default("approved")
+    },
+    (table) => [
+        index("idx_sites_orgId").on(table.orgId)
+    ]
+);
+
+export const resources = sqliteTable(
+    "resources",
+    {
+        resourceId: integer("resourceId").primaryKey({ autoIncrement: true }),
+        resourcePolicyId: integer("resourcePolicyId").references(
+            () => resourcePolicies.resourcePolicyId,
+            { onDelete: "set null" }
+        ),
+        defaultResourcePolicyId: integer("defaultResourcePolicyId").references(
+            () => resourcePolicies.resourcePolicyId,
+            {
+                onDelete: "restrict"
+            }
+        ),
+        resourceGuid: text("resourceGuid", { length: 36 })
+            .unique()
+            .notNull()
+            .$defaultFn(() => randomUUID()),
+        orgId: text("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        niceId: text("niceId").notNull(),
+        name: text("name").notNull(),
+        subdomain: text("subdomain"),
+        fullDomain: text("fullDomain"),
+        domainId: text("domainId").references(() => domains.domainId, {
+            onDelete: "set null"
+        }),
+        ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),
+        blockAccess: integer("blockAccess", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        proxyPort: integer("proxyPort"),
+        sso: integer("sso", { mode: "boolean" }),
+        emailWhitelistEnabled: integer("emailWhitelistEnabled", {
+            mode: "boolean"
+        }),
+        applyRules: integer("applyRules", { mode: "boolean" }),
+        enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+        stickySession: integer("stickySession", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        tlsServerName: text("tlsServerName"),
+        setHostHeader: text("setHostHeader"),
+        enableProxy: integer("enableProxy", { mode: "boolean" }).default(true),
+        skipToIdpId: integer("skipToIdpId").references(() => idp.idpId, {
+            onDelete: "set null"
+        }),
+        headers: text("headers"), // comma-separated list of headers to add to the request
+        proxyProtocol: integer("proxyProtocol", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
+        maintenanceModeEnabled: integer("maintenanceModeEnabled", {
+            mode: "boolean"
+        })
+            .notNull()
+            .default(false),
+        maintenanceModeType: text("maintenanceModeType", {
+            enum: ["forced", "automatic"]
+        }).default("forced"), // "forced" = always show, "automatic" = only when down
+        maintenanceTitle: text("maintenanceTitle"),
+        maintenanceMessage: text("maintenanceMessage"),
+        maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
+        postAuthPath: text("postAuthPath"),
+        health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
+        wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
+        mode: text("mode")
+            .default("http")
+            .$type<"rdp" | "ssh" | "http" | "vnc" | "inference" | "tcp" | "udp">()
+            .notNull(), // rdp, ssh, http, vnc, inference
+        pamMode: text("pamMode")
+            .$type<"passthrough" | "push">()
+            .default("passthrough"),
+        authDaemonMode: text("authDaemonMode")
+            .$type<"site" | "remote" | "native">()
+            .default("site"),
+        authDaemonPort: integer("authDaemonPort").default(22123),
+        status: text("status")
+            .$type<"pending" | "approved">()
+            .default("approved")
+    },
+    (table) => [
+        index("idx_resources_orgId").on(table.orgId)
+    ]
+);
 
 export const resourceAiProviders = sqliteTable(
     "resourceAiProviders",
@@ -260,16 +276,22 @@ export const resourceAiModels = sqliteTable(
     (t) => [primaryKey({ columns: [t.resourceId, t.modelId] })]
 );
 
-export const labels = sqliteTable("labels", {
-    labelId: integer("labelId").primaryKey({ autoIncrement: true }),
-    name: text("name").notNull(),
-    color: text("color").notNull(),
-    orgId: text("orgId")
-        .references(() => orgs.orgId, {
-            onDelete: "cascade"
-        })
-        .notNull()
-});
+export const labels = sqliteTable(
+    "labels",
+    {
+        labelId: integer("labelId").primaryKey({ autoIncrement: true }),
+        name: text("name").notNull(),
+        color: text("color").notNull(),
+        orgId: text("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (table) => [
+        index("idx_labels_orgId").on(table.orgId)
+    ]
+);
 
 export const launcherViews = sqliteTable("launcherViews", {
     viewId: integer("viewId").primaryKey({ autoIncrement: true }),
@@ -366,35 +388,44 @@ export const clientLabels = sqliteTable(
     (t) => [unique("client_label_uniq").on(t.clientId, t.labelId)]
 );
 
-export const targets = sqliteTable("targets", {
-    targetId: integer("targetId").primaryKey({ autoIncrement: true }),
-    resourceId: integer("resourceId").references(() => resources.resourceId, {
-        onDelete: "cascade"
-    }),
-    providerId: integer("providerId").references(() => aiProviders.providerId, {
-        onDelete: "cascade"
-    }),
-    siteId: integer("siteId")
-        .references(() => sites.siteId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    ip: text("ip").notNull(),
-    method: text("method"),
-    port: integer("port").notNull(),
-    internalPort: integer("internalPort"),
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
-    path: text("path"),
-    pathMatchType: text("pathMatchType"), // exact, prefix, regex
-    rewritePath: text("rewritePath"), // if set, rewrites the path to this value before sending to the target
-    rewritePathType: text("rewritePathType"), // exact, prefix, regex, stripPrefix
-    priority: integer("priority").notNull().default(100),
-    mode: text("mode")
-        .$type<"http" | "tcp" | "udp" | "ssh" | "rdp" | "vnc">()
-        .notNull()
-        .default("http"),
-    authToken: text("authToken")
-});
+export const targets = sqliteTable(
+    "targets",
+    {
+        targetId: integer("targetId").primaryKey({ autoIncrement: true }),
+        resourceId: integer("resourceId").references(
+            () => resources.resourceId,
+            { onDelete: "cascade" }
+        ),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            { onDelete: "cascade" }
+        ),
+        siteId: integer("siteId")
+            .references(() => sites.siteId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        ip: text("ip").notNull(),
+        method: text("method"),
+        port: integer("port").notNull(),
+        internalPort: integer("internalPort"),
+        enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+        path: text("path"),
+        pathMatchType: text("pathMatchType"), // exact, prefix, regex
+        rewritePath: text("rewritePath"), // if set, rewrites the path to this value before sending to the target
+        rewritePathType: text("rewritePathType"), // exact, prefix, regex, stripPrefix
+        priority: integer("priority").notNull().default(100),
+        mode: text("mode")
+            .$type<"http" | "tcp" | "udp" | "ssh" | "rdp" | "vnc">()
+            .notNull()
+            .default("http"),
+        authToken: text("authToken")
+    },
+    (table) => [
+        index("idx_targets_resourceId").on(table.resourceId),
+        index("idx_targets_siteId").on(table.siteId)
+    ]
+);
 
 export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     targetHealthCheckId: integer("targetHealthCheckId").primaryKey({
@@ -663,50 +694,63 @@ export const setupTokens = sqliteTable("setupTokens", {
     dateUsed: text("dateUsed")
 });
 
-export const newts = sqliteTable("newt", {
-    newtId: text("id").primaryKey(),
-    secretHash: text("secretHash").notNull(),
-    dateCreated: text("dateCreated").notNull(),
-    version: text("version"),
-    siteId: integer("siteId").references(() => sites.siteId, {
-        onDelete: "cascade"
-    })
-});
-
-export const clients = sqliteTable("clients", {
-    clientId: integer("clientId").primaryKey({ autoIncrement: true }),
-    orgId: text("orgId")
-        .references(() => orgs.orgId, {
+export const newts = sqliteTable(
+    "newt",
+    {
+        newtId: text("id").primaryKey(),
+        secretHash: text("secretHash").notNull(),
+        dateCreated: text("dateCreated").notNull(),
+        version: text("version"),
+        siteId: integer("siteId").references(() => sites.siteId, {
             onDelete: "cascade"
         })
-        .notNull(),
-    exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
-        onDelete: "set null"
-    }),
-    userId: text("userId").references(() => users.userId, {
-        // optionally tied to a user and in this case delete when the user deletes
-        onDelete: "cascade"
-    }),
-    niceId: text("niceId").notNull(),
-    name: text("name").notNull(),
-    pubKey: text("pubKey"),
-    olmId: text("olmId"), // to lock it to a specific olm optionally
-    subnet: text("subnet").notNull(),
-    exitNodeSubnet: text("exitNodeSubnet"), // this is the subnet when connecting to an exit node
-    megabytesIn: integer("bytesIn"),
-    megabytesOut: integer("bytesOut"),
-    lastBandwidthUpdate: text("lastBandwidthUpdate"),
-    lastPing: integer("lastPing"),
-    type: text("type").notNull(), // "olm"
-    online: integer("online", { mode: "boolean" }).notNull().default(false),
-    // endpoint: text("endpoint"),
-    lastHolePunch: integer("lastHolePunch"),
-    archived: integer("archived", { mode: "boolean" }).notNull().default(false),
-    blocked: integer("blocked", { mode: "boolean" }).notNull().default(false),
-    approvalState: text("approvalState").$type<
-        "pending" | "approved" | "denied"
-    >()
-});
+    },
+    (table) => [
+        index("idx_newts_siteId").on(table.siteId)
+    ]
+);
+
+export const clients = sqliteTable(
+    "clients",
+    {
+        clientId: integer("clientId").primaryKey({ autoIncrement: true }),
+        orgId: text("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
+            onDelete: "set null"
+        }),
+        userId: text("userId").references(() => users.userId, {
+            // optionally tied to a user and in this case delete when the user deletes
+            onDelete: "cascade"
+        }),
+        niceId: text("niceId").notNull(),
+        name: text("name").notNull(),
+        pubKey: text("pubKey"),
+        olmId: text("olmId"), // to lock it to a specific olm optionally
+        subnet: text("subnet").notNull(),
+        exitNodeSubnet: text("exitNodeSubnet"), // this is the subnet when connecting to an exit node
+        megabytesIn: integer("bytesIn"),
+        megabytesOut: integer("bytesOut"),
+        lastBandwidthUpdate: text("lastBandwidthUpdate"),
+        lastPing: integer("lastPing"),
+        type: text("type").notNull(), // "olm"
+        online: integer("online", { mode: "boolean" }).notNull().default(false),
+        // endpoint: text("endpoint"),
+        lastHolePunch: integer("lastHolePunch"),
+        archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+        blocked: integer("blocked", { mode: "boolean" }).notNull().default(false),
+        approvalState: text("approvalState").$type<
+            "pending" | "approved" | "denied"
+        >()
+    },
+    (table) => [
+        index("idx_clients_orgId").on(table.orgId),
+        index("idx_clients_userId").on(table.userId)
+    ]
+);
 
 export const clientSitesAssociationsCache = sqliteTable(
     "clientSitesAssociationsCache",
@@ -734,23 +778,29 @@ export const clientSiteResourcesAssociationsCache = sqliteTable(
     }
 );
 
-export const olms = sqliteTable("olms", {
-    olmId: text("id").primaryKey(),
-    secretHash: text("secretHash").notNull(),
-    dateCreated: text("dateCreated").notNull(),
-    version: text("version"),
-    agent: text("agent"),
-    name: text("name"),
-    clientId: integer("clientId").references(() => clients.clientId, {
-        // we will switch this depending on the current org it wants to connect to
-        onDelete: "set null"
-    }),
-    userId: text("userId").references(() => users.userId, {
-        // optionally tied to a user and in this case delete when the user deletes
-        onDelete: "cascade"
-    }),
-    archived: integer("archived", { mode: "boolean" }).notNull().default(false)
-});
+export const olms = sqliteTable(
+    "olms",
+    {
+        olmId: text("id").primaryKey(),
+        secretHash: text("secretHash").notNull(),
+        dateCreated: text("dateCreated").notNull(),
+        version: text("version"),
+        agent: text("agent"),
+        name: text("name"),
+        clientId: integer("clientId").references(() => clients.clientId, {
+            // we will switch this depending on the current org it wants to connect to
+            onDelete: "set null"
+        }),
+        userId: text("userId").references(() => users.userId, {
+            // optionally tied to a user and in this case delete when the user deletes
+            onDelete: "cascade"
+        }),
+        archived: integer("archived", { mode: "boolean" }).notNull().default(false)
+    },
+    (table) => [
+        index("idx_olms_userId").on(table.userId)
+    ]
+);
 
 export const currentFingerprint = sqliteTable("currentFingerprint", {
     fingerprintId: integer("id").primaryKey({ autoIncrement: true }),
@@ -912,17 +962,23 @@ export const twoFactorBackupCodes = sqliteTable("twoFactorBackupCodes", {
     codeHash: text("codeHash").notNull()
 });
 
-export const sessions = sqliteTable("session", {
-    sessionId: text("id").primaryKey(),
-    userId: text("userId")
-        .notNull()
-        .references(() => users.userId, { onDelete: "cascade" }),
-    expiresAt: integer("expiresAt").notNull(),
-    issuedAt: integer("issuedAt"),
-    deviceAuthUsed: integer("deviceAuthUsed", { mode: "boolean" })
-        .notNull()
-        .default(false)
-});
+export const sessions = sqliteTable(
+    "session",
+    {
+        sessionId: text("id").primaryKey(),
+        userId: text("userId")
+            .notNull()
+            .references(() => users.userId, { onDelete: "cascade" }),
+        expiresAt: integer("expiresAt").notNull(),
+        issuedAt: integer("issuedAt"),
+        deviceAuthUsed: integer("deviceAuthUsed", { mode: "boolean" })
+            .notNull()
+            .default(false)
+    },
+    (table) => [
+        index("idx_sessions_userId").on(table.userId)
+    ]
+);
 
 export const newtSessions = sqliteTable("newtSession", {
     sessionId: text("id").primaryKey(),
@@ -940,21 +996,28 @@ export const olmSessions = sqliteTable("clientSession", {
     expiresAt: integer("expiresAt").notNull()
 });
 
-export const userOrgs = sqliteTable("userOrgs", {
-    userId: text("userId")
-        .notNull()
-        .references(() => users.userId, { onDelete: "cascade" }),
-    orgId: text("orgId")
-        .references(() => orgs.orgId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    isOwner: integer("isOwner", { mode: "boolean" }).notNull().default(false),
-    autoProvisioned: integer("autoProvisioned", {
-        mode: "boolean"
-    }).default(false),
-    pamUsername: text("pamUsername") // cleaned username for ssh and such
-});
+export const userOrgs = sqliteTable(
+    "userOrgs",
+    {
+        userId: text("userId")
+            .notNull()
+            .references(() => users.userId, { onDelete: "cascade" }),
+        orgId: text("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        isOwner: integer("isOwner", { mode: "boolean" }).notNull().default(false),
+        autoProvisioned: integer("autoProvisioned", {
+            mode: "boolean"
+        }).default(false),
+        pamUsername: text("pamUsername") // cleaned username for ssh and such
+    },
+    (table) => [
+        index("idx_userOrgs_userId").on(table.userId),
+        index("idx_userOrgs_orgId").on(table.orgId)
+    ]
+);
 
 export const emailVerificationCodes = sqliteTable("emailVerificationCodes", {
     codeId: integer("id").primaryKey({ autoIncrement: true }),
@@ -982,26 +1045,32 @@ export const actions = sqliteTable("actions", {
     description: text("description")
 });
 
-export const roles = sqliteTable("roles", {
-    roleId: integer("roleId").primaryKey({ autoIncrement: true }),
-    orgId: text("orgId")
-        .references(() => orgs.orgId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    isAdmin: integer("isAdmin", { mode: "boolean" }),
-    name: text("name").notNull(),
-    description: text("description"),
-    requireDeviceApproval: integer("requireDeviceApproval", {
-        mode: "boolean"
-    }).default(false),
-    sshSudoMode: text("sshSudoMode").default("full"), // "none" | "full" | "commands"
-    sshSudoCommands: text("sshSudoCommands").default("[]"),
-    sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
-        true
-    ),
-    sshUnixGroups: text("sshUnixGroups").default("[]")
-});
+export const roles = sqliteTable(
+    "roles",
+    {
+        roleId: integer("roleId").primaryKey({ autoIncrement: true }),
+        orgId: text("orgId")
+            .references(() => orgs.orgId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        isAdmin: integer("isAdmin", { mode: "boolean" }),
+        name: text("name").notNull(),
+        description: text("description"),
+        requireDeviceApproval: integer("requireDeviceApproval", {
+            mode: "boolean"
+        }).default(false),
+        sshSudoMode: text("sshSudoMode").default("full"), // "none" | "full" | "commands"
+        sshSudoCommands: text("sshSudoCommands").default("[]"),
+        sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
+            true
+        ),
+        sshUnixGroups: text("sshUnixGroups").default("[]")
+    },
+    (table) => [
+        index("idx_roles_orgId").on(table.orgId)
+    ]
+);
 
 export const userOrgRoles = sqliteTable(
     "userOrgRoles",
