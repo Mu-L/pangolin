@@ -272,8 +272,13 @@ LQIDAQAB
                         logger.error(
                             `Allowing failure. Will retry one more time at next run interval.`
                         );
-                        // return last known good status
-                        return status;
+                        // Fall back to last known good status if we have
+                        // one cached; otherwise return the freshly built
+                        // status (with defaults) rather than undefined.
+                        const lastKnownStatus = this.statusCache.get(
+                            this.statusKey
+                        ) as LicenseStatus | undefined;
+                        return lastKnownStatus ?? status;
                     } else {
                         // Subsequent failures: fail abruptly
                         throw e;
