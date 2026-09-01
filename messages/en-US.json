@@ -2996,7 +2996,7 @@
     "remoteExitNodeNetworkingSubnetsPlaceholder": "Add a CIDR range (e.g. 10.0.0.0/8)",
     "remoteExitNodeNetworkingSubnetsLoadError": "Failed to load subnets",
     "remoteExitNodeNetworkingLabelsTitle": "Preference Labels",
-    "remoteExitNodeNetworkingLabelsDescription": "Sites with these labels will be enforced to connect through this remote exit node.",
+    "remoteExitNodeNetworkingLabelsDescription": "Sites with these labels will prefer to connect through this remote exit node.",
     "remoteExitNodeNetworkingLabelsButtonText": "Select labels...",
     "remoteExitNodeNetworkingLabelsSearchPlaceholder": "Search labels...",
     "remoteExitNodeNetworkingLabelsLoadError": "Failed to load labels",
