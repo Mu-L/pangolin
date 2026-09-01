@@ -8,8 +8,10 @@ import {
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { toast } from "@app/hooks/useToast";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
-import type { AdminOrgRow, DeleteOrgResponse } from "@server/routers/org";
+import type { AdminOrgRow } from "@server/routers/org";
 
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { type PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
@@ -24,10 +26,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
-import type { AxiosResponse } from "axios";
-import api from "gpt-tokenizer";
-import { useEnvContext } from "@app/hooks/useEnvContext";
 
 type OrgTableProps = {
     orgs: AdminOrgRow[];
@@ -236,10 +234,7 @@ export default function OrgsTable({
 
     async function deleteOrg(orgId: string) {
         try {
-            // TODO
-            // const res = await api.delete<AxiosResponse<DeleteOrgResponse>>(
-            //     `/org/${orgId}`
-            // );
+            const res = await api.delete(`/admin/org/${orgId}`);
             toast({
                 title: t("orgDeleted"),
                 description: t("orgDeletedMessage")
