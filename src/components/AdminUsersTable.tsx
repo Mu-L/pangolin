@@ -19,7 +19,8 @@ import {
     ArrowRight,
     ArrowUp10Icon,
     ChevronsUpDownIcon,
-    MoreHorizontal
+    MoreHorizontal,
+    ShieldUserIcon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -43,6 +44,14 @@ import {
     CredenzaClose
 } from "@app/components/Credenza";
 import CopyToClipboard from "@app/components/CopyToClipboard";
+import { Badge } from "./ui/badge";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
+} from "./ui/tooltip";
+import { useUserContext } from "@app/hooks/useUserContext";
 
 export type GlobalUserRow = {
     id: string;
@@ -90,6 +99,9 @@ export default function UsersTable({
     const [passwordResetCodeData, setPasswordResetCodeData] =
         useState<AdminGeneratePasswordResetCodeResponse | null>(null);
     const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+    const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+    const [promoting, setPromoting] = useState<GlobalUserRow | null>(null);
+    const user = useUserContext();
 
     const [isRefreshing, startTransition] = useTransition();
     const {
@@ -184,6 +196,37 @@ export default function UsersTable({
         }
     };
 
+    const promoteToServerAdmin = async (user: GlobalUserRow) => {
+        try {
+            await api.post(`/user/${user.id}/promote-server-admin`);
+
+            toast({
+                title: t("promoteServerAdminSuccess"),
+                description: t("promoteServerAdminSuccessDescription", {
+                    selectedUser: getUserDisplayName({
+                        email: user.email,
+                        name: user.name,
+                        username: user.username
+                    })
+                })
+            });
+
+            startTransition(() => {
+                router.refresh();
+            });
+        } catch (e) {
+            console.error(t("promoteServerAdminError"), e);
+            toast({
+                variant: "destructive",
+                title: t("promoteServerAdminError"),
+                description: formatAxiosError(e, t("promoteServerAdminError"))
+            });
+        } finally {
+            setIsPromoteModalOpen(false);
+            setPromoting(null);
+        }
+    };
+
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
         filter({
@@ -235,7 +278,35 @@ export default function UsersTable({
                         <Icon className="ml-2 h-4 w-4" />
                     </Button>
                 );
-            }
+            },
+            cell: ({ row }) => (
+                <span className="inline-flex gap-1 items-center">
+                    {row.original.username}{" "}
+                    {row.original.id === user.user.userId && (
+                        <>
+                            <span className="text-muted-foreground">
+                                &middot;
+                            </span>{" "}
+                            <span className="text-primary">you</span>
+                        </>
+                    )}
+                    {row.original.serverAdmin && (
+                        <>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <ShieldUserIcon className="text-primary size-5 flex-none" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {t("serverAdmin")}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            {/*  <Badge>{t("serverAdmin")}</Badge> */}
+                        </>
+                    )}
+                </span>
+            )
         },
         {
             accessorKey: "email",
@@ -369,11 +440,22 @@ export default function UsersTable({
                                         {t("generatePasswordResetCode")}
                                     </DropdownMenuItem>
                                 )}
+                                {!r.serverAdmin && (
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setPromoting(r);
+                                            setIsPromoteModalOpen(true);
+                                        }}
+                                    >
+                                        {t("promoteServerAdmin")}
+                                    </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelected(r);
                                         setIsDeleteModalOpen(true);
                                     }}
+                                    className="text-red-400"
                                 >
                                     {t("delete")}
                                 </DropdownMenuItem>
@@ -432,6 +514,42 @@ export default function UsersTable({
                         username: selected.username
                     })}
                     title={t("userDeleteServer")}
+                />
+            )}
+
+            {promoting && (
+                <ConfirmDeleteDialog
+                    open={isPromoteModalOpen}
+                    setOpen={(val) => {
+                        setIsPromoteModalOpen(val);
+                        if (!val) {
+                            setPromoting(null);
+                        }
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>
+                                {t("promoteServerAdminQuestion", {
+                                    selectedUser: getUserDisplayName({
+                                        email: promoting.email,
+                                        name: promoting.name,
+                                        username: promoting.username
+                                    })
+                                })}
+                            </p>
+
+                            <p>{t("promoteServerAdminMessage")}</p>
+                        </div>
+                    }
+                    buttonText={t("promoteServerAdminConfirm")}
+                    onConfirm={async () => promoteToServerAdmin(promoting)}
+                    string={getUserDisplayName({
+                        email: promoting.email,
+                        name: promoting.name,
+                        username: promoting.username
+                    })}
+                    warningText={t("promoteServerAdminWarning")}
+                    title={t("promoteServerAdminTitle")}
                 />
             )}
 
