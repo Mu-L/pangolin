@@ -12,7 +12,7 @@ import {
 import { APP_PATH, configFilePath1, configFilePath2 } from "@server/lib/consts";
 import { eq, sql } from "drizzle-orm";
 import fs from "fs";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import path from "path";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
