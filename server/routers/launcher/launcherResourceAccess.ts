@@ -984,7 +984,7 @@ async function listLabelGroups(
         ).length;
     }
 
-    let groups: LauncherGroup[] = Array.from(labelCountMap.values()).map(
+    const groups: LauncherGroup[] = Array.from(labelCountMap.values()).map(
         (row) => ({
             groupKey: String(row.labelId),
             name: row.name,

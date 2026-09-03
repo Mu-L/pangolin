@@ -11,15 +11,14 @@ import {
     siteNetworks,
     siteResources,
     Transaction,
-    userOrgs,
-    users,
     userSiteResources,
     networks
 } from "@server/db";
 import { sites } from "@server/db";
-import { eq, and, ne, inArray, or, isNotNull } from "drizzle-orm";
+import { eq, and, ne, inArray, isNotNull } from "drizzle-orm";
 import { Config } from "./types";
 import { getOrCreateLabelIds, syncSiteResourceLabels } from "./labels";
+import { resolveOrgUserIds } from "./findOrgUser";
 import logger from "@server/logger";
 import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 import { getNextAvailableAliasAddress } from "../ip";
@@ -389,28 +388,22 @@ export async function updatePrivateResources(
                 .where(eq(userSiteResources.siteResourceId, siteResourceId));
 
             if (resourceData.users.length > 0) {
-                // get userIds from username
-                const usersToUpdate = await trx
-                    .select()
-                    .from(users)
-                    .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-                    .where(
-                        and(
-                            or(
-                                inArray(users.username, resourceData.users),
-                                inArray(users.email, resourceData.users)
-                            ),
-                            eq(userOrgs.orgId, orgId)
-                        )
-                    );
+                const userIds = await resolveOrgUserIds(
+                    trx,
+                    orgId,
+                    resourceData.users
+                );
 
-                const userIds = usersToUpdate.map((user) => user.user.userId);
-
-                await trx
-                    .insert(userSiteResources)
-                    .values(
-                        userIds.map((userId) => ({ userId, siteResourceId }))
-                    );
+                if (userIds.length > 0) {
+                    await trx
+                        .insert(userSiteResources)
+                        .values(
+                            userIds.map((userId) => ({
+                                userId,
+                                siteResourceId
+                            }))
+                        );
+                }
             }
 
             // Get all admin role IDs for this org to exclude from deletion
@@ -721,28 +714,22 @@ export async function updatePrivateResources(
             }
 
             if (resourceData.users.length > 0) {
-                // get userIds from username
-                const usersToUpdate = await trx
-                    .select()
-                    .from(users)
-                    .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-                    .where(
-                        and(
-                            or(
-                                inArray(users.username, resourceData.users),
-                                inArray(users.email, resourceData.users)
-                            ),
-                            eq(userOrgs.orgId, orgId)
-                        )
-                    );
+                const userIds = await resolveOrgUserIds(
+                    trx,
+                    orgId,
+                    resourceData.users
+                );
 
-                const userIds = usersToUpdate.map((user) => user.user.userId);
-
-                await trx
-                    .insert(userSiteResources)
-                    .values(
-                        userIds.map((userId) => ({ userId, siteResourceId }))
-                    );
+                if (userIds.length > 0) {
+                    await trx
+                        .insert(userSiteResources)
+                        .values(
+                            userIds.map((userId) => ({
+                                userId,
+                                siteResourceId
+                            }))
+                        );
+                }
             }
 
             if (resourceData.machines.length > 0) {

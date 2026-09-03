@@ -29,8 +29,34 @@ export const SiteSchema = z.object({
     "docker-socket-enabled": z.boolean().optional().default(true)
 });
 
+// A malformed hostname (e.g. stray whitespace) is silently accepted here but
+// fails to parse as a URL when newt builds the health check request, which
+// takes the target out of the routing pool and breaks the resource entirely
+// (see #3677). Validate eagerly so blueprints reject it up front instead.
+const healthCheckHostnameSchema = z
+    .string()
+    .trim()
+    .min(1)
+    .refine((val) => !/\s/.test(val), {
+        message: "Hostname must not contain whitespace"
+    })
+    .refine(
+        (val) => {
+            if (z.union([z.ipv4(), z.ipv6()]).safeParse(val).success) {
+                return true;
+            }
+            const hostnameRegex =
+                /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
+            return hostnameRegex.test(val);
+        },
+        {
+            message:
+                "Hostname must be a valid IP address or hostname (no spaces or invalid characters)"
+        }
+    );
+
 export const TargetHealthCheckSchema = z.object({
-    hostname: z.string(),
+    hostname: healthCheckHostnameSchema,
     port: z.int().min(1).max(65535),
     enabled: z.boolean().optional().default(true),
     path: z.string().optional().default("/"),

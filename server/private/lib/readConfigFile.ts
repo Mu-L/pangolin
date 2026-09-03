@@ -12,7 +12,7 @@
  */
 
 import fs from "fs";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { privateConfigFilePath1 } from "@server/lib/consts";
 import { z } from "zod";
 import { colorsSchema } from "@server/lib/colorsSchema";

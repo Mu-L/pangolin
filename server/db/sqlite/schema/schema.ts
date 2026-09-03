@@ -147,9 +147,7 @@ export const sites = sqliteTable(
             .$type<"pending" | "approved">()
             .default("approved")
     },
-    (table) => [
-        index("idx_sites_orgId").on(table.orgId)
-    ]
+    (table) => [index("idx_sites_orgId").on(table.orgId)]
 );
 
 export const resources = sqliteTable(
@@ -192,7 +190,9 @@ export const resources = sqliteTable(
             mode: "boolean"
         }),
         applyRules: integer("applyRules", { mode: "boolean" }),
-        enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+        enabled: integer("enabled", { mode: "boolean" })
+            .notNull()
+            .default(true),
         stickySession: integer("stickySession", { mode: "boolean" })
             .notNull()
             .default(false),
@@ -220,10 +220,14 @@ export const resources = sqliteTable(
         maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
         postAuthPath: text("postAuthPath"),
         health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
-        wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
+        wildcard: integer("wildcard", { mode: "boolean" })
+            .notNull()
+            .default(false),
         mode: text("mode")
             .default("http")
-            .$type<"rdp" | "ssh" | "http" | "vnc" | "inference" | "tcp" | "udp">()
+            .$type<
+                "rdp" | "ssh" | "http" | "vnc" | "inference" | "tcp" | "udp"
+            >()
             .notNull(), // rdp, ssh, http, vnc, inference
         pamMode: text("pamMode")
             .$type<"passthrough" | "push">()
@@ -236,9 +240,7 @@ export const resources = sqliteTable(
             .$type<"pending" | "approved">()
             .default("approved")
     },
-    (table) => [
-        index("idx_resources_orgId").on(table.orgId)
-    ]
+    (table) => [index("idx_resources_orgId").on(table.orgId)]
 );
 
 export const resourceAiProviders = sqliteTable(
@@ -288,9 +290,7 @@ export const labels = sqliteTable(
             })
             .notNull()
     },
-    (table) => [
-        index("idx_labels_orgId").on(table.orgId)
-    ]
+    (table) => [index("idx_labels_orgId").on(table.orgId)]
 );
 
 export const launcherViews = sqliteTable("launcherViews", {
@@ -409,7 +409,9 @@ export const targets = sqliteTable(
         method: text("method"),
         port: integer("port").notNull(),
         internalPort: integer("internalPort"),
-        enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+        enabled: integer("enabled", { mode: "boolean" })
+            .notNull()
+            .default(true),
         path: text("path"),
         pathMatchType: text("pathMatchType"), // exact, prefix, regex
         rewritePath: text("rewritePath"), // if set, rewrites the path to this value before sending to the target
@@ -705,9 +707,7 @@ export const newts = sqliteTable(
             onDelete: "cascade"
         })
     },
-    (table) => [
-        index("idx_newts_siteId").on(table.siteId)
-    ]
+    (table) => [index("idx_newts_siteId").on(table.siteId)]
 );
 
 export const clients = sqliteTable(
@@ -740,8 +740,12 @@ export const clients = sqliteTable(
         online: integer("online", { mode: "boolean" }).notNull().default(false),
         // endpoint: text("endpoint"),
         lastHolePunch: integer("lastHolePunch"),
-        archived: integer("archived", { mode: "boolean" }).notNull().default(false),
-        blocked: integer("blocked", { mode: "boolean" }).notNull().default(false),
+        archived: integer("archived", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        blocked: integer("blocked", { mode: "boolean" })
+            .notNull()
+            .default(false),
         approvalState: text("approvalState").$type<
             "pending" | "approved" | "denied"
         >()
@@ -795,11 +799,11 @@ export const olms = sqliteTable(
             // optionally tied to a user and in this case delete when the user deletes
             onDelete: "cascade"
         }),
-        archived: integer("archived", { mode: "boolean" }).notNull().default(false)
+        archived: integer("archived", { mode: "boolean" })
+            .notNull()
+            .default(false)
     },
-    (table) => [
-        index("idx_olms_userId").on(table.userId)
-    ]
+    (table) => [index("idx_olms_userId").on(table.userId)]
 );
 
 export const currentFingerprint = sqliteTable("currentFingerprint", {
@@ -975,9 +979,7 @@ export const sessions = sqliteTable(
             .notNull()
             .default(false)
     },
-    (table) => [
-        index("idx_sessions_userId").on(table.userId)
-    ]
+    (table) => [index("idx_sessions_userId").on(table.userId)]
 );
 
 export const newtSessions = sqliteTable("newtSession", {
@@ -1007,7 +1009,9 @@ export const userOrgs = sqliteTable(
                 onDelete: "cascade"
             })
             .notNull(),
-        isOwner: integer("isOwner", { mode: "boolean" }).notNull().default(false),
+        isOwner: integer("isOwner", { mode: "boolean" })
+            .notNull()
+            .default(false),
         autoProvisioned: integer("autoProvisioned", {
             mode: "boolean"
         }).default(false),
@@ -1062,14 +1066,12 @@ export const roles = sqliteTable(
         }).default(false),
         sshSudoMode: text("sshSudoMode").default("full"), // "none" | "full" | "commands"
         sshSudoCommands: text("sshSudoCommands").default("[]"),
-        sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
-            true
-        ),
+        sshCreateHomeDir: integer("sshCreateHomeDir", {
+            mode: "boolean"
+        }).default(true),
         sshUnixGroups: text("sshUnixGroups").default("[]")
     },
-    (table) => [
-        index("idx_roles_orgId").on(table.orgId)
-    ]
+    (table) => [index("idx_roles_orgId").on(table.orgId)]
 );
 
 export const userOrgRoles = sqliteTable(
@@ -1997,91 +1999,6 @@ export const aiBudgetBreachEvents = sqliteTable(
     ]
 );
 
-// Logs the aggregated prompt + response for a single AI gateway request, for
-// session replay. One row per request (not per streaming chunk). `sessionId`
-// is a fresh random id per row for now - no cross-request correlation yet,
-// but the column exists so a future pass can link multiple rows into a real
-// multi-turn session.
-export const aiSessionLog = sqliteTable(
-    "aiSessionLog",
-    {
-        id: integer("id").primaryKey({ autoIncrement: true }),
-        sessionId: text("sessionId").notNull(),
-        orgId: text("orgId").references(() => orgs.orgId, {
-            onDelete: "cascade"
-        }),
-        providerId: integer("providerId").references(
-            () => aiProviders.providerId,
-            { onDelete: "set null" }
-        ),
-        capability: text("capability").notNull(),
-        resourceId: integer("resourceId").references(
-            () => resources.resourceId,
-            { onDelete: "set null" }
-        ),
-        siteResourceId: integer("siteResourceId").references(
-            () => siteResources.siteResourceId,
-            { onDelete: "set null" }
-        ),
-        userId: text("userId").references(() => users.userId, {
-            onDelete: "set null"
-        }),
-        virtualApiKeyId: text("virtualApiKeyId").references(
-            () => virtualApiKeys.virtualApiKeyId,
-            { onDelete: "set null" }
-        ),
-        requestedModel: text("requestedModel"),
-        isStream: integer("isStream", { mode: "boolean" })
-            .notNull()
-            .default(false),
-        requestBody: text("requestBody"),
-        responseBody: text("responseBody"),
-        // Capability-agnostic message transcript (JSON-encoded
-        // NormalizedAiMessage[] from server/lib/aiMessageNormalization.ts),
-        // computed at write time so search/display never need per-capability
-        // parsing logic. Null when normalization couldn't recognize the
-        // shape - callers fall back to requestBody/responseBody.
-        normalizedRequest: text("normalizedRequest"),
-        normalizedResponse: text("normalizedResponse"),
-        // True if any of the request/response (raw or normalized) fields
-        // were cut short at AI_SESSION_LOG_MAX_BODY_CHARS before storage.
-        truncated: integer("truncated", { mode: "boolean" })
-            .notNull()
-            .default(false),
-        statusCode: integer("statusCode"),
-        createdAt: integer("createdAt").notNull() // epoch seconds
-    },
-    (t) => [
-        index("idx_ai_session_log_org_created").on(t.orgId, t.createdAt),
-        index("idx_ai_session_log_org_provider_created").on(
-            t.orgId,
-            t.providerId,
-            t.createdAt
-        ),
-        index("idx_ai_session_log_org_resource_created").on(
-            t.orgId,
-            t.resourceId,
-            t.createdAt
-        ),
-        index("idx_ai_session_log_org_site_resource_created").on(
-            t.orgId,
-            t.siteResourceId,
-            t.createdAt
-        ),
-        index("idx_ai_session_log_org_user_created").on(
-            t.orgId,
-            t.userId,
-            t.createdAt
-        ),
-        index("idx_ai_session_log_org_virtual_api_key_created").on(
-            t.orgId,
-            t.virtualApiKeyId,
-            t.createdAt
-        ),
-        index("idx_ai_session_log_session").on(t.sessionId)
-    ]
-);
-
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),
     domain: text("domain").notNull().unique(),
@@ -2192,7 +2109,6 @@ export type AiModel = InferSelectModel<typeof aiModels>;
 export type AiBudget = InferSelectModel<typeof aiBudgets>;
 export type AiUsageRecord = InferSelectModel<typeof aiUsageRecords>;
 export type AiBudgetBreachEvent = InferSelectModel<typeof aiBudgetBreachEvents>;
-export type AiSessionLog = InferSelectModel<typeof aiSessionLog>;
 export type ResourceAiProvider = InferSelectModel<typeof resourceAiProviders>;
 export type SiteResourceAiProvider = InferSelectModel<
     typeof siteResourceAiProviders

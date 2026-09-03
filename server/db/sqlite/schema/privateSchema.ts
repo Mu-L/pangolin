@@ -9,6 +9,7 @@ import {
     uniqueIndex
 } from "drizzle-orm/sqlite-core";
 import {
+    aiProviders,
     clients,
     domains,
     exitNodes,
@@ -20,7 +21,8 @@ import {
     siteResources,
     sites,
     targetHealthCheck,
-    users
+    users,
+    virtualApiKeys
 } from "./schema";
 
 export const dnsChallenge = sqliteTable("dnsChallenges", {
@@ -609,6 +611,91 @@ export const trialNotifications = sqliteTable("trialNotifications", {
     sentAt: integer("sentAt").notNull()
 });
 
+// Logs the aggregated prompt + response for a single AI gateway request, for
+// session replay. One row per request (not per streaming chunk). `sessionId`
+// is a fresh random id per row for now - no cross-request correlation yet,
+// but the column exists so a future pass can link multiple rows into a real
+// multi-turn session.
+export const aiSessionLog = sqliteTable(
+    "aiSessionLog",
+    {
+        id: integer("id").primaryKey({ autoIncrement: true }),
+        sessionId: text("sessionId").notNull(),
+        orgId: text("orgId").references(() => orgs.orgId, {
+            onDelete: "cascade"
+        }),
+        providerId: integer("providerId").references(
+            () => aiProviders.providerId,
+            { onDelete: "set null" }
+        ),
+        capability: text("capability").notNull(),
+        resourceId: integer("resourceId").references(
+            () => resources.resourceId,
+            { onDelete: "set null" }
+        ),
+        siteResourceId: integer("siteResourceId").references(
+            () => siteResources.siteResourceId,
+            { onDelete: "set null" }
+        ),
+        userId: text("userId").references(() => users.userId, {
+            onDelete: "set null"
+        }),
+        virtualApiKeyId: text("virtualApiKeyId").references(
+            () => virtualApiKeys.virtualApiKeyId,
+            { onDelete: "set null" }
+        ),
+        requestedModel: text("requestedModel"),
+        isStream: integer("isStream", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        requestBody: text("requestBody"),
+        responseBody: text("responseBody"),
+        // Capability-agnostic message transcript (JSON-encoded
+        // NormalizedAiMessage[] from server/lib/aiMessageNormalization.ts),
+        // computed at write time so search/display never need per-capability
+        // parsing logic. Null when normalization couldn't recognize the
+        // shape - callers fall back to requestBody/responseBody.
+        normalizedRequest: text("normalizedRequest"),
+        normalizedResponse: text("normalizedResponse"),
+        // True if any of the request/response (raw or normalized) fields
+        // were cut short at AI_SESSION_LOG_MAX_BODY_CHARS before storage.
+        truncated: integer("truncated", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        statusCode: integer("statusCode"),
+        createdAt: integer("createdAt").notNull() // epoch seconds
+    },
+    (t) => [
+        index("idx_ai_session_log_org_created").on(t.orgId, t.createdAt),
+        index("idx_ai_session_log_org_provider_created").on(
+            t.orgId,
+            t.providerId,
+            t.createdAt
+        ),
+        index("idx_ai_session_log_org_resource_created").on(
+            t.orgId,
+            t.resourceId,
+            t.createdAt
+        ),
+        index("idx_ai_session_log_org_site_resource_created").on(
+            t.orgId,
+            t.siteResourceId,
+            t.createdAt
+        ),
+        index("idx_ai_session_log_org_user_created").on(
+            t.orgId,
+            t.userId,
+            t.createdAt
+        ),
+        index("idx_ai_session_log_org_virtual_api_key_created").on(
+            t.orgId,
+            t.virtualApiKeyId,
+            t.createdAt
+        ),
+        index("idx_ai_session_log_session").on(t.sessionId)
+    ]
+);
+
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
@@ -647,3 +734,4 @@ export type AlertEmailAction = InferSelectModel<typeof alertEmailActions>;
 export type AlertEmailRecipient = InferSelectModel<typeof alertEmailRecipients>;
 export type AlertWebhookAction = InferSelectModel<typeof alertWebhookActions>;
 export type TrialNotification = InferSelectModel<typeof trialNotifications>;
+export type AiSessionLog = InferSelectModel<typeof aiSessionLog>;

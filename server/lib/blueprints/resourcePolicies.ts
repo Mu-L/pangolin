@@ -13,7 +13,7 @@ import {
     userPolicies,
     users
 } from "@server/db";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { Config, ResourcePolicyData } from "./types";
 import logger from "@server/logger";
 import { getUniqueResourcePolicyName } from "@server/db/names";
@@ -22,6 +22,7 @@ import { idpExistsForOrg } from "@server/lib/idp/idpExistsForOrg";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "../billing/tierMatrix";
+import { findOrgUsersByIdentifier } from "./findOrgUser";
 
 export type ResourcePoliciesResults = {
     resourcePolicyId: number;
@@ -466,34 +467,30 @@ async function syncUserPolicies(
         .where(eq(userPolicies.resourcePolicyId, policyId));
 
     for (const username of ssoUsers) {
-        const [user] = await trx
-            .select()
-            .from(users)
-            .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-            .where(
-                and(
-                    or(eq(users.username, username), eq(users.email, username)),
-                    eq(userOrgs.orgId, orgId)
-                )
-            )
-            .limit(1);
+        const matchedUsers = await findOrgUsersByIdentifier(
+            trx,
+            orgId,
+            username
+        );
 
-        if (!user) {
+        if (matchedUsers.length === 0) {
             logger.warn(
                 `User '${username}' not found in org '${orgId}', skipping`
             );
             continue;
         }
 
-        const alreadyExists = existingUserPolicies.some(
-            (up) => up.userId === user.user.userId
-        );
+        for (const user of matchedUsers) {
+            const alreadyExists = existingUserPolicies.some(
+                (up) => up.userId === user.userId
+            );
 
-        if (!alreadyExists) {
-            await trx.insert(userPolicies).values({
-                userId: user.user.userId,
-                resourcePolicyId: policyId
-            });
+            if (!alreadyExists) {
+                await trx.insert(userPolicies).values({
+                    userId: user.userId,
+                    resourcePolicyId: policyId
+                });
+            }
         }
     }
 
@@ -536,29 +533,25 @@ async function addUserPolicies(
     trx: Transaction
 ) {
     for (const username of ssoUsers) {
-        const [user] = await trx
-            .select()
-            .from(users)
-            .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-            .where(
-                and(
-                    or(eq(users.username, username), eq(users.email, username)),
-                    eq(userOrgs.orgId, orgId)
-                )
-            )
-            .limit(1);
+        const matchedUsers = await findOrgUsersByIdentifier(
+            trx,
+            orgId,
+            username
+        );
 
-        if (!user) {
+        if (matchedUsers.length === 0) {
             logger.warn(
                 `User '${username}' not found in org '${orgId}', skipping`
             );
             continue;
         }
 
-        await trx.insert(userPolicies).values({
-            userId: user.user.userId,
-            resourcePolicyId: policyId
-        });
+        for (const user of matchedUsers) {
+            await trx.insert(userPolicies).values({
+                userId: user.userId,
+                resourcePolicyId: policyId
+            });
+        }
     }
 }
 

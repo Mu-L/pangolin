@@ -46,11 +46,12 @@ import { encrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
 import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 import { pickPort } from "@server/routers/target/helpers";
-import { and, asc, eq, isNotNull, ne, or } from "drizzle-orm";
+import { and, asc, eq, isNotNull, ne } from "drizzle-orm";
 import { tierMatrix } from "../billing/tierMatrix";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { Config, isTargetsOnlyResource, TargetData } from "./types";
 import { getOrCreateLabelIds, syncResourceLabels } from "./labels";
+import { findOrgUsersByIdentifier } from "./findOrgUser";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
 import { syncInferenceAiConfig } from "./aiProviders";
@@ -1563,31 +1564,27 @@ async function syncUserResources(
         .where(eq(userResources.resourceId, resourceId));
 
     for (const username of ssoUsers) {
-        const [user] = await trx
-            .select()
-            .from(users)
-            .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-            .where(
-                and(
-                    or(eq(users.username, username), eq(users.email, username)),
-                    eq(userOrgs.orgId, orgId)
-                )
-            )
-            .limit(1);
+        const matchedUsers = await findOrgUsersByIdentifier(
+            trx,
+            orgId,
+            username
+        );
 
-        if (!user) {
+        if (matchedUsers.length === 0) {
             throw new Error(`User not found: ${username} in org ${orgId}`);
         }
 
-        const existingUserResource = existingUserResources.find(
-            (rr) => rr.userId === user.user.userId
-        );
+        for (const user of matchedUsers) {
+            const existingUserResource = existingUserResources.find(
+                (rr) => rr.userId === user.userId
+            );
 
-        if (!existingUserResource) {
-            await trx.insert(userResources).values({
-                userId: user.user.userId,
-                resourceId: resourceId
-            });
+            if (!existingUserResource) {
+                await trx.insert(userResources).values({
+                    userId: user.userId,
+                    resourceId: resourceId
+                });
+            }
         }
     }
 
@@ -1955,31 +1952,27 @@ async function syncUserPolicies(
         .where(eq(userPolicies.resourcePolicyId, policyId));
 
     for (const username of ssoUsers) {
-        const [user] = await trx
-            .select()
-            .from(users)
-            .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-            .where(
-                and(
-                    or(eq(users.username, username), eq(users.email, username)),
-                    eq(userOrgs.orgId, orgId)
-                )
-            )
-            .limit(1);
+        const matchedUsers = await findOrgUsersByIdentifier(
+            trx,
+            orgId,
+            username
+        );
 
-        if (!user) {
+        if (matchedUsers.length === 0) {
             throw new Error(`User not found: ${username} in org ${orgId}`);
         }
 
-        const existingUserPolicy = existingUserPoliciesList.find(
-            (up) => up.userId === user.user.userId
-        );
+        for (const user of matchedUsers) {
+            const existingUserPolicy = existingUserPoliciesList.find(
+                (up) => up.userId === user.userId
+            );
 
-        if (!existingUserPolicy) {
-            await trx.insert(userPolicies).values({
-                userId: user.user.userId,
-                resourcePolicyId: policyId
-            });
+            if (!existingUserPolicy) {
+                await trx.insert(userPolicies).values({
+                    userId: user.userId,
+                    resourcePolicyId: policyId
+                });
+            }
         }
     }
 
