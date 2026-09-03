@@ -1,12 +1,12 @@
 import { and, asc, eq, or } from "drizzle-orm";
 import { Transaction, User, userOrgs, users } from "@server/db";
 
-export async function findOrgUserByIdentifier(
+export async function findOrgUsersByIdentifier(
     trx: Transaction,
     orgId: string,
     identifier: string
-): Promise<User | null> {
-    const [match] = await trx
+): Promise<User[]> {
+    const matches = await trx
         .select()
         .from(users)
         .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
@@ -16,10 +16,9 @@ export async function findOrgUserByIdentifier(
                 eq(userOrgs.orgId, orgId)
             )
         )
-        .orderBy(asc(users.dateCreated), asc(users.userId))
-        .limit(1);
+        .orderBy(asc(users.dateCreated), asc(users.userId));
 
-    return match?.user ?? null;
+    return matches.map((match) => match.user);
 }
 
 export async function resolveOrgUserIds(
@@ -29,8 +28,12 @@ export async function resolveOrgUserIds(
 ): Promise<string[]> {
     const userIds = new Set<string>();
     for (const identifier of identifiers) {
-        const user = await findOrgUserByIdentifier(trx, orgId, identifier);
-        if (user) {
+        const matchedUsers = await findOrgUsersByIdentifier(
+            trx,
+            orgId,
+            identifier
+        );
+        for (const user of matchedUsers) {
             userIds.add(user.userId);
         }
     }

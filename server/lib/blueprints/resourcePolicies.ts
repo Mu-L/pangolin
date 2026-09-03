@@ -22,7 +22,7 @@ import { idpExistsForOrg } from "@server/lib/idp/idpExistsForOrg";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "../billing/tierMatrix";
-import { findOrgUserByIdentifier } from "./findOrgUser";
+import { findOrgUsersByIdentifier } from "./findOrgUser";
 
 export type ResourcePoliciesResults = {
     resourcePolicyId: number;
@@ -467,24 +467,30 @@ async function syncUserPolicies(
         .where(eq(userPolicies.resourcePolicyId, policyId));
 
     for (const username of ssoUsers) {
-        const user = await findOrgUserByIdentifier(trx, orgId, username);
+        const matchedUsers = await findOrgUsersByIdentifier(
+            trx,
+            orgId,
+            username
+        );
 
-        if (!user) {
+        if (matchedUsers.length === 0) {
             logger.warn(
                 `User '${username}' not found in org '${orgId}', skipping`
             );
             continue;
         }
 
-        const alreadyExists = existingUserPolicies.some(
-            (up) => up.userId === user.userId
-        );
+        for (const user of matchedUsers) {
+            const alreadyExists = existingUserPolicies.some(
+                (up) => up.userId === user.userId
+            );
 
-        if (!alreadyExists) {
-            await trx.insert(userPolicies).values({
-                userId: user.userId,
-                resourcePolicyId: policyId
-            });
+            if (!alreadyExists) {
+                await trx.insert(userPolicies).values({
+                    userId: user.userId,
+                    resourcePolicyId: policyId
+                });
+            }
         }
     }
 
@@ -527,19 +533,25 @@ async function addUserPolicies(
     trx: Transaction
 ) {
     for (const username of ssoUsers) {
-        const user = await findOrgUserByIdentifier(trx, orgId, username);
+        const matchedUsers = await findOrgUsersByIdentifier(
+            trx,
+            orgId,
+            username
+        );
 
-        if (!user) {
+        if (matchedUsers.length === 0) {
             logger.warn(
                 `User '${username}' not found in org '${orgId}', skipping`
             );
             continue;
         }
 
-        await trx.insert(userPolicies).values({
-            userId: user.userId,
-            resourcePolicyId: policyId
-        });
+        for (const user of matchedUsers) {
+            await trx.insert(userPolicies).values({
+                userId: user.userId,
+                resourcePolicyId: policyId
+            });
+        }
     }
 }
 
