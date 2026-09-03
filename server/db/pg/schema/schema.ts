@@ -1,4 +1,3 @@
-import { aiSessionLog } from "@server/db/sqlite";
 import { randomUUID } from "crypto";
 import { InferSelectModel, sql } from "drizzle-orm";
 import {
@@ -2071,7 +2070,6 @@ export type AiModel = InferSelectModel<typeof aiModels>;
 export type AiBudget = InferSelectModel<typeof aiBudgets>;
 export type AiUsageRecord = InferSelectModel<typeof aiUsageRecords>;
 export type AiBudgetBreachEvent = InferSelectModel<typeof aiBudgetBreachEvents>;
-export type AiSessionLog = InferSelectModel<typeof aiSessionLog>;
 export type ResourceAiProvider = InferSelectModel<typeof resourceAiProviders>;
 export type SiteResourceAiProvider = InferSelectModel<
     typeof siteResourceAiProviders
