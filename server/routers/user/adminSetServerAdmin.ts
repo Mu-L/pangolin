@@ -10,27 +10,38 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 
-const promoteServerAdminParamsSchema = z.strictObject({
+const setServerAdminParamsSchema = z.strictObject({
     userId: z.string()
 });
 
-export type AdminPromoteServerAdminResponse = {
+const setServerAdminBodySchema = z.strictObject({
+    serverAdmin: z.boolean()
+});
+
+export type AdminSetServerAdminResponse = {
     userId: string;
     serverAdmin: boolean;
 };
 
-const AdminPromoteServerAdminResponseDataSchema = z.object({
+const AdminSetServerAdminResponseDataSchema = z.object({
     userId: z.string(),
     serverAdmin: z.boolean()
 });
 
 registry.registerPath({
     method: "post",
-    path: "/user/{userId}/promote-server-admin",
-    description: "Promote a user to server admin (server admin).",
+    path: "/user/{userId}/server-admin",
+    description: "Promote or demote a user's server admin status (server admin).",
     tags: [OpenAPITags.User],
     request: {
-        params: promoteServerAdminParamsSchema
+        params: setServerAdminParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: setServerAdminBodySchema
+                }
+            }
+        }
     },
     responses: {
         200: {
@@ -38,7 +49,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: createApiResponseSchema(
-                        AdminPromoteServerAdminResponseDataSchema
+                        AdminSetServerAdminResponseDataSchema
                     )
                 }
             }
@@ -46,13 +57,13 @@ registry.registerPath({
     }
 });
 
-export async function adminPromoteServerAdmin(
+export async function adminSetServerAdmin(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedParams = promoteServerAdminParamsSchema.safeParse(
+        const parsedParams = setServerAdminParamsSchema.safeParse(
             req.params
         );
         if (!parsedParams.success) {
@@ -64,7 +75,18 @@ export async function adminPromoteServerAdmin(
             );
         }
 
+        const parsedBody = setServerAdminBodySchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedBody.error).toString()
+                )
+            );
+        }
+
         const { userId } = parsedParams.data;
+        const { serverAdmin } = parsedBody.data;
 
         const [existingUser] = await db
             .select({
@@ -79,32 +101,36 @@ export async function adminPromoteServerAdmin(
             return next(createHttpError(HttpCode.NOT_FOUND, "User not found"));
         }
 
-        if (existingUser.serverAdmin) {
+        if (!serverAdmin && req.user?.userId === userId) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    "User is already a server admin"
+                    "You cannot remove your own server admin status"
                 )
             );
         }
 
-        logger.info(
-            `Promoting user ${userId} to server admin (by ${req.user?.userId})`
-        );
+        if (existingUser.serverAdmin !== serverAdmin) {
+            logger.info(
+                `${serverAdmin ? "Promoting" : "Demoting"} user ${userId} ${serverAdmin ? "to" : "from"} server admin (by ${req.user?.userId})`
+            );
 
-        await db
-            .update(users)
-            .set({ serverAdmin: true })
-            .where(eq(users.userId, userId));
+            await db
+                .update(users)
+                .set({ serverAdmin })
+                .where(eq(users.userId, userId));
+        }
 
-        return response<AdminPromoteServerAdminResponse>(res, {
+        return response<AdminSetServerAdminResponse>(res, {
             data: {
                 userId: existingUser.userId,
-                serverAdmin: true
+                serverAdmin
             },
             success: true,
             error: false,
-            message: "User promoted to server admin successfully",
+            message: serverAdmin
+                ? "User promoted to server admin successfully"
+                : "User demoted from server admin successfully",
             status: HttpCode.OK
         });
     } catch (error) {

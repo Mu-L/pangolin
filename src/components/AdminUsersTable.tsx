@@ -101,6 +101,8 @@ export default function UsersTable({
     const [isGeneratingCode, setIsGeneratingCode] = useState(false);
     const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
     const [promoting, setPromoting] = useState<GlobalUserRow | null>(null);
+    const [isDemoteModalOpen, setIsDemoteModalOpen] = useState(false);
+    const [demoting, setDemoting] = useState<GlobalUserRow | null>(null);
     const user = useUserContext();
 
     const [isRefreshing, startTransition] = useTransition();
@@ -196,17 +198,32 @@ export default function UsersTable({
         }
     };
 
-    const promoteToServerAdmin = async (user: GlobalUserRow) => {
+    const setServerAdmin = async (
+        targetUser: GlobalUserRow,
+        serverAdmin: boolean
+    ) => {
+        const successTitleKey = serverAdmin
+            ? "promoteServerAdminSuccess"
+            : "demoteServerAdminSuccess";
+        const successDescriptionKey = serverAdmin
+            ? "promoteServerAdminSuccessDescription"
+            : "demoteServerAdminSuccessDescription";
+        const errorKey = serverAdmin
+            ? "promoteServerAdminError"
+            : "demoteServerAdminError";
+
         try {
-            await api.post(`/user/${user.id}/promote-server-admin`);
+            await api.post(`/user/${targetUser.id}/server-admin`, {
+                serverAdmin
+            });
 
             toast({
-                title: t("promoteServerAdminSuccess"),
-                description: t("promoteServerAdminSuccessDescription", {
+                title: t(successTitleKey),
+                description: t(successDescriptionKey, {
                     selectedUser: getUserDisplayName({
-                        email: user.email,
-                        name: user.name,
-                        username: user.username
+                        email: targetUser.email,
+                        name: targetUser.name,
+                        username: targetUser.username
                     })
                 })
             });
@@ -215,15 +232,17 @@ export default function UsersTable({
                 router.refresh();
             });
         } catch (e) {
-            console.error(t("promoteServerAdminError"), e);
+            console.error(t(errorKey), e);
             toast({
                 variant: "destructive",
-                title: t("promoteServerAdminError"),
-                description: formatAxiosError(e, t("promoteServerAdminError"))
+                title: t(errorKey),
+                description: formatAxiosError(e, t(errorKey))
             });
         } finally {
             setIsPromoteModalOpen(false);
             setPromoting(null);
+            setIsDemoteModalOpen(false);
+            setDemoting(null);
         }
     };
 
@@ -450,6 +469,16 @@ export default function UsersTable({
                                         {t("promoteServerAdmin")}
                                     </DropdownMenuItem>
                                 )}
+                                {r.serverAdmin && r.id !== user.user.userId && (
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setDemoting(r);
+                                            setIsDemoteModalOpen(true);
+                                        }}
+                                    >
+                                        {t("demoteServerAdmin")}
+                                    </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelected(r);
@@ -542,7 +571,7 @@ export default function UsersTable({
                         </div>
                     }
                     buttonText={t("promoteServerAdminConfirm")}
-                    onConfirm={async () => promoteToServerAdmin(promoting)}
+                    onConfirm={async () => setServerAdmin(promoting, true)}
                     string={getUserDisplayName({
                         email: promoting.email,
                         name: promoting.name,
@@ -550,6 +579,42 @@ export default function UsersTable({
                     })}
                     warningText={t("promoteServerAdminWarning")}
                     title={t("promoteServerAdminTitle")}
+                />
+            )}
+
+            {demoting && (
+                <ConfirmDeleteDialog
+                    open={isDemoteModalOpen}
+                    setOpen={(val) => {
+                        setIsDemoteModalOpen(val);
+                        if (!val) {
+                            setDemoting(null);
+                        }
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>
+                                {t("demoteServerAdminQuestion", {
+                                    selectedUser: getUserDisplayName({
+                                        email: demoting.email,
+                                        name: demoting.name,
+                                        username: demoting.username
+                                    })
+                                })}
+                            </p>
+
+                            <p>{t("demoteServerAdminMessage")}</p>
+                        </div>
+                    }
+                    buttonText={t("demoteServerAdminConfirm")}
+                    onConfirm={async () => setServerAdmin(demoting, false)}
+                    string={getUserDisplayName({
+                        email: demoting.email,
+                        name: demoting.name,
+                        username: demoting.username
+                    })}
+                    warningText={t("demoteServerAdminWarning")}
+                    title={t("demoteServerAdminTitle")}
                 />
             )}
 
