@@ -80,7 +80,7 @@ export async function buildSiteConfigurationForOlmClient(
         );
 
     const siteResourcesBySiteId = new Map<number, SiteResource[]>();
-    let siteResourcesForExitNode = [];
+    const siteResourcesForExitNode = [];
     for (const row of allClientSiteResources) {
         if (row.siteResource.requiresExitNodeConnection) {
             siteResourcesForExitNode.push(row.siteResource);
