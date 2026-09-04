@@ -41,7 +41,13 @@ import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII, toUnicode } from "punycode";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import {
+    useActionState,
+    useEffect,
+    useMemo,
+    useState,
+    startTransition
+} from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
@@ -282,7 +288,12 @@ export default function GeneralForm() {
                         <SettingsSectionForm variant="half">
                             <Form {...form}>
                                 <form
-                                    action={formAction}
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        startTransition(() => {
+                                            formAction();
+                                        });
+                                    }}
                                     id="general-settings-form"
                                 >
                                     <SettingsFormGrid>
