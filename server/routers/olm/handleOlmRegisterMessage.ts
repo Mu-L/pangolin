@@ -15,6 +15,7 @@ import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { getUserDeviceName } from "@server/db/names";
 import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
+import { buildOlmDnsConfig } from "./dnsConfig";
 import { OlmErrorCodes, sendOlmError } from "./error";
 import { handleFingerprintInsertion } from "./fingerprintingUtils";
 import { build } from "@server/build";
@@ -512,6 +513,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                               tunnelIP: `${clientSubnet.split("/")[0]}/${exitNode.address.split("/")[1]}` // we need to use the exit node's subnet mask here because the client will be using the exit node's subnet mask for its routing table so we can address it
                           }
                         : undefined,
+                dnsConfig: buildOlmDnsConfig(),
                 chainId: chainId
             }
         },
