@@ -30,9 +30,15 @@ import { normalizePostAuthPath } from "@server/lib/normalizePostAuthPath";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-    title: "Resource Access"
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const env = pullEnv();
+    const title =
+        env.branding.resourceAuthPage?.titleText ||
+        env.branding.appName ||
+        "Resource Access";
+
+    return { title };
+}
 
 export const dynamic = "force-dynamic";
 

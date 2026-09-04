@@ -53,17 +53,21 @@ export type OrgNavSectionsOptions = {
 };
 
 // Merged from 'user-management-and-resources' branch
-export const orgLangingNavItems: SidebarNavItem[] = [
+export const orgLangingNavItems = (env?: Env): SidebarNavItem[] => [
     {
         title: "sidebarAccount",
         href: "/{orgId}",
         icon: <LayoutGrid className="size-4 flex-none" />
     },
-    {
-        title: "sidebarMyApiKeys",
-        href: "/{orgId}/keys",
-        icon: <KeyRound className="size-4 flex-none" />
-    }
+    ...(!env?.flags.disableVirtualApiKeysUi
+        ? [
+              {
+                  title: "sidebarMyApiKeys",
+                  href: "/{orgId}/keys",
+                  icon: <KeyRound className="size-4 flex-none" />
+              }
+          ]
+        : [])
 ];
 
 export const orgNavSections = (
