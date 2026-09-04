@@ -117,6 +117,7 @@ export default function SecurityPage() {
 }
 
 function LogRetentionSectionForm({ org }: SectionFormProps) {
+    const { updateOrg } = useOrgContext();
     const form = useForm({
         resolver: zodResolver(
             SecurityFormSchema.pick({
@@ -173,6 +174,11 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
             // Update organization
             await api.post(`/org/${org.orgId}`, reqData);
 
+            // Update the org context immediately so the dropdowns reflect
+            // the saved values without waiting on a re-fetch that could
+            // race a lagging read replica
+            updateOrg(reqData);
+
             toast({
                 title: t("orgUpdated"),
                 description: t("orgUpdatedDescription")
@@ -199,7 +205,10 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                 <SettingsSectionForm>
                     <Form {...form}>
                         <form
-                            action={formAction}
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                formAction();
+                            }}
                             className="grid gap-4"
                             id="org-log-retention-settings-form"
                         >
@@ -827,6 +836,7 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
 
 function SecuritySettingsSectionForm({ org }: SectionFormProps) {
     const router = useRouter();
+    const { updateOrg } = useOrgContext();
     const form = useForm({
         resolver: zodResolver(
             SecurityFormSchema.pick({
@@ -899,6 +909,11 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
             // Update organization
             await api.post(`/org/${org.orgId}`, reqData);
 
+            // Update the org context immediately so the dropdowns reflect
+            // the saved values without waiting on a re-fetch that could
+            // race a lagging read replica
+            updateOrg(reqData);
+
             toast({
                 title: t("orgUpdated"),
                 description: t("orgUpdatedDescription")
@@ -942,7 +957,10 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                     <SettingsSectionForm>
                         <Form {...form}>
                             <form
-                                action={formAction}
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    formAction();
+                                }}
                                 ref={formRef}
                                 id="security-settings-section-form"
                                 className="space-y-4"
