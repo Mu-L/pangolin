@@ -81,9 +81,6 @@ export default async function UsersPage(props: AdminUsersPageProps) {
         };
     });
 
-    console.log({
-        userRows
-    });
     return (
         <>
             <SettingsSectionTitle
