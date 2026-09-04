@@ -3,7 +3,12 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
-import { useState, useTransition, useActionState } from "react";
+import {
+    useState,
+    useTransition,
+    useActionState,
+    startTransition
+} from "react";
 import {
     Form,
     FormControl,
@@ -243,7 +248,12 @@ function GeneralSectionForm({ org }: SectionFormProps) {
                 <SettingsSectionForm>
                     <Form {...form}>
                         <form
-                            action={formAction}
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                startTransition(() => {
+                                    formAction();
+                                });
+                            }}
                             className="grid gap-4"
                             id="org-general-settings-form"
                         >

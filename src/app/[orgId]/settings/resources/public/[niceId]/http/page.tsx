@@ -41,7 +41,7 @@ import {
 import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useActionState, useState } from "react";
+import { useActionState, useState, startTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -209,7 +209,15 @@ function ProxyResourceHttpForm({
             <SettingsSectionBody>
                 <SettingsSectionForm variant="half">
                     <Form {...form}>
-                        <form action={formAction} id="http-settings-form">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                startTransition(() => {
+                                    formAction();
+                                });
+                            }}
+                            id="http-settings-form"
+                        >
                             <SettingsFormGrid>
                                 {!env.flags.usePangolinDns && (
                                     <SettingsFormCell span="full">

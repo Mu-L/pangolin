@@ -41,7 +41,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useMemo } from "react";
+import { useActionState, useEffect, useMemo, startTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -232,7 +232,12 @@ export default function PrivateResourceInferencePage() {
                     <SettingsSectionForm variant="half">
                         <Form {...form}>
                             <form
-                                action={formAction}
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    startTransition(() => {
+                                        formAction();
+                                    });
+                                }}
                                 id="private-resource-providers-form"
                             >
                                 <SettingsFormGrid>

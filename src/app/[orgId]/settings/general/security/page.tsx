@@ -3,7 +3,13 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
-import { useState, useRef, useActionState, type ComponentRef } from "react";
+import {
+    useState,
+    useRef,
+    useActionState,
+    startTransition,
+    type ComponentRef
+} from "react";
 import {
     Form,
     FormControl,
@@ -207,7 +213,9 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                         <form
                             onSubmit={(e) => {
                                 e.preventDefault();
-                                formAction();
+                                startTransition(() => {
+                                    formAction();
+                                });
                             }}
                             className="grid gap-4"
                             id="org-log-retention-settings-form"
@@ -959,7 +967,9 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
-                                    formAction();
+                                    startTransition(() => {
+                                        formAction();
+                                    });
                                 }}
                                 ref={formRef}
                                 id="security-settings-section-form"

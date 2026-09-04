@@ -13,7 +13,12 @@ import { StrategyOption, StrategySelect } from "@app/components/StrategySelect";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { Button } from "@app/components/ui/button";
 import { useParams, useRouter } from "next/navigation";
-import { useActionState, useRef, useState } from "react";
+import {
+    useActionState,
+    useRef,
+    useState,
+    startTransition
+} from "react";
 import {
     Form,
     FormControl,
@@ -518,9 +523,12 @@ export default function Page() {
                                         <SettingsSectionForm>
                                             <Form {...internalForm}>
                                                 <form
-                                                    action={
-                                                        submitInternalAction
-                                                    }
+                                                    onSubmit={(e) => {
+                                                        e.preventDefault();
+                                                        startTransition(() => {
+                                                            submitInternalAction();
+                                                        });
+                                                    }}
                                                     className="space-y-4"
                                                     id="create-user-form"
                                                 >

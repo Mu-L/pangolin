@@ -48,7 +48,8 @@ import { useRouter } from "next/navigation";
 import {
     use,
     useActionState,
-    useMemo
+    useMemo,
+    startTransition
 } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -206,7 +207,12 @@ function ProxyResourceProtocolForm({
                 <SettingsSectionForm variant="half">
                     <Form {...proxySettingsForm}>
                         <form
-                            action={formAction}
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                startTransition(() => {
+                                    formAction();
+                                });
+                            }}
                             id="proxy-protocol-settings-form"
                         >
                             <SettingsFormGrid>
