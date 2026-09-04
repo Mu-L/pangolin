@@ -603,7 +603,15 @@ export default function UsersTable({
                                 })}
                             </p>
 
-                            <p>{t("demoteServerAdminMessage")}</p>
+                            <p>
+                                {t("demoteServerAdminMessage", {
+                                    selectedUser: getUserDisplayName({
+                                        email: demoting.email,
+                                        name: demoting.name,
+                                        username: demoting.username
+                                    })
+                                })}
+                            </p>
                         </div>
                     }
                     buttonText={t("demoteServerAdminConfirm")}
