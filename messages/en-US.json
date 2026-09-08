@@ -3790,6 +3790,7 @@
     "noData": "No Data",
     "machineClients": "Machine Clients",
     "install": "Install",
+    "downloadInstaller": "Download Installer",
     "run": "Run",
     "envFile": "Environment File",
     "serviceFile": "Service File",
@@ -4392,5 +4393,6 @@
     "rdpUnicodeKeyboardMode": "Unicode keyboard mode",
     "sessionToolbarShow": "Show toolbar",
     "sessionToolbarHide": "Hide toolbar",
-    "actionUpdateSiteApprovals": "Update Site Approvals"
+    "actionUpdateSiteApprovals": "Update Site Approvals",
+    "check": "Check"
 }
