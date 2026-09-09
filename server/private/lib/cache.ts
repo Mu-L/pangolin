@@ -13,7 +13,7 @@
 
 import logger from "@server/logger";
 import { createLocalCache } from "@server/lib/createLocalCache";
-import { redisManager, regionalRedisManager } from "@server/private/lib/redis";
+import { redisManager, regionalRedisManager } from "#private/lib/redis";
 
 export const localCache = createLocalCache();
 
