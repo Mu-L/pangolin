@@ -141,7 +141,7 @@ export const orgNavSections = (
                 href: "/{orgId}/settings/domains",
                 icon: <Globe className="size-4 flex-none" />
             },
-            ...(build === "saas"
+            ...(env?.flags.usePangolinDns
                 ? [
                       {
                           title: "sidebarRemoteExitNodes",
@@ -467,7 +467,7 @@ export const commandBarNavSections = (
                 title: "commandMachineClients",
                 icon: <Server className="size-4 flex-none" />
             },
-            ...(build === "saas"
+            ...(env?.flags.usePangolinDns
                 ? [
                       {
                           title: "commandRemoteExitNodes",
