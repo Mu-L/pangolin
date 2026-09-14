@@ -21,10 +21,10 @@ type ReleaseInfo = {
 
 // Cache key holding the last known good release info. It never expires, so
 // it keeps serving if GitHub is unreachable, even across restarts/nodes.
-const RELEASE_INFO_KEY = "cache:newtReleaseInfo";
+const RELEASE_INFO_KEY = "cache:releaseInfo";
 // Short-lived marker controlling how often we re-check GitHub. While it's
 // missing (expired, or a previous attempt failed) every request retries.
-const RELEASE_INFO_FRESH_KEY = "cache:newtReleaseInfoFresh";
+const RELEASE_INFO_FRESH_KEY = "cache:releaseInfoFresh";
 const RELEASE_INFO_REFRESH_SECONDS = 3600;
 
 /**
@@ -35,8 +35,8 @@ const RELEASE_INFO_REFRESH_SECONDS = 3600;
  * subsequent request retries GitHub until it succeeds again.
  */
 async function getLatestReleaseInfo(repo: string): Promise<ReleaseInfo | null> {
-    const stored = await cache.get<ReleaseInfo>(RELEASE_INFO_KEY);
-    const isFresh = await cache.has(RELEASE_INFO_FRESH_KEY);
+    const stored = await cache.get<ReleaseInfo>(`${RELEASE_INFO_KEY}:${repo}`);
+    const isFresh = await cache.has(`${RELEASE_INFO_FRESH_KEY}:${repo}`);
     if (stored && isFresh) {
         return stored;
     }
@@ -61,7 +61,7 @@ async function getLatestReleaseInfo(repo: string): Promise<ReleaseInfo | null> {
 
         let releases: any[] = await fetchResponse.json();
         if (!Array.isArray(releases) || releases.length === 0) {
-            logger.warn("No releases found for Newt repository");
+            logger.warn("No releases found for repository");
             return stored ?? null;
         }
 
@@ -90,7 +90,7 @@ async function getLatestReleaseInfo(repo: string): Promise<ReleaseInfo | null> {
         });
 
         if (releases.length === 0) {
-            logger.warn("No stable releases found for Newt repository");
+            logger.warn("No stable releases found for repository");
             return stored ?? null;
         }
 
@@ -298,7 +298,7 @@ export async function getNewtVersion(
             ? `pangolin-cli_${platform}.exe`
             : `pangolin-cli_${platform}`;
 
-        const downloadUrl = `https://github.com/fosrl/newt/releases/download/${agent == "cli" ? releaseInfoCli?.version : releaseInfoNewt.version}/${agent == "cli" ? binaryNameCli : binaryNameNewt}`;
+        const downloadUrl = `https://github.com/fosrl/${agent}/releases/download/${agent == "cli" ? releaseInfoCli?.version : releaseInfoNewt.version}/${agent == "cli" ? binaryNameCli : binaryNameNewt}`;
 
         // Look up the SHA256 digest for this specific binary from the GitHub
         // release asset metadata (the `digest` field, format "sha256:<hex>").
