@@ -63,7 +63,6 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
     ) : null;
 
     if (site.type === "newt") {
-        const isCli = site.agent === "cli";
         return (
             <Alert>
                 <AlertDescription>
@@ -74,14 +73,16 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
                                 {t("connectionType")}
                             </InfoSectionTitle>
                             <InfoSectionContent>
-                                {isCli ? "CLI" : "Newt"}
+                                {t("pangolinSite")}
                             </InfoSectionContent>
                         </InfoSection>
                         <InfoSection>
-                            <InfoSectionTitle>
-                                {t("newtVersion")}
-                            </InfoSectionTitle>
+                            <InfoSectionTitle>{t("agent")}</InfoSectionTitle>
                             <InfoSectionContent>
+                                {site.agent == "newt" ? "Newt" : null}
+                                {site.agent == "cli"
+                                    ? "Pangolin CLI"
+                                    : null}{" "}
                                 {site.agentVersion
                                     ? `v${site.agentVersion}`
                                     : "-"}

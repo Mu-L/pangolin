@@ -97,7 +97,7 @@ export function NewtSiteInstallCommands({
                     command: `${runAsRootPrefix}pangolin up site --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}${disableSshFlag}`
                 }
             ],
-            "Auto Systemd Service": [
+            "Systemd Service": [
                 {
                     title: t("install"),
                     command: `curl -fsSL https://static.pangolin.net/get-cli.sh | bash`
@@ -141,7 +141,7 @@ sudo chmod 600 /etc/pangolin/pangolin-site.env`
                     title: t("serviceFile"),
                     command: `sudo tee /etc/systemd/system/pangolin-site.service > /dev/null << 'EOF'
 [Unit]
-Description=Newt
+Description=Pangolin Site
 Wants=network-online.target
 After=network-online.target
 
@@ -223,9 +223,9 @@ sudo systemctl enable --now pangolin-site`
         docker: {
             "Docker Compose": [
                 `services:
-  newt:
+  pangolin-site:
     image: fosrl/pangolin-cli
-    container_name: newt
+    container_name: pangolin-site
     restart: unless-stopped
     environment:
       - PANGOLIN_ENDPOINT=${endpoint}
@@ -521,7 +521,7 @@ function getPlatformName(platformName: Platform) {
 function getArchitectures(platform: Platform) {
     switch (platform) {
         case "linux":
-            return ["Run", "Auto Systemd Service", "Manual Systemd Service"];
+            return ["Run", "Systemd Service", "Manual Systemd Service"];
         case "macos":
             return ["Run", "Service"];
         case "windows":

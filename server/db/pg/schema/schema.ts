@@ -682,7 +682,7 @@ export const newts = pgTable(
         secretHash: varchar("secretHash").notNull(),
         dateCreated: varchar("dateCreated").notNull(),
         version: varchar("version"),
-        agent: varchar("agent").default("newt"), // either newt or cli
+        agent: varchar("agent"), // either newt or cli
         agentVersion: varchar("agentVersion"),
         siteId: integer("siteId").references(() => sites.siteId, {
             onDelete: "cascade"

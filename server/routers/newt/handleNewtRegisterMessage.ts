@@ -171,7 +171,11 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         logger.error(`Failed to add peer to exit node: ${error}`);
     }
 
-    if (newtVersion && newtVersion !== newt.version) {
+    if (
+        newtVersion !== newt.version ||
+        agent !== newt.agent ||
+        agentVersion !== newt.agentVersion
+    ) {
         // update the newt version in the database
         await db
             .update(newts)

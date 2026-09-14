@@ -371,7 +371,7 @@ export default function SitesTable({
             },
             {
                 accessorKey: "type",
-                friendlyName: t("type"),
+                friendlyName: t("agent"),
                 header: () => {
                     return <span className="p-3">{t("type")}</span>;
                 },
@@ -386,13 +386,20 @@ export default function SitesTable({
                     );
 
                     if (originalRow.type === "newt") {
-                        const isCli = originalRow.agent === "cli";
+                        if (!originalRow.agent) {
+                            return <span>-</span>;
+                        }
                         return (
                             <div className="flex items-center space-x-1">
                                 <Badge variant="secondary">
                                     <div className="flex items-center space-x-1">
                                         <span>
-                                            {isCli ? "CLI" : "Newt"}
+                                            {originalRow.agent == "newt"
+                                                ? "Newt"
+                                                : null}
+                                            {originalRow.agent == "cli"
+                                                ? "Pangolin CLI"
+                                                : null}
                                         </span>
                                         {originalRow.agentVersion && (
                                             <span>
