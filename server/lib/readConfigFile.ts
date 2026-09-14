@@ -348,8 +348,8 @@ export const configSchema = z
                     .optional()
                     .pipe(z.string())
                     .transform((url) => url.toLowerCase()),
-                subnet_group: z.string().optional().default("100.89.137.0/20"),
-                block_size: z.number().positive().gt(0).optional().default(24),
+                subnet_group: z.string().optional().default("100.89.137.0/18"),
+                block_size: z.number().positive().gt(0).optional().default(22),
                 site_block_size: z
                     .number()
                     .positive()
@@ -491,23 +491,6 @@ export const configSchema = z
                     })
                     .optional()
                     .prefault({})
-            })
-            .optional()
-            .prefault({}),
-        dns: z
-            .object({
-                nameservers: z
-                    .array(z.string().optional().optional())
-                    .optional()
-                    .default([
-                        "ns1.pangolin.net",
-                        "ns2.pangolin.net",
-                        "ns3.pangolin.net"
-                    ]),
-                cname_extension: z
-                    .string()
-                    .optional()
-                    .default("cname.pangolin.net")
             })
             .optional()
             .prefault({})

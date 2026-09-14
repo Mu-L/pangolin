@@ -6,7 +6,10 @@ import * as yaml from "js-yaml";
 import axios from "axios";
 import { db, exitNodes } from "@server/db";
 import { eq } from "drizzle-orm";
-import { getCurrentExitNodeId } from "@server/lib/exitNodes";
+import {
+    getCurrentExitNodeId,
+    hasExitNodeCheckedIn
+} from "@server/lib/exitNodes";
 import { getTraefikConfig } from "#dynamic/lib/traefik";
 import { getValidCertificatesForDomains } from "@server/lib/certificates";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
@@ -341,10 +344,6 @@ export class TraefikConfigManager {
 
             const { domains, traefikConfig } = getTraefikConfig;
 
-            // Add static domains from config
-            // const staticDomains = [config.getRawConfig().app.dashboard_url];
-            // staticDomains.forEach((domain) => domains.add(domain));
-
             // Log if domains changed
             if (
                 this.lastActiveDomains.size !== domains.size ||
@@ -358,7 +357,7 @@ export class TraefikConfigManager {
                 this.lastActiveDomains = new Set(domains);
             }
 
-            if (process.env.USE_PANGOLIN_DNS === "true" && build != "oss") {
+            if (process.env.CERT_MODE === "pangolin" && build != "oss") {
                 // Scan current local certificate state
                 this.lastLocalCertificateState =
                     await this.scanLocalCertificateState();
@@ -439,13 +438,13 @@ export class TraefikConfigManager {
                     // Always ensure all existing certificates (including wildcards) are in the config
                     await this.updateDynamicConfigFromLocalCerts(domains);
                 } else {
-                    const timeSinceLastFetch = this.lastCertificateFetch
-                        ? Math.round(
-                              (Date.now() -
-                                  this.lastCertificateFetch.getTime()) /
-                                  (1000 * 60)
-                          )
-                        : 0;
+                    // const timeSinceLastFetch = this.lastCertificateFetch
+                    //     ? Math.round(
+                    //           (Date.now() -
+                    //               this.lastCertificateFetch.getTime()) /
+                    //               (1000 * 60)
+                    //       )
+                    //     : 0;
 
                     // logger.debug(
                     //     `Skipping certificate fetch - no changes detected and within 24-hour window (last fetch: ${timeSinceLastFetch} minutes ago)`
@@ -466,32 +465,51 @@ export class TraefikConfigManager {
             await this.writeTraefikDynamicConfig(traefikConfig);
 
             // Send domains to SNI proxy
+            let exitNodeForSni: typeof exitNodes.$inferSelect | undefined;
             try {
-                let exitNode;
                 if (config.getRawConfig().gerbil.exit_node_name) {
                     const exitNodeName =
                         config.getRawConfig().gerbil.exit_node_name!;
-                    [exitNode] = await db
+                    [exitNodeForSni] = await db
                         .select()
                         .from(exitNodes)
                         .where(eq(exitNodes.name, exitNodeName))
                         .limit(1);
                 } else {
-                    [exitNode] = await db.select().from(exitNodes).limit(1);
+                    [exitNodeForSni] = await db
+                        .select()
+                        .from(exitNodes)
+                        .limit(1);
                 }
-                if (exitNode) {
-                    await sendToExitNode(exitNode, {
+                if (exitNodeForSni) {
+                    await sendToExitNode(exitNodeForSni, {
                         localPath: "/update-local-snis",
                         method: "POST",
-                        data: { fullDomains: Array.from(domains) }
+                        data: {
+                            fullDomains: [
+                                ...Array.from(domains),
+                                ...config.getRawConfig().traefik.static_domains
+                            ]
+                        }
                     });
                 } else {
-                    logger.error(
+                    logger.warn(
                         "No exit node found. Has gerbil registered yet?"
                     );
                 }
             } catch (err) {
-                logger.error("Failed to post domains to SNI proxy:", err);
+                // sendToExitNode already logs the underlying connection
+                // error at the appropriate level (warn before the exit node
+                // has checked in since startup, error after), so avoid
+                // double-logging it as an error here.
+                if (
+                    exitNodeForSni &&
+                    !hasExitNodeCheckedIn(exitNodeForSni.exitNodeId)
+                ) {
+                    logger.warn("Failed to post domains to SNI proxy:", err);
+                } else {
+                    logger.error("Failed to post domains to SNI proxy:", err);
+                }
             }
 
             // Update active domains tracking
