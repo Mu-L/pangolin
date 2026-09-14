@@ -22,14 +22,7 @@ export async function startDnsServer() {
         return;
     }
 
-    const cacheOptions = {
-        stdTTL: 300, // 5 minutes default TTL
-        checkperiod: 60, // Check for expired keys every 60 seconds
-        useClones: false // Better performance
-    };
-
-    // Create DNS server
-    dnsServer = new AuthoritativeDNSServer(dnsConfig.listen_port, cacheOptions);
+    dnsServer = new AuthoritativeDNSServer(dnsConfig.listen_port);
 
     await dnsServer.start();
 }

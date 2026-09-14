@@ -1,7 +1,7 @@
 import { LRUCache } from "lru-cache";
 
 const DEFAULT_MAX_KEYS = 10000;
-const DEFAULT_TTL_MS = 3600 * 1000;
+const DEFAULT_TTL_SECONDS = 3600;
 
 export type LocalCache = {
     get<T>(key: string): T | undefined;
@@ -14,10 +14,13 @@ export type LocalCache = {
     getTtl(key: string): number | undefined;
 };
 
-export function createLocalCache(max = DEFAULT_MAX_KEYS): LocalCache {
+export function createLocalCache(
+    max = DEFAULT_MAX_KEYS,
+    ttlSeconds = DEFAULT_TTL_SECONDS
+): LocalCache {
     const lru = new LRUCache<string, {}>({
         max,
-        ttl: DEFAULT_TTL_MS,
+        ttl: ttlSeconds * 1000,
         updateAgeOnGet: false
     });
 

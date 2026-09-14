@@ -13,8 +13,11 @@
 
 import * as dgram from "dgram";
 import * as dns from "dns-packet";
-import NodeCache from "node-cache";
 import { createHash } from "crypto";
+import {
+    createLocalCache,
+    type LocalCache
+} from "@server/lib/createLocalCache";
 import { eq, and, gt, or, inArray, desc } from "drizzle-orm";
 import {
     db,
@@ -46,8 +49,10 @@ type DNSRecord = {
     enabled: boolean;
 };
 
+const DNS_CACHE_TTL_SECONDS = 300;
+
 export class AuthoritativeDNSServer {
-    private cache: NodeCache;
+    private cache: LocalCache = createLocalCache(10_000, DNS_CACHE_TTL_SECONDS);
     private server: dgram.Socket;
     private port: number;
     private inFlightLookups: Map<string, Promise<unknown>> = new Map();
@@ -66,23 +71,16 @@ export class AuthoritativeDNSServer {
     private licenseRefreshInterval: NodeJS.Timeout | null = null;
 
     // Cache for per-queryName zone resolution and SOA records
-    private authoritativeDomainCache: NodeCache = new NodeCache({
-        stdTTL: 300,
-        checkperiod: 60
-    });
-    private soaCache: NodeCache = new NodeCache({
-        stdTTL: 300,
-        checkperiod: 60
-    });
+    private authoritativeDomainCache: LocalCache = createLocalCache(
+        10_000,
+        DNS_CACHE_TTL_SECONDS
+    );
+    private soaCache: LocalCache = createLocalCache(
+        10_000,
+        DNS_CACHE_TTL_SECONDS
+    );
 
-    constructor(port: number, cacheOptions: NodeCache.Options = {}) {
-        // Initialize cache with default TTL of 5 minutes
-        this.cache = new NodeCache({
-            stdTTL: 300,
-            checkperiod: 60,
-            ...cacheOptions
-        });
-
+    constructor(port: number) {
         this.port = port;
         this.server = dgram.createSocket("udp4");
 
@@ -130,9 +128,7 @@ export class AuthoritativeDNSServer {
         }
 
         if (!this.isLicensed) {
-            logger.debug(
-                "Refusing DNS query - license is not subscribed"
-            );
+            logger.debug("Refusing DNS query - license is not subscribed");
             // REFUSED (rcode=5) indicates a policy refusal by this nameserver.
             this.sendResponse(packet, [], rinfo, false, 5, []);
             return;
@@ -1092,7 +1088,7 @@ export class AuthoritativeDNSServer {
         });
     }
 
-    public getCacheStats(): NodeCache.Stats {
+    public getCacheStats(): { keys: number } {
         return this.cache.getStats();
     }
 
