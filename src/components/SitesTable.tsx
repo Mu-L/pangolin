@@ -67,6 +67,8 @@ export type SiteRow = {
     orgId: string;
     type: "newt" | "wireguard" | "local";
     newtVersion?: string;
+    agent?: string;
+    agentVersion?: string;
     newtUpdateAvailable?: boolean;
     online?: boolean | null;
     address?: string;
@@ -384,14 +386,17 @@ export default function SitesTable({
                     );
 
                     if (originalRow.type === "newt") {
+                        const isCli = originalRow.agent === "cli";
                         return (
                             <div className="flex items-center space-x-1">
                                 <Badge variant="secondary">
                                     <div className="flex items-center space-x-1">
-                                        <span>Newt</span>
-                                        {originalRow.newtVersion && (
+                                        <span>
+                                            {isCli ? "CLI" : "Newt"}
+                                        </span>
+                                        {originalRow.agentVersion && (
                                             <span>
-                                                v{originalRow.newtVersion}
+                                                v{originalRow.agentVersion}
                                             </span>
                                         )}
                                     </div>
