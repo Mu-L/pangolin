@@ -26,14 +26,12 @@ export const configSchema = z
                     .object({
                         anonymous_usage: z.boolean().optional().default(true)
                     })
-                    .optional()
                     .prefault({}),
                 notifications: z
                     .object({
                         product_updates: z.boolean().optional().default(true),
                         new_releases: z.boolean().optional().default(true)
                     })
-                    .optional()
                     .prefault({})
             })
             .optional()
@@ -109,7 +107,6 @@ export const configSchema = z
                         id: z.string().optional().default("P-Access-Token-Id"),
                         token: z.string().optional().default("P-Access-Token")
                     })
-                    .optional()
                     .prefault({}),
                 remote_headers: z
                     .object({
@@ -126,7 +123,6 @@ export const configSchema = z
                         name: z.string().optional().default("Remote-Name"),
                         role: z.string().optional().default("Remote-Role")
                     })
-                    .optional()
                     .prefault({}),
                 resource_session_request_param: z
                     .string()
@@ -238,7 +234,6 @@ export const configSchema = z
                             .default(5000),
                         jit_mode: z.boolean().default(true)
                     })
-                    .optional()
                     .prefault({})
             })
             .optional(),
@@ -278,7 +273,6 @@ export const configSchema = z
                             .optional()
                             .default(5000)
                     })
-                    .optional()
                     .prefault({})
             })
             .optional(),
@@ -325,10 +319,8 @@ export const configSchema = z
                             .optional()
                             .default(50)
                     })
-                    .optional()
                     .prefault({})
             })
-            .optional()
             .prefault({}),
         gerbil: z
             .object({
@@ -357,7 +349,6 @@ export const configSchema = z
                     .optional()
                     .default(30)
             })
-            .optional()
             .prefault({}),
         orgs: z
             .object({
@@ -391,7 +382,6 @@ export const configSchema = z
                             .optional()
                             .default(500)
                     })
-                    .optional()
                     .prefault({}),
                 auth: z
                     .object({
@@ -408,10 +398,8 @@ export const configSchema = z
                             .optional()
                             .default(500)
                     })
-                    .optional()
                     .prefault({})
             })
-            .optional()
             .prefault({}),
         email: z
             .object({
@@ -489,10 +477,8 @@ export const configSchema = z
                             .optional()
                             .default(12)
                     })
-                    .optional()
                     .prefault({})
             })
-            .optional()
             .prefault({})
     })
     .refine(
