@@ -546,6 +546,30 @@ export async function getTraefikConfig(
                 }
             }
 
+            config_output.http.services![serviceName] = {
+                loadBalancer: {
+                    servers: buildHttpLoadBalancerServers(targets),
+                    ...(resource.stickySession
+                        ? buildStickySessionCookie(resource.ssl)
+                        : {})
+                }
+            };
+
+            if (resource.tlsServerName) {
+                if (!config_output.http.serversTransports) {
+                    config_output.http.serversTransports = {};
+                }
+                config_output.http.serversTransports![transportName] = {
+                    serverName: resource.tlsServerName,
+                    //unfortunately the following needs to be set. traefik doesn't merge the default serverTransport settings
+                    // if defined in the static config and here. if not set, self-signed certs won't work
+                    insecureSkipVerify: true
+                };
+                config_output.http.services![
+                    serviceName
+                ].loadBalancer.serversTransport = transportName;
+            }
+
             if (resource.ssl) {
                 config_output.http.routers![routerName + "-redirect"] = {
                     entryPoints: [
@@ -710,31 +734,6 @@ export async function getTraefikConfig(
                 priority: priority,
                 ...(resource.ssl ? { tls } : {})
             };
-
-            config_output.http.services![serviceName] = {
-                loadBalancer: {
-                    servers: buildHttpLoadBalancerServers(targets),
-                    ...(resource.stickySession
-                        ? buildStickySessionCookie(resource.ssl)
-                        : {})
-                }
-            };
-
-            // Add the serversTransport if TLS server name is provided
-            if (resource.tlsServerName) {
-                if (!config_output.http.serversTransports) {
-                    config_output.http.serversTransports = {};
-                }
-                config_output.http.serversTransports![transportName] = {
-                    serverName: resource.tlsServerName,
-                    //unfortunately the following needs to be set. traefik doesn't merge the default serverTransport settings
-                    // if defined in the static config and here. if not set, self-signed certs won't work
-                    insecureSkipVerify: true
-                };
-                config_output.http.services![
-                    serviceName
-                ].loadBalancer.serversTransport = transportName;
-            }
         } else if (resource.mode == "tcp" || resource.mode == "udp") {
             // Non-HTTP (TCP/UDP) configuration
             if (!resource.enableProxy) {
