@@ -717,10 +717,9 @@ export class TraefikConfigManager {
         }
         if (shouldWrite) {
             try {
-                fs.writeFileSync(
+                this.atomicWriteFileSync(
                     traefikDynamicConfigPath,
-                    yaml.dump(traefikConfig, { noRefs: true }),
-                    "utf8"
+                    yaml.dump(traefikConfig, { noRefs: true })
                 );
                 logger.info("Traefik dynamic config updated");
             } catch (err) {
@@ -822,7 +821,7 @@ export class TraefikConfigManager {
         // Only write the config if it has changed
         const newConfigYaml = yaml.dump(dynamicConfig, { noRefs: true });
         if (newConfigYaml !== originalConfigYaml) {
-            fs.writeFileSync(dynamicConfigPath, newConfigYaml, "utf8");
+            this.atomicWriteFileSync(dynamicConfigPath, newConfigYaml);
             logger.info("Dynamic cert config updated from local certificates");
         }
     }
@@ -900,26 +899,23 @@ export class TraefikConfigManager {
                         `Processing certificate for domain: ${cert.domain}`
                     );
 
-                    fs.writeFileSync(certPath, cert.certFile, "utf8");
-                    fs.writeFileSync(keyPath, cert.keyFile, "utf8");
-
-                    // Set appropriate permissions (readable by owner only for key file)
-                    fs.chmodSync(certPath, 0o644);
-                    fs.chmodSync(keyPath, 0o600);
+                    // Write atomically (temp file + rename) so Traefik's
+                    // file watcher never observes a partially written
+                    // cert/key and fails with "failed to find any PEM data".
+                    this.atomicWriteFileSync(certPath, cert.certFile, 0o644);
+                    this.atomicWriteFileSync(keyPath, cert.keyFile, 0o600);
 
                     // Write/update .last_update file with current timestamp
-                    fs.writeFileSync(
+                    this.atomicWriteFileSync(
                         lastUpdatePath,
-                        new Date().toISOString(),
-                        "utf8"
+                        new Date().toISOString()
                     );
 
                     // Check if this is a wildcard certificate and store it
                     const wildcardPath = path.join(domainDir, ".wildcard");
-                    fs.writeFileSync(
+                    this.atomicWriteFileSync(
                         wildcardPath,
-                        cert.wildcard ? "true" : "false",
-                        "utf8"
+                        cert.wildcard ? "true" : "false"
                     );
 
                     logger.info(
@@ -931,10 +927,9 @@ export class TraefikConfigManager {
                 // even if the cert content didn't change
                 if (cert.expiresAt) {
                     const expiresAtPath = path.join(domainDir, ".expires_at");
-                    fs.writeFileSync(
+                    this.atomicWriteFileSync(
                         expiresAtPath,
-                        cert.expiresAt.toString(),
-                        "utf8"
+                        cert.expiresAt.toString()
                     );
                 }
 
@@ -970,7 +965,7 @@ export class TraefikConfigManager {
         // Only write the config if it has changed
         const newConfigYaml = yaml.dump(dynamicConfig, { noRefs: true });
         if (newConfigYaml !== originalConfigYaml) {
-            fs.writeFileSync(dynamicConfigPath, newConfigYaml, "utf8");
+            this.atomicWriteFileSync(dynamicConfigPath, newConfigYaml);
             logger.info("Dynamic cert config updated");
         }
     }
@@ -1141,10 +1136,9 @@ export class TraefikConfigManager {
 
             if (configChanged) {
                 try {
-                    fs.writeFileSync(
+                    this.atomicWriteFileSync(
                         dynamicConfigPath,
-                        yaml.dump(dynamicConfig, { noRefs: true }),
-                        "utf8"
+                        yaml.dump(dynamicConfig, { noRefs: true })
                     );
                     logger.info("Dynamic config updated after cleanup");
                 } catch (err) {
@@ -1167,6 +1161,36 @@ export class TraefikConfigManager {
             fs.mkdirSync(dirPath, { recursive: true });
         } catch (error) {
             logger.error(`Error creating directory ${dirPath}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Write a file atomically by writing to a temp file in the same
+     * directory and renaming it into place. This avoids Traefik (which
+     * watches these files/directories) picking up a partially written
+     * file and failing to parse it (e.g. "failed to find any PEM data").
+     */
+    private atomicWriteFileSync(
+        filePath: string,
+        data: string,
+        mode?: number
+    ): void {
+        const dir = path.dirname(filePath);
+        const tmpPath = path.join(
+            dir,
+            `.${path.basename(filePath)}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        );
+        try {
+            fs.writeFileSync(tmpPath, data, "utf8");
+            if (mode !== undefined) {
+                fs.chmodSync(tmpPath, mode);
+            }
+            fs.renameSync(tmpPath, filePath);
+        } catch (error) {
+            try {
+                fs.rmSync(tmpPath, { force: true });
+            } catch {}
             throw error;
         }
     }
