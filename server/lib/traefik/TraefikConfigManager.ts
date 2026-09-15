@@ -14,6 +14,7 @@ import { getTraefikConfig } from "#dynamic/lib/traefik";
 import { getValidCertificatesForDomains } from "@server/lib/certificates";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
 import { build } from "@server/build";
+import license from "#dynamic/license/license";
 
 export class TraefikConfigManager {
     private intervalId: NodeJS.Timeout | null = null;
@@ -357,7 +358,11 @@ export class TraefikConfigManager {
                 this.lastActiveDomains = new Set(domains);
             }
 
-            if (process.env.CERT_MODE === "pangolin" && build != "oss") {
+            if (
+                process.env.CERT_MODE === "pangolin" &&
+                build != "oss" &&
+                (await license.hasTier(["personal", "tier2", "enterprise"]))
+            ) {
                 // Scan current local certificate state
                 this.lastLocalCertificateState =
                     await this.scanLocalCertificateState();
