@@ -3,7 +3,7 @@ import * as yaml from "js-yaml";
 import { configFilePath1, configFilePath2 } from "./consts";
 import { z } from "zod";
 import stoi from "./stoi";
-import { getEnvOrYaml } from "./getEnvOrYaml";
+import { getEnvOrYaml, readEnvOrFile } from "./getEnvOrYaml";
 
 const portSchema = z.number().positive().gt(0).lte(65535);
 
@@ -160,14 +160,17 @@ export const configSchema = z
                     .boolean()
                     .optional()
                     .default(false)
-                    .transform((val) =>
-                        process.env.ENABLE_AI_GATEWAY_CLIENT_IP_HEADER !==
-                        undefined
-                            ? process.env.ENABLE_AI_GATEWAY_CLIENT_IP_HEADER ===
-                              "true"
-                            : val
-                    ),
-                secret: z.string().pipe(z.string().min(8)).optional(),
+                    .transform((val) => {
+                        const envVal = readEnvOrFile(
+                            "ENABLE_AI_GATEWAY_CLIENT_IP_HEADER"
+                        );
+                        return envVal !== undefined ? envVal === "true" : val;
+                    }),
+                secret: z
+                    .string()
+                    .pipe(z.string().min(8))
+                    .optional()
+                    .transform(getEnvOrYaml("SERVER_SECRET")),
                 maxmind_db_path: z.string().optional(),
                 maxmind_asn_path: z.string().optional()
             })
@@ -198,7 +201,8 @@ export const configSchema = z
                 dashboard_session_length_hours: 720,
                 resource_session_length_hours: 720,
                 trust_proxy: 1,
-                enable_ai_gateway_client_ip_header: false
+                enable_ai_gateway_client_ip_header: false,
+                secret: undefined
             }),
         postgres: z
             .object({
@@ -499,10 +503,7 @@ export const configSchema = z
     )
     .refine(
         (data) => {
-            // If hybrid is not defined, server secret must be defined. If its not defined already then pull it from env
-            if (data.server?.secret === undefined) {
-                data.server.secret = process.env.SERVER_SECRET;
-            }
+            // If hybrid is not defined, server secret must be defined
             return (
                 data.server?.secret !== undefined &&
                 data.server.secret.length > 0
