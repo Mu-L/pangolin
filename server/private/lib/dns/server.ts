@@ -63,10 +63,11 @@ export class AuthoritativeDNSServer {
     private allDomains: Set<string> = new Set();
     private domainRefreshInterval: NodeJS.Timeout | null = null;
 
-    // Cached license/subscription status. license.isUnlocked() does a DB
-    // round-trip on every call, so it can't be checked per-query on a UDP
-    // server that may see very high query volume - instead it's polled on
-    // the same cadence as the domain set refresh and read from memory here.
+    // Cached license/plan status - only a tier2 license unlocks the DNS
+    // server. license.hasPlan() does a DB round-trip on every call, so it
+    // can't be checked per-query on a UDP server that may see very high
+    // query volume - instead it's polled on the same cadence as the domain
+    // set refresh and read from memory here.
     private isLicensed: boolean = false;
     private licenseRefreshInterval: NodeJS.Timeout | null = null;
 
@@ -128,7 +129,7 @@ export class AuthoritativeDNSServer {
         }
 
         if (!this.isLicensed) {
-            logger.debug("Refusing DNS query - license is not subscribed");
+            logger.debug("Refusing DNS query - requires a tier2 license");
             // REFUSED (rcode=5) indicates a policy refusal by this nameserver.
             this.sendResponse(packet, [], rinfo, false, 5, []);
             return;
@@ -1042,7 +1043,11 @@ export class AuthoritativeDNSServer {
 
     private async refreshLicenseStatus(): Promise<void> {
         try {
-            this.isLicensed = await license.isUnlocked();
+            this.isLicensed = await license.hasTier([
+                "personal",
+                "tier2",
+                "enterprise"
+            ]);
         } catch (error) {
             logger.error("Failed to refresh license status:", error);
             this.isLicensed = false;

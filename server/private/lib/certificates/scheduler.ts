@@ -45,9 +45,9 @@ export class JobScheduler {
         label: string
     ): () => Promise<void> {
         return async () => {
-            if (!(await license.isUnlocked())) {
+            if (!(await license.hasTier(["personal", "tier2", "enterprise"]))) {
                 logger.debug(
-                    `Skipping ${label} tick - license is not subscribed`
+                    `Skipping ${label} tick - requires a tier2 license`
                 );
                 return;
             }

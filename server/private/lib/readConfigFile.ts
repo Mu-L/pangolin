@@ -48,7 +48,6 @@ export const privateConfigSchema = z
                     .optional()
                     .transform(getEnvOrYaml("FOSSORIAL_API_KEY"))
             })
-            .optional()
             .prefault({}),
         redis: z
             .object({
@@ -166,7 +165,6 @@ export const privateConfigSchema = z
                     .optional()
                     .default("http://gerbil:3004")
             })
-            .optional()
             .prefault({}),
         flags: z
             .object({
@@ -187,7 +185,6 @@ export const privateConfigSchema = z
                 // (server/private/lib/config.ts).
                 disable_private_http_placeholder: z.boolean().optional()
             })
-            .optional()
             .prefault({}),
         acme: z
             .object({

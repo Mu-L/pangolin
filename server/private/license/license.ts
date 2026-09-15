@@ -26,6 +26,7 @@ import {
     LicenseStatus
 } from "@server/license/license";
 import { setHostMeta } from "@server/lib/hostMeta";
+import { build } from "@server/build";
 
 type ActivateLicenseKeyAPIResponse = {
     data: {
@@ -119,11 +120,28 @@ LQIDAQAB
     }
 
     public async isUnlocked(): Promise<boolean> {
+        if (build == "saas") {
+            return true;
+        }
         const status = await this.check();
         if (status.isHostLicensed) {
             if (status.isLicenseValid) {
                 return true;
             }
+        }
+        return false;
+    }
+
+    public async hasTier(tier: LicenseKeyTier[]): Promise<boolean> {
+        if (build == "saas") {
+            return true;
+        }
+        const status = await this.check();
+        if (status.isHostLicensed && status.isLicenseValid) {
+            return (
+                status.tier !== undefined &&
+                tier.includes(status.tier as LicenseKeyTier)
+            );
         }
         return false;
     }
@@ -135,8 +153,7 @@ LQIDAQAB
                 "License check already in progress, returning last known status"
             );
             const lastStatus = this.statusCache.get(this.statusKey) as
-                | LicenseStatus
-                | undefined;
+                LicenseStatus | undefined;
             if (lastStatus) {
                 return lastStatus;
             }
