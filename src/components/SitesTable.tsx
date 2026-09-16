@@ -386,7 +386,8 @@ export default function SitesTable({
                     );
 
                     if (originalRow.type === "newt") {
-                        if (!originalRow.agent) {
+                        if (!originalRow.agent && !originalRow.newtVersion) {
+                            // it has not checked in yet
                             return <span>-</span>;
                         }
                         return (
