@@ -16,13 +16,13 @@ export default async function migration() {
         db.transaction(() => {
             db.prepare(
                 `
-            ALTER TABLE 'newt' ADD COLUMN IF NOT EXISTS 'agent' text;
+            ALTER TABLE 'newt' ADD COLUMN 'agent' text;
                 `
             ).run();
 
             db.prepare(
                 `
-            ALTER TABLE 'newt' ADD COLUMN IF NOT EXISTS 'agentVersion' text;
+            ALTER TABLE 'newt' ADD COLUMN 'agentVersion' text;
                 `
             ).run();
         })();
