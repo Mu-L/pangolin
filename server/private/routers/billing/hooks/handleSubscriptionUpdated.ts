@@ -23,7 +23,10 @@ import {
 } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import logger from "@server/logger";
-import { getFeatureIdByMetricId, getFeatureIdByPriceId } from "@server/lib/billing/features";
+import {
+    getFeatureIdByMetricId,
+    getFeatureIdByPriceId
+} from "@server/lib/billing/features";
 import stripe from "#private/lib/stripe";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
 import { getSubType, SubscriptionType } from "./getSubType";
@@ -66,7 +69,8 @@ export async function handleSubscriptionUpdated(
             .limit(1);
 
         const type = getSubType(fullSubscription);
-        const previousType = existingSubscription.type as SubscriptionType | null;
+        const previousType =
+            existingSubscription.type as SubscriptionType | null;
 
         // If the subscription has been manually overridden, we lock the
         // status down so Stripe webhooks can no longer change it.
@@ -100,7 +104,11 @@ export async function handleSubscriptionUpdated(
             logger.info(
                 `Tier change detected for org ${customer.orgId}: ${previousType} -> ${type}`
             );
-            await handleTierChange(customer.orgId, type, previousType ?? undefined);
+            await handleTierChange(
+                customer.orgId,
+                type,
+                previousType ?? undefined
+            );
         }
 
         // Upsert subscription items
@@ -113,7 +121,8 @@ export async function handleSubscriptionUpdated(
 
             const itemsToUpsert = fullSubscription.items.data.map((item) => {
                 // Try to get featureId from price
-                let featureId: string | null = getFeatureIdByPriceId(item.price.id) || null;
+                let featureId: string | null =
+                    getFeatureIdByPriceId(item.price.id) || null;
 
                 // If no match, try to preserve existing featureId
                 if (!featureId) {
@@ -302,13 +311,19 @@ export async function handleSubscriptionUpdated(
                     logger.info(
                         `Subscription ${subscription.id} for org ${customer.orgId} is ${effectiveStatus}, disabling paid features`
                     );
-                    await handleTierChange(customer.orgId, null, previousType ?? undefined);
+                    await handleTierChange(
+                        customer.orgId,
+                        null,
+                        previousType ?? undefined
+                    );
                 }
             } else if (type === "license") {
-                if (effectiveStatus === "canceled" || effectiveStatus == "unpaid" || effectiveStatus == "incomplete_expired") {
+                if (
+                    effectiveStatus === "canceled" ||
+                    effectiveStatus == "unpaid" ||
+                    effectiveStatus == "incomplete_expired"
+                ) {
                     try {
-                        // WARNING:
-                        // this invalidates ALL OF THE ENTERPRISE LICENSES for this orgId
                         await fetch(
                             `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/invalidate`,
                             {
@@ -320,7 +335,9 @@ export async function handleSubscriptionUpdated(
                                     "Content-Type": "application/json"
                                 },
                                 body: JSON.stringify({
-                                    orgId: customer.orgId
+                                    orgId: customer.orgId,
+                                    licenseKeyId:
+                                        subscription.metadata.licenseKeyId
                                 })
                             }
                         );
@@ -329,6 +346,69 @@ export async function handleSubscriptionUpdated(
                             `Error notifying Fossorial API of license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}:`,
                             error
                         );
+                    }
+                } else if (effectiveStatus === "active" && previousAttributes) {
+                    // Detect a successful renewal: the billing period rolled
+                    // forward (the invoice was paid and the new period began
+                    // right where the previous one ended).
+                    const currentItem = fullSubscription.items.data[0];
+                    const prevItems = previousAttributes.items?.data;
+                    const prevItem = Array.isArray(prevItems)
+                        ? prevItems.find(
+                              (pi: any) => pi.id === currentItem?.id
+                          )
+                        : undefined;
+
+                    const renewed =
+                        currentItem &&
+                        prevItem?.current_period_end &&
+                        currentItem.current_period_start ===
+                            prevItem.current_period_end &&
+                        currentItem.current_period_start >
+                            prevItem.current_period_start;
+
+                    if (renewed) {
+                        const licenseKeyId =
+                            subscription.metadata.licenseKeyId;
+
+                        if (!licenseKeyId) {
+                            logger.error(
+                                `No licenseKeyId in metadata for subscription ${subscription.id}, cannot extend license.`
+                            );
+                        } else {
+                            // Grace period of 5 days added on top of the new
+                            // billing period end (usually ~1 year out)
+                            const expiresAt =
+                                currentItem.current_period_end +
+                                5 * 24 * 60 * 60;
+
+                            try {
+                                await fetch(
+                                    `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/extend`,
+                                    {
+                                        method: "POST",
+                                        headers: {
+                                            "api-key":
+                                                privateConfig.getRawPrivateConfig()
+                                                    .server.fossorial_api_key!,
+                                            "Content-Type": "application/json"
+                                        },
+                                        body: JSON.stringify({
+                                            licenseId: parseInt(licenseKeyId),
+                                            expiresAt: expiresAt
+                                        })
+                                    }
+                                );
+                                logger.info(
+                                    `Extended license ${licenseKeyId} for subscription ${subscription.id} to expire at ${expiresAt}.`
+                                );
+                            } catch (error) {
+                                logger.error(
+                                    `Error notifying Fossorial API of license renewal for subscription ${subscription.id}:`,
+                                    error
+                                );
+                            }
+                        }
                     }
                 }
             }

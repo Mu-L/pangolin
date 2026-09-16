@@ -125,8 +125,6 @@ export async function handleSubscriptionDeleted(
                 `Handling license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}`
             );
             try {
-                // WARNING:
-                // this invalidates ALL OF THE ENTERPRISE LICENSES for this orgId
                 await fetch(
                     `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/invalidate`,
                     {
@@ -139,6 +137,7 @@ export async function handleSubscriptionDeleted(
                         },
                         body: JSON.stringify({
                             orgId: customer.orgId,
+                            licenseKeyId: subscription.metadata.licenseKeyId
                         })
                     }
                 );
