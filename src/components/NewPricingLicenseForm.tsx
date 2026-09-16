@@ -330,7 +330,7 @@ export default function NewPricingLicenseForm({
                                             cols={2}
                                         />
                                         <a
-                                            href="https://pangolin.net/pricing"
+                                            href="https://pangolin.net/pricing#Self-Hosted"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-sm text-primary hover:underline"

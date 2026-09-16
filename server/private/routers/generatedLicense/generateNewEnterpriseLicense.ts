@@ -96,6 +96,8 @@ export async function generateNewEnterpriseLicense(
             );
         }
 
+        const licenseKeyValue = apiResponse?.data?.licenseKey?.licenseKey;
+
         // check if we already have a customer for this org
         const [customer] = await db
             .select()
@@ -129,6 +131,16 @@ export async function generateNewEnterpriseLicense(
             ], // Start with the standard feature set that matches the free limits
             customer: customer.customerId,
             mode: "subscription",
+            subscription_data: {
+                description: licenseKeyValue
+                    ? `License ${licenseKeyValue}`
+                    : `License key ID ${keyId}`,
+                metadata: {
+                    licenseKeyId: keyId.toString(),
+                    licenseKey: licenseKeyValue ?? "",
+                    tier: licenseData.tier
+                }
+            },
             allow_promotion_codes: true,
             success_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/license?success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/license?canceled=true`
