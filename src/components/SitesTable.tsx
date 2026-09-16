@@ -390,22 +390,21 @@ export default function SitesTable({
                             // it has not checked in yet
                             return <span>-</span>;
                         }
+                        // agent and agentVersion were added after newtVersion, so a
+                        // site still running an older Newt reports only newtVersion.
+                        // Without these fallbacks the badge renders with no label and
+                        // no version at all.
+                        const agentLabel =
+                            originalRow.agent == "cli" ? "Pangolin CLI" : "Newt";
+                        const agentVersion =
+                            originalRow.agentVersion ?? originalRow.newtVersion;
                         return (
                             <div className="flex items-center space-x-1">
                                 <Badge variant="secondary">
                                     <div className="flex items-center space-x-1">
-                                        <span>
-                                            {originalRow.agent == "newt"
-                                                ? "Newt"
-                                                : null}
-                                            {originalRow.agent == "cli"
-                                                ? "Pangolin CLI"
-                                                : null}
-                                        </span>
-                                        {originalRow.agentVersion && (
-                                            <span>
-                                                v{originalRow.agentVersion}
-                                            </span>
+                                        <span>{agentLabel}</span>
+                                        {agentVersion && (
+                                            <span>v{agentVersion}</span>
                                         )}
                                     </div>
                                 </Badge>
