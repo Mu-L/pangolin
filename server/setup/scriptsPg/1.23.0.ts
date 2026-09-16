@@ -10,11 +10,11 @@ export default async function migration() {
         await db.execute(sql`BEGIN`);
 
         await db.execute(sql`
-            ALTER TABLE "newt" ADD COLUMN "agent" varchar;
+            ALTER TABLE "newt" ADD COLUMN IF NOT EXISTS "agent" varchar;
         `);
 
         await db.execute(sql`
-            ALTER TABLE "newt" ADD COLUMN "agentVersion" varchar;
+            ALTER TABLE "newt" ADD COLUMN IF NOT EXISTS "agentVersion" varchar;
         `);
 
         await db.execute(sql`COMMIT`);
