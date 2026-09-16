@@ -5,6 +5,7 @@ import path from "path";
 import semver from "semver";
 import { versionMigrations } from "../db/sqlite";
 import { __DIRNAME, APP_PATH, APP_VERSION } from "@server/lib/consts";
+import { formatBackupTimestamp } from "@server/lib/backupFileName";
 import { SqliteError } from "better-sqlite3";
 import fs from "fs";
 import { build } from "@server/build";
@@ -121,7 +122,7 @@ function backupDb() {
     // copy the db.sqlite file to backups
     // add the date to the filename
     const date = new Date();
-    const dateString = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}_${date.getHours()}-${date.getMinutes()}-${date.getSeconds()}`;
+    const dateString = formatBackupTimestamp(date);
     const dbPath = path.join(dbDir, "db.sqlite");
     const backupPath = path.join(backupsDir, `db_${dateString}.sqlite`);
     fs.copyFileSync(dbPath, backupPath);
