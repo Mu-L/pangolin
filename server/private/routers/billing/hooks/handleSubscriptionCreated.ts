@@ -276,6 +276,13 @@ export async function handleSubscriptionCreated(
 
                 logger.debug(`Fossorial API response: ${JSON.stringify(data)}`);
 
+                if (!response.ok || !data.success) {
+                    logger.error(
+                        `Fossorial API returned ${response.status} when setting paid-for for orgId ${customer.orgId} and subscription ID ${subscription.id}: ${JSON.stringify(data)}`
+                    );
+                    return;
+                }
+
                 if (customer.email) {
                     logger.debug(
                         `Sending license key email to ${customer.email} for subscription ${subscription.id}`

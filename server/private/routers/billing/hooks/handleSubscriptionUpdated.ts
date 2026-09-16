@@ -324,7 +324,7 @@ export async function handleSubscriptionUpdated(
                     effectiveStatus == "incomplete_expired"
                 ) {
                     try {
-                        await fetch(
+                        const invalidateResponse = await fetch(
                             `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/invalidate`,
                             {
                                 method: "POST",
@@ -336,11 +336,18 @@ export async function handleSubscriptionUpdated(
                                 },
                                 body: JSON.stringify({
                                     orgId: customer.orgId,
-                                    licenseKeyId:
+                                    licenseKeyId: parseInt(
                                         subscription.metadata.licenseKeyId
+                                    )
                                 })
                             }
                         );
+
+                        if (!invalidateResponse.ok) {
+                            logger.error(
+                                `Fossorial API returned ${invalidateResponse.status} when invalidating license for orgId ${customer.orgId} and subscription ID ${subscription.id}: ${await invalidateResponse.text()}`
+                            );
+                        }
                     } catch (error) {
                         logger.error(
                             `Error notifying Fossorial API of license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}:`,
@@ -383,7 +390,7 @@ export async function handleSubscriptionUpdated(
                                 5 * 24 * 60 * 60;
 
                             try {
-                                await fetch(
+                                const extendResponse = await fetch(
                                     `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/extend`,
                                     {
                                         method: "POST",
@@ -399,9 +406,16 @@ export async function handleSubscriptionUpdated(
                                         })
                                     }
                                 );
-                                logger.info(
-                                    `Extended license ${licenseKeyId} for subscription ${subscription.id} to expire at ${expiresAt}.`
-                                );
+
+                                if (!extendResponse.ok) {
+                                    logger.error(
+                                        `Fossorial API returned ${extendResponse.status} when extending license ${licenseKeyId} for subscription ${subscription.id}: ${await extendResponse.text()}`
+                                    );
+                                } else {
+                                    logger.info(
+                                        `Extended license ${licenseKeyId} for subscription ${subscription.id} to expire at ${expiresAt}.`
+                                    );
+                                }
                             } catch (error) {
                                 logger.error(
                                     `Error notifying Fossorial API of license renewal for subscription ${subscription.id}:`,

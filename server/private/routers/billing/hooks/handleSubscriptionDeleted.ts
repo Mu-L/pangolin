@@ -125,7 +125,7 @@ export async function handleSubscriptionDeleted(
                 `Handling license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}`
             );
             try {
-                await fetch(
+                const invalidateResponse = await fetch(
                     `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/invalidate`,
                     {
                         method: "POST",
@@ -137,10 +137,18 @@ export async function handleSubscriptionDeleted(
                         },
                         body: JSON.stringify({
                             orgId: customer.orgId,
-                            licenseKeyId: subscription.metadata.licenseKeyId
+                            licenseKeyId: parseInt(
+                                subscription.metadata.licenseKeyId
+                            )
                         })
                     }
                 );
+
+                if (!invalidateResponse.ok) {
+                    logger.error(
+                        `Fossorial API returned ${invalidateResponse.status} when invalidating license for orgId ${customer.orgId} and subscription ID ${subscription.id}: ${await invalidateResponse.text()}`
+                    );
+                }
             } catch (error) {
                 logger.error(
                     `Error notifying Fossorial API of license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}:`,
