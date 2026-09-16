@@ -63,6 +63,12 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
     ) : null;
 
     if (site.type === "newt") {
+        // agent and agentVersion were added after newtVersion, so a
+        // site still running an older Newt reports only newtVersion.
+        // Without these fallbacks the badge renders with no label and
+        // no version at all.
+        const agentLabel = site.agent == "cli" ? "Pangolin CLI" : "Newt";
+        const agentVersion = site.agentVersion ?? site.newtVersion;
         return (
             <Alert>
                 <AlertDescription>
@@ -79,13 +85,12 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
                         <InfoSection>
                             <InfoSectionTitle>{t("agent")}</InfoSectionTitle>
                             <InfoSectionContent>
-                                {site.agent == "newt" ? "Newt" : null}
-                                {site.agent == "cli"
-                                    ? "Pangolin CLI"
-                                    : null}{" "}
-                                {site.agentVersion
-                                    ? `v${site.agentVersion}`
-                                    : "-"}
+                                <div className="flex items-center space-x-1">
+                                    <span>{agentLabel}</span>
+                                    {agentVersion && (
+                                        <span>v{agentVersion}</span>
+                                    )}
+                                </div>
                             </InfoSectionContent>
                         </InfoSection>
                         {endpointSection}

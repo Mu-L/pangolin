@@ -373,7 +373,7 @@ export default function SitesTable({
                 accessorKey: "type",
                 friendlyName: t("agent"),
                 header: () => {
-                    return <span className="p-3">{t("type")}</span>;
+                    return <span className="p-3">{t("agent")}</span>;
                 },
                 cell: ({ row }) => {
                     const originalRow = row.original;
@@ -395,7 +395,9 @@ export default function SitesTable({
                         // Without these fallbacks the badge renders with no label and
                         // no version at all.
                         const agentLabel =
-                            originalRow.agent == "cli" ? "Pangolin CLI" : "Newt";
+                            originalRow.agent == "cli"
+                                ? "Pangolin CLI"
+                                : "Newt";
                         const agentVersion =
                             originalRow.agentVersion ?? originalRow.newtVersion;
                         return (
