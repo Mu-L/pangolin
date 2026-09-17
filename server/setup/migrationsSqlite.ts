@@ -191,15 +191,18 @@ async function executeScripts() {
         );
 
         // Run migrations in order
+        // Take a single backup before any migration runs, so one upgrade
+        // produces one restore point instead of one backup per migration.
+        if (
+            migrationsToRun.length > 0 &&
+            !process.env.DISABLE_BACKUP_ON_MIGRATION
+        ) {
+            backupDb();
+        }
         for (const migration of migrationsToRun) {
             console.log(`Running migration ${migration.version}`);
 
             try {
-                if (!process.env.DISABLE_BACKUP_ON_MIGRATION) {
-                    // Backup the database before running the migration
-                    backupDb();
-                }
-
                 await migration.run();
 
                 // Update version in database
