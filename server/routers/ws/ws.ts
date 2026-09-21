@@ -353,7 +353,10 @@ const setupConnection = async (
 
             const handler = messageHandlers[message.type];
             if (!handler) {
-                throw new Error(`Unsupported message type: ${message.type}`);
+                logger.debug(
+                    `No handler found for message type: ${message.type}`
+                );
+                return;
             }
 
             const response = await handler({
@@ -388,7 +391,7 @@ const setupConnection = async (
                 }
             }
         } catch (error) {
-            logger.error("Message handling error:", error);
+            logger.warn("Message handling error:", error);
             ws.send(
                 JSON.stringify({
                     type: "error",

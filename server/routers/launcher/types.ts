@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const LAUNCHER_UNLABELED_GROUP_KEY = "unlabeled";
 export const LAUNCHER_NO_SITE_GROUP_KEY = "no-site";
+export const LAUNCHER_AI_GATEWAY_GROUP_KEY = "ai-gateway";
 export const LAUNCHER_FLAT_GROUP_KEY = "__all__";
 
 export const launcherViewConfigSchema = z.object({
@@ -31,6 +32,7 @@ export type LauncherLabel = {
 export type LauncherSiteInfo = {
     siteId: number;
     name: string;
+    niceId: string;
     type: string;
     online?: boolean;
 };
@@ -50,6 +52,7 @@ export type LauncherResource = {
     mode: string;
     labels: LauncherLabel[];
     site?: LauncherSiteInfo;
+    sites: LauncherSiteInfo[];
 };
 
 export type LauncherGroup = {
@@ -183,8 +186,7 @@ export function parseIdListParam(value: string | undefined): number[] {
 export const DEFAULT_LAUNCHER_VIEW_ID = "default" as const;
 
 export type LauncherViewSelection =
-    | { type: "default" }
-    | { type: "saved"; viewId: number };
+    { type: "default" } | { type: "saved"; viewId: number };
 
 export type LauncherScaleCapabilities = {
     allowSiteGrouping: boolean;

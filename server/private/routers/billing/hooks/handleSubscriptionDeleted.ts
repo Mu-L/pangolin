@@ -53,6 +53,15 @@ export async function handleSubscriptionDeleted(
             return;
         }
 
+        // If the subscription has been manually overridden, we lock it down
+        // so Stripe can no longer change (or delete) its status locally.
+        if (existingSubscription.override === true) {
+            logger.info(
+                `Subscription ${subscription.id} is locked (override=true). Ignoring deletion event from Stripe.`
+            );
+            return;
+        }
+
         await db
             .delete(subscriptions)
             .where(eq(subscriptions.subscriptionId, subscription.id));
@@ -116,9 +125,7 @@ export async function handleSubscriptionDeleted(
                 `Handling license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}`
             );
             try {
-                // WARNING:
-                // this invalidates ALL OF THE ENTERPRISE LICENSES for this orgId
-                await fetch(
+                const invalidateResponse = await fetch(
                     `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/invalidate`,
                     {
                         method: "POST",
@@ -130,9 +137,18 @@ export async function handleSubscriptionDeleted(
                         },
                         body: JSON.stringify({
                             orgId: customer.orgId,
+                            licenseKeyId: parseInt(
+                                subscription.metadata.licenseKeyId
+                            )
                         })
                     }
                 );
+
+                if (!invalidateResponse.ok) {
+                    logger.error(
+                        `Fossorial API returned ${invalidateResponse.status} when invalidating license for orgId ${customer.orgId} and subscription ID ${subscription.id}: ${await invalidateResponse.text()}`
+                    );
+                }
             } catch (error) {
                 logger.error(
                     `Error notifying Fossorial API of license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}:`,

@@ -1,9 +1,9 @@
 import fs from "fs";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { configFilePath1, configFilePath2 } from "./consts";
 import { z } from "zod";
 import stoi from "./stoi";
-import { getEnvOrYaml } from "./getEnvOrYaml";
+import { getEnvOrYaml, readEnvOrFile } from "./getEnvOrYaml";
 
 const portSchema = z.number().positive().gt(0).lte(65535);
 
@@ -26,14 +26,12 @@ export const configSchema = z
                     .object({
                         anonymous_usage: z.boolean().optional().default(true)
                     })
-                    .optional()
                     .prefault({}),
                 notifications: z
                     .object({
                         product_updates: z.boolean().optional().default(true),
                         new_releases: z.boolean().optional().default(true)
                     })
-                    .optional()
                     .prefault({})
             })
             .optional()
@@ -79,7 +77,13 @@ export const configSchema = z
                     .default(3001)
                     .transform(stoi)
                     .pipe(portSchema),
+                ai_gateway_port: portSchema
+                    .optional()
+                    .default(3005)
+                    .transform(stoi)
+                    .pipe(portSchema),
                 badger_override: z.string().optional(),
+                ai_gateway_override: z.string().optional(),
                 next_port: portSchema
                     .optional()
                     .default(3002)
@@ -103,7 +107,22 @@ export const configSchema = z
                         id: z.string().optional().default("P-Access-Token-Id"),
                         token: z.string().optional().default("P-Access-Token")
                     })
-                    .optional()
+                    .prefault({}),
+                remote_headers: z
+                    .object({
+                        user_id: z
+                            .string()
+                            .optional()
+                            .default("Remote-User-Id"),
+                        virtual_api_key_id: z
+                            .string()
+                            .optional()
+                            .default("Remote-Virtual-Api-Key-Id"),
+                        user: z.string().optional().default("Remote-User"),
+                        email: z.string().optional().default("Remote-Email"),
+                        name: z.string().optional().default("Remote-Name"),
+                        role: z.string().optional().default("Remote-Role")
+                    })
                     .prefault({}),
                 resource_session_request_param: z
                     .string()
@@ -130,7 +149,28 @@ export const configSchema = z
                     })
                     .optional(),
                 trust_proxy: z.int().gte(0).optional().default(1),
-                secret: z.string().pipe(z.string().min(8)).optional(),
+                // Opt-in: have Traefik/Badger stamp the resolved client IP
+                // into a dedicated header (X-Pangolin-Client-Ip) on the
+                // site-resource AI gateway route, so it survives an
+                // intermediary proxy between Traefik and the gateway that
+                // overwrites X-Forwarded-For/X-Real-Ip instead of appending
+                // to them. Off by default since it requires a Badger
+                // version that supports realIpHeader.
+                enable_ai_gateway_client_ip_header: z
+                    .boolean()
+                    .optional()
+                    .default(false)
+                    .transform((val) => {
+                        const envVal = readEnvOrFile(
+                            "ENABLE_AI_GATEWAY_CLIENT_IP_HEADER"
+                        );
+                        return envVal !== undefined ? envVal === "true" : val;
+                    }),
+                secret: z
+                    .string()
+                    .pipe(z.string().min(8))
+                    .optional()
+                    .transform(getEnvOrYaml("SERVER_SECRET")),
                 maxmind_db_path: z.string().optional(),
                 maxmind_asn_path: z.string().optional()
             })
@@ -139,6 +179,7 @@ export const configSchema = z
                 integration_port: 3003,
                 external_port: 3000,
                 internal_port: 3001,
+                ai_gateway_port: 3005,
                 next_port: 3002,
                 internal_hostname: "pangolin",
                 session_cookie_name: "p_session_token",
@@ -147,11 +188,21 @@ export const configSchema = z
                     id: "P-Access-Token-Id",
                     token: "P-Access-Token"
                 },
+                remote_headers: {
+                    user_id: "Remote-User-Id",
+                    virtual_api_key_id: "Remote-Virtual-Api-Key-Id",
+                    user: "Remote-User",
+                    email: "Remote-Email",
+                    name: "Remote-Name",
+                    role: "Remote-Role"
+                },
                 resource_session_request_param:
                     "resource_session_request_param",
                 dashboard_session_length_hours: 720,
                 resource_session_length_hours: 720,
-                trust_proxy: 1
+                trust_proxy: 1,
+                enable_ai_gateway_client_ip_header: false,
+                secret: undefined
             }),
         postgres: z
             .object({
@@ -187,7 +238,6 @@ export const configSchema = z
                             .default(5000),
                         jit_mode: z.boolean().default(true)
                     })
-                    .optional()
                     .prefault({})
             })
             .optional(),
@@ -227,7 +277,6 @@ export const configSchema = z
                             .optional()
                             .default(5000)
                     })
-                    .optional()
                     .prefault({})
             })
             .optional(),
@@ -258,9 +307,24 @@ export const configSchema = z
                 pp_transport_prefix: z
                     .string()
                     .optional()
-                    .default("pp-transport-v")
+                    .default("pp-transport-v"),
+                rate_limit: z
+                    .object({
+                        average: z
+                            .number()
+                            .positive()
+                            .gt(0)
+                            .optional()
+                            .default(30),
+                        burst: z
+                            .number()
+                            .positive()
+                            .gt(0)
+                            .optional()
+                            .default(50)
+                    })
+                    .prefault({})
             })
-            .optional()
             .prefault({}),
         gerbil: z
             .object({
@@ -280,9 +344,8 @@ export const configSchema = z
                     .optional()
                     .pipe(z.string())
                     .transform((url) => url.toLowerCase()),
-                use_subdomain: z.boolean().optional().default(false),
-                subnet_group: z.string().optional().default("100.89.137.0/20"),
-                block_size: z.number().positive().gt(0).optional().default(24),
+                subnet_group: z.string().optional().default("100.89.137.0/18"),
+                block_size: z.number().positive().gt(0).optional().default(22),
                 site_block_size: z
                     .number()
                     .positive()
@@ -290,7 +353,6 @@ export const configSchema = z
                     .optional()
                     .default(30)
             })
-            .optional()
             .prefault({}),
         orgs: z
             .object({
@@ -324,7 +386,6 @@ export const configSchema = z
                             .optional()
                             .default(500)
                     })
-                    .optional()
                     .prefault({}),
                 auth: z
                     .object({
@@ -341,10 +402,8 @@ export const configSchema = z
                             .optional()
                             .default(500)
                     })
-                    .optional()
                     .prefault({})
             })
-            .optional()
             .prefault({}),
         email: z
             .object({
@@ -374,25 +433,56 @@ export const configSchema = z
                 disable_basic_wireguard_sites: z.boolean().optional(),
                 disable_config_managed_domains: z.boolean().optional(),
                 disable_product_help_banners: z.boolean().optional(),
-                disable_enterprise_features: z.boolean().optional()
+                disable_enterprise_features: z.boolean().optional(),
+                disable_virtual_api_keys_ui: z.boolean().optional(),
+                enable_acme_cert_sync: z.boolean().optional().default(true),
+                disable_private_http_placeholder: z
+                    .boolean()
+                    .optional()
+                    .default(false)
             })
             .optional(),
-        dns: z
+        acme: z
             .object({
-                nameservers: z
-                    .array(z.string().optional().optional())
-                    .optional()
-                    .default([
-                        "ns1.pangolin.net",
-                        "ns2.pangolin.net",
-                        "ns3.pangolin.net"
-                    ]),
-                cname_extension: z
+                acme_json_path: z
                     .string()
                     .optional()
-                    .default("cname.pangolin.net")
+                    .default("config/letsencrypt/acme.json"),
+                acme_http_endpoint: z.string().optional(),
+                sync_interval_ms: z.number().optional().default(5000)
             })
-            .optional()
+            .optional(),
+        ai: z
+            .object({
+                model_catalog: z
+                    .object({
+                        upstream_url: z
+                            .url()
+                            .optional()
+                            .default("https://api.fossorial.io/api/v1/models"),
+                        // No default - only used when an operator wants to
+                        // pin the catalog to a local file instead of
+                        // fetching it from upstream_url.
+                        file: z.string().optional(),
+                        // No default - only used when an operator wants to
+                        // merge the content of the json file with the upstream catalog. This is useful for adding
+                        // custom models to the catalog without having to maintain a separate fork of the upstream catalog.
+                        merge_file: z.string().optional(),
+                        refresh_interval_min_hours: z
+                            .number()
+                            .positive()
+                            .gt(0)
+                            .optional()
+                            .default(6),
+                        refresh_interval_max_hours: z
+                            .number()
+                            .positive()
+                            .gt(0)
+                            .optional()
+                            .default(12)
+                    })
+                    .prefault({})
+            })
             .prefault({})
     })
     .refine(
@@ -413,10 +503,7 @@ export const configSchema = z
     )
     .refine(
         (data) => {
-            // If hybrid is not defined, server secret must be defined. If its not defined already then pull it from env
-            if (data.server?.secret === undefined) {
-                data.server.secret = process.env.SERVER_SECRET;
-            }
+            // If hybrid is not defined, server secret must be defined
             return (
                 data.server?.secret !== undefined &&
                 data.server.secret.length > 0

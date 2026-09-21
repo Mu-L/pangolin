@@ -8,6 +8,9 @@ import ExitNodesTable, {
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
+import { build } from "@server/build";
+import { redirect } from "next/navigation";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 
 export const metadata: Metadata = {
     title: "Remote Exit Nodes"

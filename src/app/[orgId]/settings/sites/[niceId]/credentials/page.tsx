@@ -40,6 +40,8 @@ import { NewtSiteInstallCommands } from "@app/components/newt-install-commands";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import type { AxiosResponse } from "axios";
+import { useQuery } from "@tanstack/react-query";
+import { productUpdatesQueries } from "@app/lib/queries";
 
 export default function CredentialsPage() {
     const { env } = useEnvContext();
@@ -66,6 +68,11 @@ export default function CredentialsPage() {
     const [shouldDisconnect, setShouldDisconnect] = useState(true);
 
     const { isPaidUser } = usePaidStatus();
+
+    const { data: latestVersions } = useQuery(
+        productUpdatesQueries.latestVersion(true)
+    );
+    const newtVersion = latestVersions?.data?.newt?.latestVersion ?? "latest";
 
     // Fetch site defaults for wireguard sites to show in obfuscated config
     useEffect(() => {
@@ -345,7 +352,7 @@ export default function CredentialsPage() {
                                             text={generateObfuscatedWireGuardConfig(
                                                 {
                                                     subnet:
-                                                        site?.subnet ||
+                                                        site?.exitNodeSubnet ||
                                                         siteDefaults?.subnet ||
                                                         null,
                                                     address:

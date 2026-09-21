@@ -79,6 +79,8 @@ function getActionsCategories(root: boolean) {
             [t("actionGetSiteResource")]: "getSiteResource",
             [t("actionListSiteResources")]: "listSiteResources",
             [t("actionUpdateSiteResource")]: "updateSiteResource",
+            [t("actionListResourceAiModels")]: "listResourceAiModels",
+            [t("actionSetResourceAiModels")]: "setResourceAiModels",
             [t("actionCreateResourceSessionToken")]:
                 "createResourceSessionToken"
         },
@@ -115,8 +117,11 @@ function getActionsCategories(root: boolean) {
         },
 
         "Resource Policy": {
+            [t("actionListResourcePolicies")]: "listResourcePolicies",
+            [t("actionCreateResourcePolicy")]: "createResourcePolicy",
             [t("actionGetResourcePolicy")]: "getResourcePolicy",
             [t("actionUpdateResourcePolicy")]: "updateResourcePolicy",
+            [t("actionDeleteResourcePolicy")]: "deleteResourcePolicy",
             [t("actionSetResourcePolicyUsers")]: "setResourcePolicyUsers",
             [t("actionSetResourcePolicyRoles")]: "setResourcePolicyRoles",
             [t("actionSetResourcePolicyPassword")]: "setResourcePolicyPassword",
@@ -150,6 +155,38 @@ function getActionsCategories(root: boolean) {
             [t("actionListSiteProvisioningKeys")]: "listSiteProvisioningKeys",
             [t("actionUpdateSiteProvisioningKey")]: "updateSiteProvisioningKey",
             [t("actionDeleteSiteProvisioningKey")]: "deleteSiteProvisioningKey"
+        },
+
+        "AI Provider": {
+            [t("actionCreateAiProvider")]: "createAiProvider",
+            [t("actionDeleteAiProvider")]: "deleteAiProvider",
+            [t("actionGetAiProvider")]: "getAiProvider",
+            [t("actionListAiProviders")]: "listAiProviders",
+            [t("actionUpdateAiProvider")]: "updateAiProvider"
+        },
+
+        "AI Model": {
+            [t("actionCreateAiModel")]: "createAiModel",
+            [t("actionDeleteAiModel")]: "deleteAiModel",
+            [t("actionGetAiModel")]: "getAiModel",
+            [t("actionListAiModels")]: "listAiModels",
+            [t("actionUpdateAiModel")]: "updateAiModel"
+        },
+
+        "AI Budget": {
+            [t("actionCreateAiBudget")]: "createAiBudget",
+            [t("actionDeleteAiBudget")]: "deleteAiBudget",
+            [t("actionGetAiBudget")]: "getAiBudget",
+            [t("actionListAiBudgets")]: "listAiBudgets",
+            [t("actionUpdateAiBudget")]: "updateAiBudget"
+        },
+
+        "Virtual API Key": {
+            [t("actionCreateVirtualApiKey")]: "createVirtualApiKey",
+            [t("actionDeleteVirtualApiKey")]: "deleteVirtualApiKey",
+            [t("actionGetVirtualApiKey")]: "getVirtualApiKey",
+            [t("actionListVirtualApiKeys")]: "listVirtualApiKeys",
+            [t("actionUpdateVirtualApiKey")]: "updateVirtualApiKey"
         }
     };
 

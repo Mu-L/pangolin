@@ -66,7 +66,7 @@ registry.registerPath({
 
 registry.registerPath({
     method: "post",
-    path: "/private-resource/{siteResourceId}/users",
+    path: "/private-resource/{resourceId}/users",
     description:
         "Set users for a site resource. This will replace all existing users.",
     tags: [OpenAPITags.PrivateResource, OpenAPITags.User],

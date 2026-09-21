@@ -15,7 +15,7 @@ import * as orgIdp from "#private/routers/orgIdp";
 import * as org from "#private/routers/org";
 import * as logs from "#private/routers/auditLogs";
 import * as alertEvents from "#private/routers/alertEvents";
-import * as certificates from "#private/routers/certificates";
+import * as certificates from "@server/routers/certificates";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as policy from "#private/routers/policy";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
@@ -43,6 +43,10 @@ import {
     unauthenticated as ua,
     authenticated as a
 } from "@server/routers/integration";
+import {
+    queryAiSessionLogs,
+    exportAiSessionLogs
+} from "@server/routers/auditLogs";
 import { logActionAudit } from "#private/middlewares";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { build } from "@server/build";
@@ -151,6 +155,25 @@ authenticated.get(
     verifyApiKeyHasAction(ActionsEnum.exportLogs),
     logActionAudit(ActionsEnum.exportLogs),
     logs.exportConnectionAuditLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.aiSessionLogs),
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.viewLogs),
+    queryAiSessionLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/ai/export",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.aiSessionLogs),
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.exportLogs),
+    logActionAudit(ActionsEnum.exportLogs),
+    exportAiSessionLogs
 );
 
 authenticated.put(

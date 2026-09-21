@@ -1,11 +1,11 @@
-# FROM node:24-slim AS base
-FROM public.ecr.aws/docker/library/node:24-slim AS base
+# FROM node:24.18.1-slim AS base
+FROM public.ecr.aws/docker/library/node:24.18.1-slim AS base
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
+COPY package*.json .npmrc ./
 
 FROM base AS builder-dev
 
@@ -32,8 +32,8 @@ FROM base AS builder
 
 RUN npm ci --omit=dev
 
-# FROM node:24-slim AS runner
-FROM public.ecr.aws/docker/library/node:24-slim AS runner
+# FROM node:24.18.1-slim AS runner
+FROM public.ecr.aws/docker/library/node:24.18.1-slim AS runner
 
 WORKDIR /app
 

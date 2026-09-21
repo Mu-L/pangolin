@@ -17,10 +17,12 @@ import type {
     LauncherViewConfig
 } from "@server/routers/launcher/types";
 import {
+    LAUNCHER_AI_GATEWAY_GROUP_KEY,
     LAUNCHER_NO_SITE_GROUP_KEY,
     LAUNCHER_UNLABELED_GROUP_KEY
 } from "@server/routers/launcher/types";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import LoadingDots from "@app/components/LoadingDots";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
@@ -148,9 +150,11 @@ export function LauncherGroupSection({
     const groupTitle =
         group.groupKey === LAUNCHER_UNLABELED_GROUP_KEY
             ? t("resourceLauncherUnlabeled")
-            : group.groupKey === LAUNCHER_NO_SITE_GROUP_KEY
-              ? t("resourceLauncherNoSite")
-              : group.name;
+            : group.groupKey === LAUNCHER_AI_GATEWAY_GROUP_KEY
+              ? t("resourceLauncherAiGateway")
+              : group.groupKey === LAUNCHER_NO_SITE_GROUP_KEY
+                ? t("resourceLauncherNoSite")
+                : group.name;
 
     return (
         <Collapsible
@@ -166,8 +170,8 @@ export function LauncherGroupSection({
 
             <CollapsibleContent className="w-full">
                 {showInitialLoader ? (
-                    <div className="flex items-center justify-center py-10 text-muted-foreground">
-                        <Loader2 className="size-5 animate-spin" />
+                    <div className="flex items-center justify-center py-10">
+                        <LoadingDots size="sm" />
                     </div>
                 ) : resources.length === 0 ? (
                     <p className="py-4 text-sm text-muted-foreground">

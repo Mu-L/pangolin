@@ -3,10 +3,13 @@ import { Env } from "@app/lib/types/env";
 import { build } from "@server/build";
 import {
     BellRing,
+    Bot,
     Boxes,
     Building2,
+    Building2Icon,
     Cable,
     ChartLine,
+    Coins,
     Combine,
     CreditCard,
     Fingerprint,
@@ -18,6 +21,8 @@ import {
     LayoutGrid,
     Link as LinkIcon,
     Logs,
+    MessageSquare,
+    MessagesSquare,
     MonitorUp,
     Plug,
     ReceiptText,
@@ -25,11 +30,13 @@ import {
     Server,
     Settings,
     ShieldIcon,
+    Sparkles,
     SquareMousePointer,
     TagIcon,
     TicketCheck,
     Unplug,
     User,
+    UserCheck,
     UserCog,
     Users,
     Waypoints
@@ -43,21 +50,52 @@ export type SidebarNavSection = {
 
 export type OrgNavSectionsOptions = {
     isPrimaryOrg?: boolean;
+    isServerAdmin?: boolean;
 };
 
 // Merged from 'user-management-and-resources' branch
-export const orgLangingNavItems: SidebarNavItem[] = [
+export const orgLangingNavItems = (env?: Env): SidebarNavItem[] => [
     {
         title: "sidebarAccount",
         href: "/{orgId}",
         icon: <LayoutGrid className="size-4 flex-none" />
-    }
+    },
+    ...(!env?.flags.disableVirtualApiKeysUi
+        ? [
+              {
+                  title: "sidebarMyApiKeys",
+                  href: "/{orgId}/keys",
+                  icon: <KeyRound className="size-4 flex-none" />
+              }
+          ]
+        : [])
 ];
 
 export const orgNavSections = (
     env?: Env,
     options?: OrgNavSectionsOptions
 ): SidebarNavSection[] => [
+    {
+        heading: "sidebarOverview",
+        items: [
+            {
+                title: "resourceSidebarLauncherTitle",
+                href: "/{orgId}",
+                icon: <LayoutGrid className="size-4 flex-none" />,
+                exact: true
+            },
+            ...(options?.isServerAdmin
+                ? [
+                      {
+                          title: "serverAdmin",
+                          href: "/admin",
+                          icon: <Server className="size-4 flex-none" />,
+                          exact: true
+                      }
+                  ]
+                : [])
+        ]
+    },
     {
         heading: "network",
         items: [
@@ -103,7 +141,7 @@ export const orgNavSections = (
                 href: "/{orgId}/settings/domains",
                 icon: <Globe className="size-4 flex-none" />
             },
-            ...(build === "saas"
+            ...(env?.flags.usePangolinDns
                 ? [
                       {
                           title: "sidebarRemoteExitNodes",
@@ -175,7 +213,7 @@ export const orgNavSections = (
                       {
                           title: "sidebarApprovals",
                           href: "/{orgId}/settings/access/approvals",
-                          icon: <UserCog className="size-4 flex-none" />
+                          icon: <UserCheck className="size-4 flex-none" />
                       }
                   ]
                 : []),
@@ -183,6 +221,31 @@ export const orgNavSections = (
                 title: "sidebarShareableLinks",
                 href: "/{orgId}/settings/share-links",
                 icon: <LinkIcon className="size-4 flex-none" />
+            }
+        ]
+    },
+    {
+        heading: "sidebarAiGateway",
+        items: [
+            {
+                title: "sidebarAiProviders",
+                href: "/{orgId}/settings/ai-providers",
+                icon: <Sparkles className="size-4 flex-none" />
+            },
+            {
+                title: "sidebarVirtualApiKeys",
+                href: "/{orgId}/settings/virtual-api-keys",
+                icon: <KeyRound className="size-4 flex-none" />
+            },
+            {
+                title: "sidebarLogsAi",
+                href: "/{orgId}/settings/logs/ai",
+                icon: <MessagesSquare className="size-4 flex-none" />
+            },
+            {
+                title: "sidebarLogsAiUsage",
+                href: "/{orgId}/settings/logs/ai-usage",
+                icon: <Coins className="size-4 flex-none" />
             }
         ]
     },
@@ -315,6 +378,11 @@ export const adminNavSections = (env?: Env): SidebarNavSection[] => [
                 icon: <Users className="size-4 flex-none" />
             },
             {
+                title: "sidebarOrgs",
+                href: "/admin/organizations",
+                icon: <Building2Icon className="size-4 flex-none" />
+            },
+            {
                 title: "sidebarApiKeys",
                 href: "/admin/api-keys",
                 icon: <KeyRound className="size-4 flex-none" />
@@ -330,7 +398,7 @@ export const adminNavSections = (env?: Env): SidebarNavSection[] => [
                       }
                   ]
                 : []),
-            ...(build == "enterprise"
+            ...(build === "enterprise"
                 ? [
                       {
                           title: "sidebarLicense",
@@ -399,7 +467,7 @@ export const commandBarNavSections = (
                 title: "commandMachineClients",
                 icon: <Server className="size-4 flex-none" />
             },
-            ...(build === "saas"
+            ...(env?.flags.usePangolinDns
                 ? [
                       {
                           title: "commandRemoteExitNodes",
@@ -472,6 +540,21 @@ export const commandBarNavSections = (
         ]
     },
     {
+        heading: "sidebarAiGateway",
+        items: [
+            {
+                title: "commandAiProviders",
+                href: "/{orgId}/settings/ai-providers",
+                icon: <Sparkles className="size-4 flex-none" />
+            },
+            {
+                title: "commandVirtualApiKeys",
+                href: "/{orgId}/settings/virtual-api-keys",
+                icon: <KeyRound className="size-4 flex-none" />
+            }
+        ]
+    },
+    {
         heading: "commandLogsAndAnalytics",
         items: [
             {
@@ -483,6 +566,16 @@ export const commandBarNavSections = (
                 title: "commandLogsRequest",
                 href: "/{orgId}/settings/logs/request",
                 icon: <SquareMousePointer className="size-4 flex-none" />
+            },
+            {
+                title: "commandLogsAi",
+                href: "/{orgId}/settings/logs/ai",
+                icon: <Bot className="size-4 flex-none" />
+            },
+            {
+                title: "commandLogsAiUsage",
+                href: "/{orgId}/settings/logs/ai-usage",
+                icon: <Coins className="size-4 flex-none" />
             },
             ...(!env?.flags.disableEnterpriseFeatures
                 ? [

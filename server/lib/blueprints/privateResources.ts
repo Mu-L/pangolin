@@ -11,28 +11,29 @@ import {
     siteNetworks,
     siteResources,
     Transaction,
-    userOrgs,
-    users,
     userSiteResources,
     networks
 } from "@server/db";
 import { sites } from "@server/db";
-import { eq, and, ne, inArray, or, isNotNull } from "drizzle-orm";
+import { eq, and, ne, inArray, isNotNull } from "drizzle-orm";
 import { Config } from "./types";
+import { getOrCreateLabelIds, syncSiteResourceLabels } from "./labels";
+import { resolveOrgUserIds } from "./findOrgUser";
 import logger from "@server/logger";
 import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 import { getNextAvailableAliasAddress } from "../ip";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
-import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "../billing/tierMatrix";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import { build } from "@server/build";
 import { LimitId } from "../billing";
 import { usageService } from "../billing/usageService";
+import { syncInferenceAiConfig } from "./aiProviders";
+import { syncAiBudgets } from "./aiBudgets";
 
 async function getDomainForSiteResource(
     siteResourceId: number | undefined,
     fullDomain: string,
     orgId: string,
+    isInference: boolean,
     trx: Transaction
 ): Promise<{ subdomain: string | null; domainId: string }> {
     const [fullDomainExists] = await trx
@@ -42,6 +43,11 @@ async function getDomainForSiteResource(
             and(
                 eq(siteResources.fullDomain, fullDomain),
                 eq(siteResources.orgId, orgId),
+                // exclude looking at the ones on exit nodes if this is an inference resource,
+                // and vice versa, so inference and non-inference resources can share a full-domain
+                isInference
+                    ? ne(siteResources.mode, "inference")
+                    : eq(siteResources.mode, "inference"),
                 siteResourceId
                     ? ne(siteResources.siteResourceId, siteResourceId)
                     : isNotNull(siteResources.siteResourceId)
@@ -119,30 +125,6 @@ export async function updatePrivateResources(
     for (const [resourceNiceId, resourceData] of Object.entries(
         config["client-resources"]
     )) {
-        if (resourceData.mode === "http") {
-            const hasHttpFeature = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPrivateResources
-            );
-            if (!hasHttpFeature) {
-                throw new Error(
-                    "HTTP private resources are not included in your current plan. Please upgrade."
-                );
-            }
-        }
-
-        if (resourceData.mode === "ssh") {
-            const hasSshFeature = await isLicensedOrSubscribed(
-                orgId,
-                tierMatrix.advancedPrivateResources
-            );
-            if (!hasSshFeature) {
-                throw new Error(
-                    "SSH private resources are not included in your current plan. Please upgrade."
-                );
-            }
-        }
-
         const [existingResource] = await trx
             .select()
             .from(siteResources)
@@ -213,7 +195,7 @@ export async function updatePrivateResources(
             resourceStatusFromSite = siteSingle.status ?? "approved";
         }
 
-        if (allSites.length === 0) {
+        if (resourceData.mode !== "inference" && allSites.length === 0) {
             throw new Error(
                 `No valid sites found for private private resource ${resourceNiceId} in org ${orgId}`
             );
@@ -226,15 +208,27 @@ export async function updatePrivateResources(
                   ? false
                   : resourceData.enabled;
 
+        const resourceSsl =
+            resourceData.mode === "inference" || resourceData.mode === "http"
+                ? resourceData.ssl == undefined || resourceData.ssl == null
+                    ? true
+                    : resourceData.ssl
+                : resourceData.ssl;
+
         if (existingResource) {
             let domainInfo:
                 | { subdomain: string | null; domainId: string }
                 | undefined;
-            if (resourceData["full-domain"] && resourceData.mode === "http") {
+            if (
+                resourceData["full-domain"] &&
+                (resourceData.mode === "http" ||
+                    resourceData.mode === "inference")
+            ) {
                 domainInfo = await getDomainForSiteResource(
                     existingResource.siteResourceId,
                     resourceData["full-domain"],
                     orgId,
+                    resourceData.mode === "inference",
                     trx
                 );
             }
@@ -264,13 +258,15 @@ export async function updatePrivateResources(
                 }
             }
 
+            const isInference = resourceData.mode === "inference";
+
             // Update existing resource
             const [updatedResource] = await trx
                 .update(siteResources)
                 .set({
                     name: resourceData.name || resourceNiceId,
                     mode: resourceData.mode,
-                    ssl: resourceData.ssl,
+                    ssl: resourceSsl,
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
@@ -278,13 +274,15 @@ export async function updatePrivateResources(
                     alias: resourceData.alias || null,
                     disableIcmp:
                         resourceData["disable-icmp"] ||
-                        (resourceData.mode == "http" ? true : false), // default to true for http resources, otherwise false
+                        (resourceData.mode == "http" || isInference
+                            ? true
+                            : false), // default to true for http/inference resources, otherwise false
                     tcpPortRangeString:
-                        resourceData.mode == "http"
+                        resourceData.mode == "http" || isInference
                             ? "443,80"
                             : resourceData["tcp-ports"],
                     udpPortRangeString:
-                        resourceData.mode == "http"
+                        resourceData.mode == "http" || isInference
                             ? ""
                             : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
@@ -294,7 +292,9 @@ export async function updatePrivateResources(
                     authDaemonMode:
                         resourceData["auth-daemon"]?.mode || "native",
                     authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
-                    status: resourceStatusFromSite
+                    status: resourceStatusFromSite,
+                    networkId: isInference ? null : undefined,
+                    requiresExitNodeConnection: isInference
                 })
                 .where(
                     eq(
@@ -306,7 +306,19 @@ export async function updatePrivateResources(
 
             const siteResourceId = existingResource.siteResourceId;
 
-            if (updatedResource.networkId) {
+            if (isInference) {
+                // inference resources are not attached to any site network
+                if (existingResource.networkId) {
+                    await trx
+                        .delete(siteNetworks)
+                        .where(
+                            eq(
+                                siteNetworks.networkId,
+                                existingResource.networkId
+                            )
+                        );
+                }
+            } else if (updatedResource.networkId) {
                 await trx
                     .delete(siteNetworks)
                     .where(
@@ -320,6 +332,28 @@ export async function updatePrivateResources(
                     });
                 }
             }
+
+            await syncInferenceAiConfig({
+                orgId,
+                trx,
+                mode: resourceData.mode,
+                scope: "site",
+                siteResourceId,
+                providers: resourceData["ai-providers"].map((p) => ({
+                    provider: p.provider,
+                    accessMode: p["access-mode"],
+                    enabled: p.enabled,
+                    models: p.models
+                }))
+            });
+
+            await syncAiBudgets({
+                orgId,
+                trx,
+                scope: "site",
+                siteResourceId,
+                budgets: resourceData["ai-budget"]
+            });
 
             await trx
                 .delete(clientSiteResources)
@@ -354,28 +388,22 @@ export async function updatePrivateResources(
                 .where(eq(userSiteResources.siteResourceId, siteResourceId));
 
             if (resourceData.users.length > 0) {
-                // get userIds from username
-                const usersToUpdate = await trx
-                    .select()
-                    .from(users)
-                    .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-                    .where(
-                        and(
-                            or(
-                                inArray(users.username, resourceData.users),
-                                inArray(users.email, resourceData.users)
-                            ),
-                            eq(userOrgs.orgId, orgId)
-                        )
-                    );
+                const userIds = await resolveOrgUserIds(
+                    trx,
+                    orgId,
+                    resourceData.users
+                );
 
-                const userIds = usersToUpdate.map((user) => user.user.userId);
-
-                await trx
-                    .insert(userSiteResources)
-                    .values(
-                        userIds.map((userId) => ({ userId, siteResourceId }))
-                    );
+                if (userIds.length > 0) {
+                    await trx
+                        .insert(userSiteResources)
+                        .values(
+                            userIds.map((userId) => ({
+                                userId,
+                                siteResourceId
+                            }))
+                        );
+                }
             }
 
             // Get all admin role IDs for this org to exclude from deletion
@@ -443,6 +471,13 @@ export async function updatePrivateResources(
                     );
             }
 
+            const labelIds = await getOrCreateLabelIds(
+                orgId,
+                resourceData.labels,
+                trx
+            );
+            await syncSiteResourceLabels(siteResourceId, labelIds, trx);
+
             results.push({
                 newSiteResource: updatedResource,
                 oldSiteResource: existingResource,
@@ -493,14 +528,20 @@ export async function updatePrivateResources(
                 releaseAliasLock = release;
             }
 
+            const isInference = resourceData.mode === "inference";
+
             let domainInfo:
                 | { subdomain: string | null; domainId: string }
                 | undefined;
-            if (resourceData["full-domain"] && resourceData.mode === "http") {
+            if (
+                resourceData["full-domain"] &&
+                (resourceData.mode === "http" || isInference)
+            ) {
                 domainInfo = await getDomainForSiteResource(
                     undefined,
                     resourceData["full-domain"],
                     orgId,
+                    isInference,
                     trx
                 );
             }
@@ -526,13 +567,16 @@ export async function updatePrivateResources(
                 }
             }
 
-            const [network] = await trx
-                .insert(networks)
-                .values({
-                    scope: "resource",
-                    orgId: orgId
-                })
-                .returning();
+            let network: typeof networks.$inferSelect | undefined;
+            if (!isInference) {
+                [network] = await trx
+                    .insert(networks)
+                    .values({
+                        scope: "resource",
+                        orgId: orgId
+                    })
+                    .returning();
+            }
 
             // Create new resource
             const [newResource] = await trx
@@ -540,11 +584,11 @@ export async function updatePrivateResources(
                 .values({
                     orgId: orgId,
                     niceId: resourceNiceId,
-                    networkId: network.networkId,
-                    defaultNetworkId: network.networkId,
+                    networkId: network ? network.networkId : null,
+                    defaultNetworkId: network ? network.networkId : null,
                     name: resourceData.name || resourceNiceId,
                     mode: resourceData.mode,
-                    ssl: resourceData.ssl,
+                    ssl: resourceSsl,
                     scheme: resourceData.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
@@ -553,13 +597,15 @@ export async function updatePrivateResources(
                     aliasAddress: aliasAddress,
                     disableIcmp:
                         resourceData["disable-icmp"] ||
-                        (resourceData.mode == "http" ? true : false), // default to true for http resources, otherwise false
+                        (resourceData.mode == "http" || isInference
+                            ? true
+                            : false), // default to true for http/inference resources, otherwise false
                     tcpPortRangeString:
-                        resourceData.mode == "http"
+                        resourceData.mode == "http" || isInference
                             ? "443,80"
                             : resourceData["tcp-ports"],
                     udpPortRangeString:
-                        resourceData.mode == "http"
+                        resourceData.mode == "http" || isInference
                             ? ""
                             : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
@@ -569,7 +615,8 @@ export async function updatePrivateResources(
                     authDaemonMode:
                         resourceData["auth-daemon"]?.mode || "native",
                     authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
-                    status: resourceStatusFromSite
+                    status: resourceStatusFromSite,
+                    requiresExitNodeConnection: isInference
                 })
                 .returning();
 
@@ -577,12 +624,36 @@ export async function updatePrivateResources(
 
             const siteResourceId = newResource.siteResourceId;
 
-            for (const site of allSites) {
-                await trx.insert(siteNetworks).values({
-                    siteId: site.siteId,
-                    networkId: network.networkId
-                });
+            if (network) {
+                for (const site of allSites) {
+                    await trx.insert(siteNetworks).values({
+                        siteId: site.siteId,
+                        networkId: network.networkId
+                    });
+                }
             }
+
+            await syncInferenceAiConfig({
+                orgId,
+                trx,
+                mode: resourceData.mode,
+                scope: "site",
+                siteResourceId,
+                providers: resourceData["ai-providers"].map((p) => ({
+                    provider: p.provider,
+                    accessMode: p["access-mode"],
+                    enabled: p.enabled,
+                    models: p.models
+                }))
+            });
+
+            await syncAiBudgets({
+                orgId,
+                trx,
+                scope: "site",
+                siteResourceId,
+                budgets: resourceData["ai-budget"]
+            });
 
             const [adminRole] = await trx
                 .select()
@@ -643,28 +714,22 @@ export async function updatePrivateResources(
             }
 
             if (resourceData.users.length > 0) {
-                // get userIds from username
-                const usersToUpdate = await trx
-                    .select()
-                    .from(users)
-                    .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-                    .where(
-                        and(
-                            or(
-                                inArray(users.username, resourceData.users),
-                                inArray(users.email, resourceData.users)
-                            ),
-                            eq(userOrgs.orgId, orgId)
-                        )
-                    );
+                const userIds = await resolveOrgUserIds(
+                    trx,
+                    orgId,
+                    resourceData.users
+                );
 
-                const userIds = usersToUpdate.map((user) => user.user.userId);
-
-                await trx
-                    .insert(userSiteResources)
-                    .values(
-                        userIds.map((userId) => ({ userId, siteResourceId }))
-                    );
+                if (userIds.length > 0) {
+                    await trx
+                        .insert(userSiteResources)
+                        .values(
+                            userIds.map((userId) => ({
+                                userId,
+                                siteResourceId
+                            }))
+                        );
+                }
             }
 
             if (resourceData.machines.length > 0) {
@@ -696,6 +761,13 @@ export async function updatePrivateResources(
             );
 
             await usageService.add(orgId, LimitId.PRIVATE_RESOURCES, 1, trx);
+
+            const labelIds = await getOrCreateLabelIds(
+                orgId,
+                resourceData.labels,
+                trx
+            );
+            await syncSiteResourceLabels(siteResourceId, labelIds, trx);
 
             results.push({
                 newSiteResource: newResource,

@@ -18,25 +18,33 @@ export function DataTableEmptyState({
     message
 }: DataTableEmptyStateProps) {
     const t = useTranslations();
+
     return (
         <TableRow className="hidden sm:table-row hover:bg-transparent data-[state=selected]:bg-transparent">
             <TableCell colSpan={colSpan} className="p-0">
-                <div className="relative min-h-[11rem] w-full overflow-hidden">
+                <div className="relative w-full overflow-hidden min-h-[12.5rem]">
                     <div
-                        className="absolute inset-0 flex flex-col justify-start"
+                        className="pointer-events-none absolute inset-0 flex flex-col justify-start opacity-50"
                         aria-hidden
                     >
                         {Array.from({ length: PLACEHOLDER_ROW_COUNT }).map(
                             (_, i) => (
-                                <div key={i} className="h-10 shrink-0" />
+                                <div
+                                    key={i}
+                                    className="flex h-10 shrink-0 items-center border-b border-border/60 px-4 last:border-b-0"
+                                >
+                                    <div className="h-3.5 w-full rounded bg-muted/60" />
+                                </div>
                             )
                         )}
                     </div>
-                    <div className="relative flex min-h-[11rem] w-full flex-col items-center justify-center gap-4 px-4 py-8">
+                    <div className="relative flex w-full flex-col items-center justify-center px-4 min-h-[12.5rem] gap-4 py-8">
                         <p className="text-sm text-muted-foreground">
                             {message ?? t("noResults")}
                         </p>
-                        {action}
+                        {action ? (
+                            <div className="bg-background">{action}</div>
+                        ) : null}
                     </div>
                 </div>
             </TableCell>

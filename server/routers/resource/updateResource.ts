@@ -38,7 +38,7 @@ import {
 } from "@server/lib/schemas";
 import { registry } from "@server/openApi";
 import { OpenAPITags } from "@server/openApi";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { createCertificate } from "@server/routers/certificates/createCertificate";
 import {
     validateAndConstructDomain,
     checkWildcardDomainConflict
@@ -345,8 +345,10 @@ export async function updateResource(
             );
         }
 
-        if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
-            // HANDLE UPDATING HTTP RESOURCES
+        if (
+            ["http", "ssh", "rdp", "vnc", "inference"].includes(resource.mode)
+        ) {
+            // HANDLE UPDATING HTTP / BROWSER / INFERENCE RESOURCES
             return await updateHttpResource(
                 {
                     req,
@@ -529,6 +531,20 @@ async function updateHttpResource(
         }
     }
 
+    // Wildcard subdomains are not allowed for inference-mode resources
+    if (
+        resource.mode === "inference" &&
+        updateData.subdomain &&
+        updateData.subdomain.includes("*")
+    ) {
+        return next(
+            createHttpError(
+                HttpCode.BAD_REQUEST,
+                "Wildcard subdomains are not supported for inference-mode resources."
+            )
+        );
+    }
+
     // Wildcard subdomains are a paid feature
     if (updateData.subdomain && updateData.subdomain.includes("*")) {
         if (!isLicensed) {
@@ -594,10 +610,23 @@ async function updateHttpResource(
         logger.debug(`Full domain: ${fullDomain}`);
 
         if (fullDomain) {
+            // Inference resources route through the central AI gateway
+            // rather than normal target-based proxying, so they're allowed
+            // to share a full-domain with a non-inference resource (and
+            // vice versa) - only conflicts within the same routing category
+            // are rejected. mode isn't updatable here, so `resource.mode`
+            // reflects the resource's actual (unchanging) routing category.
             const [existingDomain] = await db
                 .select()
                 .from(resources)
-                .where(eq(resources.fullDomain, fullDomain));
+                .where(
+                    and(
+                        eq(resources.fullDomain, fullDomain),
+                        resource.mode === "inference"
+                            ? ne(resources.mode, "inference")
+                            : eq(resources.mode, "inference")
+                    )
+                );
 
             if (
                 existingDomain &&
@@ -663,9 +692,7 @@ async function updateHttpResource(
         // Update the subdomain in the update data
         updateData.subdomain = finalSubdomain;
 
-        if (build != "oss") {
-            await createCertificate(domainId, fullDomain, db);
-        }
+        await createCertificate(domainId, fullDomain, db);
     }
 
     let headers = undefined;

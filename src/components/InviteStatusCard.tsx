@@ -44,6 +44,7 @@ export default function InviteStatusCard({
         | "user_does_not_exist"
         | "not_logged_in"
         | "user_limit_exceeded"
+        | "oidc_not_allowed"
     >("rejected");
 
     useEffect(() => {
@@ -69,6 +70,12 @@ export default function InviteStatusCard({
             function cardType() {
                 if (error.includes("Invite is not for this user")) {
                     return "wrong_user";
+                } else if (
+                    error.includes(
+                        "Invites can only be accepted by internal users."
+                    )
+                ) {
+                    return "oidc_not_allowed";
                 } else if (
                     error.includes(
                         "User does not exist. Please create an account first."
@@ -166,6 +173,14 @@ export default function InviteStatusCard({
                     <p className="text-center">{t("inviteCreateUser")}</p>
                 </div>
             );
+        } else if (type === "oidc_not_allowed") {
+            return (
+                <div>
+                    <p className="text-center mb-4">
+                        {t("inviteErrorOidcNotAllowed")}
+                    </p>
+                </div>
+            );
         } else if (type === "user_limit_exceeded") {
             return (
                 <div>
@@ -199,6 +214,10 @@ export default function InviteStatusCard({
             );
         } else if (type === "user_does_not_exist") {
             return <Button onClick={goToSignup}>{t("createAnAccount")}</Button>;
+        } else if (type === "oidc_not_allowed") {
+            return (
+                <Button onClick={goToLogin}>{t("inviteLogInOtherUser")}</Button>
+            );
         } else if (type === "user_limit_exceeded") {
             return (
                 <Button

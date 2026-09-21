@@ -172,7 +172,6 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                 .nullable()
                 .optional(),
             hcScheme: z.string().optional(),
-            hcHostname: z.string(),
             hcPort: z
                 .string()
                 .min(1, { message: t("healthCheckPortInvalid") })
@@ -184,6 +183,11 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                     { message: t("healthCheckPortInvalid") }
                 ),
             hcFollowRedirects: z.boolean(),
+            hcHostname: z
+                .string()
+                .refine((val) => !/\s/.test(val), {
+                    message: t("healthCheckHostnameInvalid")
+                }),
             hcMode: z.string(),
             hcUnhealthyInterval: z.int().positive().min(5),
             hcTlsServerName: z.string(),

@@ -313,6 +313,14 @@ export function LogDataTable<TData, TValue>({
         }
     }, [currentPage, table, isServerPagination]);
 
+    // Collapse any expanded rows whenever the page changes, since row ids
+    // are reused across pages and would otherwise show the wrong content
+    // in the same expanded position.
+    const pageIndex = table.getState().pagination.pageIndex;
+    useEffect(() => {
+        setExpandedRows(new Set());
+    }, [pageIndex]);
+
     const handleTabChange = (value: string) => {
         if (disabled) return;
 
@@ -515,9 +523,13 @@ export function LogDataTable<TData, TValue>({
                                                         }
                                                         className="p-4 bg-muted/50"
                                                     >
-                                                        {renderExpandedRow(
-                                                            row.original
-                                                        )}
+                                                        {/* w-0 min-w-full keeps this cell's content from */}
+                                                        {/* blowing out the table's auto column widths */}
+                                                        <div className="w-0 min-w-full">
+                                                            {renderExpandedRow(
+                                                                row.original
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             )

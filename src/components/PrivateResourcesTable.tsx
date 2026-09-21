@@ -37,6 +37,7 @@ import { getPrivateResourceSettingsHref } from "@app/lib/launcherResourceAdminHr
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { GetBatchedCertificateResponse } from "@server/routers/certificates/types";
 import { UpdateSiteResourceResponse } from "@server/routers/siteResource";
 import type { PaginationState } from "@tanstack/react-table";
 import { AxiosResponse } from "axios";
@@ -68,20 +69,21 @@ import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { LabelsTableCell } from "./LabelsTableCell";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import { SitesColumnFilterButton } from "./SitesColumnFilterButton";
+import { SiteResource } from "@server/db";
 
-export type InternalResourceSiteRow = ResourceSiteRow;
+export type PrivateResourceSiteRow = ResourceSiteRow;
 
-export type InternalResourceRow = {
+export type PrivateResourceRow = {
     id: number;
     name: string;
     orgId: string;
-    sites: InternalResourceSiteRow[];
+    sites: PrivateResourceSiteRow[];
     siteNames: string[];
     siteAddresses: (string | null)[];
     siteIds: number[];
     siteNiceIds: string[];
     // mode: "host" | "cidr" | "port";
-    mode: "host" | "cidr" | "http" | "ssh";
+    mode: SiteResource["mode"];
     scheme: "http" | "https" | null;
     ssl: boolean;
     // protocol: string | null;
@@ -108,7 +110,7 @@ export type InternalResourceRow = {
     }>;
 };
 
-function formatDestinationDisplay(row: InternalResourceRow): string {
+function formatDestinationDisplay(row: PrivateResourceRow): string {
     return formatSiteResourceDestinationDisplay({
         mode: row.mode,
         destination: row.destination,
@@ -132,17 +134,20 @@ const booleanSearchFilterSchema = z
     .catch(undefined);
 
 type ClientResourcesTableProps = {
-    internalResources: InternalResourceRow[];
+    internalResources: PrivateResourceRow[];
     orgId: string;
     pagination: PaginationState;
     rowCount: number;
+    /** Certificates prefetched on the server, keyed by full domain. */
+    initialCertificates?: GetBatchedCertificateResponse;
 };
 
 export default function PrivateResourcesTable({
     internalResources,
     orgId,
     pagination,
-    rowCount
+    rowCount,
+    initialCertificates
 }: ClientResourcesTableProps) {
     const router = useRouter();
     const {
@@ -160,10 +165,10 @@ export default function PrivateResourcesTable({
     const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const [selectedInternalResource, setSelectedInternalResource] =
-        useState<InternalResourceRow | null>(null);
+        useState<PrivateResourceRow | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingResource, setEditingResource] =
-        useState<InternalResourceRow | null>();
+        useState<PrivateResourceRow | null>();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
     const [isRefreshing, startRefreshTransition] = useTransition();
@@ -237,9 +242,9 @@ export default function PrivateResourcesTable({
     };
 
     const internalColumns = useMemo<
-        ExtendedColumnDef<InternalResourceRow>[]
+        ExtendedColumnDef<PrivateResourceRow>[]
     >(() => {
-        const cols: ExtendedColumnDef<InternalResourceRow>[] = [
+        const cols: ExtendedColumnDef<PrivateResourceRow>[] = [
             {
                 accessorKey: "name",
                 enableHiding: false,
@@ -327,7 +332,7 @@ export default function PrivateResourcesTable({
             },
             {
                 accessorKey: "mode",
-                friendlyName: t("editInternalResourceDialogMode"),
+                friendlyName: t("type"),
                 header: () => (
                     <ColumnFilterButton
                         options={[
@@ -346,6 +351,12 @@ export default function PrivateResourcesTable({
                             {
                                 value: "ssh",
                                 label: t("editInternalResourceDialogModeSsh")
+                            },
+                            {
+                                value: "inference",
+                                label: t(
+                                    "editInternalResourceDialogModeInference"
+                                )
                             }
                         ]}
                         selectedValue={searchParams.get("mode") ?? undefined}
@@ -354,21 +365,18 @@ export default function PrivateResourcesTable({
                         }
                         searchPlaceholder={t("searchPlaceholder")}
                         emptyMessage={t("emptySearchOptions")}
-                        label={t("editInternalResourceDialogMode")}
+                        label={t("type")}
                         className="p-3"
                     />
                 ),
                 cell: ({ row }) => {
                     const resourceRow = row.original;
-                    const modeLabels: Record<
-                        "host" | "cidr" | "port" | "http" | "ssh",
-                        string
-                    > = {
+                    const modeLabels: Record<SiteResource["mode"], string> = {
                         host: t("editInternalResourceDialogModeHost"),
                         cidr: t("editInternalResourceDialogModeCidr"),
-                        port: t("editInternalResourceDialogModePort"),
                         http: t("editInternalResourceDialogModeHttp"),
-                        ssh: t("editInternalResourceDialogModeSsh")
+                        ssh: t("editInternalResourceDialogModeSsh"),
+                        inference: t("editInternalResourceDialogModeInference")
                     };
                     return <span>{modeLabels[resourceRow.mode]}</span>;
                 }
@@ -413,12 +421,14 @@ export default function PrivateResourcesTable({
                             />
                         );
                     }
-                    if (resourceRow.mode === "http") {
+                    if (
+                        resourceRow.mode === "http" ||
+                        resourceRow.mode === "inference"
+                    ) {
                         const domainId = resourceRow.domainId;
                         const fullDomain = resourceRow.fullDomain;
                         const url = `${resourceRow.ssl ? "https" : "http"}://${fullDomain}`;
                         const did =
-                            build !== "oss" &&
                             resourceRow.ssl &&
                             domainId != null &&
                             domainId !== "" &&
@@ -432,6 +442,9 @@ export default function PrivateResourcesTable({
                                         orgId={resourceRow.orgId}
                                         domainId={domainId}
                                         fullDomain={fullDomain}
+                                        initialCertValue={
+                                            initialCertificates?.[fullDomain]
+                                        }
                                     />
                                 ) : null}
                                 <div className="">
@@ -514,7 +527,7 @@ export default function PrivateResourcesTable({
                         className="p-3"
                     />
                 ),
-                cell: ({ row }: { row: { original: InternalResourceRow } }) => (
+                cell: ({ row }: { row: { original: PrivateResourceRow } }) => (
                     <ClientResourceLabelCell
                         resource={row.original}
                         orgId={orgId}
@@ -585,7 +598,7 @@ export default function PrivateResourcesTable({
         ];
 
         return cols;
-    }, [orgId, t, searchParams]);
+    }, [orgId, t, searchParams, initialCertificates]);
 
     function handleFilterChange(
         column: string,
@@ -690,7 +703,7 @@ export default function PrivateResourcesTable({
 }
 
 type ClientResourceLabelCellProps = {
-    resource: InternalResourceRow;
+    resource: PrivateResourceRow;
     orgId: string;
 };
 
@@ -716,7 +729,7 @@ function ClientResourceLabelCell({
 }
 
 type InternalResourceEnabledFormProps = {
-    resource: InternalResourceRow;
+    resource: PrivateResourceRow;
     onToggleInternalResourceEnabled: (
         val: boolean,
         resourceId: number

@@ -38,7 +38,6 @@ type PrivateResourceSshFieldsProps = {
     labelPrefix?: "create" | "edit";
     showSshSettings?: boolean;
     layout?: "default" | "wizard";
-    showPaidFeaturesAlert?: boolean;
     hideAlias?: boolean;
     embedInParentGrid?: boolean;
     isNativeSsh?: boolean;
@@ -55,7 +54,6 @@ export function PrivateResourceSshFields({
     labelPrefix = "edit",
     showSshSettings = true,
     layout = "default",
-    showPaidFeaturesAlert = true,
     hideAlias = false,
     embedInParentGrid = false,
     isNativeSsh: isNativeSshProp
@@ -313,13 +311,6 @@ export function PrivateResourceSshFields({
 
     const content: ReactNode = (
         <>
-            {showPaidFeaturesAlert && layout === "default" && (
-                <SettingsFormCell span="full">
-                    <PaidFeaturesAlert
-                        tiers={tierMatrix.advancedPrivateResources}
-                    />
-                </SettingsFormCell>
-            )}
             {sshSettingsFields}
             {destinationSection}
         </>

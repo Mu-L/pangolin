@@ -1,10 +1,3 @@
-/**
- * Set a cookie on the client side in javascript code, not on the server
- * @param name
- * @param value
- * @param days
- * @param options
- */
 export function setClientCookie(
     name: string,
     value: string,

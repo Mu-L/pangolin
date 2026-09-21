@@ -56,6 +56,8 @@ import { QRCodeCanvas } from "qrcode.react";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
 import { NewtSiteInstallCommands } from "@app/components/newt-install-commands";
+import { useQuery } from "@tanstack/react-query";
+import { productUpdatesQueries } from "@app/lib/queries";
 
 type SiteType = "newt" | "wireguard" | "local";
 
@@ -189,8 +191,12 @@ export default function Page() {
     const [wgConfig, setWgConfig] = useState("");
 
     const [createLoading, setCreateLoading] = useState(false);
-    const [newtVersion, setNewtVersion] = useState("latest");
     const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+
+    const { data: latestVersions } = useQuery(
+        productUpdatesQueries.latestVersion(true)
+    );
+    const newtVersion = latestVersions?.data?.newt?.latestVersion ?? "latest";
 
     const [siteDefaults, setSiteDefaults] =
         useState<PickSiteDefaultsResponse | null>(null);
@@ -278,9 +284,10 @@ export default function Page() {
         }
 
         const res = await api
-            .put<
-                AxiosResponse<CreateSiteResponse>
-            >(`/org/${orgId}/site/`, payload)
+            .put<AxiosResponse<CreateSiteResponse>>(
+                `/org/${orgId}/site/`,
+                payload
+            )
             .catch((e) => {
                 toast({
                     variant: "destructive",
@@ -301,45 +308,6 @@ export default function Page() {
     useEffect(() => {
         const load = async () => {
             setLoadingPage(true);
-
-            let currentNewtVersion = "latest";
-
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-                const response = await fetch(
-                    `https://api.github.com/repos/fosrl/newt/releases/latest`,
-                    { signal: controller.signal }
-                );
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    throw new Error(
-                        t("newtErrorFetchReleases", {
-                            err: response.statusText
-                        })
-                    );
-                }
-                const data = await response.json();
-                const latestVersion = data.tag_name;
-                currentNewtVersion = latestVersion;
-                setNewtVersion(latestVersion);
-            } catch (error) {
-                if (error instanceof Error && error.name === "AbortError") {
-                    console.error(t("newtErrorFetchTimeout"));
-                } else {
-                    console.error(
-                        t("newtErrorFetchLatest", {
-                            err:
-                                error instanceof Error
-                                    ? error.message
-                                    : String(error)
-                        })
-                    );
-                }
-            }
 
             const generatedKeypair = generateKeypair();
 
@@ -673,7 +641,6 @@ export default function Page() {
                                     id={newtId}
                                     secret={newtSecret}
                                     endpoint={env.app.dashboardUrl}
-                                    version={newtVersion}
                                 />
                             </>
                         )}

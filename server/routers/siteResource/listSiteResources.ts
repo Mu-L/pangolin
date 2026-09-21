@@ -1,11 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, networks, siteNetworks } from "@server/db";
+import {
+    db,
+    networks,
+    roleSiteResources,
+    siteNetworks,
+    userSiteResources
+} from "@server/db";
 import { siteResources, sites, SiteResource } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -159,10 +165,47 @@ export async function listSiteResources(
             return next(createHttpError(HttpCode.NOT_FOUND, "Site not found"));
         }
 
+        let accessibleSiteResourceIds: number[];
+        if (req.user) {
+            const accessibleSiteResources = await db
+                .select({
+                    siteResourceId: sql<number>`COALESCE(${userSiteResources.siteResourceId}, ${roleSiteResources.siteResourceId})`
+                })
+                .from(userSiteResources)
+                .fullJoin(
+                    roleSiteResources,
+                    eq(
+                        userSiteResources.siteResourceId,
+                        roleSiteResources.siteResourceId
+                    )
+                )
+                .where(
+                    or(
+                        eq(userSiteResources.userId, req.user.userId),
+                        inArray(
+                            roleSiteResources.roleId,
+                            req.userOrgRoleIds ?? []
+                        )
+                    )
+                );
+            accessibleSiteResourceIds = accessibleSiteResources.map(
+                (row) => row.siteResourceId
+            );
+        } else {
+            const allOrgSiteResources = await db
+                .select({ siteResourceId: siteResources.siteResourceId })
+                .from(siteResources)
+                .where(eq(siteResources.orgId, orgId));
+            accessibleSiteResourceIds = allOrgSiteResources.map(
+                (row) => row.siteResourceId
+            );
+        }
+
         // Get site resources by joining networks to siteResources via siteNetworks
         const conditions = [
             eq(siteNetworks.siteId, siteId),
-            eq(siteResources.orgId, orgId)
+            eq(siteResources.orgId, orgId),
+            inArray(siteResources.siteResourceId, accessibleSiteResourceIds)
         ];
 
         if (typeof status !== "undefined") {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { db, logsDb, statusHistory } from "@server/db";
-import { and, eq, gte, lt, asc, desc } from "drizzle-orm";
+import { and, eq, gte, lt, asc, desc, inArray, max, sql } from "drizzle-orm";
 import { regionalCache as cache } from "#dynamic/lib/cache";
 
 const STATUS_HISTORY_CACHE_TTL = 60; // seconds
@@ -264,9 +264,7 @@ export function computeBuckets(
 
         // Shift by the client's offset before formatting so the label reflects
         // their local calendar date rather than the UTC date of dayStartSec
-        const dateStr = new Date(
-            (dayStartSec + tzOffsetMinutes * 60) * 1000
-        )
+        const dateStr = new Date((dayStartSec + tzOffsetMinutes * 60) * 1000)
             .toISOString()
             .slice(0, 10);
 
@@ -301,6 +299,123 @@ export function computeBuckets(
             status
         });
     }
-
     return { buckets, totalDowntime };
+}
+
+export type BatchedStatusHistoryResponse = Record<
+    string,
+    StatusHistoryResponse
+>;
+
+export async function getBatchedStatusHistory(
+    entityType: string,
+    entityIds: number[],
+    days: number,
+    tzOffsetMinutes: number = 0
+): Promise<BatchedStatusHistoryResponse> {
+    // Anchor to local midnight (UTC when tzOffsetMinutes is 0) so the query
+    // window aligns with stable calendar days for the requesting client
+    const todayMidnightSec = localMidnightSec(tzOffsetMinutes);
+    const startSec = todayMidnightSec - days * 86400;
+
+    const events = await logsDb
+        .select()
+        .from(statusHistory)
+        .where(
+            and(
+                eq(statusHistory.entityType, entityType),
+                inArray(statusHistory.entityId, entityIds),
+                gte(statusHistory.timestamp, startSec)
+            )
+        )
+        .orderBy(asc(statusHistory.timestamp));
+
+    // Fetch the last known state before the window so that entities that
+    // haven't changed status recently still show the correct status rather
+    // than appearing as "no_data".
+
+    /**
+     * If we used only postgres, we would have used `SELECT DISTINCT ON` to get the
+     * latest event for each `entityId`,
+     * but it doesn't work on SQLite, so instead we use a subquery,
+     * the `ROW_NUMBER() OVER PARTITION` allows to assign a number
+     * to each row ordered by the timestamp, the number 1 is the first one appearing in
+     * the specified order, then the next and more, we only want the highest timestamp,
+     * so we get for `row_number=1`
+     */
+    const lastKnowEventsSub = logsDb
+        .select({
+            entityId: statusHistory.entityId,
+            status: statusHistory.status,
+            timestamp: statusHistory.timestamp,
+            row_number:
+                sql<number>`ROW_NUMBER() OVER (PARTITION BY ${statusHistory.entityId} ORDER BY ${statusHistory.timestamp} DESC)`.as(
+                    "row_number"
+                )
+        })
+        .from(statusHistory)
+        .where(
+            and(
+                eq(statusHistory.entityType, entityType),
+                inArray(statusHistory.entityId, entityIds),
+                lt(statusHistory.timestamp, startSec)
+            )
+        )
+        .as("sub");
+
+    const lastKnownEvents = await logsDb
+        .select({
+            entityId: lastKnowEventsSub.entityId,
+            status: lastKnowEventsSub.status,
+            timestamp: lastKnowEventsSub.timestamp
+        })
+        .from(lastKnowEventsSub)
+        .where(eq(lastKnowEventsSub.row_number, 1));
+
+    const eventStatusMap: Record<
+        number,
+        {
+            events: typeof events;
+            lastKnownEvent: (typeof lastKnownEvents)[number] | null;
+        }
+    > = {};
+
+    for (const entityId of entityIds) {
+        eventStatusMap[entityId] = {
+            events: events.filter((ev) => ev.entityId === entityId),
+            lastKnownEvent:
+                lastKnownEvents.find((ev) => ev.entityId === entityId) ?? null
+        };
+    }
+
+    const result: BatchedStatusHistoryResponse = {};
+
+    for (const entityId in eventStatusMap) {
+        const event = eventStatusMap[Number(entityId)];
+        const priorStatus = event.lastKnownEvent?.status ?? null;
+
+        const { buckets, totalDowntime } = computeBuckets(
+            event.events,
+            days,
+            priorStatus,
+            tzOffsetMinutes
+        );
+        const totalWindow = days * 86400;
+        const overallUptime =
+            totalWindow > 0
+                ? Math.max(
+                      0,
+                      ((totalWindow - totalDowntime) / totalWindow) * 100
+                  )
+                : 100;
+
+        result[entityId] = {
+            entityType,
+            entityId: Number(entityId),
+            days: buckets,
+            overallUptimePercent: Math.round(overallUptime * 100) / 100,
+            totalDowntimeSeconds: totalDowntime
+        };
+    }
+    return result;
 }

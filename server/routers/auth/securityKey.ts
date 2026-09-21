@@ -17,7 +17,7 @@ import {
 import type {
     GenerateRegistrationOptionsOpts,
     GenerateAuthenticationOptionsOpts,
-    AuthenticatorTransportFuture
+    AuthenticatorTransport
 } from "@simplewebauthn/server";
 import { isoBase64URL } from "@simplewebauthn/server/helpers";
 import config from "@server/lib/config";
@@ -221,7 +221,7 @@ export async function startRegistration(
         const excludeCredentials = existingSecurityKeys.map((key) => ({
             id: key.credentialId,
             transports: key.transports
-                ? (JSON.parse(key.transports) as AuthenticatorTransportFuture[])
+                ? (JSON.parse(key.transports) as AuthenticatorTransport[])
                 : undefined
         }));
 
@@ -533,18 +533,23 @@ export async function startAuthentication(
 
         // If email is provided, get security keys for that specific user
         if (email) {
-            const [user] = await db
+            const matchingUsers = await db
                 .select()
                 .from(users)
-                .where(eq(users.email, email))
-                .limit(1);
+                .where(
+                    and(
+                        eq(users.email, email.toLowerCase()),
+                        eq(users.type, UserType.Internal)
+                    )
+                );
 
-            if (!user || user.type !== UserType.Internal) {
+            if (matchingUsers.length !== 1) {
                 return next(
                     createHttpError(HttpCode.BAD_REQUEST, "Invalid credentials")
                 );
             }
 
+            const user = matchingUsers[0];
             userId = user.userId;
 
             const userSecurityKeys = await db
@@ -566,7 +571,7 @@ export async function startAuthentication(
                 transports: key.transports
                     ? (JSON.parse(
                           key.transports
-                      ) as AuthenticatorTransportFuture[])
+                      ) as AuthenticatorTransport[])
                     : undefined
             }));
         }
@@ -697,7 +702,7 @@ export async function verifyAuthentication(
                 transports: securityKey.transports
                     ? (JSON.parse(
                           securityKey.transports
-                      ) as AuthenticatorTransportFuture[])
+                      ) as AuthenticatorTransport[])
                     : undefined
             },
             requireUserVerification: false

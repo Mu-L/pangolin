@@ -3,7 +3,13 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
-import { useState, useRef, useActionState, type ComponentRef } from "react";
+import {
+    useState,
+    useRef,
+    useActionState,
+    startTransition,
+    type ComponentRef
+} from "react";
 import {
     Form,
     FormControl,
@@ -80,7 +86,8 @@ const SecurityFormSchema = z.object({
     settingsLogRetentionDaysRequest: z.number(),
     settingsLogRetentionDaysAccess: z.number(),
     settingsLogRetentionDaysAction: z.number(),
-    settingsLogRetentionDaysConnection: z.number()
+    settingsLogRetentionDaysConnection: z.number(),
+    settingsLogRetentionDaysAISessions: z.number()
 });
 
 const LOG_RETENTION_OPTIONS = [
@@ -116,13 +123,15 @@ export default function SecurityPage() {
 }
 
 function LogRetentionSectionForm({ org }: SectionFormProps) {
+    const { updateOrg } = useOrgContext();
     const form = useForm({
         resolver: zodResolver(
             SecurityFormSchema.pick({
                 settingsLogRetentionDaysRequest: true,
                 settingsLogRetentionDaysAccess: true,
                 settingsLogRetentionDaysAction: true,
-                settingsLogRetentionDaysConnection: true
+                settingsLogRetentionDaysConnection: true,
+                settingsLogRetentionDaysAISessions: true
             })
         ),
         defaultValues: {
@@ -133,7 +142,9 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
             settingsLogRetentionDaysAction:
                 org.settingsLogRetentionDaysAction ?? 15,
             settingsLogRetentionDaysConnection:
-                org.settingsLogRetentionDaysConnection ?? 15
+                org.settingsLogRetentionDaysConnection ?? 15,
+            settingsLogRetentionDaysAISessions:
+                org.settingsLogRetentionDaysAISessions ?? 15
         },
         mode: "onChange"
     });
@@ -161,11 +172,18 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                 settingsLogRetentionDaysAction:
                     data.settingsLogRetentionDaysAction,
                 settingsLogRetentionDaysConnection:
-                    data.settingsLogRetentionDaysConnection
+                    data.settingsLogRetentionDaysConnection,
+                settingsLogRetentionDaysAISessions:
+                    data.settingsLogRetentionDaysAISessions
             } as any;
 
             // Update organization
             await api.post(`/org/${org.orgId}`, reqData);
+
+            // Update the org context immediately so the dropdowns reflect
+            // the saved values without waiting on a re-fetch that could
+            // race a lagging read replica
+            updateOrg(reqData);
 
             toast({
                 title: t("orgUpdated"),
@@ -193,7 +211,12 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                 <SettingsSectionForm>
                     <Form {...form}>
                         <form
-                            action={formAction}
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                startTransition(() => {
+                                    formAction();
+                                });
+                            }}
                             className="grid gap-4"
                             id="org-log-retention-settings-form"
                         >
@@ -673,6 +696,131 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                             );
                                         }}
                                     />
+                                    <FormField
+                                        control={form.control}
+                                        name="settingsLogRetentionDaysAISessions"
+                                        render={({ field }) => {
+                                            const isDisabled = !isPaidUser(
+                                                tierMatrix.aiSessionLogs
+                                            );
+
+                                            return (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(
+                                                            "logRetentionAISessionsLabel"
+                                                        )}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Select
+                                                            value={field.value.toString()}
+                                                            onValueChange={(
+                                                                value
+                                                            ) => {
+                                                                if (
+                                                                    !isDisabled
+                                                                ) {
+                                                                    field.onChange(
+                                                                        parseInt(
+                                                                            value,
+                                                                            10
+                                                                        )
+                                                                    );
+                                                                }
+                                                            }}
+                                                            disabled={
+                                                                isDisabled
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue
+                                                                    placeholder={t(
+                                                                        "selectLogRetention"
+                                                                    )}
+                                                                />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {LOG_RETENTION_OPTIONS.filter(
+                                                                    (
+                                                                        option
+                                                                    ) => {
+                                                                        if (
+                                                                            build !=
+                                                                            "saas"
+                                                                        ) {
+                                                                            return true;
+                                                                        }
+
+                                                                        let maxDays: number;
+
+                                                                        if (
+                                                                            !subscriptionTier
+                                                                        ) {
+                                                                            // No tier
+                                                                            maxDays = 3;
+                                                                        } else if (
+                                                                            subscriptionTier ==
+                                                                            "enterprise"
+                                                                        ) {
+                                                                            // Enterprise - no limit
+                                                                            return true;
+                                                                        } else if (
+                                                                            subscriptionTier ==
+                                                                            "tier3"
+                                                                        ) {
+                                                                            maxDays = 90;
+                                                                        } else if (
+                                                                            subscriptionTier ==
+                                                                            "tier2"
+                                                                        ) {
+                                                                            maxDays = 30;
+                                                                        } else if (
+                                                                            subscriptionTier ==
+                                                                            "tier1"
+                                                                        ) {
+                                                                            maxDays = 7;
+                                                                        } else {
+                                                                            // Default to most restrictive
+                                                                            maxDays = 3;
+                                                                        }
+
+                                                                        // Filter out options that exceed the max
+                                                                        // Special values: -1 (forever) and 9001 (end of year) should be filtered
+                                                                        if (
+                                                                            option.value <
+                                                                                0 ||
+                                                                            option.value >
+                                                                                maxDays
+                                                                        ) {
+                                                                            return false;
+                                                                        }
+
+                                                                        return true;
+                                                                    }
+                                                                ).map(
+                                                                    (
+                                                                        option
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                option.value
+                                                                            }
+                                                                            value={option.value.toString()}
+                                                                        >
+                                                                            {t(
+                                                                                option.label
+                                                                            )}
+                                                                        </SelectItem>
+                                                                    )
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            );
+                                        }}
+                                    />
                                 </>
                             )}
                         </form>
@@ -696,6 +844,7 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
 
 function SecuritySettingsSectionForm({ org }: SectionFormProps) {
     const router = useRouter();
+    const { updateOrg } = useOrgContext();
     const form = useForm({
         resolver: zodResolver(
             SecurityFormSchema.pick({
@@ -768,6 +917,11 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
             // Update organization
             await api.post(`/org/${org.orgId}`, reqData);
 
+            // Update the org context immediately so the dropdowns reflect
+            // the saved values without waiting on a re-fetch that could
+            // race a lagging read replica
+            updateOrg(reqData);
+
             toast({
                 title: t("orgUpdated"),
                 description: t("orgUpdatedDescription")
@@ -811,7 +965,12 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                     <SettingsSectionForm>
                         <Form {...form}>
                             <form
-                                action={formAction}
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    startTransition(() => {
+                                        formAction();
+                                    });
+                                }}
                                 ref={formRef}
                                 id="security-settings-section-form"
                                 className="space-y-4"

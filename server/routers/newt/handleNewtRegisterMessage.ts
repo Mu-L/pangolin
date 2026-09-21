@@ -1,29 +1,19 @@
-import { db, ExitNode, newts, remoteExitNodes, Transaction } from "@server/db";
+import { db, newts, remoteExitNodes } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { exitNodes, Newt, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import { addPeer, deletePeer } from "../gerbil/peers";
 import logger from "@server/logger";
 import config from "@server/lib/config";
-import { findNextAvailableCidr } from "@server/lib/ip";
 import {
+    ExitNodePingResult,
     selectBestExitNode,
     verifyExitNodeOrgAccess
 } from "#dynamic/lib/exitNodes";
+import { getUniqueSubnetForExitNode } from "@server/lib/exitNodes";
 import { fetchContainers } from "./dockerSocket";
-import { lockManager } from "#dynamic/lib/lock";
 import { buildTargetConfigurationForNewtClient } from "./buildConfiguration";
 import { canCompress } from "@server/lib/clientVersionChecks";
-
-export type ExitNodePingResult = {
-    exitNodeId: number;
-    latencyMs: number;
-    weight: number;
-    error?: string;
-    exitNodeName: string;
-    endpoint: string;
-    wasPreviouslyConnected: boolean;
-};
 
 export const handleNewtRegisterMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
@@ -47,6 +37,8 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         publicKey,
         pingResults,
         newtVersion,
+        agent,
+        agentVersion,
         backwardsCompatible,
         chainId
     } = message.data;
@@ -94,9 +86,12 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         fetchContainers(newt.newtId);
     }
 
-    let siteSubnet = oldSite.subnet;
+    let siteSubnet = oldSite.exitNodeSubnet;
     let exitNodeIdToQuery = oldSite.exitNodeId;
-    if (exitNodeId && (oldSite.exitNodeId !== exitNodeId || !oldSite.subnet)) {
+    if (
+        exitNodeId &&
+        (oldSite.exitNodeId !== exitNodeId || !oldSite.exitNodeSubnet)
+    ) {
         // This effectively moves the exit node to the new one
         exitNodeIdToQuery = exitNodeId; // Use the provided exitNodeId if it differs from the site's exitNodeId
 
@@ -115,7 +110,7 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
             return;
         }
 
-        const newSubnet = await getUniqueSubnetForSite(exitNode);
+        const newSubnet = await getUniqueSubnetForExitNode(exitNode);
 
         if (!newSubnet) {
             logger.error(
@@ -131,7 +126,7 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
             .set({
                 pubKey: publicKey,
                 exitNodeId: exitNodeId,
-                subnet: newSubnet
+                exitNodeSubnet: newSubnet
             })
             .where(eq(sites.siteId, siteId))
             .returning();
@@ -176,22 +171,21 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         logger.error(`Failed to add peer to exit node: ${error}`);
     }
 
-    if (newtVersion && newtVersion !== newt.version) {
+    if (
+        newtVersion !== newt.version ||
+        agent !== newt.agent ||
+        agentVersion !== newt.agentVersion
+    ) {
         // update the newt version in the database
         await db
             .update(newts)
             .set({
-                version: newtVersion as string
-            })
-            .where(eq(newts.newtId, newt.newtId));
-    }
-
-    if (newtVersion && newtVersion !== newt.version) {
-        // update the newt version in the database
-        await db
-            .update(newts)
-            .set({
-                version: newtVersion as string
+                version: newtVersion as string,
+                agent: agent,
+                agentVersion:
+                    !agentVersion && agent == "newt"
+                        ? newtVersion
+                        : agentVersion
             })
             .where(eq(newts.newtId, newt.newtId));
     }
@@ -250,40 +244,3 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         excludeSender: false // Include sender in broadcast
     };
 };
-
-async function getUniqueSubnetForSite(
-    exitNode: ExitNode,
-    trx: Transaction | typeof db = db
-): Promise<string | null> {
-    const lockKey = `subnet-allocation:${exitNode.exitNodeId}`;
-
-    return await lockManager.withLock(
-        lockKey,
-        async () => {
-            const sitesQuery = await trx
-                .select({
-                    subnet: sites.subnet
-                })
-                .from(sites)
-                .where(eq(sites.exitNodeId, exitNode.exitNodeId));
-
-            const blockSize = config.getRawConfig().gerbil.site_block_size;
-            const subnets = sitesQuery
-                .map((site) => site.subnet)
-                .filter(
-                    (subnet) =>
-                        subnet &&
-                        /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/.test(subnet)
-                )
-                .filter((subnet) => subnet !== null);
-            subnets.push(exitNode.address.replace(/\/\d+$/, `/${blockSize}`));
-            const newSubnet = findNextAvailableCidr(
-                subnets,
-                blockSize,
-                exitNode.address
-            );
-            return newSubnet;
-        },
-        5000 // 5 second lock TTL - subnet allocation should be quick
-    );
-}

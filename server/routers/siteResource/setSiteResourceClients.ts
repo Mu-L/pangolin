@@ -64,7 +64,7 @@ registry.registerPath({
 
 registry.registerPath({
     method: "post",
-    path: "/private-resource/{siteResourceId}/clients",
+    path: "/private-resource/{resourceId}/clients",
     description:
         "Set clients for a site resource. This will replace all existing clients. Clients with a userId cannot be added.",
     tags: [OpenAPITags.PrivateResource, OpenAPITags.Client],

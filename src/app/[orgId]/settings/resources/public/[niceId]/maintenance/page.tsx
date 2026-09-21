@@ -37,7 +37,7 @@ import { AxiosResponse } from "axios";
 import { AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, startTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
@@ -161,7 +161,7 @@ export default function ResourceMaintenancePage() {
         return null;
     }
 
-    const isMaintenanceDisabled = !isPaidUser(tierMatrix.maintencePage);
+    const isMaintenanceDisabled = !isPaidUser(tierMatrix.maintenancePage);
 
     const maintenanceModeTypeOptions: StrategyOption<
         "automatic" | "forced"
@@ -180,7 +180,7 @@ export default function ResourceMaintenancePage() {
 
     return (
         <>
-            <PaidFeaturesAlert tiers={tierMatrix.maintencePage} />
+            <PaidFeaturesAlert tiers={tierMatrix.maintenancePage} />
             <div
                 className={
                     isMaintenanceDisabled
@@ -203,7 +203,12 @@ export default function ResourceMaintenancePage() {
                     <SettingsSectionForm variant="half">
                         <Form {...maintenanceForm}>
                             <form
-                                action={maintenanceFormAction}
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    startTransition(() => {
+                                        maintenanceFormAction();
+                                    });
+                                }}
                                 id="maintenance-settings-form"
                             >
                                 <SettingsFormGrid>

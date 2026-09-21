@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
     db,
     resources,
@@ -33,9 +33,11 @@ export async function getResourceIdsForSite(
     const rows = await trx
         .selectDistinct({ resourceId: targets.resourceId })
         .from(targets)
-        .where(eq(targets.siteId, siteId));
+        .where(and(eq(targets.siteId, siteId), isNotNull(targets.resourceId)));
 
-    return rows.map((row) => row.resourceId);
+    return rows
+        .map((row) => row.resourceId)
+        .filter((resourceId): resourceId is number => resourceId != null);
 }
 
 export async function getSiteResourceIdsForSite(

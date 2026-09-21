@@ -35,10 +35,6 @@ import { buildSelectedSitesForResource } from "@app/lib/privateResourceUtils";
 export default function PrivateResourceHttpPage() {
     const t = useTranslations();
     const { save, siteResource } = useSaveSiteResource();
-    const { isPaidUser } = usePaidStatus();
-    const httpSectionDisabled = !isPaidUser(
-        tierMatrix.advancedPrivateResources
-    );
     const [selectedSites, setSelectedSites] = useState(() =>
         buildSelectedSitesForResource(siteResource)
     );
@@ -120,7 +116,7 @@ export default function PrivateResourceHttpPage() {
                                             )}
                                             orgId={siteResource.orgId}
                                             watch={asAnyWatch(form.watch)}
-                                            disabled={httpSectionDisabled}
+                                            disabled={false}
                                             siteResourceId={siteResource.id}
                                         />
                                     </SettingsFormCell>
@@ -135,7 +131,6 @@ export default function PrivateResourceHttpPage() {
                         type="submit"
                         form="private-resource-http-form"
                         loading={saveLoading}
-                        disabled={httpSectionDisabled}
                     >
                         {t("saveSettings")}
                     </Button>

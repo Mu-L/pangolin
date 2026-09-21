@@ -1,21 +1,15 @@
-import NodeCache from "node-cache";
 import logger from "@server/logger";
+import { createLocalCache } from "@server/lib/createLocalCache";
 
-// Create local cache with maxKeys limit to prevent memory leaks
-// With ~10k requests/day and 5min TTL, 10k keys should be more than sufficient
-export const localCache = new NodeCache({
-    stdTTL: 3600,
-    checkperiod: 120,
-    maxKeys: 10000
-});
+export const localCache = createLocalCache();
 
 // Log cache statistics periodically for monitoring
-setInterval(() => {
-    const stats = localCache.getStats();
-    logger.debug(
-        `Local cache stats - Keys: ${stats.keys}, Hits: ${stats.hits}, Misses: ${stats.misses}, Hit rate: ${stats.hits > 0 ? ((stats.hits / (stats.hits + stats.misses)) * 100).toFixed(2) : 0}%`
-    );
-}, 300000); // Every 5 minutes
+// setInterval(() => {
+//     const stats = localCache.getStats();
+//     logger.debug(
+//         `Local cache stats - Keys: ${stats.keys}, Hits: ${stats.hits}, Misses: ${stats.misses}, Hit rate: ${stats.hits > 0 ? ((stats.hits / (stats.hits + stats.misses)) * 100).toFixed(2) : 0}%`
+//     );
+// }, 300000); // Every 5 minutes
 
 /**
  * Adaptive cache that uses Redis when available in multi-node environments,
@@ -34,9 +28,9 @@ class AdaptiveCache {
 
         // Use local cache as fallback or primary
         const success = localCache.set(key, value, effectiveTtl || 0);
-        if (success) {
-            logger.debug(`Set key in local cache: ${key}`);
-        }
+        // if (success) {
+        //     logger.debug(`Set key in local cache: ${key}`);
+        // }
         return success;
     }
 
@@ -48,11 +42,11 @@ class AdaptiveCache {
     async get<T = any>(key: string): Promise<T | undefined> {
         // Use local cache as fallback or primary
         const value = localCache.get<T>(key);
-        if (value !== undefined) {
-            logger.debug(`Cache hit in local cache: ${key}`);
-        } else {
-            logger.debug(`Cache miss in local cache: ${key}`);
-        }
+        // if (value !== undefined) {
+        //     logger.debug(`Cache hit in local cache: ${key}`);
+        // } else {
+        //     logger.debug(`Cache miss in local cache: ${key}`);
+        // }
         return value;
     }
 
@@ -168,5 +162,5 @@ class AdaptiveCache {
 
 // Export singleton instance
 export const cache = new AdaptiveCache();
-export const regionalCache = cache; // Alias for compatability with the private version
+export const regionalCache = cache; // Alias for compatibility with the private version
 export default cache;

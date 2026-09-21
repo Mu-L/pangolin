@@ -65,7 +65,7 @@ registry.registerPath({
 
 registry.registerPath({
     method: "post",
-    path: "/private-resource/{siteResourceId}/roles",
+    path: "/private-resource/{resourceId}/roles",
     description:
         "Set roles for a site resource. This will replace all existing roles.",
     tags: [OpenAPITags.PrivateResource, OpenAPITags.Role],

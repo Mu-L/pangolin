@@ -76,6 +76,37 @@ type PrivateResourceHostDestinationFieldsProps = {
     hideAlias?: boolean;
 };
 
+type PrivateResourceInferenceDestinationFieldsProps = {
+    control: Control<any>;
+    watch: UseFormWatch<any>;
+    labelPrefix?: "create" | "edit";
+    hideAlias?: boolean;
+};
+
+export function PrivateResourceInferenceDestinationFields({
+    control,
+    watch,
+    labelPrefix = "edit"
+}: PrivateResourceInferenceDestinationFieldsProps) {
+    const t = useTranslations();
+    const destinationLabelKey =
+        labelPrefix === "create"
+            ? "createInternalResourceDialogDestination"
+            : "editInternalResourceDialogDestination";
+
+    return (
+        <SettingsFormGrid>
+            <SettingsFormCell span="half">
+                <PrivateResourceAliasField
+                    control={control}
+                    watch={watch}
+                    labelPrefix={labelPrefix}
+                />
+            </SettingsFormCell>
+        </SettingsFormGrid>
+    );
+}
+
 export function PrivateResourceHostDestinationFields({
     control,
     watch,

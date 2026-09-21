@@ -1,10 +1,13 @@
 import React from "react";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import type {
-    CommandBarNavSection,
-    SidebarNavSection
+import { Env } from "@app/lib/types/env";
+import {
+    orgLangingNavItems,
+    type CommandBarNavSection,
+    type SidebarNavSection
 } from "@app/app/navigation";
+import type { SidebarNavItem } from "@app/components/SidebarNav";
 import { LayoutSidebar } from "@app/components/LayoutSidebar";
 import { LayoutHeader } from "@app/components/LayoutHeader";
 import { LayoutMobileMenu } from "@app/components/LayoutMobileMenu";
@@ -23,6 +26,7 @@ interface LayoutProps {
     defaultSidebarCollapsed?: boolean;
     launcherMode?: boolean;
     showViewAsAdmin?: boolean;
+    env?: Env;
 }
 
 export async function Layout({
@@ -36,7 +40,8 @@ export async function Layout({
     showTopBar = true,
     defaultSidebarCollapsed = false,
     launcherMode = false,
-    showViewAsAdmin = false
+    showViewAsAdmin = false,
+    env
 }: LayoutProps) {
     const allCookies = await cookies();
     const sidebarStateCookie = allCookies.get("pangolin-sidebar-state")?.value;
@@ -45,6 +50,10 @@ export async function Layout({
     const initialSidebarCollapsed =
         sidebarStateCookie === "collapsed" ||
         (sidebarStateCookie !== "expanded" && defaultSidebarCollapsed);
+
+    const launcherNavItems: SidebarNavItem[] = launcherMode
+        ? orgLangingNavItems(env)
+        : [];
 
     return (
         <CommandPaletteProvider
@@ -77,6 +86,7 @@ export async function Layout({
                             orgId={orgId}
                             orgs={orgs}
                             navItems={navItems}
+                            launcherNavItems={launcherNavItems}
                             showSidebar={showSidebar}
                             showTopBar={showTopBar}
                             launcherMode={launcherMode}
@@ -92,6 +102,7 @@ export async function Layout({
                             orgId={orgId}
                             orgs={orgs}
                             showViewAsAdmin={showViewAsAdmin}
+                            launcherNavItems={launcherNavItems}
                         />
                     )}
 

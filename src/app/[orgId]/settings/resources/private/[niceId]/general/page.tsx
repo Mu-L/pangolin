@@ -27,7 +27,9 @@ import { SwitchInput } from "@app/components/SwitchInput";
 import { createGeneralFormSchema } from "@app/lib/privateResourceForm";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { useActionState, useMemo } from "react";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
+import { useActionState, useMemo, startTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useSaveSiteResource } from "@app/hooks/useSaveSiteResource";
@@ -69,6 +71,25 @@ export default function PrivateResourceGeneralPage() {
                     </SettingsSectionTitle>
                     <SettingsSectionDescription>
                         {t("privateResourceGeneralDescription")}
+                        {siteResource.mode === "inference" ? (
+                            <>
+                                {" "}
+                                {t.rich(
+                                    "resourceGeneralAiClientConfigDescription",
+                                    {
+                                        configLink: (chunks) => (
+                                            <Link
+                                                href={`/${siteResource.orgId}?openResource=${encodeURIComponent(siteResource.niceId)}&openResourceQuery=${encodeURIComponent(siteResource.name)}`}
+                                                className="text-primary hover:underline inline-flex items-center gap-1"
+                                            >
+                                                {chunks}
+                                                <ExternalLink className="size-3.5 shrink-0" />
+                                            </Link>
+                                        )
+                                    }
+                                )}
+                            </>
+                        ) : null}
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
 
@@ -76,7 +97,12 @@ export default function PrivateResourceGeneralPage() {
                     <SettingsSectionForm variant="half">
                         <Form {...form}>
                             <form
-                                action={formAction}
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    startTransition(() => {
+                                        formAction();
+                                    });
+                                }}
                                 id="private-resource-general-form"
                             >
                                 <SettingsFormGrid>
