@@ -8,7 +8,8 @@ import {
     ExitNode,
     exitNodes,
     sites,
-    clientSitesAssociationsCache
+    clientSitesAssociationsCache,
+    orgs
 } from "@server/db";
 import { olms } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
@@ -225,7 +226,23 @@ export async function getOlmToken(
             )
             .where(eq(clientSitesAssociationsCache.clientId, clientIdToUse!));
 
-        if (clientSites.length > 250 && build == "saas") {
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, orgIdToUse))
+            .limit(1);
+
+        if (!org) {
+            logger.warn(`Client ${clientIdToUse} org not found`);
+            return next(
+                createHttpError(
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Client's org not found"
+                )
+            );
+        }
+
+        if (clientSites.length > org.settingsJitModeLimit && build == "saas") {
             // set all of the cache rows isJitMode to true
             await db
                 .update(clientSitesAssociationsCache)

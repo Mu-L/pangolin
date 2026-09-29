@@ -78,7 +78,8 @@ export const orgs = sqliteTable("orgs", {
         { mode: "boolean" }
     )
         .notNull()
-        .default(false)
+        .default(false),
+    settingsJitModeLimit: integer("settingsJitModeLimit").notNull().default(250)
 });
 
 export const userDomains = sqliteTable("userDomains", {
@@ -202,7 +203,8 @@ export const resources = sqliteTable(
         skipToIdpId: integer("skipToIdpId").references(() => idp.idpId, {
             onDelete: "set null"
         }),
-        headers: text("headers"), // comma-separated list of headers to add to the request
+        requestHeaders: text("requestHeaders"),
+        responseHeaders: text("responseHeaders"),
         proxyProtocol: integer("proxyProtocol", { mode: "boolean" })
             .notNull()
             .default(false),
@@ -511,8 +513,8 @@ export const siteResources = sqliteTable("siteResources", {
     name: text("name").notNull(),
     ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),
     mode: text("mode")
-        .$type<"host" | "cidr" | "http" | "ssh" | "inference">()
-        .notNull(), // "host" | "cidr" | "http"
+        .$type<"host" | "cidr" | "http" | "ssh" | "inference" | "gateway">()
+        .notNull(),
     scheme: text("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
@@ -1409,6 +1411,7 @@ export const resourceRules = sqliteTable("resourceRules", {
             | "COUNTRY_IS_NOT"
             | "ASN"
             | "REGION"
+            | "METHOD"
         >()
         .notNull(), // CIDR, PATH, IP
     value: text("value").notNull()
@@ -1465,6 +1468,7 @@ export const resourcePolicyRules = sqliteTable("resourcePolicyRules", {
             | "COUNTRY_IS_NOT"
             | "ASN"
             | "REGION"
+            | "METHOD"
         >()
         .notNull(),
     value: text("value").notNull()
