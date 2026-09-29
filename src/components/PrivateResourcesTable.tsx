@@ -376,7 +376,8 @@ export default function PrivateResourcesTable({
                         cidr: t("editInternalResourceDialogModeCidr"),
                         http: t("editInternalResourceDialogModeHttp"),
                         ssh: t("editInternalResourceDialogModeSsh"),
-                        inference: t("editInternalResourceDialogModeInference")
+                        inference: t("editInternalResourceDialogModeInference"),
+                        gateway: t("editInternalResourceDialogModeGateway")
                     };
                     return <span>{modeLabels[resourceRow.mode]}</span>;
                 }
@@ -392,7 +393,11 @@ export default function PrivateResourcesTable({
                 cell: ({ row }) => {
                     const resourceRow = row.original;
                     const display = formatDestinationDisplay(resourceRow);
-                    if (resourceRow.destination) {
+                    if (
+                        resourceRow.destination &&
+                        resourceRow.mode !== "gateway"
+                    ) {
+                        // don't show the gateway resource destination which is 0.0.0.0/0 to not confuse people
                         return (
                             <CopyToClipboard
                                 text={display}
